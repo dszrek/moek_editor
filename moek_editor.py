@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QMessageBox
 # Initialize Qt resources from file resources.py
 from .resources import *
 
@@ -210,6 +210,10 @@ class MoekEditor:
 
     def run(self):
         """Run method that loads and starts the plugin"""
+
+        if self.plugin_is_active: # Sprawdzenie, czy plugin jest już uruchomiony
+            QMessageBox.information(None, "Informacja", "Wtyczka jest już uruchomiona")
+            return  # Uniemożliwienie uruchomienia drugiej instancji pluginu
 
         if not self.plugin_is_active:
             self.plugin_is_active = True

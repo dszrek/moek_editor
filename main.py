@@ -9,6 +9,12 @@ from .classes import PgConn
 user_login = os.getlogin()
 user_id = int()
 user_name = ""
+dlg = None
+
+def pass_dlg(_dlg):
+    """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""
+    global dlg
+    dlg = _dlg
 
 def db_login():
     """Logowanie do bazy danych."""

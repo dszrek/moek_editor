@@ -6,7 +6,7 @@ from qgis.PyQt.QtWidgets import QMessageBox
 from .classes import PgConn
 
 # Zmienne globalne
-user_login = os.getlogin()
+user_login = "asko"  # os.getlogin()
 user_id = int()
 user_name = ""
 dlg = None

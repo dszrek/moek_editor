@@ -10,6 +10,9 @@ user_login = os.getlogin()
 user_id = int()
 user_name = ""
 dlg = None
+teams = []
+team_i = int()
+team_t = ""
 
 def pass_dlg(_dlg):
     """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""

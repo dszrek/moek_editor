@@ -21,15 +21,18 @@
  *                                                                         *
  ***************************************************************************/
 """
+import os.path
+
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
-# Initialize Qt resources from file resources.py
+from qgis.PyQt.QtWidgets import QAction, QMessageBox
+
 from .resources import *
+from .main import db_login, pass_dlg
 
 # Import the code for the DockWidget
 from .moek_editor_dockwidget import MoekEditorDockWidget
-import os.path
+
 
 
 class MoekEditor:
@@ -70,7 +73,7 @@ class MoekEditor:
 
         #print "** INITIALIZING MoekEditor"
 
-        self.pluginIsActive = False
+        self.plugin_is_active = False
         self.dockwidget = None
 
 
@@ -190,7 +193,7 @@ class MoekEditor:
         # when closing the docked window:
         # self.dockwidget = None
 
-        self.pluginIsActive = False
+        self.plugin_is_active = False
 
 
     def unload(self):
@@ -211,8 +214,17 @@ class MoekEditor:
     def run(self):
         """Run method that loads and starts the plugin"""
 
-        if not self.pluginIsActive:
-            self.pluginIsActive = True
+        if self.plugin_is_active: # Sprawdzenie, czy plugin jest już uruchomiony
+            QMessageBox.information(None, "Informacja", "Wtyczka jest już uruchomiona")
+            return  # Uniemożliwienie uruchomienia drugiej instancji pluginu
+
+        # Logowanie użytkownika do bazy danych
+        user_logged = db_login()
+        if not user_logged:
+            return  # Użytkownik nie zalogował się poprawnie, przerwanie ładowania pluginu
+
+        if not self.plugin_is_active:
+            self.plugin_is_active = True
 
             #print "** STARTING MoekEditor"
 
@@ -222,6 +234,7 @@ class MoekEditor:
             if self.dockwidget == None:
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = MoekEditorDockWidget()
+                pass_dlg(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)

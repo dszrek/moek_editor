@@ -63,10 +63,48 @@ def teams_load():
                 team_i = teams[0][0]
                 team_t = teams[0][1]
             dlg.teamComboBox.setCurrentText(team_t)  # Ustawienie cb na aktualny team_t
+            teams_cb_changed()  # Sposób na kontynuowanie procesu intializacji systemu
+            # Podłączenie eventu teamComboBox_changed
+            dlg.teamComboBox.currentIndexChanged.connect(teams_cb_changed)
             return True
         else: # Użytkownik nie ma przypisanych teamów
             QMessageBox.warning(None, "Problem", "Nie jesteś członkiem żadnego zespołu. Skontaktuj się z administratorem systemu.")
             db.close()
+            return False
+    else:
+        return False
+
+def teams_cb_changed():
+    """Zmiana w cb aktywnego team'u."""
+    global team_t, team_i
+    t_team_t = dlg.teamComboBox.currentText()  # Tymczasowy team_t
+    list_srch = [t for t in teams if t_team_t in t]
+    t_team_i = list_srch[0][0]  # Tymczasowy team_i
+    # Aktualizacja i_active_team w db
+    db_act_team_changed = db_act_team_change(t_team_i)
+    if db_act_team_changed:  # Udana zmiana i_active_team w db
+        team_t = t_team_t
+        team_i = t_team_i
+        print("Pomyślnie załadowano team: ", team_t)
+    else:  # Nie udało się zmienić i_active_team - powrót do poprzedniego
+        # Odłączenie eventu teamComboBox_changed
+        dlg.teamComboBox.currentIndexChanged.disconnect(teams_cb_changed)
+        dlg.teamComboBox.setCurrentText(team_t)  # Przywrócenie poprzedniego stanu cb
+        # Podłączenie eventu teamComboBox_changed
+        dlg.teamComboBox.currentIndexChanged.connect(teams_cb_changed)
+        print("Nie udało ci się zmienić teamu!")
+
+def db_act_team_change(t_team_i):
+    """Zmiana aktywnego teamu użytkownika w bazie danych."""
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    # Aktualizacja i_active_team w tabeli 'users'
+    sql = "UPDATE users SET i_active_team = " + str(t_team_i) + " WHERE user_id = " + str(user_id) + ";"
+    if db:  # Udane połączenie z db
+        res = db.query_upd(sql)  # Rezultat kwerendy
+        db.close()
+        if res:  # Udało się zaktualizować i_active_team
+            return True
+        else:
             return False
     else:
         return False

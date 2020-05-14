@@ -28,7 +28,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
 from .resources import *
-from .main import db_login, pass_dlg
+from .main import db_login, pass_dlg, teams_load
 
 # Import the code for the DockWidget
 from .moek_editor_dockwidget import MoekEditorDockWidget
@@ -238,6 +238,10 @@ class MoekEditor:
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
+
+            teams_loaded = teams_load() # Załadowanie team'ów
+            if not teams_loaded:
+                return  # Nie udało się załadować team'ów użytkownika, przerwanie ładowania pluginu
 
             # show the dockwidget
             # TODO: fix to allow choice of dock location

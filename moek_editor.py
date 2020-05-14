@@ -215,6 +215,11 @@ class MoekEditor:
             QMessageBox.information(None, "Informacja", "Wtyczka jest już uruchomiona")
             return  # Uniemożliwienie uruchomienia drugiej instancji pluginu
 
+        # Logowanie użytkownika do bazy danych
+        user_logged = db_login()
+        if not user_logged:
+            return  # Użytkownik nie zalogował się poprawnie, przerwanie ładowania pluginu
+
         if not self.plugin_is_active:
             self.plugin_is_active = True
 

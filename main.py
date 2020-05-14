@@ -2,7 +2,6 @@
 import os
 
 from qgis.PyQt.QtWidgets import QMessageBox
-from typing import List
 
 from .classes import PgConn
 
@@ -11,7 +10,7 @@ user_login = os.getlogin()
 user_id = int()
 user_name = ""
 dlg = None
-teams = List[tuple]
+teams = []  # type: ignore
 team_i = int()
 team_t = ""
 

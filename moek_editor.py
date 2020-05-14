@@ -70,7 +70,7 @@ class MoekEditor:
 
         #print "** INITIALIZING MoekEditor"
 
-        self.pluginIsActive = False
+        self.plugin_is_active = False
         self.dockwidget = None
 
 
@@ -190,7 +190,7 @@ class MoekEditor:
         # when closing the docked window:
         # self.dockwidget = None
 
-        self.pluginIsActive = False
+        self.plugin_is_active = False
 
 
     def unload(self):
@@ -211,8 +211,8 @@ class MoekEditor:
     def run(self):
         """Run method that loads and starts the plugin"""
 
-        if not self.pluginIsActive:
-            self.pluginIsActive = True
+        if not self.plugin_is_active:
+            self.plugin_is_active = True
 
             #print "** STARTING MoekEditor"
 

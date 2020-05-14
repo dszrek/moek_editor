@@ -31,7 +31,7 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
 
 
-class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
+class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     closingPlugin = pyqtSignal()
 

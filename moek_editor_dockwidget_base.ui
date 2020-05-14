@@ -6,13 +6,13 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>262</width>
+    <width>324</width>
     <height>555</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>262</width>
+    <width>324</width>
     <height>555</height>
    </size>
   </property>
@@ -40,8 +40,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>240</width>
-         <height>509</height>
+         <width>302</width>
+         <height>507</height>
         </rect>
        </property>
        <widget class="QGroupBox" name="tpBox">
@@ -49,8 +49,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>240</width>
-          <height>71</height>
+          <width>301</width>
+          <height>91</height>
          </rect>
         </property>
         <property name="title">
@@ -68,9 +68,9 @@
         <widget class="QWidget" name="">
          <property name="geometry">
           <rect>
-           <x>100</x>
-           <y>10</y>
-           <width>131</width>
+           <x>120</x>
+           <y>30</y>
+           <width>171</width>
            <height>51</height>
           </rect>
          </property>
@@ -112,9 +112,9 @@
          <property name="geometry">
           <rect>
            <x>10</x>
-           <y>10</y>
-           <width>81</width>
-           <height>50</height>
+           <y>30</y>
+           <width>101</width>
+           <height>51</height>
           </rect>
          </property>
          <layout class="QVBoxLayout" name="teamLayout">

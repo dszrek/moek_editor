@@ -89,6 +89,7 @@ def teams_cb_changed():
         team_t = t_team_t
         team_i = t_team_i
         print("Pomyślnie załadowano team: ", team_t)
+        powiaty_load()  # Zmiana zawartości warstwy z powiatami
     else:  # Nie udało się zmienić i_active_team - powrót do poprzedniego
         # Odłączenie eventu teamComboBox_changed
         dlg.teamComboBox.currentIndexChanged.disconnect(teams_cb_changed)
@@ -111,3 +112,28 @@ def db_act_team_change(t_team_i):
             return False
     else:
         return False
+
+def powiaty_load():
+    """Załadowanie powiatów, które należą do danego teamu."""
+    cfg = CfgPars()
+    params = cfg.uri()
+    uri = params + 'table="public"."mv_team_powiaty" (geom) sql=team_id = ' + str(team_i)
+    print(uri)
+    layer = QgsProject.instance().mapLayersByName("mv_team_powiaty")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
+    # vn_load()  # Załadowanie vn z obszaru wybranych powiatów
+
+def pg_layer_change(uri, layer):
+    """Zmiana zawartości warstwy postgis na podstawie Uri"""
+    xml_document = QDomDocument("style")
+    xml_maplayers = xml_document.createElement("maplayers")
+    xml_maplayer = xml_document.createElement("maplayer")
+    context = QgsReadWriteContext()
+    layer.writeLayerXml(xml_maplayer,xml_document, context)
+    xml_maplayer.firstChildElement("datasource").firstChild().setNodeValue(uri)
+    xml_maplayer.firstChildElement("provider").firstChild().setNodeValue("postgres")
+    xml_maplayers.appendChild(xml_maplayer)
+    xml_document.appendChild(xml_maplayers)
+    layer.readLayerXml(xml_maplayer, context)
+    iface.actionDraw().trigger()
+    iface.mapCanvas().refresh()

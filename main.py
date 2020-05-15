@@ -49,7 +49,7 @@ def db_login():
         return False
 
 def teams_load():
-    """Wczytanie team'ów użytkownika z bazy danych i wgranie ich do teamCB."""
+    """Wczytanie team'ów użytkownika z bazy danych i wgranie ich do teamComboBox."""
     global team_i, team_t, teams
     db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
     # Wyszukanie nazw team'ów użytkownika
@@ -60,7 +60,7 @@ def teams_load():
             teams = [(r[0],r[1]) for r in res]  # Populacja globalnej listy teams nazwami team'ów i ich id
             dlg.teamComboBox.addItems([r[1] for r in res]) # Populacja comboboxa nazwami team'ów
             db.close()
-            if team_i:  # Usżytkownik ma aktywny team
+            if team_i:  # Użytkownik ma aktywny team
                 # Ustawienie aktualnej wartości team_t
                 list_srch = [i for i in teams if team_i in i]
                 team_t = list_srch[0][1]

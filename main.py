@@ -16,6 +16,9 @@ dlg = None
 teams = []  # type: ignore
 team_i = int()
 team_t = ""
+powiaty = []  # type: ignore
+powiat_i = int()
+powiat_t = ""
 
 def pass_dlg(_dlg):
     """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""

@@ -2,8 +2,11 @@
 import os
 
 from qgis.PyQt.QtWidgets import QMessageBox
+from qgis.core import QgsReadWriteContext, QgsProject
+from PyQt5.QtXml import QDomDocument
+from qgis.utils import iface
 
-from .classes import PgConn
+from .classes import PgConn, CfgPars
 
 # Zmienne globalne
 user_login = "asko"  # os.getlogin()

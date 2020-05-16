@@ -8,6 +8,9 @@ from qgis.utils import iface
 
 from .classes import PgConn, CfgPars
 
+# Stałe globalne
+SQL_1 = " WHERE user_id = "
+
 # Zmienne globalne
 user_login = "asko"  # os.getlogin()
 user_id = int()
@@ -19,6 +22,7 @@ team_t = ""
 powiaty = []  # type: ignore
 powiat_i = int()
 powiat_t = ""
+powiat_m = None
 
 def pass_dlg(_dlg):
     """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""
@@ -112,7 +116,7 @@ def db_act_team_change(t_team_i):
     """Zmiana aktywnego teamu użytkownika w bazie danych."""
     db = PgConn()  # Tworzenie obiektu połączenia z db
     # Aktualizacja i_active_team w tabeli 'users'
-    sql = "UPDATE users SET i_active_team = " + str(t_team_i) + " WHERE user_id = " + str(user_id) + ";"
+    sql = "UPDATE users SET i_active_team = " + str(t_team_i) + SQL_1 + str(user_id) + ";"
     if db:  # Udane połączenie z db
         res = db.query_upd(sql)  # Rezultat kwerendy
         db.close()
@@ -136,6 +140,7 @@ def powiaty_load():
             dlg.powiatComboBox.clear()  # Skasowanie zawartości combobox'a
             dlg.powiatComboBox.addItems([r[1] for r in res])  # Populacja combobox'a nazwami powiatów
             db.close()
+            # Pobranie atrybutu t_active_pow z db
             powiat_i = act_pow_check()
             if powiat_i:  # Użytkownik ma w aktywnym team'ie wybrany powiat
                 # Ustawienie aktualnej wartości team_t
@@ -165,7 +170,14 @@ def powiaty_cb_changed():
         powiat_t = t_powiat_t
         powiat_i = t_powiat_i
         print("Ustawiono aktywny powiat: ", str(powiat_i), " | ", str(powiat_t))
-        # TODO: aktualizacja warstwy
+        # Próba odłączenia sygnału zmiany powiatCheckBox
+        try:
+            dlg.powiatCheckBox.stateChanged.disconnect()
+        except:
+            print("powiatCheckBox.stateChanged nie jest podłączony")
+        powiaty_mode_changed(False)  # Ustawienie trybu wyświetlania powiatów (jeden lub wszystkie)
+        # Podłączenie sygnału zmiany powiatCheckBox
+        dlg.powiatCheckBox.stateChanged.connect(lambda: powiaty_mode_changed(True))
     else:  # Nie udało się zmienić t_active_pow - powrót do poprzedniego
         # Odłączenie eventu powiatComboBox_changed
         dlg.powiatComboBox.currentIndexChanged.disconnect(powiaty_cb_changed)
@@ -174,10 +186,24 @@ def powiaty_cb_changed():
         dlg.powiatComboBox.currentIndexChanged.connect(powiaty_cb_changed)
         print("Nie udało ci się zmienić powiatu!")
 
+def powiaty_mode_changed(clicked):
+    """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
+    global powiat_m
+    btn_state = dlg.powiatCheckBox.isChecked()
+    if clicked:  # Zmiana spowodowana kliknięciem w checkbox
+        powiat_m = btn_state
+        db_pow_mode_change(powiat_m)  # Aktualizacja b_pow_mode w db
+    else:  # Zmiana spowodowana zmianą team'u
+        powiat_m = pow_mode_check()  # Wczytanie z db b_pow_mode dla nowowybranego team'u
+        # Aktualizacja stanu checkbox'a
+        dlg.powiatCheckBox.setChecked(True) if powiat_m else dlg.powiatCheckBox.setChecked(False)
+    # Włączenie/wyłączenie combobox'a w zależności od checkbox'a
+    dlg.powiatComboBox.setEnabled(powiat_m)
+
 def act_pow_check():
     """Zwraca parametr t_active_pow z bazy danych."""
     db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
-    # Wyszukanie nazw team'ów użytkownika
+    # Wyszukanie t_active_pow z db
     sql = "SELECT t_active_pow FROM team_users WHERE team_id = " + str(team_i) + " AND user_id = " + str(user_id) + ";"
     if db:  # Udane połączenie z bazą danych
         res = db.query_sel(sql, False)  # Rezultat kwerendy
@@ -188,7 +214,7 @@ def db_act_pow_change(t_powiat_i):
     """Zmiana aktywnego powiatu użytkownika w bazie danych."""
     db = PgConn()  # Tworzenie obiektu połączenia z db
     # Aktualizacja t_active_pow w tabeli 'team_users'
-    sql = "UPDATE team_users SET t_active_pow = " + str(t_powiat_i) + " WHERE user_id = " + str(user_id) + " AND team_id = " + str(team_i) + ";"
+    sql = "UPDATE team_users SET t_active_pow = " + str(t_powiat_i) + SQL_1 + str(user_id) + " AND team_id = " + str(team_i) + ";"
     if db:  # Udane połączenie z db
         res = db.query_upd(sql)  # Rezultat kwerendy
         db.close()
@@ -198,6 +224,25 @@ def db_act_pow_change(t_powiat_i):
             return False
     else:
         return False
+
+def pow_mode_check():
+    """Zwraca parametr b_pow_mode z bazy danych."""
+    db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
+    # Wyszukanie b_pow_mode w db
+    sql = "SELECT b_pow_mode FROM team_users WHERE team_id = " + str(team_i) + " AND user_id = " + str(user_id) + ";"
+    if db:  # Udane połączenie z bazą danych
+        res = db.query_sel(sql, False)  # Rezultat kwerendy
+        if res:  # Udało się ustalić b_pow_mode
+            return res[0]
+
+def db_pow_mode_change(powiat_m):
+    """Zmiana atrybutu b_pow_mode w bazie danych."""
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    # Aktualizacja b_pow_mode w tabeli 'team_users'
+    sql = "UPDATE team_users SET b_pow_mode = " + str(powiat_m) + SQL_1 + str(user_id) + " AND team_id = " + str(team_i) + ";"
+    if db:  # Udane połączenie z db
+        db.query_upd(sql)  # Rezultat kwerendy
+        db.close()
 
 def powiaty_layer():
     """Załadowanie powiatów, które należą do danego teamu."""

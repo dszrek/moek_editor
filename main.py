@@ -199,6 +199,7 @@ def powiaty_mode_changed(clicked):
         dlg.powiatCheckBox.setChecked(True) if powiat_m else dlg.powiatCheckBox.setChecked(False)
     # Włączenie/wyłączenie combobox'a w zależności od checkbox'a
     dlg.powiatComboBox.setEnabled(powiat_m)
+    powiaty_layer()
 
 def act_pow_check():
     """Zwraca parametr t_active_pow z bazy danych."""
@@ -248,9 +249,13 @@ def powiaty_layer():
     """Załadowanie powiatów, które należą do danego teamu."""
     cfg = CfgPars()
     params = cfg.uri()
-    uri = params + 'table="public"."mv_team_powiaty" (geom) sql=team_id = ' + str(team_i)
+    if powiat_m:
+        uri = params + 'table="public"."mv_team_powiaty" (geom) sql=pow_grp = ' + "'" + str(powiat_i) + "'"
+    else:
+        uri = params + 'table="public"."mv_team_powiaty" (geom) sql=team_id = ' + str(team_i)
     layer = QgsProject.instance().mapLayersByName("mv_team_powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
+    layer_zoom(layer)
     # vn_load()  # Załadowanie vn z obszaru wybranych powiatów
 
 def pg_layer_change(uri, layer):
@@ -267,3 +272,11 @@ def pg_layer_change(uri, layer):
     layer.readLayerXml(xml_maplayer, context)
     iface.actionDraw().trigger()
     iface.mapCanvas().refresh()
+
+def layer_zoom(layer):
+    """Zbliżenie mapy do obiektów z dnej warstwy."""
+    layer.selectAll()
+    canvas = iface.mapCanvas()
+    canvas.zoomToSelected(layer)
+    layer.removeSelection()
+    canvas.refresh()

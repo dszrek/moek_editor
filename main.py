@@ -2,8 +2,14 @@
 import os
 
 from qgis.PyQt.QtWidgets import QMessageBox
+from qgis.core import QgsReadWriteContext, QgsProject
+from PyQt5.QtXml import QDomDocument
+from qgis.utils import iface
 
-from .classes import PgConn
+from .classes import PgConn, CfgPars
+
+# Stałe globalne
+SQL_1 = " WHERE user_id = "
 
 # Zmienne globalne
 user_login = "asko"  # os.getlogin()
@@ -13,6 +19,10 @@ dlg = None
 teams = []  # type: ignore
 team_i = int()
 team_t = ""
+powiaty = []  # type: ignore
+powiat_i = int()
+powiat_t = ""
+powiat_m = None
 
 def pass_dlg(_dlg):
     """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""
@@ -43,7 +53,7 @@ def db_login():
         return False
 
 def teams_load():
-    """Wczytanie team'ów użytkownika z bazy danych i wgranie ich do teamCB."""
+    """Wczytanie team'ów użytkownika z bazy danych i wgranie ich do teamComboBox."""
     global team_i, team_t, teams
     db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
     # Wyszukanie nazw team'ów użytkownika
@@ -51,10 +61,10 @@ def teams_load():
     if db:  # Udane połączenie z bazą danych
         res = db.query_sel(sql, True)  # Rezultat kwerendy
         if res:  # Użytkownik jest przypisany do team'ów
-            teams = [(r[0],r[1]) for r in res]  # Populacja globalnej listy teams nazwami team'ów i ich id
+            teams = [(r[0], r[1]) for r in res]  # Populacja globalnej listy teams
             dlg.teamComboBox.addItems([r[1] for r in res]) # Populacja comboboxa nazwami team'ów
             db.close()
-            if team_i:  # Usżytkownik ma aktywny team
+            if team_i:  # Użytkownik ma aktywny team
                 # Ustawienie aktualnej wartości team_t
                 list_srch = [i for i in teams if team_i in i]
                 team_t = list_srch[0][1]
@@ -86,19 +96,27 @@ def teams_cb_changed():
         team_t = t_team_t
         team_i = t_team_i
         print("Pomyślnie załadowano team: ", team_t)
+        # Próba odłączenia sygnału zmiany powiatComboBox
+        try:
+            dlg.powiatComboBox.currentIndexChanged.disconnect(powiaty_cb_changed)
+        except:
+            print("powiatComboBox.currentIndexChanged nie jest podłączony.")
+        powiaty_load()  # Załadowanie powiatów do combobox'a i ustawienie aktywnego powiatu
+        # Podłączenie sygnału zmiany powiatComboBox
+        dlg.powiatComboBox.currentIndexChanged.connect(powiaty_cb_changed)
     else:  # Nie udało się zmienić i_active_team - powrót do poprzedniego
         # Odłączenie eventu teamComboBox_changed
         dlg.teamComboBox.currentIndexChanged.disconnect(teams_cb_changed)
         dlg.teamComboBox.setCurrentText(team_t)  # Przywrócenie poprzedniego stanu cb
         # Podłączenie eventu teamComboBox_changed
         dlg.teamComboBox.currentIndexChanged.connect(teams_cb_changed)
-        print("Nie udało ci się zmienić teamu!")
+        print("Nie udało się zmienić team'u!")
 
 def db_act_team_change(t_team_i):
     """Zmiana aktywnego teamu użytkownika w bazie danych."""
     db = PgConn()  # Tworzenie obiektu połączenia z db
     # Aktualizacja i_active_team w tabeli 'users'
-    sql = "UPDATE users SET i_active_team = " + str(t_team_i) + " WHERE user_id = " + str(user_id) + ";"
+    sql = "UPDATE users SET i_active_team = " + str(t_team_i) + SQL_1 + str(user_id) + ";"
     if db:  # Udane połączenie z db
         res = db.query_upd(sql)  # Rezultat kwerendy
         db.close()
@@ -108,3 +126,157 @@ def db_act_team_change(t_team_i):
             return False
     else:
         return False
+
+def powiaty_load():
+    """Wczytanie powiatów z wybranego team'u i wgranie ich do powiatComboBox."""
+    global team_i, powiat_i, powiat_t, powiaty
+    db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
+    # Wyszukanie powiatów z aktywnego team'u
+    sql = "SELECT tp.pow_grp, p.t_pow_name FROM teams t JOIN team_powiaty tp ON tp.team_id = t.team_id JOIN powiaty p ON p.pow_id = tp.pow_id WHERE tp.pow_grp = tp.pow_id AND t.team_id = " + str(team_i) + ";"
+    if db:  # Udane połączenie z bazą danych
+        res = db.query_sel(sql, True)  # Rezultat kwerendy
+        if res:  # Team posiada powiaty
+            powiaty = [(r[0],r[1]) for r in res]  # Populacja globalnej listy powiatów numerami TERYT i ich nazwami
+            dlg.powiatComboBox.clear()  # Skasowanie zawartości combobox'a
+            dlg.powiatComboBox.addItems([r[1] for r in res])  # Populacja combobox'a nazwami powiatów
+            db.close()
+            # Pobranie atrybutu t_active_pow z db
+            powiat_i = act_pow_check()
+            if powiat_i:  # Użytkownik ma w aktywnym team'ie wybrany powiat
+                # Ustawienie aktualnej wartości team_t
+                list_srch = [i for i in powiaty if powiat_i in i]
+                powiat_t = list_srch[0][1]
+                print("team ma aktywny powiat: ", str(powiat_i), " | ", str(powiat_t))
+            else:  # Użytkownik nie ma w aktywnym team'ie wybranego powiatu
+                # Ustawienie wartości powiat_i i powiat_t na pierwszą pozycję z listy powiaty
+                powiat_i = powiaty[0][0]
+                powiat_t = powiaty[0][1]
+                print("team nie ma aktywnego powiatu. Ustawiony pierwszy: ", str(powiat_i), " | ", str(powiat_t))
+            dlg.powiatComboBox.setCurrentText(powiat_t)  # Ustawienie cb na aktualny powiat_t
+            powiaty_cb_changed()  # Sposób na kontynuowanie procesu intializacji systemu
+        else:  # Do team'u nie ma przypisanych powiatów
+            QMessageBox.warning(None, "Problem", "Podany zespół nie ma przypisanych powiatów. Skontaktuj się z administratorem systemu.")
+            db.close()
+
+def powiaty_cb_changed():
+    """Zmiana w cb aktywnego powiatu."""
+    global powiat_t, powiat_i
+    t_powiat_t = dlg.powiatComboBox.currentText()  # Tymczasowy powiat_t
+    list_srch = [t for t in powiaty if t_powiat_t in t]
+    t_powiat_i = list_srch[0][0]  # Tymczasowy powiat_i
+    # Aktualizacja t_active_pow w db
+    db_act_pow_changed = db_act_pow_change(t_powiat_i)
+    if db_act_pow_changed:  # Udana zmiana t_active_pow w db
+        powiat_t = t_powiat_t
+        powiat_i = t_powiat_i
+        print("Ustawiono aktywny powiat: ", str(powiat_i), " | ", str(powiat_t))
+        # Próba odłączenia sygnału zmiany powiatCheckBox
+        try:
+            dlg.powiatCheckBox.stateChanged.disconnect()
+        except:
+            print("powiatCheckBox.stateChanged nie jest podłączony")
+        powiaty_mode_changed(False)  # Ustawienie trybu wyświetlania powiatów (jeden lub wszystkie)
+        # Podłączenie sygnału zmiany powiatCheckBox
+        dlg.powiatCheckBox.stateChanged.connect(lambda: powiaty_mode_changed(True))
+    else:  # Nie udało się zmienić t_active_pow - powrót do poprzedniego
+        # Odłączenie eventu powiatComboBox_changed
+        dlg.powiatComboBox.currentIndexChanged.disconnect(powiaty_cb_changed)
+        dlg.powiatComboBox.setCurrentText(powiat_t)  # Przywrócenie poprzedniego stanu cb
+        # Podłączenie eventu powiatComboBox_changed
+        dlg.powiatComboBox.currentIndexChanged.connect(powiaty_cb_changed)
+        print("Nie udało ci się zmienić powiatu!")
+
+def powiaty_mode_changed(clicked):
+    """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
+    global powiat_m
+    btn_state = dlg.powiatCheckBox.isChecked()
+    if clicked:  # Zmiana spowodowana kliknięciem w checkbox
+        powiat_m = btn_state
+        db_pow_mode_change(powiat_m)  # Aktualizacja b_pow_mode w db
+    else:  # Zmiana spowodowana zmianą team'u
+        powiat_m = pow_mode_check()  # Wczytanie z db b_pow_mode dla nowowybranego team'u
+        # Aktualizacja stanu checkbox'a
+        dlg.powiatCheckBox.setChecked(True) if powiat_m else dlg.powiatCheckBox.setChecked(False)
+    # Włączenie/wyłączenie combobox'a w zależności od checkbox'a
+    dlg.powiatComboBox.setEnabled(powiat_m)
+    powiaty_layer()
+
+def act_pow_check():
+    """Zwraca parametr t_active_pow z bazy danych."""
+    db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
+    # Wyszukanie t_active_pow z db
+    sql = "SELECT t_active_pow FROM team_users WHERE team_id = " + str(team_i) + " AND user_id = " + str(user_id) + ";"
+    if db:  # Udane połączenie z bazą danych
+        res = db.query_sel(sql, False)  # Rezultat kwerendy
+        if res:  # Użytkownik w aktywnym team'ie ma ustalony wybrany powiat
+            return res[0]
+
+def db_act_pow_change(t_powiat_i):
+    """Zmiana aktywnego powiatu użytkownika w bazie danych."""
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    # Aktualizacja t_active_pow w tabeli 'team_users'
+    sql = "UPDATE team_users SET t_active_pow = " + str(t_powiat_i) + SQL_1 + str(user_id) + " AND team_id = " + str(team_i) + ";"
+    if db:  # Udane połączenie z db
+        res = db.query_upd(sql)  # Rezultat kwerendy
+        db.close()
+        if res:  # Udało się zaktualizować t_active_pow
+            return True
+        else:
+            return False
+    else:
+        return False
+
+def pow_mode_check():
+    """Zwraca parametr b_pow_mode z bazy danych."""
+    db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
+    # Wyszukanie b_pow_mode w db
+    sql = "SELECT b_pow_mode FROM team_users WHERE team_id = " + str(team_i) + " AND user_id = " + str(user_id) + ";"
+    if db:  # Udane połączenie z bazą danych
+        res = db.query_sel(sql, False)  # Rezultat kwerendy
+        if res:  # Udało się ustalić b_pow_mode
+            return res[0]
+
+def db_pow_mode_change(powiat_m):
+    """Zmiana atrybutu b_pow_mode w bazie danych."""
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    # Aktualizacja b_pow_mode w tabeli 'team_users'
+    sql = "UPDATE team_users SET b_pow_mode = " + str(powiat_m) + SQL_1 + str(user_id) + " AND team_id = " + str(team_i) + ";"
+    if db:  # Udane połączenie z db
+        db.query_upd(sql)  # Rezultat kwerendy
+        db.close()
+
+def powiaty_layer():
+    """Załadowanie powiatów, które należą do danego teamu."""
+    cfg = CfgPars()
+    params = cfg.uri()
+    if powiat_m:
+        uri = params + 'table="public"."mv_team_powiaty" (geom) sql=pow_grp = ' + "'" + str(powiat_i) + "'"
+    else:
+        uri = params + 'table="public"."mv_team_powiaty" (geom) sql=team_id = ' + str(team_i)
+    layer = QgsProject.instance().mapLayersByName("mv_team_powiaty")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
+    layer_zoom(layer)
+    # vn_load()  # Załadowanie vn z obszaru wybranych powiatów
+
+def pg_layer_change(uri, layer):
+    """Zmiana zawartości warstwy postgis na podstawie Uri"""
+    xml_document = QDomDocument("style")
+    xml_maplayers = xml_document.createElement("maplayers")
+    xml_maplayer = xml_document.createElement("maplayer")
+    context = QgsReadWriteContext()
+    layer.writeLayerXml(xml_maplayer,xml_document, context)
+    xml_maplayer.firstChildElement("datasource").firstChild().setNodeValue(uri)
+    xml_maplayer.firstChildElement("provider").firstChild().setNodeValue("postgres")
+    xml_maplayers.appendChild(xml_maplayer)
+    xml_document.appendChild(xml_maplayers)
+    layer.readLayerXml(xml_maplayer, context)
+    iface.actionDraw().trigger()
+    iface.mapCanvas().refresh()
+
+def layer_zoom(layer):
+    """Zbliżenie mapy do obiektów z dnej warstwy."""
+    layer.selectAll()
+    canvas = iface.mapCanvas()
+    canvas.zoomToSelected(layer)
+    layer.removeSelection()
+    canvas.refresh()

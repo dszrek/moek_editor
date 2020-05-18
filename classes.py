@@ -5,6 +5,8 @@ import os.path
 
 from qgis.PyQt.QtWidgets import QMessageBox
 from configparser import ConfigParser
+from qgis.gui import QgsMapToolIdentify
+from qgis.PyQt.QtCore import Qt, pyqtSignal
 
 
 class PgConn:
@@ -115,3 +117,20 @@ class CfgPars(ConfigParser):
                 val = str('"' + val + '"')
             result += key + "=" + val + " "
         return result
+
+class IdentMapTool(QgsMapToolIdentify):
+    """Maptool do zaznaczania obiektów z wybranej warstwy."""
+    identified = pyqtSignal(object, object)
+
+    def __init__(self, canvas, layer):
+        QgsMapToolIdentify.__init__(self, canvas)
+        self.canvas = canvas
+        self.layer = layer
+        self.setCursor(Qt.CrossCursor)
+
+    def canvasReleaseEvent(self, event):
+        result = self.identify(event.x(), event.y(), self.TopDownStopAtFirst, [self.layer], self.VectorLayer)
+        if len(result) > 0:
+            self.identified.emit(result[0].mLayer, result[0].mFeature)
+        else:
+            self.identified.emit(None, None)

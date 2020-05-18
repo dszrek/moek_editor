@@ -26,10 +26,11 @@ import os
 
 from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
+from PyQt5.QtGui import QIcon, QPixmap
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
-
+ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 
 class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
@@ -44,6 +45,29 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+
+        self.__button_init()
+
+    def __button_init(self):
+        """Konfiguracja przycisków."""
+        self.button_cfg(self.btn_sel,'vn_sel.png', checkable=True, tooltip=u'wybierz pole')
+        self.button_cfg(self.btn_zoom,'vn_zoom.png', checkable=False, tooltip=u'przybliż do pola')
+        self.button_cfg(self.btn_done,'vn_doneT.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE"')
+        self.button_cfg(self.btn_doneF,'vn_doneTf.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
+
+    def button_cfg(self, btn, icon_name, **kwargs):
+        """Konfiguracja przycisków."""
+        icon = QIcon()
+        icon.addPixmap(QPixmap(ICON_PATH + icon_name))
+        btn.setIcon(icon)
+        if kwargs:
+            for key, val in kwargs.items():
+                if key == "enabled":
+                    btn.setEnabled(val)
+                if key == "checkable":
+                    btn.setCheckable(val)
+                if key == "tooltip":
+                    btn.setToolTip(val)
 
     def closeEvent(self, event):
         self.closingPlugin.emit()

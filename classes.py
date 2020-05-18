@@ -12,7 +12,7 @@ class PgConn:
     _instance = None
 
     def __new__(cls):
-        """Próba połączenia z bazą"""
+        """Próba połączenia z db."""
         if cls._instance is None:
             cls._instance = object.__new__(cls)
             try:
@@ -54,7 +54,7 @@ class PgConn:
         try:
             self.cursor.execute(query)
             result = self.cursor.rowcount
-            if result == 1:
+            if result > 0:
                 self.connection.commit()
             else:
                 self.connection.rollback()
@@ -67,7 +67,7 @@ class PgConn:
             return result
 
     def close(self):
-        """Zamykanie połączenia i czyszczenie instancji"""
+        """Zamykanie połączenia i czyszczenie instancji."""
         if PgConn._instance is not None:
             self.cursor.close()
             self.connection.close()

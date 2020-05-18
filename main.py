@@ -256,7 +256,64 @@ def powiaty_layer():
     layer = QgsProject.instance().mapLayersByName("mv_team_powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     layer_zoom(layer)
-    # vn_load()  # Załadowanie vn z obszaru wybranych powiatów
+    if powiat_m: # Załadowanie vn z obszaru wybranych powiatów
+        vn_pow()
+    vn_load()
+
+def vn_pow():
+    """Ustalenie w db zakresu wyświetlanych vn'ów do wybranego powiatu."""
+    global pwiat_i
+    is_vn_reset = db_vn_pow_reset()  # Resetowanie b_pow w db
+    if not is_vn_reset:
+        QMessageBox.warning(None, "Problem", "Nie udało się zresetować siatki widoków. Spróbuj jeszcze raz ustawić wybrany powiat.")
+        return
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    # Aktualizacja t_active_pow w tabeli 'team_users'
+    sql = "UPDATE team_" + str(team_i) +".team_viewnet AS tv SET b_pow = True FROM (SELECT tv.vn_id	FROM powiaty p JOIN team_powiaty tp ON tp.pow_id = p.pow_id JOIN team_" + str(team_i) + ".team_viewnet tv ON ST_Intersects(tv.geom, p.geom) WHERE tp.pow_grp = '" + str(powiat_i) + "') AS s WHERE tv.vn_id = s.vn_id;"
+    if db:  # Udane połączenie z db
+        res = db.query_upd(sql)  # Rezultat kwerendy
+        db.close()
+        if res:  # Udało się zaktualizować b_pow
+            print("Udało się zaktualizować b_pow: ", str(powiat_i))
+            return
+    QMessageBox.warning(None, "Problem", "Nie udało się ustawić zakresu siatki widoków. Spróbuj jeszcze raz ustawić wybrany powiat.")
+
+def db_vn_pow_reset():
+    """Ustawienie b_pow = False dla wszystkich vn'ów użytkownika z team_viewnet."""
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    # Aktualizacja t_active_pow w tabeli 'team_users'
+    sql = "UPDATE team_" + str(team_i) + ".team_viewnet SET b_pow = False WHERE user_id = " + str(user_id) + ";"
+    if db:  # Udane połączenie z db
+        res = db.query_upd(sql)  # Rezultat kwerendy
+        db.close()
+        if res:  # Udało się zaktualizować b_pow
+            return True
+        else:
+            return False
+    else:
+        return False
+
+def vn_load():
+    """Załadowanie vn z obszaru wybranych powiatów."""
+    cfg = CfgPars()
+    params = cfg.uri()
+    URI_CONST = params + ' table="team_'
+    if powiat_m:
+        SQL_POW = " AND b_pow = True"
+    else:
+        SQL_POW = ""
+
+    uri =  URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql=user_id IS NULL' + SQL_POW
+    layer = QgsProject.instance().mapLayersByName("vn_null")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_null
+
+    uri = URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql=user_id = ' + str(user_id)  + SQL_POW
+    layer = QgsProject.instance().mapLayersByName("vn_user")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_user
+
+    uri = URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql=user_id = ' + str(user_id) + ' AND b_sel IS TRUE' + SQL_POW
+    layer = QgsProject.instance().mapLayersByName("vn_sel")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_sel
 
 def pg_layer_change(uri, layer):
     """Zmiana zawartości warstwy postgis na podstawie Uri"""

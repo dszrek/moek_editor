@@ -24,7 +24,7 @@ powiat_i = int()
 powiat_t = ""
 powiat_m = None
 
-def pass_dlg(_dlg):
+def dlg_main(_dlg):
     """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""
     global dlg
     dlg = _dlg

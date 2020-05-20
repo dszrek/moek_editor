@@ -7,6 +7,7 @@ from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
 from .classes import PgConn, CfgPars
+from .viewnet import vn_set_gvars
 
 # Stałe globalne
 SQL_1 = " WHERE user_id = "
@@ -314,6 +315,8 @@ def vn_load():
     uri = URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql=user_id = ' + str(user_id) + ' AND b_sel IS TRUE' + SQL_POW
     layer = QgsProject.instance().mapLayersByName("vn_sel")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_sel
+
+    vn_set_gvars(user_id, team_i, powiat_m)  # Ustalenie parametrów aktywnego vn'a
 
 def pg_layer_change(uri, layer):
     """Zmiana zawartości warstwy postgis na podstawie Uri"""

@@ -304,6 +304,10 @@ def vn_load():
     else:
         SQL_POW = ""
 
+    uri =  URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql='
+    layer = QgsProject.instance().mapLayersByName("vn_all")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_all
+
     uri =  URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql=user_id IS NULL' + SQL_POW
     layer = QgsProject.instance().mapLayersByName("vn_null")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_null

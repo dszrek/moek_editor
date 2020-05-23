@@ -122,28 +122,15 @@ def vn_set_gvars(_user_id, _team_i, _powiat_m):
     if vn:  # Kasowanie obiektu SelVN, jeżeli już istnieje
         del vn
     vn = SelVN()
-    user_with_vn = user_has_vn()
-    if not user_with_vn:  # Użytkownik nie ma przydzielonych vn w aktywnym teamie
+    if no_vn:  # Użytkownik nie ma przydzielonych vn w aktywnym teamie
         if vn.l:  # Resetowanie parametrów
             vn.l, vn.x, vn.y, vn.d = int(), int(), int(), None
+            print("Użytkownik nie ma przydzielonych vn w aktywnym team'ie")
         return  #  Przerwanie funkcji - czekamy na przydzielenie vn
     vn.l, vn.x, vn.y, vn.d = vn_with_sel()
     print("Użytkownik ma wybrany vn. l:{}, x:{}, y:{}, d:{}".format(vn.l, vn.x, vn.y, vn.d))
     if not vn.l:
         print("Błąd pobrania parametrów wybranego vn!")
-
-def user_has_vn():
-    """Sprawdzenie czy użytkownik ma przydzielone vn w aktywnym teamie."""
-    db = PgConn() # Tworzenie obiektu połączenia z db
-    sql = "SELECT vn_id FROM team_" + str(team_i) + SQL_2 + str(user_id) + ";"
-    if db: # Udane połączenie z bazą danych
-        res = db.query_sel(sql, False) # Rezultat kwerendy
-        if res: # Użytkownik ma przydzielone vn w aktywnym teamie
-            return True
-        else:
-            return False
-    else:
-        return False
 
 def vn_with_sel():
     """Sprawdzenie czy użytkownik ma aktywny vn w aktywnym teamie i zwrócenie jego parametrów."""

@@ -41,7 +41,7 @@
          <x>0</x>
          <y>0</y>
          <width>302</width>
-         <height>507</height>
+         <height>509</height>
         </rect>
        </property>
        <widget class="QGroupBox" name="tpBox">
@@ -706,7 +706,7 @@
           <bool>false</bool>
          </property>
         </widget>
-        <widget class="QPushButton" name="btn_doneF_2">
+        <widget class="QPushButton" name="btn_vn_unsel">
          <property name="geometry">
           <rect>
            <x>168</x>
@@ -746,7 +746,7 @@
           <bool>false</bool>
          </property>
         </widget>
-        <widget class="QPushButton" name="btn_ge2q_2">
+        <widget class="QPushButton" name="btn_vn_sub">
          <property name="geometry">
           <rect>
            <x>60</x>
@@ -786,7 +786,7 @@
           <bool>false</bool>
          </property>
         </widget>
-        <widget class="QPushButton" name="btn_q2ge_2">
+        <widget class="QPushButton" name="btn_vn_add">
          <property name="geometry">
           <rect>
            <x>6</x>

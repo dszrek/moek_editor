@@ -12,6 +12,7 @@ team_i = int()
 powiat_m = None
 vn = None
 hk_active = None
+vn_ids = []  # type: ignore
 
 # Stałe globalne:
 SQL_1 = "SELECT vn_id, x_row, y_row, b_done FROM team_"
@@ -100,10 +101,7 @@ class SelVN:
 
 def vn_change(vn_layer, feature):
     """Zmiana wybranego vn'a przy użyciu maptool'a"""
-    # Dezaktywacja maptool'a
-    dlg.btn_sel.setChecked(False)
-    canvas = dlg.iface.mapCanvas()
-    canvas.unsetMapTool(dlg.maptool)
+    unset_maptool(dlg.btn_sel)  # Dezaktywacja maptool'a
     # Zmiana wybranego vn'a, jeśli maptool przechwycił obiekt vn'a
     if vn_layer:
         t_l = feature.attributes()[vn_layer.fields().indexFromName('vn_id')]
@@ -113,7 +111,31 @@ def vn_change(vn_layer, feature):
         vn_set_sel(t_l, t_x, t_y, t_d)  # Zmieniamy na vn'a o ustalonych parametrach
         stage_refresh()
 
-def vn_set_gvars(_user_id, _team_i, _powiat_m):
+def vn_pow_sel(pow_layer, feature):
+    """Zaznaczenie vn'ów, znajdujących się w obrębie wybranego powiatu."""
+    global vn_ids
+    unset_maptool(dlg.btn_vn_pow_sel)  # Dezaktywacja maptool'a
+    if pow_layer:  # Kliknięto na obiekt z właściwej warstwy
+        vn_layer = QgsProject.instance().mapLayersByName("vn_all")[0]
+        pow_geom = feature.geometry()  # Geometria wybranego powiatu
+        vn_feats = vn_layer.getFeatures()
+        sel_id = []  # Lista dla wybieranych vn'ów
+        # Wybranie vn'ów, które nakładają się na geometrię powiatu
+        if len(vn_ids) > 0:
+            vn_ids = []
+        for sel_vn in vn_feats:
+            if sel_vn.geometry().intersects(pow_geom):
+                sel_id.append(sel_vn.id())
+                vn_ids.append((sel_vn["vn_id"], ))
+        vn_layer.removeSelection()  # Na warstwie nie ma zaznaczonych obiektów
+        vn_layer.selectByIds(sel_id)  # Selekcja wybranych vn'ów
+
+def unset_maptool(btn):
+    """Dezaktywacja aktywnego maptoola."""
+    btn.setChecked(False)  # Odznaczenie przycisku
+    dlg.iface.mapCanvas().unsetMapTool(dlg.maptool)
+
+def vn_set_gvars(_user_id, _team_i, _powiat_m, no_vn):
     """Ustawienie globalnych zmiennych dotyczących aktywnego vn dla aktywnego teamu."""
     global user_id, team_i, powiat_m, vn
     user_id = _user_id
@@ -259,6 +281,38 @@ def vn_pan():
     canvas.panToSelected(layer)
     layer.removeSelection()
     canvas.refresh()
+
+def vn_add():
+    """Przydzielenie wybranych vn'ów do użytkownika."""
+    global vn_ids
+    layer = QgsProject.instance().mapLayersByName("vn_all")[0]
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    sql = "UPDATE team_" + str(team_i) +".team_viewnet AS tv SET user_id = " + str(user_id) + " FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
+    if db:  # Udane połączenie z db
+        db.query_exeval(sql, vn_ids)  # Rezultat kwerendy
+        db.close()
+    layer.removeSelection()
+    vn_ids = []
+    stage_refresh()
+
+def vn_sub():
+    """Zabranie wybranych vn'ów użytkownikowi."""
+    global vn_ids
+    sel_ids = []  # Lista dla wybieranych vn'ów
+    all_layer = QgsProject.instance().mapLayersByName("vn_all")[0]
+    user_layer = QgsProject.instance().mapLayersByName("vn_user")[0]
+    user_ids = []
+    for feat in user_layer.getFeatures():
+        user_ids.append((feat["vn_id"],))
+    sel_ids = [value for value in user_ids if value in vn_ids]
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    sql = "UPDATE team_" + str(team_i) +".team_viewnet AS tv SET user_id = Null FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
+    if db:  # Udane połączenie z db
+        db.query_exeval(sql, sel_ids)  # Rezultat kwerendy
+        db.close()
+    all_layer.removeSelection()
+    vn_ids = []
+    stage_refresh()
 
 def change_done(forward):
     """Zmiana parametru b_done wybranego vn'a."""

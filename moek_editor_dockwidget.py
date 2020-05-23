@@ -32,7 +32,7 @@ from PyQt5.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject
 from qgis.utils import iface
 
-from .viewnet import change_done, vn_change, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
+from .viewnet import change_done, vn_change, vn_pow_sel, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .classes import IdentMapTool
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -83,13 +83,21 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.button_cfg(self.btn_zoom,'vn_zoom.png', checkable=False, tooltip=u'przybliż do pola')
         self.button_cfg(self.btn_done,'vn_doneT.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE"')
         self.button_cfg(self.btn_doneF,'vn_doneTf.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
+        self.button_cfg(self.btn_vn_pow_sel,'vn_pow_sel.png', checkable=True, tooltip=u'zaznacz pola siatki widoków w obrębie powiatu')
+        self.button_cfg(self.btn_vn_unsel,'vn_unsel.png', checkable=False, tooltip=u'odznacz wybrane pola siatki widoków')
+        self.button_cfg(self.btn_vn_add,'vn_add.png', checkable=False, tooltip=u'dodaj wybrane pola siatki widoków do swojego zakresu poszukiwań')
+        self.button_cfg(self.btn_vn_sub,'vn_sub.png', checkable=False, tooltip=u'odejmij wybrane pola siatki widoków od swojego zakresu poszukiwań')
 
     def __button_conn(self):
         """Przyłączenia przycisków do funkcji."""
-        self.btn_sel.clicked.connect(lambda: self.ident_mt_init("vn_user", vn_change))
+        self.btn_sel.clicked.connect(lambda: self.ident_mt_init(self.btn_sel, "vn_user", vn_change))
         self.btn_zoom.pressed.connect(vn_zoom)
         self.btn_done.pressed.connect(lambda: change_done(False))
         self.btn_doneF.pressed.connect(lambda: change_done(True))
+        self.btn_vn_pow_sel.clicked.connect(lambda: self.ident_mt_init(self.btn_vn_pow_sel, "mv_team_powiaty", vn_pow_sel))
+        self.btn_vn_unsel.pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())
+        self.btn_vn_add.pressed.connect(vn_add)
+        self.btn_vn_sub.pressed.connect(vn_sub)
 
     def button_cfg(self, btn, icon_name, **kwargs):
         """Konfiguracja przycisków."""
@@ -105,11 +113,11 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                 if key == "tooltip":
                     btn.setToolTip(val)
 
-    def ident_mt_init(self, layer_name, callback):
+    def ident_mt_init(self, btn, layer_name, callback):
         """Initializacja maptool'a do identyfikacji obiektu na określonej warstwie."""
         canvas = self.iface.mapCanvas()
         layer = QgsProject.instance().mapLayersByName(layer_name)[0]
-        if self.btn_sel.isChecked() is False:
+        if btn.isChecked() is False:
             canvas.unsetMapTool(self.maptool)
             return
         self.maptool = IdentMapTool(canvas, layer)

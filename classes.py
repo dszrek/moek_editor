@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import psycopg2
+import psycopg2.extras
 import os.path
 
 from qgis.PyQt.QtWidgets import QMessageBox
@@ -67,6 +68,15 @@ class PgConn:
             return
         else:
             return result
+
+    def query_exeval(self, query, values):
+        """Wykonanie kwerendy EXECUTE_VALUES."""
+        try:
+            psycopg2.extras.execute_values(self.cursor, query, values)
+            self.connection.commit()
+        except Exception as error:
+            print('Błąd w trakcie wykonywania kwerendy "{}", {}'.format(query, error))
+            return
 
     def close(self):
         """Zamykanie połączenia i czyszczenie instancji."""

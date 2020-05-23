@@ -160,7 +160,7 @@ def powiaty_load():
             db.close()
 
 def powiaty_cb_changed():
-    """Zmiana w cb aktywnego powiatu."""
+    """Zmiana w combobox'ie aktywnego powiatu."""
     global powiat_t, powiat_i
     t_powiat_t = dlg.powiatComboBox.currentText()  # Tymczasowy powiat_t
     list_srch = [t for t in powiaty if t_powiat_t in t]
@@ -191,16 +191,16 @@ def powiaty_mode_changed(clicked):
     """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
     global powiat_m
     btn_state = dlg.powiatCheckBox.isChecked()
-    if clicked:  # Zmiana spowodowana kliknięciem w checkbox
+    if clicked:  # Zmiana powiatu spowodowana kliknięciem w checkbox
         powiat_m = btn_state
         db_pow_mode_change(powiat_m)  # Aktualizacja b_pow_mode w db
-    else:  # Zmiana spowodowana zmianą team'u
+    else:  # Zmiana powiatu spowodowana zmianą team'u
         powiat_m = pow_mode_check()  # Wczytanie z db b_pow_mode dla nowowybranego team'u
         # Aktualizacja stanu checkbox'a
         dlg.powiatCheckBox.setChecked(True) if powiat_m else dlg.powiatCheckBox.setChecked(False)
     # Włączenie/wyłączenie combobox'a w zależności od checkbox'a
     dlg.powiatComboBox.setEnabled(powiat_m)
-    powiaty_layer()
+    powiaty_layer()  # Aktualizacja warstwy z powiatami
 
 def act_pow_check():
     """Zwraca parametr t_active_pow z bazy danych."""
@@ -281,13 +281,12 @@ def user_has_vn():
 
 def vn_pow():
     """Ustalenie w db zakresu wyświetlanych vn'ów do wybranego powiatu."""
-    global pwiat_i
     is_vn_reset = db_vn_pow_reset()  # Resetowanie b_pow w db
     if not is_vn_reset:
         QMessageBox.warning(None, "Problem", "Nie udało się zresetować siatki widoków. Spróbuj jeszcze raz ustawić wybrany powiat.")
         return
     db = PgConn()  # Tworzenie obiektu połączenia z db
-    # Aktualizacja t_active_pow w tabeli 'team_users'
+    # Ustawienie b_pow = True dla vn'ów, które znajdują się w obrębie wybranego powiatu
     sql = "UPDATE team_" + str(team_i) +".team_viewnet AS tv SET b_pow = True FROM (SELECT tv.vn_id	FROM powiaty p JOIN team_powiaty tp ON tp.pow_id = p.pow_id JOIN team_" + str(team_i) + ".team_viewnet tv ON ST_Intersects(tv.geom, p.geom) WHERE tp.pow_grp = '" + str(powiat_i) + "') AS s WHERE tv.vn_id = s.vn_id;"
     if db:  # Udane połączenie z db
         res = db.query_upd(sql)  # Rezultat kwerendy

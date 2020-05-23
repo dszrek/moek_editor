@@ -257,10 +257,10 @@ def powiaty_layer():
     layer = QgsProject.instance().mapLayersByName("mv_team_powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     layer_zoom(layer)  # Ustawienie zasięgu widoku mapy do wybranych powiatów
+    if powiat_m: # Załadowanie vn z obszaru wybranych powiatów
+        vn_pow()
     user_with_vn = user_has_vn()
     if user_with_vn:  # Użytkownik ma przydzielone vn'y w aktywnym teamie
-        if powiat_m: # Załadowanie vn z obszaru wybranych powiatów
-            vn_pow()
         vn_set_gvars(user_id, team_i, powiat_m, False)  # Ustalenie parametrów aktywnego vn'a
     else:  # Użytkownik nie ma przydzielonych vn w aktywnym teamie
         vn_set_gvars(user_id, team_i, powiat_m, True)  # Ustalenie parametrów aktywnego vn'a (brak vn'ów)
@@ -269,7 +269,10 @@ def powiaty_layer():
 def user_has_vn():
     """Sprawdzenie czy użytkownik ma przydzielone vn w aktywnym teamie."""
     db = PgConn() # Tworzenie obiektu połączenia z db
-    sql = "SELECT vn_id FROM team_" + str(team_i) + ".team_viewnet WHERE user_id = " + str(user_id) + ";"
+    if powiat_m:  # Właczony jest tryb wyświetlania pojedynczego powiatu
+        sql = "SELECT vn_id FROM team_" + str(team_i) + ".team_viewnet WHERE user_id = " + str(user_id) + " AND b_pow is True;"
+    else:
+        sql = "SELECT vn_id FROM team_" + str(team_i) + ".team_viewnet WHERE user_id = " + str(user_id) + ";"
     if db: # Udane połączenie z bazą danych
         res = db.query_sel(sql, False) # Rezultat kwerendy
         if res: # Użytkownik ma przydzielone vn w aktywnym teamie
@@ -325,7 +328,7 @@ def vn_load():
     layer = QgsProject.instance().mapLayersByName("vn_all")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_all
 
-    uri =  URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql=user_id IS NULL' + SQL_POW
+    uri =  URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql=user_id IS NULL '
     layer = QgsProject.instance().mapLayersByName("vn_null")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_null
 

@@ -26,13 +26,22 @@ class PgConn:
                 cursor.execute("SELECT VERSION()")
                 cursor.fetchone()
             except Exception as error:
-                QMessageBox.critical(None, "Połączenie z bazą danych", "Połączenie nie zostało nawiązane. \n Błąd: {}".format(error))
-                PgConn._instance = None
+                cls._instance.__error_msg("connection", error)
+                cls._instance = None
+                return
         return cls._instance
 
     def __init__(self):
         self.connection = self._instance.connection
         self.cursor = self._instance.cursor
+
+    @classmethod
+    def __error_msg(self, case, error, *query):
+        """Komunikator błędów."""
+        if case == "connection":
+            QMessageBox.critical(None, "Połączenie z bazą danych", "Połączenie nie zostało nawiązane. \n Błąd: {}".format(error))
+        if case == "query":
+            print('Błąd w trakcie wykonywania kwerendy "{}", {}'.format(query, error))
 
     def query_sel(self, query, all):
         """Wykonanie kwerendy SELECT."""
@@ -43,8 +52,7 @@ class PgConn:
             else:
                 result = self.cursor.fetchone()
         except Exception as error:
-            print('Błąd w trakcie wykonywania kwerendy "{}", {}'.format(query, error))
-            PgConn._instance = None
+            self.__error_msg("query", error, query)
             return
         else:
             return result
@@ -61,8 +69,7 @@ class PgConn:
             else:
                 self.connection.rollback()
         except Exception as error:
-            print('Błąd w trakcie wykonywania kwerendy "{}", {}'.format(query, error))
-            #PgConn._instance = None
+            self.__error_msg("query", error, query)
             self.connection.rollback()
             return
         else:
@@ -74,7 +81,7 @@ class PgConn:
             psycopg2.extras.execute_values(self.cursor, query, values)
             self.connection.commit()
         except Exception as error:
-            print('Błąd w trakcie wykonywania kwerendy "{}", {}'.format(query, error))
+            self.__error_msg("query", error, query)
             return
 
     def close(self):

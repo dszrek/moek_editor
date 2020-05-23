@@ -248,8 +248,8 @@ def db_pow_mode_change(powiat_m):
 
 def powiaty_layer():
     """Załadowanie powiatów, które należą do danego teamu."""
-    cfg = CfgPars()
-    params = cfg.uri()
+    with CfgPars() as cfg:
+        params = cfg.uri()
     if powiat_m:
         uri = params + 'table="public"."mv_team_powiaty" (geom) sql=pow_grp = ' + "'" + str(powiat_i) + "'"
     else:
@@ -313,8 +313,8 @@ def db_vn_pow_reset():
 
 def vn_load():
     """Załadowanie vn z obszaru wybranych powiatów."""
-    cfg = CfgPars()
-    params = cfg.uri()
+    with CfgPars() as cfg:
+        params = cfg.uri()
     URI_CONST = params + ' table="team_'
     if powiat_m:
         SQL_POW = " AND b_pow = True"

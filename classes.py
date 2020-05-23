@@ -19,11 +19,10 @@ class PgConn:
         if cls._instance is None:
             cls._instance = object.__new__(cls)
             try:
-                #print("Próba połączenia z bazą PostgreSQL...")
-                cfg = CfgPars()
-                params = cfg.psycopg2()
-                connection = PgConn._instance.connection = psycopg2.connect(**params)
-                cursor = PgConn._instance.cursor = connection.cursor()
+                with CfgPars() as cfg:
+                    params = cfg.psycopg2()
+                connection = cls._instance.connection = psycopg2.connect(**params)
+                cursor = cls._instance.cursor = connection.cursor()
                 cursor.execute("SELECT VERSION()")
                 cursor.fetchone()
             except Exception as error:
@@ -98,6 +97,12 @@ class CfgPars(ConfigParser):
         self.read(self.filename)  # Pobranie zawartości pliku
         if not self.has_section(section):
             raise Exception('Sekcja {0} nie istnieje w pliku {1}!'.format(section, filename))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        return True
 
     def resolve(self, name):
         """Zwraca ścieżkę do folderu plugina wraz z nazwą pliku .ini."""

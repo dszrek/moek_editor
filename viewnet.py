@@ -287,7 +287,7 @@ def vn_add():
     global vn_ids
     layer = QgsProject.instance().mapLayersByName("vn_all")[0]
     db = PgConn()  # Tworzenie obiektu połączenia z db
-    sql = "UPDATE team_" + str(team_i) +".team_viewnet AS tv SET user_id = " + str(user_id) + " FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
+    sql = SQL_4 + str(team_i) +".team_viewnet AS tv SET user_id = " + str(user_id) + " FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
     if db:  # Udane połączenie z db
         db.query_exeval(sql, vn_ids)  # Rezultat kwerendy
         db.close()
@@ -306,7 +306,7 @@ def vn_sub():
         user_ids.append((feat["vn_id"],))
     sel_ids = [value for value in user_ids if value in vn_ids]
     db = PgConn()  # Tworzenie obiektu połączenia z db
-    sql = "UPDATE team_" + str(team_i) +".team_viewnet AS tv SET user_id = Null FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
+    sql = SQL_4 + str(team_i) +".team_viewnet AS tv SET user_id = Null FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
     if db:  # Udane połączenie z db
         db.query_exeval(sql, sel_ids)  # Rezultat kwerendy
         db.close()

@@ -6,8 +6,10 @@ import os.path
 
 from qgis.PyQt.QtWidgets import QMessageBox
 from configparser import ConfigParser
-from qgis.gui import QgsMapToolIdentify
+from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
+from qgis.core import QgsGeometry, QgsWkbTypes
 from qgis.PyQt.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QKeySequence
 
 
 class PgConn:
@@ -156,3 +158,55 @@ class IdentMapTool(QgsMapToolIdentify):
             self.identified.emit(result[0].mLayer, result[0].mFeature)
         else:
             self.identified.emit(None, None)
+
+class PolySelMapTool(QgsMapTool):
+    """Maptool do poligonalnego zaznaczania obiektów."""
+    selected = pyqtSignal(QgsGeometry)
+    move = pyqtSignal
+
+    def __init__(self, canvas):
+        QgsMapTool.__init__(self, canvas)
+        self.canvas = canvas
+        self.begin = True
+        self.rb = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
+        self.rb.setColor(QColor(255, 0, 0, 128))
+        self.rb.setFillColor(QColor(255, 0, 0, 80))
+        self.rb.setWidth(1)
+
+    def keyPressEvent(self, e):
+        # Funkcja undo - kasowanie ostatnio dodanego vertex'a po naciśnięciu ctrl+z
+        if e.matches(QKeySequence.Undo) and self.rb.numberOfVertices() > 1:
+            self.rb.removeLastPoint()
+
+    def canvasPressEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            if self.begin:
+                self.rb.reset(QgsWkbTypes.PolygonGeometry)
+                self.begin = False
+            self.rb.addPoint(self.toMapCoordinates(e.pos()))
+        else:
+            self.rb.removeLastPoint(0)
+            if self.rb.numberOfVertices() > 2:
+                self.begin = True
+                self.selected.emit(self.rb.asGeometry())
+                self.reset()
+            else:
+                self.reset()
+        return None
+
+    def canvasMoveEvent(self, e):
+        if self.rb.numberOfVertices() > 0 and not self.begin:
+            self.rb.removeLastPoint(0)
+            self.rb.addPoint(self.toMapCoordinates(e.pos()))
+        return None
+
+    def reset(self):
+        self.begin = True
+        self.clearMapCanvas()
+
+    def deactivate(self):
+        QgsMapTool.deactivate(self)
+        self.clearMapCanvas()
+
+    def clearMapCanvas(self):
+        self.rb.reset(QgsWkbTypes.PolygonGeometry)

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsFeature
 from qgis.utils import iface
 
 from .classes import PgConn
@@ -116,19 +116,31 @@ def vn_pow_sel(pow_layer, feature):
     global vn_ids
     unset_maptool(dlg.btn_vn_pow_sel)  # Dezaktywacja maptool'a
     if pow_layer:  # Kliknięto na obiekt z właściwej warstwy
-        vn_layer = QgsProject.instance().mapLayersByName("vn_all")[0]
-        pow_geom = feature.geometry()  # Geometria wybranego powiatu
-        vn_feats = vn_layer.getFeatures()
-        sel_id = []  # Lista dla wybieranych vn'ów
-        # Wybranie vn'ów, które nakładają się na geometrię powiatu
-        if len(vn_ids) > 0:
-            vn_ids = []
-        for sel_vn in vn_feats:
-            if sel_vn.geometry().intersects(pow_geom):
-                sel_id.append(sel_vn.id())
-                vn_ids.append((sel_vn["vn_id"], ))
-        vn_layer.removeSelection()  # Na warstwie nie ma zaznaczonych obiektów
-        vn_layer.selectByIds(sel_id)  # Selekcja wybranych vn'ów
+        sel_geom = feature.geometry()  # Geometria wybranego powiatu
+        select_vn(sel_geom)
+
+def vn_polysel(geom):
+    """Poligonalne zaznaczenie vn'ów."""
+    unset_maptool(dlg.btn_vn_polysel)  # Dezaktywacja maptool'a
+    feature = QgsFeature()
+    feature.setGeometry(geom)
+    sel_geom = feature.geometry()  # Geometria zaznaczenia poligonalnego
+    select_vn(sel_geom)
+
+def select_vn(sel_geom):
+    global vn_ids
+    vn_layer = QgsProject.instance().mapLayersByName("vn_all")[0]
+    vn_feats = vn_layer.getFeatures()
+    sel_id = []  # Lista dla wybieranych vn'ów
+    # Wybranie vn'ów, które nakładają się na geometrię zaznaczenia
+    if len(vn_ids) > 0:
+        vn_ids = []
+    for sel_vn in vn_feats:
+        if sel_vn.geometry().intersects(sel_geom):
+            sel_id.append(sel_vn.id())
+            vn_ids.append((sel_vn["vn_id"], ))
+    vn_layer.removeSelection()  # Na warstwie nie ma zaznaczonych obiektów
+    vn_layer.selectByIds(sel_id)  # Selekcja wybranych vn'ów
 
 def unset_maptool(btn):
     """Dezaktywacja aktywnego maptoola."""

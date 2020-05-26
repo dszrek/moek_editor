@@ -586,7 +586,7 @@
           <bool>true</bool>
          </property>
         </widget>
-        <widget class="QPushButton" name="btn_done_2">
+        <widget class="QPushButton" name="btn_vn_polysel">
          <property name="geometry">
           <rect>
            <x>114</x>

@@ -81,7 +81,7 @@ class SelVN:
             # Włączenie/wyłączenie skrótów klawiszowych
             SelVN._active(False) if val == 1 else SelVN._active(True)
             # Lista przycisków do włączenia/wyłączenia
-            buttons = [dlg.btn_sel, dlg.btn_zoom, dlg.btn_done, dlg.btn_doneF]
+            buttons = [dlg.btn_vn_sel, dlg.btn_vn_zoom, dlg.btn_vn_done, dlg.btn_vn_doneF]
             for button in buttons:
                 if val == 1:
                     button.setEnabled(False)  # Wyłączenie przycisków
@@ -93,15 +93,15 @@ class SelVN:
         if val != self.d_btn:
             self.d_btn = val
             if val == False:
-                dlg.button_cfg(dlg.btn_done,'vn_doneT.png', tooltip=u'oznacz jako "SPRAWDZONE"')
-                dlg.button_cfg(dlg.btn_doneF,'vn_doneTf.png', tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
+                dlg.button_cfg(dlg.btn_vn_done,'vn_doneT.png', tooltip=u'oznacz jako "SPRAWDZONE"')
+                dlg.button_cfg(dlg.btn_vn_doneF,'vn_doneTf.png', tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
             if val == True:
-                dlg.button_cfg(dlg.btn_done,'vn_doneF.png', tooltip=u'oznacz jako "NIESPRAWDZONE"')
-                dlg.button_cfg(dlg.btn_doneF,'vn_doneFf.png', tooltip=u'oznacz jako "NIESPRAWDZONE" i idź do następnego')
+                dlg.button_cfg(dlg.btn_vn_done,'vn_doneF.png', tooltip=u'oznacz jako "NIESPRAWDZONE"')
+                dlg.button_cfg(dlg.btn_vn_doneF,'vn_doneFf.png', tooltip=u'oznacz jako "NIESPRAWDZONE" i idź do następnego')
 
 def vn_change(vn_layer, feature):
     """Zmiana wybranego vn'a przy użyciu maptool'a"""
-    unset_maptool(dlg.btn_sel)  # Dezaktywacja maptool'a
+    unset_maptool(dlg.btn_vn_sel)  # Dezaktywacja maptool'a
     # Zmiana wybranego vn'a, jeśli maptool przechwycił obiekt vn'a
     if vn_layer:
         t_l = feature.attributes()[vn_layer.fields().indexFromName('vn_id')]

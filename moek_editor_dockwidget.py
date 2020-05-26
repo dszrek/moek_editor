@@ -79,10 +79,10 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     def __button_init(self):
         """Konfiguracja przycisków."""
-        self.button_cfg(self.btn_sel,'vn_sel.png', checkable=True, tooltip=u'wybierz pole')
-        self.button_cfg(self.btn_zoom,'vn_zoom.png', checkable=False, tooltip=u'przybliż do pola')
-        self.button_cfg(self.btn_done,'vn_doneT.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE"')
-        self.button_cfg(self.btn_doneF,'vn_doneTf.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
+        self.button_cfg(self.btn_vn_sel,'vn_sel.png', checkable=True, tooltip=u'wybierz pole')
+        self.button_cfg(self.btn_vn_zoom,'vn_zoom.png', checkable=False, tooltip=u'przybliż do pola')
+        self.button_cfg(self.btn_vn_done,'vn_doneT.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE"')
+        self.button_cfg(self.btn_vn_doneF,'vn_doneTf.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
         self.button_cfg(self.btn_vn_pow_sel,'vn_pow_sel.png', checkable=True, tooltip=u'zaznacz pola siatki widoków w obrębie powiatu')
         self.button_cfg(self.btn_vn_unsel,'vn_unsel.png', checkable=False, tooltip=u'odznacz wybrane pola siatki widoków')
         self.button_cfg(self.btn_vn_polysel,'vn_polysel.png', checkable=True, tooltip=u'zaznacz poligonowo pola siatki widoków')
@@ -91,10 +91,10 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     def __button_conn(self):
         """Przyłączenia przycisków do funkcji."""
-        self.btn_sel.clicked.connect(lambda: self.ident_mt_init(self.btn_sel, "vn_user", vn_change))
-        self.btn_zoom.pressed.connect(vn_zoom)
-        self.btn_done.pressed.connect(lambda: change_done(False))
-        self.btn_doneF.pressed.connect(lambda: change_done(True))
+        self.btn_vn_sel.clicked.connect(lambda: self.ident_mt_init(self.btn_vn_sel, "vn_user", vn_change))
+        self.btn_vn_zoom.pressed.connect(vn_zoom)
+        self.btn_vn_done.pressed.connect(lambda: change_done(False))
+        self.btn_vn_doneF.pressed.connect(lambda: change_done(True))
         self.btn_vn_pow_sel.clicked.connect(lambda: self.ident_mt_init(self.btn_vn_pow_sel, "mv_team_powiaty", vn_pow_sel))
         self.btn_vn_polysel.clicked.connect(lambda: self.poly_mt_init(self.btn_vn_polysel, vn_polysel))
         self.btn_vn_unsel.pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())

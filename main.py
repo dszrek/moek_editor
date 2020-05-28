@@ -265,7 +265,7 @@ def powiaty_layer():
     if user_with_vn:  # Użytkownik ma przydzielone vn'y w aktywnym teamie
         vn_set_gvars(user_id, team_i, powiat_m, False)  # Ustalenie parametrów aktywnego vn'a
     else:  # Użytkownik nie ma przydzielonych vn w aktywnym teamie
-        vn_set_gvars(user_id, team_i, powiat_m, True)  # Ustalenie parametrów aktywnego vn'a (brak vn'ów)
+        vn_set_gvars(user_id, team_i, powiat_m, True)  # Ustalenie parametrów aktywnego vn'a
     vn_load()
 
 def user_has_vn():
@@ -288,7 +288,7 @@ def vn_pow():
     """Ustalenie w db zakresu wyświetlanych vn'ów do wybranego powiatu."""
     is_vn_reset = db_vn_pow_reset()  # Resetowanie b_pow w db
     if not is_vn_reset:
-        QMessageBox.warning(None, "Problem", "Nie udało się zresetować siatki widoków. Spróbuj jeszcze raz ustawić wybrany powiat.")
+        # QMessageBox.warning(None, "Problem", "Nie udało się zresetować siatki widoków. Skontaktuj się z administratorem systemu.")
         return
     db = PgConn()  # Tworzenie obiektu połączenia z db
     # Ustawienie b_pow = True dla vn'ów, które znajdują się w obrębie wybranego powiatu
@@ -299,7 +299,7 @@ def vn_pow():
         if res:  # Udało się zaktualizować b_pow
             print("Udało się zaktualizować b_pow: ", str(powiat_i))
             return
-    QMessageBox.warning(None, "Problem", "Nie udało się ustawić zakresu siatki widoków. Spróbuj jeszcze raz ustawić wybrany powiat.")
+    QMessageBox.warning(None, "Problem", "Nie udało się ustawić zakresu siatki widoków. Skontaktuj się z administratorem systemu.")
 
 def db_vn_pow_reset():
     """Ustawienie b_pow = False dla wszystkich vn'ów użytkownika z team_viewnet."""
@@ -375,6 +375,7 @@ def vn_load():
 
 def pg_layer_change(uri, layer):
     """Zmiana zawartości warstwy postgis na podstawie Uri"""
+    # print("uri: ", str(uri), " layer: ", layer)
     xml_document = QDomDocument("style")
     xml_maplayers = xml_document.createElement("maplayers")
     xml_maplayer = xml_document.createElement("maplayer")

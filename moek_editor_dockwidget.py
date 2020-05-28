@@ -32,7 +32,9 @@ from PyQt5.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject
 from qgis.utils import iface
 
-from .viewnet import change_done, vn_change, vn_pow_sel, vn_polysel, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
+from .main import vn_setup_mode
+from .viewnet import change_done, vn_change, vn_pow_sel, vn_polysel, vn_add, vn_sub, vn_zoom
+from .viewnet import hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .classes import IdentMapTool, PolySelMapTool
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -83,6 +85,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.button_cfg(self.btn_vn_zoom,'vn_zoom.png', checkable=False, tooltip=u'przybliż do pola')
         self.button_cfg(self.btn_vn_done,'vn_doneT.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE"')
         self.button_cfg(self.btn_vn_doneF,'vn_doneTf.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
+        self.button_cfg(self.btn_vn_setup,'vn_setup.png', checkable=True, tooltip=u'włącz tryb ustawień siatki widoków')
         self.button_cfg(self.btn_vn_pow_sel,'vn_pow_sel.png', checkable=True, tooltip=u'zaznacz pola siatki widoków w obrębie powiatu')
         self.button_cfg(self.btn_vn_unsel,'vn_unsel.png', checkable=False, tooltip=u'odznacz wybrane pola siatki widoków')
         self.button_cfg(self.btn_vn_polysel,'vn_polysel.png', checkable=True, tooltip=u'zaznacz poligonowo pola siatki widoków')
@@ -95,6 +98,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.btn_vn_zoom.pressed.connect(vn_zoom)
         self.btn_vn_done.pressed.connect(lambda: change_done(False))
         self.btn_vn_doneF.pressed.connect(lambda: change_done(True))
+        self.btn_vn_setup.clicked.connect(vn_setup_mode)
         self.btn_vn_pow_sel.clicked.connect(lambda: self.ident_mt_init(self.btn_vn_pow_sel, "mv_team_powiaty", vn_pow_sel))
         self.btn_vn_polysel.clicked.connect(lambda: self.poly_mt_init(self.btn_vn_polysel, vn_polysel))
         self.btn_vn_unsel.pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())

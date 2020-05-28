@@ -24,6 +24,8 @@ powiaty = []  # type: ignore
 powiat_i = int()
 powiat_t = ""
 powiat_m = None
+t_powiat_m = None
+vn_setup = False
 
 def dlg_main(_dlg):
     """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""
@@ -314,31 +316,62 @@ def db_vn_pow_reset():
     else:
         return False
 
+def vn_setup_mode():
+    """Włączenie lub wyłączenie trybu ustawień viewnet."""
+    global powiat_m, t_powiat_m, vn_setup
+    if dlg.btn_vn_setup.isChecked():  # Wciśnięcie przycisku btn_vn_setup
+        vn_setup = True  # Włączenie trybu ustawień vn
+        if powiat_m:
+            t_powiat_m = True  # Zapamiętanie, że tryb powiatu był włączony
+            powiat_m = False
+        dlg.teamComboBox.setEnabled(False)
+        dlg.powiatCheckBox.setEnabled(False)
+        dlg.powiatComboBox.setEnabled(False)
+    else:  # Wyciśnięcie przycisku btn_vn_setup
+        vn_setup = False  # Wyłączenie trybu ustawień vn
+        if t_powiat_m:  # Tryb powiat_m był tymczasowo wyłączony, następuje jego przywrócenie
+            powiat_m = t_powiat_m
+            t_powiat_m = None
+        dlg.teamComboBox.setEnabled(True)
+        dlg.powiatCheckBox.setEnabled(True)
+        dlg.powiatComboBox.setEnabled(True)
+    powiaty_layer()
+
 def vn_load():
     """Załadowanie vn z obszaru wybranych powiatów."""
     with CfgPars() as cfg:
         params = cfg.uri()
+    proj = QgsProject.instance()
     URI_CONST = params + ' table="team_'
     if powiat_m:
         SQL_POW = " AND b_pow = True"
     else:
         SQL_POW = ""
 
-    uri =  URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql='
-    layer = QgsProject.instance().mapLayersByName("vn_all")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_all
+    # Warstwy vn do włączenia/wyłączenia w zależności od trybu ustawień vn
+    show_layers = ["vn_user", "vn_null", "vn_all"] if vn_setup else ["vn_sel", "vn_user"]
+    hide_layers = ["vn_sel"] if vn_setup else ["vn_null", "vn_all"]
 
-    uri =  URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql=user_id IS NULL '
-    layer = QgsProject.instance().mapLayersByName("vn_null")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_null
+    # Włączenie/wyłączenie warstw vn
+    for layer in show_layers:
+        proj.layerTreeRoot().findLayer(proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(True)
+    for layer in hide_layers:
+        proj.layerTreeRoot().findLayer(proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(False)
 
-    uri = URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql=user_id = ' + str(user_id)  + SQL_POW
-    layer = QgsProject.instance().mapLayersByName("vn_user")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_user
+    # Wyrażenia sql dla warstw vn
+    layer_sql = {"vn_all": "",
+                "vn_null": "user_id IS NULL",
+                "vn_user": "user_id = " + str(user_id)  + SQL_POW,
+                "vn_sel": "user_id = " + str(user_id) + " AND b_sel IS TRUE" + SQL_POW}
 
-    uri = URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql=user_id = ' + str(user_id) + ' AND b_sel IS TRUE' + SQL_POW
-    layer = QgsProject.instance().mapLayersByName("vn_sel")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy vn_sel
+    # Usuwanie wyrażeń sql warstw wyłączonych
+    [layer_sql.pop(i) for i in hide_layers if i in layer_sql.keys()]
+
+    # Aktualizacja włączonych warstw vn
+    for key, value in layer_sql.items():
+        uri =  URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql= ' + str(value)
+        layer = QgsProject.instance().mapLayersByName(key)[0]
+        pg_layer_change(uri, layer)
 
 def pg_layer_change(uri, layer):
     """Zmiana zawartości warstwy postgis na podstawie Uri"""

@@ -80,13 +80,10 @@ class SelVN:
         if val > 0:
             # Włączenie/wyłączenie skrótów klawiszowych
             SelVN._active(False) if val == 1 else SelVN._active(True)
-            # Lista przycisków do włączenia/wyłączenia
-            buttons = [dlg.btn_vn_sel, dlg.btn_vn_zoom, dlg.btn_vn_done, dlg.btn_vn_doneF]
-            for button in buttons:
-                if val == 1:
-                    button.setEnabled(False)  # Wyłączenie przycisków
-                elif val == 2:
-                    button.setEnabled(True)  # Włączenie przycisków
+            if val == 1:
+                vn_btn_enable(False)  # Wyłączenie przycisków
+            elif val == 2:
+                vn_btn_enable(True)  # Włączenie przycisków
 
     def d_chk(self, val):
         """Zmiana atrybutu d (b_done) vn'a i rekonfiguracja przycisków vn."""
@@ -98,6 +95,13 @@ class SelVN:
             if val == True:
                 dlg.button_cfg(dlg.btn_vn_done,'vn_doneF.png', tooltip=u'oznacz jako "NIESPRAWDZONE"')
                 dlg.button_cfg(dlg.btn_vn_doneF,'vn_doneFf.png', tooltip=u'oznacz jako "NIESPRAWDZONE" i idź do następnego')
+
+def vn_btn_enable(state):
+    """Włączenie lub wyłączenie przycisków vn."""
+    # Lista przycisków do włączenia/wyłączenia
+    buttons = [dlg.btn_vn_sel, dlg.btn_vn_zoom, dlg.btn_vn_done, dlg.btn_vn_doneF]
+    for button in buttons:
+        button.setEnabled(state)
 
 def vn_change(vn_layer, feature):
     """Zmiana wybranego vn'a przy użyciu maptool'a"""

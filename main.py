@@ -349,8 +349,8 @@ def vn_load():
         SQL_POW = ""
 
     # Warstwy vn do włączenia/wyłączenia w zależności od trybu ustawień vn
-    show_layers = ["vn_user", "vn_null", "vn_all"] if vn_setup else ["vn_sel", "vn_user"]
-    hide_layers = ["vn_sel"] if vn_setup else ["vn_null", "vn_all"]
+    show_layers = ["vn_user", "vn_other", "vn_null", "vn_all"] if vn_setup else ["vn_sel", "vn_user"]
+    hide_layers = ["vn_sel"] if vn_setup else ["vn_other", "vn_null", "vn_all"]
 
     # Włączenie/wyłączenie warstw vn
     for layer in show_layers:
@@ -361,6 +361,7 @@ def vn_load():
     # Wyrażenia sql dla warstw vn
     layer_sql = {"vn_all": "",
                 "vn_null": "user_id IS NULL",
+                "vn_other": "user_id <> " + str(user_id) + " AND user_id IS NOT NULL",
                 "vn_user": "user_id = " + str(user_id)  + SQL_POW,
                 "vn_sel": "user_id = " + str(user_id) + " AND b_sel IS TRUE" + SQL_POW}
 

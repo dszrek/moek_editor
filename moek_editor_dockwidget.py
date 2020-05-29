@@ -25,11 +25,22 @@
 import os
 
 from qgis.PyQt import QtGui, QtWidgets, uic
+from qgis.PyQt.QtCore import Qt
+from PyQt5.QtWidgets import QShortcut
 from qgis.PyQt.QtCore import pyqtSignal
+from PyQt5.QtGui import QIcon, QPixmap
+from qgis.core import QgsProject
+from qgis.utils import iface
+
+from .main import vn_setup_mode
+from .viewnet import change_done, vn_change, vn_pow_sel, vn_polysel, vn_add, vn_sub, vn_zoom
+from .viewnet import hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
+from .classes import IdentMapTool, PolySelMapTool
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
-
+ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
+SELF = "self."
 
 class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
@@ -43,8 +54,93 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
+        self.iface = iface
         self.setupUi(self)
 
+        self.__button_init()
+        self.__button_conn()
+
+        hotkeys = {'hk_up': 'Up', 'hk_down': 'Down', 'hk_left': 'Left', 'hk_right': 'Right', 'hk_space': 'Space'}
+
+        for key, val in hotkeys.items():
+            exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", iface.mainWindow())")
+
+    def toggle_hk(self, enabled):
+        hotkeys = {'hk_up': 'hk_up_pressed',
+                   'hk_down': 'hk_down_pressed',
+                   'hk_left': 'hk_left_pressed',
+                   'hk_right': 'hk_right_pressed',
+                   'hk_space': 'lambda: change_done(True)'}  #partial(change_done, True)'}
+        io = "connect" if enabled else "disconnect"
+        try:
+            for key, val in hotkeys.items():
+                exec(SELF + key + ".setEnabled(enabled)")
+                exec(SELF + key + ".activated." + io + "(" + val + ")")
+        except Exception as error:
+            print("hotkeys exception: {}".format(error))
+
+    def __button_init(self):
+        """Konfiguracja przycisków."""
+        self.button_cfg(self.btn_vn_sel,'vn_sel.png', checkable=True, tooltip=u'wybierz pole')
+        self.button_cfg(self.btn_vn_zoom,'vn_zoom.png', checkable=False, tooltip=u'przybliż do pola')
+        self.button_cfg(self.btn_vn_done,'vn_doneT.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE"')
+        self.button_cfg(self.btn_vn_doneF,'vn_doneTf.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
+        self.button_cfg(self.btn_vn_setup,'vn_setup.png', checkable=True, tooltip=u'włącz tryb ustawień siatki widoków')
+        self.button_cfg(self.btn_vn_pow_sel,'vn_pow_sel.png', checkable=True, tooltip=u'zaznacz pola siatki widoków w obrębie powiatu')
+        self.button_cfg(self.btn_vn_unsel,'vn_unsel.png', checkable=False, tooltip=u'odznacz wybrane pola siatki widoków')
+        self.button_cfg(self.btn_vn_polysel,'vn_polysel.png', checkable=True, tooltip=u'zaznacz poligonowo pola siatki widoków')
+        self.button_cfg(self.btn_vn_add,'vn_add.png', checkable=False, tooltip=u'dodaj wybrane pola siatki widoków do swojego zakresu poszukiwań')
+        self.button_cfg(self.btn_vn_sub,'vn_sub.png', checkable=False, tooltip=u'odejmij wybrane pola siatki widoków od swojego zakresu poszukiwań')
+
+    def __button_conn(self):
+        """Przyłączenia przycisków do funkcji."""
+        self.btn_vn_sel.clicked.connect(lambda: self.ident_mt_init(self.btn_vn_sel, "vn_user", vn_change))
+        self.btn_vn_zoom.pressed.connect(vn_zoom)
+        self.btn_vn_done.pressed.connect(lambda: change_done(False))
+        self.btn_vn_doneF.pressed.connect(lambda: change_done(True))
+        self.btn_vn_setup.clicked.connect(vn_setup_mode)
+        self.btn_vn_pow_sel.clicked.connect(lambda: self.ident_mt_init(self.btn_vn_pow_sel, "mv_team_powiaty", vn_pow_sel))
+        self.btn_vn_polysel.clicked.connect(lambda: self.poly_mt_init(self.btn_vn_polysel, vn_polysel))
+        self.btn_vn_unsel.pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())
+        self.btn_vn_add.pressed.connect(vn_add)
+        self.btn_vn_sub.pressed.connect(vn_sub)
+
+    def button_cfg(self, btn, icon_name, **kwargs):
+        """Konfiguracja przycisków."""
+        icon = QIcon()
+        icon.addPixmap(QPixmap(ICON_PATH + icon_name))
+        btn.setIcon(icon)
+        if kwargs:
+            for key, val in kwargs.items():
+                if key == "enabled":
+                    btn.setEnabled(val)
+                if key == "checkable":
+                    btn.setCheckable(val)
+                if key == "tooltip":
+                    btn.setToolTip(val)
+
+    def ident_mt_init(self, btn, layer_name, callback):
+        """Initializacja maptool'a do identyfikacji obiektu na określonej warstwie."""
+        canvas = self.iface.mapCanvas()
+        layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+        if btn.isChecked() is False:
+            canvas.unsetMapTool(self.maptool)
+            return
+        self.maptool = IdentMapTool(canvas, layer)
+        self.maptool.identified.connect(callback)
+        canvas.setMapTool(self.maptool)
+
+    def poly_mt_init(self, btn, callback):
+        """Initializacja maptool'a do poligonalnego zaznaczania obiektów na określonej warstwie."""
+        canvas = self.iface.mapCanvas()
+        if btn.isChecked() is False:
+            canvas.unsetMapTool(self.maptool)
+            return
+        self.maptool = PolySelMapTool(canvas)
+        self.maptool.selected.connect(callback)
+        canvas.setMapTool(self.maptool)
+
     def closeEvent(self, event):
+        self.toggle_hk(False)  # Deaktywacja skrótów klawiszowych
         self.closingPlugin.emit()
         event.accept()

@@ -28,7 +28,8 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
 from .resources import *
-from .main import db_login, pass_dlg, teams_load
+from .main import db_login, dlg_main, teams_load
+from. viewnet import dlg_viewnet
 
 # Import the code for the DockWidget
 from .moek_editor_dockwidget import MoekEditorDockWidget
@@ -234,7 +235,8 @@ class MoekEditor:
             if self.dockwidget == None:
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = MoekEditorDockWidget()
-                pass_dlg(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki
+                dlg_main(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do main.py
+                dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)

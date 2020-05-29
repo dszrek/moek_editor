@@ -7,6 +7,7 @@ from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
 from .classes import PgConn, CfgPars
+from .viewnet import vn_set_gvars
 
 # Stałe globalne
 SQL_1 = " WHERE user_id = "
@@ -23,8 +24,10 @@ powiaty = []  # type: ignore
 powiat_i = int()
 powiat_t = ""
 powiat_m = None
+t_powiat_m = None
+vn_setup = False
 
-def pass_dlg(_dlg):
+def dlg_main(_dlg):
     """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""
     global dlg
     dlg = _dlg
@@ -159,7 +162,7 @@ def powiaty_load():
             db.close()
 
 def powiaty_cb_changed():
-    """Zmiana w cb aktywnego powiatu."""
+    """Zmiana w combobox'ie aktywnego powiatu."""
     global powiat_t, powiat_i
     t_powiat_t = dlg.powiatComboBox.currentText()  # Tymczasowy powiat_t
     list_srch = [t for t in powiaty if t_powiat_t in t]
@@ -190,16 +193,16 @@ def powiaty_mode_changed(clicked):
     """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
     global powiat_m
     btn_state = dlg.powiatCheckBox.isChecked()
-    if clicked:  # Zmiana spowodowana kliknięciem w checkbox
+    if clicked:  # Zmiana powiatu spowodowana kliknięciem w checkbox
         powiat_m = btn_state
         db_pow_mode_change(powiat_m)  # Aktualizacja b_pow_mode w db
-    else:  # Zmiana spowodowana zmianą team'u
+    else:  # Zmiana powiatu spowodowana zmianą team'u
         powiat_m = pow_mode_check()  # Wczytanie z db b_pow_mode dla nowowybranego team'u
         # Aktualizacja stanu checkbox'a
         dlg.powiatCheckBox.setChecked(True) if powiat_m else dlg.powiatCheckBox.setChecked(False)
     # Włączenie/wyłączenie combobox'a w zależności od checkbox'a
     dlg.powiatComboBox.setEnabled(powiat_m)
-    powiaty_layer()
+    powiaty_layer()  # Aktualizacja warstwy z powiatami
 
 def act_pow_check():
     """Zwraca parametr t_active_pow z bazy danych."""
@@ -247,19 +250,133 @@ def db_pow_mode_change(powiat_m):
 
 def powiaty_layer():
     """Załadowanie powiatów, które należą do danego teamu."""
-    cfg = CfgPars()
-    params = cfg.uri()
+    with CfgPars() as cfg:
+        params = cfg.uri()
     if powiat_m:
         uri = params + 'table="public"."mv_team_powiaty" (geom) sql=pow_grp = ' + "'" + str(powiat_i) + "'"
     else:
         uri = params + 'table="public"."mv_team_powiaty" (geom) sql=team_id = ' + str(team_i)
     layer = QgsProject.instance().mapLayersByName("mv_team_powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
-    layer_zoom(layer)
-    # vn_load()  # Załadowanie vn z obszaru wybranych powiatów
+    layer_zoom(layer)  # Ustawienie zasięgu widoku mapy do wybranych powiatów
+    if powiat_m: # Załadowanie vn z obszaru wybranych powiatów
+        vn_pow()
+    user_with_vn = user_has_vn()
+    if user_with_vn:  # Użytkownik ma przydzielone vn'y w aktywnym teamie
+        vn_set_gvars(user_id, team_i, powiat_m, False)  # Ustalenie parametrów aktywnego vn'a
+    else:  # Użytkownik nie ma przydzielonych vn w aktywnym teamie
+        vn_set_gvars(user_id, team_i, powiat_m, True)  # Ustalenie parametrów aktywnego vn'a
+    vn_load()
+
+def user_has_vn():
+    """Sprawdzenie czy użytkownik ma przydzielone vn w aktywnym teamie."""
+    db = PgConn() # Tworzenie obiektu połączenia z db
+    if powiat_m:  # Właczony jest tryb wyświetlania pojedynczego powiatu
+        sql = "SELECT vn_id FROM team_" + str(team_i) + ".team_viewnet WHERE user_id = " + str(user_id) + " AND b_pow is True;"
+    else:
+        sql = "SELECT vn_id FROM team_" + str(team_i) + ".team_viewnet WHERE user_id = " + str(user_id) + ";"
+    if db: # Udane połączenie z bazą danych
+        res = db.query_sel(sql, False) # Rezultat kwerendy
+        if res: # Użytkownik ma przydzielone vn w aktywnym teamie
+            return True
+        else:
+            return False
+    else:
+        return False
+
+def vn_pow():
+    """Ustalenie w db zakresu wyświetlanych vn'ów do wybranego powiatu."""
+    is_vn_reset = db_vn_pow_reset()  # Resetowanie b_pow w db
+    if not is_vn_reset:
+        # QMessageBox.warning(None, "Problem", "Nie udało się zresetować siatki widoków. Skontaktuj się z administratorem systemu.")
+        return
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    # Ustawienie b_pow = True dla vn'ów, które znajdują się w obrębie wybranego powiatu
+    sql = "UPDATE team_" + str(team_i) +".team_viewnet AS tv SET b_pow = True FROM (SELECT tv.vn_id	FROM powiaty p JOIN team_powiaty tp ON tp.pow_id = p.pow_id JOIN team_" + str(team_i) + ".team_viewnet tv ON ST_Intersects(tv.geom, p.geom) WHERE tp.pow_grp = '" + str(powiat_i) + "') AS s WHERE tv.vn_id = s.vn_id;"
+    if db:  # Udane połączenie z db
+        res = db.query_upd(sql)  # Rezultat kwerendy
+        db.close()
+        if res:  # Udało się zaktualizować b_pow
+            print("Udało się zaktualizować b_pow: ", str(powiat_i))
+            return
+    QMessageBox.warning(None, "Problem", "Nie udało się ustawić zakresu siatki widoków. Skontaktuj się z administratorem systemu.")
+
+def db_vn_pow_reset():
+    """Ustawienie b_pow = False dla wszystkich vn'ów użytkownika z team_viewnet."""
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    # Aktualizacja t_active_pow w tabeli 'team_users'
+    sql = "UPDATE team_" + str(team_i) + ".team_viewnet SET b_pow = False WHERE user_id = " + str(user_id) + ";"
+    if db:  # Udane połączenie z db
+        res = db.query_upd(sql)  # Rezultat kwerendy
+        db.close()
+        if res:  # Udało się zaktualizować b_pow
+            return True
+        else:
+            return False
+    else:
+        return False
+
+def vn_setup_mode():
+    """Włączenie lub wyłączenie trybu ustawień viewnet."""
+    global powiat_m, t_powiat_m, vn_setup
+    if dlg.btn_vn_setup.isChecked():  # Wciśnięcie przycisku btn_vn_setup
+        vn_setup = True  # Włączenie trybu ustawień vn
+        if powiat_m:
+            t_powiat_m = True  # Zapamiętanie, że tryb powiatu był włączony
+            powiat_m = False
+        dlg.teamComboBox.setEnabled(False)
+        dlg.powiatCheckBox.setEnabled(False)
+        dlg.powiatComboBox.setEnabled(False)
+    else:  # Wyciśnięcie przycisku btn_vn_setup
+        vn_setup = False  # Wyłączenie trybu ustawień vn
+        if t_powiat_m:  # Tryb powiat_m był tymczasowo wyłączony, następuje jego przywrócenie
+            powiat_m = t_powiat_m
+            t_powiat_m = None
+        dlg.teamComboBox.setEnabled(True)
+        dlg.powiatCheckBox.setEnabled(True)
+        dlg.powiatComboBox.setEnabled(True)
+    powiaty_layer()
+
+def vn_load():
+    """Załadowanie vn z obszaru wybranych powiatów."""
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    proj = QgsProject.instance()
+    URI_CONST = params + ' table="team_'
+    if powiat_m:
+        SQL_POW = " AND b_pow = True"
+    else:
+        SQL_POW = ""
+
+    # Warstwy vn do włączenia/wyłączenia w zależności od trybu ustawień vn
+    show_layers = ["vn_user", "vn_other", "vn_null", "vn_all"] if vn_setup else ["vn_sel", "vn_user"]
+    hide_layers = ["vn_sel"] if vn_setup else ["vn_other", "vn_null", "vn_all"]
+
+    # Włączenie/wyłączenie warstw vn
+    for layer in show_layers:
+        proj.layerTreeRoot().findLayer(proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(True)
+    for layer in hide_layers:
+        proj.layerTreeRoot().findLayer(proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(False)
+
+    # Wyrażenia sql dla warstw vn
+    layer_sql = {"vn_all": "",
+                "vn_null": "user_id IS NULL",
+                "vn_other": "user_id <> " + str(user_id) + " AND user_id IS NOT NULL",
+                "vn_user": "user_id = " + str(user_id)  + SQL_POW,
+                "vn_sel": "user_id = " + str(user_id) + " AND b_sel IS TRUE" + SQL_POW}
+
+    # Usuwanie wyrażeń sql warstw wyłączonych
+    [layer_sql.pop(i) for i in hide_layers if i in layer_sql.keys()]
+
+    # Aktualizacja włączonych warstw vn
+    for key, value in layer_sql.items():
+        uri =  URI_CONST + str(team_i) +'"."team_viewnet" (geom) sql= ' + str(value)
+        layer = QgsProject.instance().mapLayersByName(key)[0]
+        pg_layer_change(uri, layer)
 
 def pg_layer_change(uri, layer):
     """Zmiana zawartości warstwy postgis na podstawie Uri"""
+    # print("uri: ", str(uri), " layer: ", layer)
     xml_document = QDomDocument("style")
     xml_maplayers = xml_document.createElement("maplayers")
     xml_maplayer = xml_document.createElement("maplayer")

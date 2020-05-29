@@ -144,6 +144,9 @@
         </widget>
        </widget>
        <widget class="QGroupBox" name="gb_vn">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
         <property name="geometry">
          <rect>
           <x>0</x>
@@ -162,6 +165,9 @@
          <set>Qt::AlignCenter</set>
         </property>
         <property name="flat">
+         <bool>false</bool>
+        </property>
+        <property name="checkable">
          <bool>false</bool>
         </property>
         <widget class="QPushButton" name="btn_vn_sel">
@@ -203,6 +209,9 @@
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
         </widget>
         <widget class="QPushButton" name="btn_vn_zoom">
          <property name="geometry">
@@ -243,6 +252,9 @@
          <property name="checkable">
           <bool>false</bool>
          </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
         </widget>
         <widget class="QPushButton" name="btn_vn_done">
          <property name="geometry">
@@ -281,6 +293,9 @@
           </size>
          </property>
          <property name="checkable">
+          <bool>false</bool>
+         </property>
+         <property name="flat">
           <bool>false</bool>
          </property>
         </widget>
@@ -403,6 +418,9 @@
          <property name="checkable">
           <bool>false</bool>
          </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
         </widget>
         <widget class="QPushButton" name="btn_ge2q">
          <property name="geometry">
@@ -483,6 +501,9 @@
          <property name="checkable">
           <bool>false</bool>
          </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
         </widget>
        </widget>
        <widget class="QGroupBox" name="gb_vn_2">
@@ -545,6 +566,9 @@
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
         </widget>
         <widget class="QPushButton" name="btn_vn_pow_sel">
          <property name="geometry">
@@ -585,6 +609,9 @@
          <property name="checkable">
           <bool>true</bool>
          </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
         </widget>
         <widget class="QPushButton" name="btn_vn_polysel">
          <property name="geometry">
@@ -623,6 +650,9 @@
           </size>
          </property>
          <property name="checkable">
+          <bool>false</bool>
+         </property>
+         <property name="flat">
           <bool>false</bool>
          </property>
         </widget>
@@ -745,6 +775,9 @@
          <property name="checkable">
           <bool>false</bool>
          </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
         </widget>
         <widget class="QPushButton" name="btn_vn_sub">
          <property name="geometry">
@@ -785,6 +818,9 @@
          <property name="checkable">
           <bool>false</bool>
          </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
         </widget>
         <widget class="QPushButton" name="btn_vn_add">
          <property name="geometry">
@@ -823,6 +859,9 @@
           </size>
          </property>
          <property name="checkable">
+          <bool>false</bool>
+         </property>
+         <property name="flat">
           <bool>false</bool>
          </property>
         </widget>

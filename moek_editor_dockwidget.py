@@ -36,6 +36,7 @@ from .main import vn_setup_mode
 from .viewnet import change_done, vn_change, vn_pow_sel, vn_polysel, vn_add, vn_sub, vn_zoom
 from .viewnet import hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .classes import IdentMapTool, PolySelMapTool
+from .widgets import MoekBar
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -59,6 +60,11 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
         self.__button_init()
         self.__button_conn()
+
+        self.b1 = MoekBar(title="TEST WIDŻETA", config=True)
+        self.vl_main.addWidget(self.b1)
+        self.frm_main.setLayout(self.vl_main)
+
 
         hotkeys = {'hk_up': 'Up', 'hk_down': 'Down', 'hk_left': 'Left', 'hk_right': 'Right', 'hk_space': 'Space'}
 

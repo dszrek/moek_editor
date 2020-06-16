@@ -25,18 +25,17 @@
 import os
 
 from qgis.PyQt import QtGui, QtWidgets, uic
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QShortcut
 from qgis.PyQt.QtCore import pyqtSignal
 from PyQt5.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject
 from qgis.utils import iface
 
-from .main import vn_setup_mode
 from .viewnet import change_done, vn_change, vn_pow_sel, vn_polysel, vn_add, vn_sub, vn_zoom
 from .viewnet import hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .classes import IdentMapTool, PolySelMapTool
-from .widgets import MoekBar
+from .widgets import MoekPanel
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -58,25 +57,45 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.iface = iface
         self.setupUi(self)
 
-        self.__button_init()
+        p_vn_widgets = [
+                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sel", "size": 50, "checkable": True, "tooltip": u"wybierz pole"},
+                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_zoom", "size": 50, "checkable": False, "tooltip": u"przybliż do pola"},
+                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_done", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE"'},
+                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_doneF", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE" i idź do następnego'},
+                    {"page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 3, "item": "combobox", "name": "team_users"},
+                    {"page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_powsel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola siatki widoków znajdujące się w granicach wybranego powiatu"},
+                    {"page": 1, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_polysel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola znajdujące się w granicach narysowanego poligonu"},
+                    {"page": 1, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_unsel", "size": 50, "checkable": False, "tooltip": u"wyczyść zaznaczenie pól siatki widoków"},
+                    {"page": 1, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_add", "size": 50, "checkable": False, "tooltip": u"dodaj wybrane pola siatki widoków do zakresu poszukiwań wskazanego użytkownika"},
+                    {"page": 1, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sub", "size": 50, "checkable": False, "tooltip": u"odejmij wybrane pola siatki widoków od zakresu poszukiwań wskazanego użytkownika"}
+                    ]
+
+        self.p_vn = MoekPanel(title="Siatka widoków",
+                            io_fn="vn_load()",
+                            config=True,
+                            cfg_fn="vn_setup_mode(self.cfg_btn.isChecked())",
+                            pages=2)
+        self.vl_main.addWidget(self.p_vn)
+        self.frm_main.setLayout(self.vl_main)
+        for widget in p_vn_widgets:
+            if widget["item"] == "button":
+                self.p_vn.add_button(widget)
+            elif widget["item"] == "combobox":
+                self.p_vn.add_combobox(widget)
+
         self.__button_conn()
 
-        self.b1 = MoekBar(title="TEST WIDŻETA", config=True)
-        self.vl_main.addWidget(self.b1)
-        self.frm_main.setLayout(self.vl_main)
-
-
-        hotkeys = {'hk_up': 'Up', 'hk_down': 'Down', 'hk_left': 'Left', 'hk_right': 'Right', 'hk_space': 'Space'}
+        hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space"}
 
         for key, val in hotkeys.items():
             exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", iface.mainWindow())")
 
     def toggle_hk(self, enabled):
-        hotkeys = {'hk_up': 'hk_up_pressed',
-                   'hk_down': 'hk_down_pressed',
-                   'hk_left': 'hk_left_pressed',
-                   'hk_right': 'hk_right_pressed',
-                   'hk_space': 'lambda: change_done(True)'}  #partial(change_done, True)'}
+        hotkeys = {"hk_up": "hk_up_pressed",
+                   "hk_down": "hk_down_pressed",
+                   "hk_left": "hk_left_pressed",
+                   "hk_right": "hk_right_pressed",
+                   "hk_space": "lambda: change_done(True)"}
         io = "connect" if enabled else "disconnect"
         try:
             for key, val in hotkeys.items():
@@ -85,45 +104,32 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         except Exception as error:
             print("hotkeys exception: {}".format(error))
 
-    def __button_init(self):
-        """Konfiguracja przycisków."""
-        self.button_cfg(self.btn_vn_sel,'vn_sel.png', checkable=True, tooltip=u'wybierz pole')
-        self.button_cfg(self.btn_vn_zoom,'vn_zoom.png', checkable=False, tooltip=u'przybliż do pola')
-        self.button_cfg(self.btn_vn_done,'vn_doneT.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE"')
-        self.button_cfg(self.btn_vn_doneF,'vn_doneTf.png', checkable=False, tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
-        self.button_cfg(self.btn_vn_setup,'vn_setup.png', checkable=True, tooltip=u'włącz tryb ustawień siatki widoków')
-        self.button_cfg(self.btn_vn_pow_sel,'vn_pow_sel.png', checkable=True, tooltip=u'zaznacz pola siatki widoków w obrębie powiatu')
-        self.button_cfg(self.btn_vn_unsel,'vn_unsel.png', checkable=False, tooltip=u'odznacz wybrane pola siatki widoków')
-        self.button_cfg(self.btn_vn_polysel,'vn_polysel.png', checkable=True, tooltip=u'zaznacz poligonowo pola siatki widoków')
-        self.button_cfg(self.btn_vn_add,'vn_add.png', checkable=False, tooltip=u'dodaj wybrane pola siatki widoków do swojego zakresu poszukiwań')
-        self.button_cfg(self.btn_vn_sub,'vn_sub.png', checkable=False, tooltip=u'odejmij wybrane pola siatki widoków od swojego zakresu poszukiwań')
-
     def __button_conn(self):
         """Przyłączenia przycisków do funkcji."""
-        self.btn_vn_sel.clicked.connect(lambda: self.ident_mt_init(self.btn_vn_sel, "vn_user", vn_change))
-        self.btn_vn_zoom.pressed.connect(vn_zoom)
-        self.btn_vn_done.pressed.connect(lambda: change_done(False))
-        self.btn_vn_doneF.pressed.connect(lambda: change_done(True))
-        self.btn_vn_setup.clicked.connect(vn_setup_mode)
-        self.btn_vn_pow_sel.clicked.connect(lambda: self.ident_mt_init(self.btn_vn_pow_sel, "mv_team_powiaty", vn_pow_sel))
-        self.btn_vn_polysel.clicked.connect(lambda: self.poly_mt_init(self.btn_vn_polysel, vn_polysel))
-        self.btn_vn_unsel.pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())
-        self.btn_vn_add.pressed.connect(vn_add)
-        self.btn_vn_sub.pressed.connect(vn_sub)
+        self.p_vn.widgets["btn_vn_sel"].clicked.connect(lambda: self.ident_mt_init(self.p_vn_1.widgets["btn_vn_sel"], "vn_user", vn_change))
+        self.p_vn.widgets["btn_vn_zoom"].pressed.connect(vn_zoom)
+        self.p_vn.widgets["btn_vn_done"].pressed.connect(lambda: change_done(False))
+        self.p_vn.widgets["btn_vn_doneF"].pressed.connect(lambda: change_done(True))
+        self.p_vn.widgets["btn_vn_powsel"].clicked.connect(lambda: self.ident_mt_init(self.p_vn_2.widgets["btn_vn_powsel"], "mv_team_powiaty", vn_pow_sel))
+        self.p_vn.widgets["btn_vn_polysel"].clicked.connect(lambda: self.poly_mt_init(self.p_vn_2.widgets["btn_vn_polysel"], vn_polysel))
+        self.p_vn.widgets["btn_vn_unsel"].pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())
+        self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
+        self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
 
-    def button_cfg(self, btn, icon_name, **kwargs):
+    def button_cfg(self, btn, icon_name, size=50, tooltip=""):
         """Konfiguracja przycisków."""
+        btn.setToolTip(tooltip)
         icon = QIcon()
-        icon.addPixmap(QPixmap(ICON_PATH + icon_name))
+        icon.addFile(ICON_PATH + icon_name + "_0.png", size=QSize(size, size), mode=QIcon.Normal, state=QIcon.Off)
+        icon.addFile(ICON_PATH + icon_name + "_0_act.png", size=QSize(size, size), mode=QIcon.Active, state=QIcon.Off)
+        icon.addFile(ICON_PATH + icon_name + "_0.png", size=QSize(size, size), mode=QIcon.Selected, state=QIcon.Off)
+        if not btn.isEnabled():
+            icon.addFile(ICON_PATH + icon_name + "_0_dis.png", size=QSize(size, size), mode=QIcon.Disabled, state=QIcon.Off)
+        if btn.isCheckable():
+            icon.addFile(ICON_PATH + icon_name + "_1.png", size=QSize(size, size), mode=QIcon.Normal, state=QIcon.On)
+            icon.addFile(ICON_PATH + icon_name + "_1_act.png", size=QSize(size, size), mode=QIcon.Active, state=QIcon.On)
+            icon.addFile(ICON_PATH + icon_name + "_1.png", size=QSize(size, size), mode=QIcon.Selected, state=QIcon.On)
         btn.setIcon(icon)
-        if kwargs:
-            for key, val in kwargs.items():
-                if key == "enabled":
-                    btn.setEnabled(val)
-                if key == "checkable":
-                    btn.setCheckable(val)
-                if key == "tooltip":
-                    btn.setToolTip(val)
 
     def ident_mt_init(self, btn, layer_name, callback):
         """Initializacja maptool'a do identyfikacji obiektu na określonej warstwie."""

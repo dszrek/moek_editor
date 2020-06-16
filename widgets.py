@@ -100,19 +100,12 @@ class MoekBar(QFrame):
     def __init__(self, title="", switch=True, config=False):
         super().__init__()
         self.setObjectName("bar")
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setMinimumHeight(28)
-        self.setMaximumHeight(28)
-        self.setStyleSheet("""
-                           QFrame#bar {background-color: rgb(0,122,204); border: 1px solid white}
-                           QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: bold; color: white}
-                           """)
         if switch:
-            self.io_btn = MoekButton(icon_name="io", enabled=True, checkable=True)
+            self.io_btn = MoekButton(name="io", enabled=True, checkable=True)
         else:
-            self.io_btn = MoekButton(icon_name="io", enabled=False, checkable=True)
+            self.io_btn = MoekButton(name="io", enabled=False, checkable=True)
         if config:
-            self.cfg_btn = MoekButton(icon_name="cfg", enabled=True, checkable=True)
+            self.cfg_btn = MoekButton(name="cfg", enabled=True, checkable=True)
         if len(title) > 0:
             self.l_title = QLabel()
             self.l_title.setObjectName("title")
@@ -131,30 +124,60 @@ class MoekBar(QFrame):
         self.io_btn.clicked.connect(self.io_clicked)
 
     def io_clicked(self):
-        print("io_clicked")
+        """Zmiana trybu active po kliknięciu na przycisk io."""
+        self.parent().active = self.io_btn.isChecked()
 
     def cfg_clicked(self):
-        print("cfg_clicked")
+        """Uruchomienie zdefiniowanej funkcji po kliknięciu na przycisk cfg."""
+        exec(self.parent().cfg_fn)
+
+
+class MoekGridBox(QFrame):
+    """Zawartość panela w kompozycji GridBox."""
+    def __init__(self):
+        super().__init__()
+        # self.setObjectName("box")
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.glay = QGridLayout()
+        self.glay.setContentsMargins(0, 2, 0, 5)
+        self.glay.setSpacing(0)
+        self.setLayout(self.glay)
+
+
+class MoekStackedBox(QStackedWidget):
+    """Widget dzielący zawartość panela na strony."""
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("box")
+
+    def sizeHint(self):
+        return self.currentWidget().sizeHint()
+
+    def minimumSizeHint(self):
+        return self.currentWidget().minimumSizeHint()
+
 
 class MoekButton(QToolButton):
     """Fabryka guzików."""
-    def __init__(self, icon_name="", enabled=False, checkable=False):
+    def __init__(self, size=25, name="", enabled=False, checkable=False, tooltip=""):
         super().__init__()
         self.setEnabled(enabled)
         self.setCheckable(checkable)
+        self.setToolTip(tooltip)
         self.setToolButtonStyle(Qt.ToolButtonIconOnly)
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(26, 26)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setFixedSize(size, size)
+        self.setIconSize(QSize(size, size))
         self.setAutoRaise(True)
         self.setStyleSheet("QToolButton {border: none}")
         icon = QIcon()
-        icon.addFile(ICON_PATH + icon_name + "_0.png", size=QSize(26, 26), mode=QIcon.Normal, state=QIcon.Off)
-        icon.addFile(ICON_PATH + icon_name + "_0_act.png", size=QSize(26, 26), mode=QIcon.Active, state=QIcon.Off)
-        icon.addFile(ICON_PATH + icon_name + "_0.png", size=QSize(26, 26), mode=QIcon.Selected, state=QIcon.Off)
+        icon.addFile(ICON_PATH + name + "_0.png", size=QSize(size, size), mode=QIcon.Normal, state=QIcon.Off)
+        icon.addFile(ICON_PATH + name + "_0_act.png", size=QSize(size, size), mode=QIcon.Active, state=QIcon.Off)
+        icon.addFile(ICON_PATH + name + "_0.png", size=QSize(size, size), mode=QIcon.Selected, state=QIcon.Off)
         if not self.isEnabled():
-            icon.addFile(ICON_PATH + icon_name + "_0_dis.png", size=QSize(26, 26), mode=QIcon.Disabled, state=QIcon.Off)
+            icon.addFile(ICON_PATH + name + "_0_dis.png", size=QSize(size, size), mode=QIcon.Disabled, state=QIcon.Off)
         if self.isCheckable():
-            icon.addFile(ICON_PATH + icon_name + "_1.png", size=QSize(26, 26), mode=QIcon.Normal, state=QIcon.On)
-            icon.addFile(ICON_PATH + icon_name + "_1_act.png", size=QSize(26, 26), mode=QIcon.Active, state=QIcon.On)
-            icon.addFile(ICON_PATH + icon_name + "_1.png", size=QSize(26, 26), mode=QIcon.Selected, state=QIcon.On)
+            icon.addFile(ICON_PATH + name + "_1.png", size=QSize(size, size), mode=QIcon.Normal, state=QIcon.On)
+            icon.addFile(ICON_PATH + name + "_1_act.png", size=QSize(size, size), mode=QIcon.Active, state=QIcon.On)
+            icon.addFile(ICON_PATH + name + "_1.png", size=QSize(size, size), mode=QIcon.Selected, state=QIcon.On)
         self.setIcon(icon)

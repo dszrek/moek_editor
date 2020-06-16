@@ -181,3 +181,57 @@ class MoekButton(QToolButton):
             icon.addFile(ICON_PATH + name + "_1_act.png", size=QSize(size, size), mode=QIcon.Active, state=QIcon.On)
             icon.addFile(ICON_PATH + name + "_1.png", size=QSize(size, size), mode=QIcon.Selected, state=QIcon.On)
         self.setIcon(icon)
+
+
+class MoekComboBox(QComboBox):
+    """Fabryka combos'ów"""
+    def __init__(self, name=""):
+        super().__init__()
+        self.setStyleSheet("""
+                            QComboBox {
+                                border: 2px solid rgb(52, 132, 240);
+                                padding: 0px 5px 0px 5px;
+                                min-width: 1px;
+                                min-height: 25px;
+                                color: rgb(52, 132, 240);
+                                font-size: 8pt;
+                            }
+                            QComboBox::indicator {
+                                background-color:transparent;
+                                selection-background-color:transparent;
+                                color:transparent;
+                                selection-color:transparent;
+                            }
+                            QComboBox::item:selected {
+                                padding-left: 0px;
+                                background-color: rgb(52, 132, 240);
+                                color: white;
+                            }
+                            QComboBox::item:!selected {
+                                background-color: white;
+                                color: rgb(52, 132, 240);
+                            }
+                            QComboBox:on {
+                                background-color: rgb(52, 132, 240);
+                                color: white;
+                            }
+                            QComboBox::drop-down {
+                                subcontrol-origin: padding;
+                                subcontrol-position: center right;
+                                width: 12px;
+                                right: 5px;
+                                border: none;
+                                background: transparent;
+                            }
+                            QComboBox::down-arrow {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow.png');
+                            }
+                            QComboBox QAbstractItemView {
+                                border: 2px solid rgb(52, 132, 240);
+                                background-color: white;
+                            }
+                           """)
+        self.addItem("Kamila Andrzejewska-Kubrak")
+        self.addItem("Władysław Ślusarek")
+        self.addItem("Dominik Szrek")
+        self.findChild(QFrame).setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)

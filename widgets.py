@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt, QSize, pyqtSignal, QRect
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QBrush, QColor
 
 from .main import vn_setup_mode
-from .viewnet import change_done, vn_change, vn_pow_sel, vn_polysel, vn_add, vn_sub, vn_zoom
+from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 

@@ -316,25 +316,27 @@ def db_vn_pow_reset():
     else:
         return False
 
-def vn_setup_mode():
+def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     global powiat_m, t_powiat_m, vn_setup
-    if dlg.btn_vn_setup.isChecked():  # Wciśnięcie przycisku btn_vn_setup
-        vn_setup = True  # Włączenie trybu ustawień vn
+    if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie przycisku konfiguracji w panelu Siatka widoków
+        vn_setup = True
         if powiat_m:
             t_powiat_m = True  # Zapamiętanie, że tryb powiatu był włączony
             powiat_m = False
         dlg.teamComboBox.setEnabled(False)
         dlg.powiatCheckBox.setEnabled(False)
         dlg.powiatComboBox.setEnabled(False)
-    else:  # Wyciśnięcie przycisku btn_vn_setup
-        vn_setup = False  # Wyłączenie trybu ustawień vn
+        dlg.p_vn.box.setCurrentIndex(1)  # zmiana strony panelu Siatka widoków
+    else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie przycisku konfiguracji w panelu Siatka widoków
+        vn_setup = False
         if t_powiat_m:  # Tryb powiat_m był tymczasowo wyłączony, następuje jego przywrócenie
             powiat_m = t_powiat_m
             t_powiat_m = None
         dlg.teamComboBox.setEnabled(True)
         dlg.powiatCheckBox.setEnabled(True)
         dlg.powiatComboBox.setEnabled(True)
+        dlg.p_vn.box.setCurrentIndex(0)  # zmiana strony panelu Siatka widoków
     powiaty_layer()
 
 def vn_load():

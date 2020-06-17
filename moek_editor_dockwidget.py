@@ -32,7 +32,7 @@ from PyQt5.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject
 from qgis.utils import iface
 
-from .viewnet import change_done, vn_change, vn_pow_sel, vn_polysel, vn_add, vn_sub, vn_zoom
+from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom
 from .viewnet import hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .classes import IdentMapTool, PolySelMapTool
 from .widgets import MoekPanel
@@ -106,12 +106,12 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     def __button_conn(self):
         """Przyłączenia przycisków do funkcji."""
-        self.p_vn.widgets["btn_vn_sel"].clicked.connect(lambda: self.ident_mt_init(self.p_vn_1.widgets["btn_vn_sel"], "vn_user", vn_change))
+        self.p_vn.widgets["btn_vn_sel"].clicked.connect(lambda: self.ident_mt_init(self.p_vn.widgets["btn_vn_sel"], "vn_user", vn_change))
         self.p_vn.widgets["btn_vn_zoom"].pressed.connect(vn_zoom)
         self.p_vn.widgets["btn_vn_done"].pressed.connect(lambda: change_done(False))
         self.p_vn.widgets["btn_vn_doneF"].pressed.connect(lambda: change_done(True))
-        self.p_vn.widgets["btn_vn_powsel"].clicked.connect(lambda: self.ident_mt_init(self.p_vn_2.widgets["btn_vn_powsel"], "mv_team_powiaty", vn_pow_sel))
-        self.p_vn.widgets["btn_vn_polysel"].clicked.connect(lambda: self.poly_mt_init(self.p_vn_2.widgets["btn_vn_polysel"], vn_polysel))
+        self.p_vn.widgets["btn_vn_powsel"].clicked.connect(lambda: self.ident_mt_init(self.p_vn.widgets["btn_vn_powsel"], "mv_team_powiaty", vn_powsel))
+        self.p_vn.widgets["btn_vn_polysel"].clicked.connect(lambda: self.poly_mt_init(self.p_vn.widgets["btn_vn_polysel"], vn_polysel))
         self.p_vn.widgets["btn_vn_unsel"].pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)

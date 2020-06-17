@@ -90,22 +90,26 @@ class SelVN:
         if val != self.d_btn:
             self.d_btn = val
             if val == False:
-                dlg.button_cfg(dlg.btn_vn_done,'vn_doneT.png', tooltip=u'oznacz jako "SPRAWDZONE"')
-                dlg.button_cfg(dlg.btn_vn_doneF,'vn_doneTf.png', tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
+                dlg.button_cfg(dlg.p_vn.widgets["btn_vn_done"],'vn_doneT', tooltip=u'oznacz jako "SPRAWDZONE"')
+                dlg.button_cfg(dlg.p_vn.widgets["btn_vn_doneF"],'vn_doneTf', tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
             if val == True:
-                dlg.button_cfg(dlg.btn_vn_done,'vn_doneF.png', tooltip=u'oznacz jako "NIESPRAWDZONE"')
-                dlg.button_cfg(dlg.btn_vn_doneF,'vn_doneFf.png', tooltip=u'oznacz jako "NIESPRAWDZONE" i idź do następnego')
+                dlg.button_cfg(dlg.p_vn.widgets["btn_vn_done"],'vn_doneF', tooltip=u'oznacz jako "NIESPRAWDZONE"')
+                dlg.button_cfg(dlg.p_vn.widgets["btn_vn_doneF"],'vn_doneFf', tooltip=u'oznacz jako "NIESPRAWDZONE" i idź do następnego')
 
 def vn_btn_enable(state):
     """Włączenie lub wyłączenie przycisków vn."""
     # Lista przycisków do włączenia/wyłączenia
-    buttons = [dlg.btn_vn_sel, dlg.btn_vn_zoom, dlg.btn_vn_done, dlg.btn_vn_doneF]
+    buttons = [dlg.p_vn.widgets["btn_vn_sel"],
+               dlg.p_vn.widgets["btn_vn_zoom"],
+               dlg.p_vn.widgets["btn_vn_done"],
+               dlg.p_vn.widgets["btn_vn_doneF"]]
+
     for button in buttons:
         button.setEnabled(state)
 
 def vn_change(vn_layer, feature):
     """Zmiana wybranego vn'a przy użyciu maptool'a"""
-    unset_maptool(dlg.btn_vn_sel)  # Dezaktywacja maptool'a
+    unset_maptool(dlg.p_vn.widgets["btn_vn_sel"])  # Dezaktywacja maptool'a
     # Zmiana wybranego vn'a, jeśli maptool przechwycił obiekt vn'a
     if vn_layer:
         t_l = feature.attributes()[vn_layer.fields().indexFromName('vn_id')]
@@ -115,17 +119,17 @@ def vn_change(vn_layer, feature):
         vn_set_sel(t_l, t_x, t_y, t_d)  # Zmieniamy na vn'a o ustalonych parametrach
         stage_refresh()
 
-def vn_pow_sel(pow_layer, feature):
+def vn_powsel(pow_layer, feature):
     """Zaznaczenie vn'ów, znajdujących się w obrębie wybranego powiatu."""
     global vn_ids
-    unset_maptool(dlg.btn_vn_pow_sel)  # Dezaktywacja maptool'a
+    unset_maptool(dlg.p_vn.widgets["btn_vn_powsel"])  # Dezaktywacja maptool'a
     if pow_layer:  # Kliknięto na obiekt z właściwej warstwy
         sel_geom = feature.geometry()  # Geometria wybranego powiatu
         select_vn(sel_geom)
 
 def vn_polysel(geom):
     """Poligonalne zaznaczenie vn'ów."""
-    unset_maptool(dlg.btn_vn_polysel)  # Dezaktywacja maptool'a
+    unset_maptool(dlg.p_vn.widgets["btn_vn_polysel"])  # Dezaktywacja maptool'a
     feature = QgsFeature()
     feature.setGeometry(geom)
     sel_geom = feature.geometry()  # Geometria zaznaczenia poligonalnego

@@ -59,12 +59,18 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.iface = iface
         self.setupUi(self)
 
+        p_team_widgets = [
+                    {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
+                    ]
+        p_pow_widgets = [
+                    {"item": "combobox", "name": "pow_act", "height": 21, "border": 1, "b_round": "none"}
+                    ]
         p_vn_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sel", "size": 50, "checkable": True, "tooltip": u"wybierz pole"},
                     {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_zoom", "size": 50, "checkable": False, "tooltip": u"przybliż do pola"},
-                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_done", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE"'},
-                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_doneF", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE" i idź do następnego'},
-                    {"page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 3, "item": "combobox", "name": "team_users"},
+                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_done", "icon": "vn_doneT", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE"'},
+                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_doneF", "icon": "vn_doneTf", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE" i idź do następnego'},
+                    {"page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 3, "item": "combobox", "name": "team_users", "border": 1, "b_round": "none"},
                     {"page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_powsel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola siatki widoków znajdujące się w granicach wybranego powiatu"},
                     {"page": 1, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_polysel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola znajdujące się w granicach narysowanego poligonu"},
                     {"page": 1, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_unsel", "size": 50, "checkable": False, "tooltip": u"wyczyść zaznaczenie pól siatki widoków"},
@@ -72,18 +78,33 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 1, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sub", "size": 50, "checkable": False, "tooltip": u"odejmij wybrane pola siatki widoków od zakresu poszukiwań wskazanego użytkownika"}
                     ]
 
-        self.p_vn = MoekPanel(title="Siatka widoków",
+        self.p_team = MoekBarPanel(
+                            title="Zespół:",
+                            switch=False
+                            )
+        self.p_pow = MoekBarPanel(
+                            title="Powiat:",
+                            title_off="Wszystkie powiaty",
+                            io_fn="powiaty_mode_changed(clicked=True)"
+                            )
+        self.p_vn = MoekBoxPanel(
+                            title="Siatka widoków",
                             io_fn="vn_load()",
                             config=True,
                             cfg_fn="vn_setup_mode(self.cfg_btn.isChecked())",
                             pages=2)
-        self.vl_main.addWidget(self.p_vn)
+        self.panels = [self.p_team, self.p_pow, self.p_vn]
+        self.widgets = [p_team_widgets, p_pow_widgets, p_vn_widgets]
+
+        for (panel, widgets) in zip(self.panels, self.widgets):
+            for widget in widgets:
+                if widget["item"] == "button":
+                    panel.add_button(widget)
+                elif widget["item"] == "combobox":
+                    panel.add_combobox(widget)
+            self.vl_main.addWidget(panel)
+            panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)
-        for widget in p_vn_widgets:
-            if widget["item"] == "button":
-                self.p_vn.add_button(widget)
-            elif widget["item"] == "combobox":
-                self.p_vn.add_combobox(widget)
 
         self.__button_conn()
 

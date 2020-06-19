@@ -56,7 +56,7 @@ def db_login():
         return False
 
 def teams_load():
-    """Wczytanie team'ów użytkownika z bazy danych i wgranie ich do teamComboBox."""
+    """Wczytanie team'ów użytkownika z bazy danych i wgranie ich do combobox'a."""
     global team_i, team_t, teams
     db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
     # Wyszukanie nazw team'ów użytkownika
@@ -65,7 +65,7 @@ def teams_load():
         res = db.query_sel(sql, True)  # Rezultat kwerendy
         if res:  # Użytkownik jest przypisany do team'ów
             teams = [(r[0], r[1]) for r in res]  # Populacja globalnej listy teams
-            dlg.teamComboBox.addItems([r[1] for r in res]) # Populacja comboboxa nazwami team'ów
+            dlg.p_team.box.widgets["cmb_team_act"].addItems([r[1] for r in res]) # Populacja combobox'a nazwami team'ów
             db.close()
             if team_i:  # Użytkownik ma aktywny team
                 # Ustawienie aktualnej wartości team_t
@@ -75,10 +75,10 @@ def teams_load():
                 # Ustawienie wartości team_i i team_t na pierwszą pozycję z listy teams
                 team_i = teams[0][0]
                 team_t = teams[0][1]
-            dlg.teamComboBox.setCurrentText(team_t)  # Ustawienie cb na aktualny team_t
+            dlg.p_team.box.widgets["cmb_team_act"].setCurrentText(team_t)  # Ustawienie cb na aktualny team_t
             teams_cb_changed()  # Sposób na kontynuowanie procesu intializacji systemu
-            # Podłączenie eventu teamComboBox_changed
-            dlg.teamComboBox.currentIndexChanged.connect(teams_cb_changed)
+            # Podłączenie eventu zmiany team'u w cb
+            dlg.p_team.box.widgets["cmb_team_act"].currentIndexChanged.connect(teams_cb_changed)
             return True
         else: # Użytkownik nie ma przypisanych teamów
             QMessageBox.warning(None, "Problem", "Nie jesteś członkiem żadnego zespołu. Skontaktuj się z administratorem systemu.")
@@ -90,7 +90,7 @@ def teams_load():
 def teams_cb_changed():
     """Zmiana w cb aktywnego team'u."""
     global team_t, team_i
-    t_team_t = dlg.teamComboBox.currentText()  # Tymczasowy team_t
+    t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Tymczasowy team_t
     list_srch = [t for t in teams if t_team_t in t]
     t_team_i = list_srch[0][0]  # Tymczasowy team_i
     # Aktualizacja i_active_team w db
@@ -99,20 +99,20 @@ def teams_cb_changed():
         team_t = t_team_t
         team_i = t_team_i
         print("Pomyślnie załadowano team: ", team_t)
-        # Próba odłączenia sygnału zmiany powiatComboBox
+        # Próba odłączenia sygnału zmiany cmb_pow_act
         try:
-            dlg.powiatComboBox.currentIndexChanged.disconnect(powiaty_cb_changed)
+            dlg.p_pow.box.widgets["cmb_pow_act"].currentIndexChanged.disconnect(powiaty_cb_changed)
         except:
-            print("powiatComboBox.currentIndexChanged nie jest podłączony.")
+            print("cmb_pow_act nie jest podłączony.")
         powiaty_load()  # Załadowanie powiatów do combobox'a i ustawienie aktywnego powiatu
-        # Podłączenie sygnału zmiany powiatComboBox
-        dlg.powiatComboBox.currentIndexChanged.connect(powiaty_cb_changed)
+        # Podłączenie sygnału zmiany cmb_pow_act
+        dlg.p_pow.box.widgets["cmb_pow_act"].currentIndexChanged.connect(powiaty_cb_changed)
     else:  # Nie udało się zmienić i_active_team - powrót do poprzedniego
-        # Odłączenie eventu teamComboBox_changed
-        dlg.teamComboBox.currentIndexChanged.disconnect(teams_cb_changed)
-        dlg.teamComboBox.setCurrentText(team_t)  # Przywrócenie poprzedniego stanu cb
-        # Podłączenie eventu teamComboBox_changed
-        dlg.teamComboBox.currentIndexChanged.connect(teams_cb_changed)
+        # Odłączenie eventu zmiany cb
+        dlg.p_team.box.widgets["cmb_team_act"].currentIndexChanged.disconnect(teams_cb_changed)
+        dlg.p_team.box.widgets["cmb_team_act"].setCurrentText(team_t)  # Przywrócenie poprzedniego stanu cb
+        # Podłączenie eventu zmiany cb
+        dlg.p_team.box.widgets["cmb_team_act"].currentIndexChanged.connect(teams_cb_changed)
         print("Nie udało się zmienić team'u!")
 
 def db_act_team_change(t_team_i):
@@ -131,7 +131,7 @@ def db_act_team_change(t_team_i):
         return False
 
 def powiaty_load():
-    """Wczytanie powiatów z wybranego team'u i wgranie ich do powiatComboBox."""
+    """Wczytanie powiatów z wybranego team'u i wgranie ich do cmb_pow_act."""
     global team_i, powiat_i, powiat_t, powiaty
     db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
     # Wyszukanie powiatów z aktywnego team'u
@@ -140,8 +140,8 @@ def powiaty_load():
         res = db.query_sel(sql, True)  # Rezultat kwerendy
         if res:  # Team posiada powiaty
             powiaty = [(r[0],r[1]) for r in res]  # Populacja globalnej listy powiatów numerami TERYT i ich nazwami
-            dlg.powiatComboBox.clear()  # Skasowanie zawartości combobox'a
-            dlg.powiatComboBox.addItems([r[1] for r in res])  # Populacja combobox'a nazwami powiatów
+            dlg.p_pow.box.widgets["cmb_pow_act"].clear()  # Skasowanie zawartości combobox'a
+            dlg.p_pow.box.widgets["cmb_pow_act"].addItems([r[1] for r in res])  # Populacja combobox'a nazwami powiatów
             db.close()
             # Pobranie atrybutu t_active_pow z db
             powiat_i = act_pow_check()
@@ -155,7 +155,7 @@ def powiaty_load():
                 powiat_i = powiaty[0][0]
                 powiat_t = powiaty[0][1]
                 print("team nie ma aktywnego powiatu. Ustawiony pierwszy: ", str(powiat_i), " | ", str(powiat_t))
-            dlg.powiatComboBox.setCurrentText(powiat_t)  # Ustawienie cb na aktualny powiat_t
+            dlg.p_pow.box.widgets["cmb_pow_act"].setCurrentText(powiat_t)  # Ustawienie cb na aktualny powiat_t
             powiaty_cb_changed()  # Sposób na kontynuowanie procesu intializacji systemu
         else:  # Do team'u nie ma przypisanych powiatów
             QMessageBox.warning(None, "Problem", "Podany zespół nie ma przypisanych powiatów. Skontaktuj się z administratorem systemu.")
@@ -164,7 +164,7 @@ def powiaty_load():
 def powiaty_cb_changed():
     """Zmiana w combobox'ie aktywnego powiatu."""
     global powiat_t, powiat_i
-    t_powiat_t = dlg.powiatComboBox.currentText()  # Tymczasowy powiat_t
+    t_powiat_t = dlg.p_pow.box.widgets["cmb_pow_act"].currentText()  # Tymczasowy powiat_t
     list_srch = [t for t in powiaty if t_powiat_t in t]
     t_powiat_i = list_srch[0][0]  # Tymczasowy powiat_i
     # Aktualizacja t_active_pow w db
@@ -173,35 +173,24 @@ def powiaty_cb_changed():
         powiat_t = t_powiat_t
         powiat_i = t_powiat_i
         print("Ustawiono aktywny powiat: ", str(powiat_i), " | ", str(powiat_t))
-        # Próba odłączenia sygnału zmiany powiatCheckBox
-        try:
-            dlg.powiatCheckBox.stateChanged.disconnect()
-        except:
-            print("powiatCheckBox.stateChanged nie jest podłączony")
-        powiaty_mode_changed(False)  # Ustawienie trybu wyświetlania powiatów (jeden lub wszystkie)
-        # Podłączenie sygnału zmiany powiatCheckBox
-        dlg.powiatCheckBox.stateChanged.connect(lambda: powiaty_mode_changed(True))
+        powiaty_mode_changed(clicked=False)  # Ustawienie trybu wyświetlania powiatów (jeden lub wszystkie)
     else:  # Nie udało się zmienić t_active_pow - powrót do poprzedniego
-        # Odłączenie eventu powiatComboBox_changed
-        dlg.powiatComboBox.currentIndexChanged.disconnect(powiaty_cb_changed)
-        dlg.powiatComboBox.setCurrentText(powiat_t)  # Przywrócenie poprzedniego stanu cb
-        # Podłączenie eventu powiatComboBox_changed
-        dlg.powiatComboBox.currentIndexChanged.connect(powiaty_cb_changed)
-        print("Nie udało ci się zmienić powiatu!")
+        dlg.p_pow.box.widgets["cmb_pow_act"].setCurrentText(powiat_t)  # Przywrócenie poprzedniego stanu cb
+        print("Nie udało się zmienić powiatu!")
 
-def powiaty_mode_changed(clicked):
+def powiaty_mode_changed(clicked=False):
     """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
     global powiat_m
-    btn_state = dlg.powiatCheckBox.isChecked()
+    btn_state = dlg.p_pow.io_btn.isChecked()
     if clicked:  # Zmiana powiatu spowodowana kliknięciem w checkbox
         powiat_m = btn_state
         db_pow_mode_change(powiat_m)  # Aktualizacja b_pow_mode w db
     else:  # Zmiana powiatu spowodowana zmianą team'u
         powiat_m = pow_mode_check()  # Wczytanie z db b_pow_mode dla nowowybranego team'u
-        # Aktualizacja stanu checkbox'a
-        dlg.powiatCheckBox.setChecked(True) if powiat_m else dlg.powiatCheckBox.setChecked(False)
+        # Aktualizacja stanu p_pow
+        dlg.p_pow.active = True if powiat_m else False
     # Włączenie/wyłączenie combobox'a w zależności od checkbox'a
-    dlg.powiatComboBox.setEnabled(powiat_m)
+    dlg.p_pow.box.widgets["cmb_pow_act"].setEnabled(powiat_m)
     powiaty_layer()  # Aktualizacja warstwy z powiatami
 
 def act_pow_check():
@@ -324,18 +313,16 @@ def vn_setup_mode(b_flag):
         if powiat_m:
             t_powiat_m = True  # Zapamiętanie, że tryb powiatu był włączony
             powiat_m = False
-        dlg.teamComboBox.setEnabled(False)
-        dlg.powiatCheckBox.setEnabled(False)
-        dlg.powiatComboBox.setEnabled(False)
+        dlg.p_team.box.widgets["cmb_team_act"].setEnabled(False)
+        dlg.p_pow.active = False
         dlg.p_vn.box.setCurrentIndex(1)  # zmiana strony panelu Siatka widoków
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie przycisku konfiguracji w panelu Siatka widoków
         vn_setup = False
         if t_powiat_m:  # Tryb powiat_m był tymczasowo wyłączony, następuje jego przywrócenie
             powiat_m = t_powiat_m
             t_powiat_m = None
-        dlg.teamComboBox.setEnabled(True)
-        dlg.powiatCheckBox.setEnabled(True)
-        dlg.powiatComboBox.setEnabled(True)
+        dlg.p_team.box.widgets["cmb_team_act"].setEnabled(True)
+        dlg.p_pow.active = True
         dlg.p_vn.box.setCurrentIndex(0)  # zmiana strony panelu Siatka widoków
     powiaty_layer()
 

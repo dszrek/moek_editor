@@ -35,12 +35,14 @@ from qgis.utils import iface
 from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom
 from .viewnet import hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .classes import IdentMapTool, PolySelMapTool
-from .widgets import MoekPanel
+from .widgets import MoekBoxPanel, MoekBarPanel
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 SELF = "self."
+
+b_scroll = None
 
 class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 

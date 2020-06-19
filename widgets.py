@@ -5,18 +5,19 @@ from PyQt5.QtWidgets import QWidget, QFrame, QToolButton, QComboBox, QListView, 
 from PyQt5.QtCore import Qt, QSize, pyqtSignal, QRect
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QBrush, QColor
 
-from .main import vn_setup_mode
+from .main import vn_load, vn_setup_mode, powiaty_mode_changed
 from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 
-class MoekPanel(QFrame):
+
+class MoekBoxPanel(QFrame):
     """Nadrzędny obiekt panelu."""
     activated = pyqtSignal(bool)
 
     def __init__(self, title="", io_fn="", config=False, cfg_fn="", pages=1):
         super().__init__()
-        self.setObjectName("pnl")
+        self.setObjectName("boxpnl")
         shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(180, 180, 180), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow)
         self.bar = MoekBar(title=title, config=config)
@@ -33,7 +34,7 @@ class MoekPanel(QFrame):
         self.config = config
         self.activated.connect(self.active_change)
         self.active = True
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(0, 0, 0, 0)
         vlay.setSpacing(0)
@@ -46,7 +47,6 @@ class MoekPanel(QFrame):
         super().__setattr__(attr, val)
         if attr == "active":
             self.activated.emit(val)
-            print ("attr: ", str(attr), " val: ", str(val))
 
     def isActive(self):
         """Zwraca, czy panel jest w trybie active."""
@@ -56,16 +56,16 @@ class MoekPanel(QFrame):
         """Zmiana trybu active."""
         if value:
             self.setStyleSheet("""
-                               QFrame#pnl {background-color: white; border: none; border-radius: 6px}
+                               QFrame#boxpnl {background-color: white; border: none; border-top-left-radius: 16px; border-bottom-left-radius: 6px; border-top-right-radius: 6px; border-bottom-right-radius: 6px}
                                QFrame#bar {background-color: transparent; border: none}
                                QFrame#box {background-color: transparent; border: none}
                                QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: rgb(37,84,161)}
                                """)
         else:
             self.setStyleSheet("""
-                               QFrame#pnl {background-color: rgb(245,245,245); border: none; border-radius: 12px}
-                               QFrame#bar {background-color: rgb(245,245,245); border: none; border-radius: 12px}
-                               QFrame#box {background-color: rgb(245,245,245); border: none}
+                               QFrame#boxpnl {background-color: rgb(245,245,245); border: none; border-top-left-radius: 16px; border-bottom-left-radius: 16px; border-top-right-radius: 6px; border-bottom-right-radius: 6px}
+                               QFrame#bar {background-color: transparent; border: none}
+                               QFrame#box {background-color: transparent; border: none}
                                QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: rgb(150,150,150)}
                                """)
         self.bar.io_btn.setChecked(value)
@@ -82,24 +82,110 @@ class MoekPanel(QFrame):
                 print("io_fn exception")
 
     def add_button(self, dict):
-        _btn = MoekButton(size=dict["size"], name=dict["name"], enabled=True, checkable=dict["checkable"], tooltip=dict["tooltip"])
+        icon_name = dict["icon"] if "icon" in dict else dict["name"]
+        _btn = MoekButton(size=dict["size"], name=icon_name, enabled=True, checkable=dict["checkable"], tooltip=dict["tooltip"])
         exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_btn, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
         btn_name = f'btn_{dict["name"]}'
         self.widgets[btn_name] = _btn
 
     def add_combobox(self, dict):
-        print(dict)
-        _cmb = MoekComboBox(name=dict["name"])
+        _cmb = MoekComboBox(name=dict["name"], border=dict["border"], b_round=dict["b_round"])
         exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_cmb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
         cmb_name = f'cmb_{dict["name"]}'
         self.widgets[cmb_name] = _cmb
 
+class MoekBarPanel(QFrame):
+    """Nadrzędny obiekt panelu."""
+    activated = pyqtSignal(bool)
+
+    def __init__(self, title="", title_off="", switch=True, io_fn=""):
+        super().__init__()
+        self.setObjectName("barpnl")
+        self.setMinimumHeight(33)
+        shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(180, 180, 180), xOffset=0, yOffset=0)
+        self.setGraphicsEffect(shadow)
+        self.box = MoekHBox()
+        self.box.widgets = {}
+        self.switch = switch
+        if self.switch:
+            self.io_btn = MoekButton(name="io", enabled=True, checkable=True)
+            self.io_btn.clicked.connect(self.io_clicked)
+        else:
+            self.io_btn = MoekButton(name="io", enabled=False)
+        self.io_fn = io_fn
+        self.active = True
+        self.activated.connect(self.active_change)
+        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        self.title = title
+        self.title_off = title_off
+        self.l_title = QLabel(self.title)
+        self.l_title.setObjectName("title")
+        self.hlay = QHBoxLayout()
+        self.hlay.setContentsMargins(4, 0, 4, 0)
+        self.hlay.setSpacing(0)
+        self.hlay.addWidget(self.io_btn)
+        self.hlay.addWidget(self.l_title, stretch=1)
+        self.hlay.addWidget(self.box, stretch=3)
+        self.setLayout(self.hlay)
+        self.active_change(self.active)
+
+    def io_clicked(self):
+        """Zmiana trybu active po kliknięciu na przycisk io."""
+        self.active = self.io_btn.isChecked()
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "active":
+            self.activated.emit(val)
+
+    def isActive(self):
+        """Zwraca, czy panel jest w trybie active."""
+        return True if self.active else False
+
+    def active_change(self, value):
+        """Zmiana trybu active."""
+        if value:
+            self.setStyleSheet("""
+                               QFrame#barpnl {background-color: white; border: none; border-top-left-radius: 16px; border-bottom-left-radius: 16px; border-top-right-radius: 6px; border-bottom-right-radius: 6px}
+                               QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: rgb(37,84,161)}
+                               """)
+            self.box.setVisible(True)
+            self.l_title.setText(self.title)
+        else:
+            self.setStyleSheet("""
+                               QFrame#barpnl {background-color: rgb(245,245,245); border: none; border-top-left-radius: 16px; border-bottom-left-radius: 16px; border-top-right-radius: 6px; border-bottom-right-radius: 6px}
+                               QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: rgb(150,150,150)}
+                               """)
+            self.l_title.setText(self.title_off) if len(self.title_off) > 0 else self.l_title.setText(self.title)
+            self.box.setVisible(False)
+        if self.switch:
+            self.io_btn.setChecked(value)
+        if len(self.io_fn) > 0:
+            try:
+                exec(self.io_fn)
+            except:
+                print("io_fn exception")
+
+    def add_button(self, dict):
+        _btn = MoekButton(size=dict["size"], name=dict["name"], enabled=True, checkable=dict["checkable"], tooltip=dict["tooltip"])
+        self.box.hlay.addWidget(_btn)
+        btn_name = f'btn_{dict["name"]}'
+        self.box.widgets[btn_name] = _btn
+
+    def add_combobox(self, dict):
+        _cmb = MoekComboBox(name=dict["name"], height=dict["height"], border=dict["border"], b_round=dict["b_round"])
+        self.box.hlay.addWidget(_cmb)
+        cmb_name = f'cmb_{dict["name"]}'
+        self.box.widgets[cmb_name] = _cmb
+
 
 class MoekBar(QFrame):
-    """Belka panelu."""
+    """Belka panelu z box'em."""
     def __init__(self, title="", switch=True, config=False):
         super().__init__()
         self.setObjectName("bar")
+        self.setMinimumHeight(33)
         if switch:
             self.io_btn = MoekButton(name="io", enabled=True, checkable=True)
         else:
@@ -112,7 +198,8 @@ class MoekBar(QFrame):
             self.l_title.setText(title)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
         hlay = QHBoxLayout()
-        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setContentsMargins(4, 0, 4, 0)
+        hlay.setSpacing(0)
         hlay.addWidget(self.io_btn)
         if len(title) > 0:
             hlay.addWidget(self.l_title)
@@ -133,15 +220,25 @@ class MoekBar(QFrame):
 
 
 class MoekGridBox(QFrame):
-    """Zawartość panela w kompozycji GridBox."""
+    """Zawartość panelu w kompozycji QGridLayout."""
     def __init__(self):
         super().__init__()
-        # self.setObjectName("box")
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         self.glay = QGridLayout()
-        self.glay.setContentsMargins(0, 2, 0, 5)
+        self.glay.setContentsMargins(4, 2, 4, 4)
         self.glay.setSpacing(0)
         self.setLayout(self.glay)
+
+
+class MoekHBox(QFrame):
+    """Zawartość panelu w kompozycji QHBoxLayout."""
+    def __init__(self):
+        super().__init__()
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.hlay = QHBoxLayout()
+        self.hlay.setContentsMargins(0, 0, 0, 0)
+        self.hlay.setSpacing(0)
+        self.setLayout(self.hlay)
 
 
 class MoekStackedBox(QStackedWidget):
@@ -159,8 +256,9 @@ class MoekStackedBox(QStackedWidget):
 
 class MoekButton(QToolButton):
     """Fabryka guzików."""
-    def __init__(self, size=25, name="", enabled=False, checkable=False, tooltip=""):
+    def __init__(self, size=25, name="", visible=True, enabled=False, checkable=False, tooltip=""):
         super().__init__()
+        self.setVisible(visible)
         self.setEnabled(enabled)
         self.setCheckable(checkable)
         self.setToolTip(tooltip)
@@ -185,14 +283,22 @@ class MoekButton(QToolButton):
 
 class MoekComboBox(QComboBox):
     """Fabryka combos'ów"""
-    def __init__(self, name=""):
+    def __init__(self, name="", height=25, border=2, b_round="none"):
         super().__init__()
+        if b_round == "right":
+            B_CSS = "border-top-right-radius: 3px; border-bottom-right-radius: 3px;"
+        elif b_round == "all":
+            B_CSS = "border-radius: 6px;"
+        else:
+            B_CSS = ""
+
         self.setStyleSheet("""
                             QComboBox {
-                                border: 2px solid rgb(52, 132, 240);
+                                border: """ + str(border) + """px solid rgb(52, 132, 240);
+                                """ + B_CSS + """
                                 padding: 0px 5px 0px 5px;
                                 min-width: 1px;
-                                min-height: 25px;
+                                min-height: """ + str(height) + """px;
                                 color: rgb(52, 132, 240);
                                 font-size: 8pt;
                             }
@@ -212,6 +318,8 @@ class MoekComboBox(QComboBox):
                                 color: rgb(52, 132, 240);
                             }
                             QComboBox:on {
+                                padding-top: 3px;
+                                padding-left: 4px;
                                 background-color: rgb(52, 132, 240);
                                 color: white;
                             }
@@ -227,7 +335,13 @@ class MoekComboBox(QComboBox):
                                 image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow.png');
                             }
                             QComboBox QAbstractItemView {
-                                border: 2px solid rgb(52, 132, 240);
+                                border: """ + str(border) + """px solid rgb(52, 132, 240);
+                                background-color: white;
+                            }
+                            QComboBox QAbstractItemView::item {
+                                padding-top: 3px;
+                                padding-left: 4px;
+                                border: """ + str(border) + """px solid rgb(52, 132, 240);
                                 background-color: white;
                             }
                            """)

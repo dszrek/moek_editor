@@ -113,6 +113,48 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         for key, val in hotkeys.items():
             exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", iface.mainWindow())")
 
+        self.resizeEvent = self.resize_panel
+        self.show()
+
+    def resize_panel(self, event):
+        """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
+        global b_scroll
+        w_max = 0
+        h_sum = 0
+        p_count = len(self.panels)
+        h_header = 25
+        h_margin = 6
+        w_margin = 12
+        w_scrollbar = 25
+        # Ustalenie najszerszego panelu
+        for panel in self.panels:
+            if panel.rect().width() > w_max:
+                w_max = panel.rect().width()
+            h_sum += panel.rect().height()
+        if w_max == 640:  # Szerokość bazowa przy tworzeniu widget'u
+            return
+        # Wyrównanie szerokości paneli do najszerszego widget'u
+        for panel in self.panels:
+            panel.setMinimumWidth(w_max)
+        # Algorytm wykrywania i obsługi pionowego scrollbar'u
+        dock_height = h_header + h_sum + (p_count * h_margin) - h_margin
+        self.setMinimumHeight(dock_height)
+        p_width = w_max + w_margin
+        self.setMinimumWidth(p_width)
+        _scroll = True if dock_height > self.rect().height() else False # scrollbar True/False
+        if _scroll == b_scroll:  # scrollbar się nie zmienił
+            return
+        b_scroll = _scroll  # Aktualizacja flagi
+        if b_scroll:  # Scrollbar się pojawił
+            p_width = w_max + w_margin + w_scrollbar
+            self.setMinimumWidth(p_width)
+            self.resize(p_width, self.height())
+        else:  # Scrollbar znikł
+            self.setMinimumWidth(p_width)
+            self.resize(p_width, self.height())
+        iface.actionDraw().trigger()
+
+
     def toggle_hk(self, enabled):
         hotkeys = {"hk_up": "hk_up_pressed",
                    "hk_down": "hk_down_pressed",

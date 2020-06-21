@@ -38,7 +38,7 @@ class PgConn:
         self.cursor = self._instance.cursor
 
     @classmethod
-    def __error_msg(self, case, error, *query):
+    def __error_msg(cls, case, error, *query):
         """Komunikator błędów."""
         if case == "connection":
             QMessageBox.critical(None, "Połączenie z bazą danych", "Połączenie nie zostało nawiązane. \n Błąd: {}".format(error))
@@ -105,7 +105,7 @@ class CfgPars(ConfigParser):
         self.section = section
         self.read(self.filename)  # Pobranie zawartości pliku
         if not self.has_section(section):
-            raise Exception('Sekcja {0} nie istnieje w pliku {1}!'.format(section, filename))
+            raise AttributeError(f'Sekcja {section} nie istnieje w pliku {filename}!')
 
     def __enter__(self):
         return self

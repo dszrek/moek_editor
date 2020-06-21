@@ -102,7 +102,7 @@ def teams_cb_changed():
         # Próba odłączenia sygnału zmiany cmb_pow_act
         try:
             dlg.p_pow.box.widgets["cmb_pow_act"].currentIndexChanged.disconnect(powiaty_cb_changed)
-        except:
+        except TypeError:
             print("cmb_pow_act nie jest podłączony.")
         powiaty_load()  # Załadowanie powiatów do combobox'a i ustawienie aktywnego powiatu
         # Podłączenie sygnału zmiany cmb_pow_act

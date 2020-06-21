@@ -5,22 +5,28 @@ from PyQt5.QtWidgets import QWidget, QFrame, QToolButton, QComboBox, QListView, 
 from PyQt5.QtCore import Qt, QSize, pyqtSignal, QRect
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QBrush, QColor
 
-from .main import vn_load, vn_setup_mode, powiaty_mode_changed
+from .main import vn_load, vn_setup_mode, powiaty_mode_changed, vn_mode_changed
 from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 
+dlg = None
+
+def dlg_widgets(_dlg):
+    """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""
+    global dlg
+    dlg = _dlg
 
 class MoekBoxPanel(QFrame):
     """Nadrzędny obiekt panelu."""
     activated = pyqtSignal(bool)
 
-    def __init__(self, title="", io_fn="", config=False, cfg_fn="", pages=1):
+    def __init__(self, title="", switch=True, io_fn="", config=False, cfg_fn="", pages=1):
         super().__init__()
         self.setObjectName("boxpnl")
         shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(180, 180, 180), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow)
-        self.bar = MoekBar(title=title, config=config)
+        self.bar = MoekBar(title=title, switch=switch, config=config)
         self.box = MoekStackedBox()
         self.box.pages = {}
         for p in range(pages):
@@ -32,9 +38,10 @@ class MoekBoxPanel(QFrame):
         self.io_fn = io_fn
         self.cfg_fn = cfg_fn
         self.config = config
-        self.activated.connect(self.active_change)
         self.active = True
+        self.activated.connect(self.active_change)
         self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        self.set_style(True)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(0, 0, 0, 0)
         vlay.setSpacing(0)
@@ -48,12 +55,24 @@ class MoekBoxPanel(QFrame):
         if attr == "active":
             self.activated.emit(val)
 
-    def isActive(self):
+    def io_clicked(self, value):
+        """Zmiana trybu active po kliknięciu na przycisk io."""
+        print("io_clicked")
+        self.active = value
+        if len(self.io_fn) > 0:
+            try:
+                dlg.setUpdatesEnabled(False)
+                exec(self.io_fn)
+                dlg.setUpdatesEnabled(True)
+            except TypeError:
+                print("io_fn exception:", self.io_fn)
+
+    def is_active(self):
         """Zwraca, czy panel jest w trybie active."""
         return True if self.active else False
 
-    def active_change(self, value):
-        """Zmiana trybu active."""
+    def set_style(self, value):
+        """Modyfikacja stylesheet przy zmianie trybu active."""
         if value:
             self.setStyleSheet("""
                                QFrame#boxpnl {background-color: white; border: none; border-top-left-radius: 16px; border-bottom-left-radius: 6px; border-top-right-radius: 6px; border-bottom-right-radius: 6px}
@@ -68,6 +87,11 @@ class MoekBoxPanel(QFrame):
                                QFrame#box {background-color: transparent; border: none}
                                QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: rgb(150,150,150)}
                                """)
+
+    def active_change(self, value):
+        """Zmiana trybu active."""
+        print("<active_change(", self.bar.l_title.text(), "):", value, ">")
+        self.set_style(value)
         self.bar.io_btn.setChecked(value)
         self.box.setVisible(value)
         if self.config:
@@ -75,11 +99,6 @@ class MoekBoxPanel(QFrame):
             if self.bar.cfg_btn.isChecked():
                 self.bar.cfg_btn.setChecked(False)
                 self.bar.cfg_clicked()
-        if len(self.io_fn) > 0:
-            try:
-                exec(self.io_fn)
-            except:
-                print("io_fn exception")
 
     def add_button(self, dict):
         icon_name = dict["icon"] if "icon" in dict else dict["name"]
@@ -120,6 +139,7 @@ class MoekBarPanel(QFrame):
         self.title_off = title_off
         self.l_title = QLabel(self.title)
         self.l_title.setObjectName("title")
+        self.set_style(True)
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(4, 0, 4, 0)
         self.hlay.setSpacing(0)
@@ -127,11 +147,17 @@ class MoekBarPanel(QFrame):
         self.hlay.addWidget(self.l_title, stretch=1)
         self.hlay.addWidget(self.box, stretch=3)
         self.setLayout(self.hlay)
-        self.active_change(self.active)
 
     def io_clicked(self):
         """Zmiana trybu active po kliknięciu na przycisk io."""
         self.active = self.io_btn.isChecked()
+        if len(self.io_fn) > 0:
+            try:
+                dlg.setUpdatesEnabled(False)
+                exec(self.io_fn)
+                dlg.setUpdatesEnabled(True)
+            except TypeError:
+                print("io_fn exception:", self.io_fn)
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -139,33 +165,34 @@ class MoekBarPanel(QFrame):
         if attr == "active":
             self.activated.emit(val)
 
-    def isActive(self):
+    def is_active(self):
         """Zwraca, czy panel jest w trybie active."""
         return True if self.active else False
 
-    def active_change(self, value):
-        """Zmiana trybu active."""
+    def set_style(self, value):
+        """Modyfikacja stylesheet przy zmianie trybu active."""
         if value:
             self.setStyleSheet("""
                                QFrame#barpnl {background-color: white; border: none; border-top-left-radius: 16px; border-bottom-left-radius: 16px; border-top-right-radius: 6px; border-bottom-right-radius: 6px}
                                QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: rgb(37,84,161)}
                                """)
-            self.box.setVisible(True)
-            self.l_title.setText(self.title)
         else:
             self.setStyleSheet("""
                                QFrame#barpnl {background-color: rgb(245,245,245); border: none; border-top-left-radius: 16px; border-bottom-left-radius: 16px; border-top-right-radius: 6px; border-bottom-right-radius: 6px}
                                QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: rgb(150,150,150)}
                                """)
+
+    def active_change(self, value):
+        """Zmiana trybu active."""
+        print("<active_change(", self.title, "):", value, ">")
+        self.set_style(value)
+        self.box.setVisible(value)
+        if value:
+            self.l_title.setText(self.title)
+        else:
             self.l_title.setText(self.title_off) if len(self.title_off) > 0 else self.l_title.setText(self.title)
-            self.box.setVisible(False)
         if self.switch:
             self.io_btn.setChecked(value)
-        if len(self.io_fn) > 0:
-            try:
-                exec(self.io_fn)
-            except:
-                print("io_fn exception")
 
     def add_button(self, dict):
         _btn = MoekButton(size=dict["size"], name=dict["name"], enabled=True, checkable=dict["checkable"], tooltip=dict["tooltip"])
@@ -188,6 +215,7 @@ class MoekBar(QFrame):
         self.setMinimumHeight(33)
         if switch:
             self.io_btn = MoekButton(name="io", enabled=True, checkable=True)
+            self.io_btn.clicked.connect(lambda: self.parent().io_clicked(self.io_btn.isChecked()))
         else:
             self.io_btn = MoekButton(name="io", enabled=False, checkable=True)
         if config:
@@ -208,11 +236,10 @@ class MoekBar(QFrame):
             hlay.addWidget(self.cfg_btn)
             self.cfg_btn.clicked.connect(self.cfg_clicked)
         self.setLayout(hlay)
-        self.io_btn.clicked.connect(self.io_clicked)
 
-    def io_clicked(self):
-        """Zmiana trybu active po kliknięciu na przycisk io."""
-        self.parent().active = self.io_btn.isChecked()
+    # def io_clicked(self):
+    #     """Zmiana trybu active po kliknięciu na przycisk io."""
+    #     self.parent().active = self.io_btn.isChecked()
 
     def cfg_clicked(self):
         """Uruchomienie zdefiniowanej funkcji po kliknięciu na przycisk cfg."""

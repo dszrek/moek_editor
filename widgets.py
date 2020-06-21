@@ -372,7 +372,7 @@ class MoekComboBox(QComboBox):
                                 background-color: white;
                             }
                            """)
-        self.addItem("Kamila Andrzejewska-Kubrak")
-        self.addItem("Władysław Ślusarek")
-        self.addItem("Dominik Szrek")
+        # self.addItem("Kamila Andrzejewska-Kubrak")
+        # self.addItem("Władysław Ślusarek")
+        # self.addItem("Dominik Szrek")
         self.findChild(QFrame).setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)

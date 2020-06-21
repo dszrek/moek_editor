@@ -47,7 +47,7 @@ def db_login():
             if res[3]:  # Użytkownik ma zdefiniowany aktywny team
                 global team_i
                 team_i = res[3]  # Globalna zmienna team_i
-            QMessageBox.information(None, "Logowanie...", "Użytkownik " + user_name + " zalogował się do systemu MOEK.")
+            # QMessageBox.information(None, "Logowanie...", "Użytkownik " + user_name + " zalogował się do systemu MOEK.")
             return True
         else: # Użytkownika nie ma w tabeli users - nie logujemy
             QMessageBox.warning(None, "Logowanie...", "Użytkownik " + user_login + " nie ma dostępu do systemu MOEK.")
@@ -56,6 +56,7 @@ def db_login():
         return False
 
 def teams_load():
+    print("[teams_load]")
     """Wczytanie team'ów użytkownika z bazy danych i wgranie ich do combobox'a."""
     global team_i, team_t, teams
     db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
@@ -89,6 +90,7 @@ def teams_load():
 
 def teams_cb_changed():
     """Zmiana w cb aktywnego team'u."""
+    print("[teams_cb_changed]")
     global team_t, team_i
     t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Tymczasowy team_t
     list_srch = [t for t in teams if t_team_t in t]
@@ -117,6 +119,7 @@ def teams_cb_changed():
 
 def db_act_team_change(t_team_i):
     """Zmiana aktywnego teamu użytkownika w bazie danych."""
+    print("[db_act_team_change]")
     db = PgConn()  # Tworzenie obiektu połączenia z db
     # Aktualizacja i_active_team w tabeli 'users'
     sql = "UPDATE users SET i_active_team = " + str(t_team_i) + SQL_1 + str(user_id) + ";"
@@ -132,6 +135,7 @@ def db_act_team_change(t_team_i):
 
 def powiaty_load():
     """Wczytanie powiatów z wybranego team'u i wgranie ich do cmb_pow_act."""
+    print("[powiaty_load]")
     global team_i, powiat_i, powiat_t, powiaty
     db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
     # Wyszukanie powiatów z aktywnego team'u
@@ -156,13 +160,14 @@ def powiaty_load():
                 powiat_t = powiaty[0][1]
                 print("team nie ma aktywnego powiatu. Ustawiony pierwszy: ", str(powiat_i), " | ", str(powiat_t))
             dlg.p_pow.box.widgets["cmb_pow_act"].setCurrentText(powiat_t)  # Ustawienie cb na aktualny powiat_t
-            powiaty_cb_changed()  # Sposób na kontynuowanie procesu intializacji systemu
+            # powiaty_cb_changed()  # Sposób na kontynuowanie procesu intializacji systemu
         else:  # Do team'u nie ma przypisanych powiatów
             QMessageBox.warning(None, "Problem", "Podany zespół nie ma przypisanych powiatów. Skontaktuj się z administratorem systemu.")
             db.close()
 
 def powiaty_cb_changed():
     """Zmiana w combobox'ie aktywnego powiatu."""
+    print("[powiaty_cb_changed]")
     global powiat_t, powiat_i
     t_powiat_t = dlg.p_pow.box.widgets["cmb_pow_act"].currentText()  # Tymczasowy powiat_t
     list_srch = [t for t in powiaty if t_powiat_t in t]
@@ -178,8 +183,9 @@ def powiaty_cb_changed():
         dlg.p_pow.box.widgets["cmb_pow_act"].setCurrentText(powiat_t)  # Przywrócenie poprzedniego stanu cb
         print("Nie udało się zmienić powiatu!")
 
-def powiaty_mode_changed(clicked=False):
+def powiaty_mode_changed(clicked):
     """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
+    print("[powiaty_mode_changed:", clicked, "]")
     global powiat_m
     btn_state = dlg.p_pow.io_btn.isChecked()
     if clicked:  # Zmiana powiatu spowodowana kliknięciem w checkbox
@@ -189,12 +195,11 @@ def powiaty_mode_changed(clicked=False):
         powiat_m = pow_mode_check()  # Wczytanie z db b_pow_mode dla nowowybranego team'u
         # Aktualizacja stanu p_pow
         dlg.p_pow.active = True if powiat_m else False
-    # Włączenie/wyłączenie combobox'a w zależności od checkbox'a
-    dlg.p_pow.box.widgets["cmb_pow_act"].setEnabled(powiat_m)
     powiaty_layer()  # Aktualizacja warstwy z powiatami
 
 def act_pow_check():
     """Zwraca parametr t_active_pow z bazy danych."""
+    print("[act_pow_check]")
     db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
     # Wyszukanie t_active_pow z db
     sql = "SELECT t_active_pow FROM team_users WHERE team_id = " + str(team_i) + " AND user_id = " + str(user_id) + ";"
@@ -205,6 +210,7 @@ def act_pow_check():
 
 def db_act_pow_change(t_powiat_i):
     """Zmiana aktywnego powiatu użytkownika w bazie danych."""
+    print("[db_act_pow_change]")
     db = PgConn()  # Tworzenie obiektu połączenia z db
     # Aktualizacja t_active_pow w tabeli 'team_users'
     sql = "UPDATE team_users SET t_active_pow = " + str(t_powiat_i) + SQL_1 + str(user_id) + " AND team_id = " + str(team_i) + ";"
@@ -220,6 +226,7 @@ def db_act_pow_change(t_powiat_i):
 
 def pow_mode_check():
     """Zwraca parametr b_pow_mode z bazy danych."""
+    print("[pow_mode_check]")
     db = PgConn()  # Tworzenie obiektu połączenia z bazą danych
     # Wyszukanie b_pow_mode w db
     sql = "SELECT b_pow_mode FROM team_users WHERE team_id = " + str(team_i) + " AND user_id = " + str(user_id) + ";"
@@ -230,6 +237,7 @@ def pow_mode_check():
 
 def db_pow_mode_change(powiat_m):
     """Zmiana atrybutu b_pow_mode w bazie danych."""
+    print("[db_pow_mode_change:", powiat_m, "]")
     db = PgConn()  # Tworzenie obiektu połączenia z db
     # Aktualizacja b_pow_mode w tabeli 'team_users'
     sql = "UPDATE team_users SET b_pow_mode = " + str(powiat_m) + SQL_1 + str(user_id) + " AND team_id = " + str(team_i) + ";"
@@ -239,6 +247,7 @@ def db_pow_mode_change(powiat_m):
 
 def powiaty_layer():
     """Załadowanie powiatów, które należą do danego teamu."""
+    print("[powiaty_layer]")
     with CfgPars() as cfg:
         params = cfg.uri()
     if powiat_m:
@@ -260,6 +269,7 @@ def powiaty_layer():
 
 def user_has_vn():
     """Sprawdzenie czy użytkownik ma przydzielone vn w aktywnym teamie."""
+    print("[user_has_vn]")
     db = PgConn() # Tworzenie obiektu połączenia z db
     if powiat_m:  # Właczony jest tryb wyświetlania pojedynczego powiatu
         sql = "SELECT vn_id FROM team_" + str(team_i) + ".team_viewnet WHERE user_id = " + str(user_id) + " AND b_pow is True;"
@@ -276,6 +286,7 @@ def user_has_vn():
 
 def vn_pow():
     """Ustalenie w db zakresu wyświetlanych vn'ów do wybranego powiatu."""
+    print("[vn_pow]")
     is_vn_reset = db_vn_pow_reset()  # Resetowanie b_pow w db
     if not is_vn_reset:
         # QMessageBox.warning(None, "Problem", "Nie udało się zresetować siatki widoków. Skontaktuj się z administratorem systemu.")
@@ -293,6 +304,7 @@ def vn_pow():
 
 def db_vn_pow_reset():
     """Ustawienie b_pow = False dla wszystkich vn'ów użytkownika z team_viewnet."""
+    print("[db_vn_pow_reset]")
     db = PgConn()  # Tworzenie obiektu połączenia z db
     # Aktualizacja t_active_pow w tabeli 'team_users'
     sql = "UPDATE team_" + str(team_i) + ".team_viewnet SET b_pow = False WHERE user_id = " + str(user_id) + ";"
@@ -308,23 +320,22 @@ def db_vn_pow_reset():
 
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
+    print("[vn_setup_mode:", b_flag, "]")
     global powiat_m, t_powiat_m, vn_setup
-    if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie przycisku konfiguracji w panelu Siatka widoków
+    if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie przycisku konfiguracji w p_vn
         vn_setup = True
         if powiat_m:
             t_powiat_m = True  # Zapamiętanie, że tryb powiatu był włączony
             powiat_m = False
-        dlg.p_team.box.widgets["cmb_team_act"].setEnabled(False)
         dlg.p_pow.active = False
-        dlg.p_vn.box.setCurrentIndex(1)  # zmiana strony panelu Siatka widoków
-    else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie przycisku konfiguracji w panelu Siatka widoków
+        dlg.p_vn.box.setCurrentIndex(1)  # zmiana strony p_vn
+    else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie przycisku konfiguracji w p_vn
         vn_setup = False
         if t_powiat_m:  # Tryb powiat_m był tymczasowo wyłączony, następuje jego przywrócenie
             powiat_m = t_powiat_m
             t_powiat_m = None
-        dlg.p_team.box.widgets["cmb_team_act"].setEnabled(True)
         dlg.p_pow.active = True
-        dlg.p_vn.box.setCurrentIndex(0)  # zmiana strony panelu Siatka widoków
+        dlg.p_vn.box.setCurrentIndex(0)  # zmiana strony p_vn
     powiaty_layer()
 
 def vn_mode_changed(clicked):
@@ -404,7 +415,7 @@ def vn_load():
 
 def pg_layer_change(uri, layer):
     """Zmiana zawartości warstwy postgis na podstawie Uri"""
-    # print("uri: ", str(uri), " layer: ", layer)
+    print("[pg_layer_change:", uri, layer, "]")
     xml_document = QDomDocument("style")
     xml_maplayers = xml_document.createElement("maplayers")
     xml_maplayer = xml_document.createElement("maplayer")
@@ -419,9 +430,9 @@ def pg_layer_change(uri, layer):
     iface.mapCanvas().refresh()
 
 def layer_zoom(layer):
-    """Zbliżenie mapy do obiektów z dnej warstwy."""
+    """Zbliżenie mapy do obiektów z danej warstwy."""
+    print("[layer_zoom:", layer, "]")
     layer.selectAll()
-    canvas = iface.mapCanvas()
-    canvas.zoomToSelected(layer)
+    iface.mapCanvas().zoomToSelected(layer)
     layer.removeSelection()
-    canvas.refresh()
+    iface.mapCanvas().refresh()

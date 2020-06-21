@@ -56,9 +56,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
-        self.iface = iface
+        # self.iface = iface
         self.setupUi(self)
-
         p_team_widgets = [
                     {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
                     ]
@@ -77,7 +76,6 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 1, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_add", "size": 50, "checkable": False, "tooltip": u"dodaj wybrane pola siatki widoków do zakresu poszukiwań wskazanego użytkownika"},
                     {"page": 1, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sub", "size": 50, "checkable": False, "tooltip": u"odejmij wybrane pola siatki widoków od zakresu poszukiwań wskazanego użytkownika"}
                     ]
-
         self.p_team = MoekBarPanel(
                             title="Zespół:",
                             switch=False
@@ -106,15 +104,14 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)
 
+        self.resizeEvent = self.resize_panel
+
         self.__button_conn()
 
         hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space"}
 
         for key, val in hotkeys.items():
             exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", iface.mainWindow())")
-
-        self.resizeEvent = self.resize_panel
-        self.show()
 
     def resize_panel(self, event):
         """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
@@ -153,7 +150,6 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             self.setMinimumWidth(p_width)
             self.resize(p_width, self.height())
         iface.actionDraw().trigger()
-
 
     def toggle_hk(self, enabled):
         hotkeys = {"hk_up": "hk_up_pressed",

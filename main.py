@@ -326,6 +326,38 @@ def vn_setup_mode(b_flag):
         dlg.p_vn.box.setCurrentIndex(0)  # zmiana strony panelu Siatka widoków
     powiaty_layer()
 
+def vn_mode_changed(clicked):
+    """Włączenie bądź wyłączenie viewnet."""
+    print("[vn_mode_changed:", clicked, "]")
+    if clicked:  # Zmiana vn spowodowana kliknięciem w io_btn
+        db_vn_mode_change(dlg.p_vn.bar.io_btn.isChecked())  # Aktualizacja b_pow_mode w db
+    else:  # Zmiana vn spowodowana zmianą team'u
+        # vn_mode = vn_mode_check()  # Wczytanie z db b_vn_mode dla nowowybranego team'u
+        # Aktualizacja stanu p_vn
+        dlg.p_vn.active = True if vn_mode_check() else False
+    vn_load()  # Aktualizacja warstwy z vn
+
+def vn_mode_check():
+    """Zwraca parametr b_vn_mode z bazy danych."""
+    print("[vn_mode_check]")
+    db = PgConn()
+    # Wyszukanie b_vn_mode w db
+    sql = "SELECT b_vn_mode FROM team_users WHERE team_id = " + str(team_i) + " AND user_id = " + str(user_id) + ";"
+    if db:  # Udane połączenie z bazą danych
+        res = db.query_sel(sql, False)  # Rezultat kwerendy
+        if res:  # Udało się ustalić b_vn_mode
+            return res[0]
+
+def db_vn_mode_change(value):
+    """Zmiana atrybutu b_pow_mode w bazie danych."""
+    print("[db_vn_mode_change:", value, "]")
+    db = PgConn()  # Tworzenie obiektu połączenia z db
+    # Aktualizacja b_pow_mode w tabeli 'team_users'
+    sql = "UPDATE team_users SET b_vn_mode = " + str(value) + SQL_1 + str(user_id) + " AND team_id = " + str(team_i) + ";"
+    if db:  # Udane połączenie z db
+        db.query_upd(sql)  # Rezultat kwerendy
+        db.close()
+
 def vn_load():
     """Załadowanie vn z obszaru wybranych powiatów."""
     with CfgPars() as cfg:

@@ -89,7 +89,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                             )
         self.p_vn = MoekBoxPanel(
                             title="Siatka widoków",
-                            io_fn="vn_load()",
+                            io_fn="vn_mode_changed(clicked=True)",
                             config=True,
                             cfg_fn="vn_setup_mode(self.cfg_btn.isChecked())",
                             pages=2)

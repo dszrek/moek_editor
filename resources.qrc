@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/plugins/moek_editor" >
-        <file>icon.png</file>
-    </qresource>
-</RCC>

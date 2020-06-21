@@ -76,7 +76,7 @@ def teams_load():
                 team_i = teams[0][0]
                 team_t = teams[0][1]
             dlg.p_team.box.widgets["cmb_team_act"].setCurrentText(team_t)  # Ustawienie cb na aktualny team_t
-            teams_cb_changed()  # Sposób na kontynuowanie procesu intializacji systemu
+            # teams_cb_changed()  # Sposób na kontynuowanie procesu intializacji systemu
             # Podłączenie eventu zmiany team'u w cb
             dlg.p_team.box.widgets["cmb_team_act"].currentIndexChanged.connect(teams_cb_changed)
             return True
@@ -248,6 +248,8 @@ def powiaty_layer():
     layer = QgsProject.instance().mapLayersByName("mv_team_powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     layer_zoom(layer)  # Ustawienie zasięgu widoku mapy do wybranych powiatów
+    if not vn_mode_check():  # Viewnet jest wyłączony, przerywamy funkcję
+        return
     if powiat_m: # Załadowanie vn z obszaru wybranych powiatów
         vn_pow()
     user_with_vn = user_has_vn()
@@ -255,7 +257,6 @@ def powiaty_layer():
         vn_set_gvars(user_id, team_i, powiat_m, False)  # Ustalenie parametrów aktywnego vn'a
     else:  # Użytkownik nie ma przydzielonych vn w aktywnym teamie
         vn_set_gvars(user_id, team_i, powiat_m, True)  # Ustalenie parametrów aktywnego vn'a
-    vn_load()
 
 def user_has_vn():
     """Sprawdzenie czy użytkownik ma przydzielone vn w aktywnym teamie."""
@@ -360,18 +361,24 @@ def db_vn_mode_change(value):
 
 def vn_load():
     """Załadowanie vn z obszaru wybranych powiatów."""
+    print("[vn_load]")
     with CfgPars() as cfg:
         params = cfg.uri()
     proj = QgsProject.instance()
     URI_CONST = params + ' table="team_'
+
     if powiat_m:
         SQL_POW = " AND b_pow = True"
     else:
         SQL_POW = ""
 
-    # Warstwy vn do włączenia/wyłączenia w zależności od trybu ustawień vn
-    show_layers = ["vn_user", "vn_other", "vn_null", "vn_all"] if vn_setup else ["vn_sel", "vn_user"]
-    hide_layers = ["vn_sel"] if vn_setup else ["vn_other", "vn_null", "vn_all"]
+    if dlg.p_vn.is_active():
+        # Warstwy vn do włączenia/wyłączenia w zależności od trybu ustawień vn
+        show_layers = ["vn_user", "vn_other", "vn_null", "vn_all"] if vn_setup else ["vn_sel", "vn_user"]
+        hide_layers = ["vn_sel"] if vn_setup else ["vn_other", "vn_null", "vn_all"]
+    else:
+        show_layers = []
+        hide_layers = ["vn_sel", "vn_user", "vn_other", "vn_null", "vn_all"]
 
     # Włączenie/wyłączenie warstw vn
     for layer in show_layers:

@@ -22,18 +22,20 @@
  ***************************************************************************/
 """
 import os.path
+import time
 
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
-from .resources import *
-from .main import db_login, dlg_main, teams_load
-from. viewnet import dlg_viewnet
+from .resources import resources
+
+from .main import db_login, dlg_main, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
+from .viewnet import dlg_viewnet
+from .widgets import dlg_widgets
 
 # Import the code for the DockWidget
 from .moek_editor_dockwidget import MoekEditorDockWidget
-
 
 
 class MoekEditor:
@@ -167,7 +169,6 @@ class MoekEditor:
 
         return action
 
-
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
@@ -196,7 +197,6 @@ class MoekEditor:
 
         self.plugin_is_active = False
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
 
@@ -214,13 +214,14 @@ class MoekEditor:
 
     def run(self):
         """Run method that loads and starts the plugin"""
-
+        start = time.perf_counter()
         if self.plugin_is_active: # Sprawdzenie, czy plugin jest już uruchomiony
             QMessageBox.information(None, "Informacja", "Wtyczka jest już uruchomiona")
             return  # Uniemożliwienie uruchomienia drugiej instancji pluginu
 
         # Logowanie użytkownika do bazy danych
         user_logged = db_login()
+
         if not user_logged:
             return  # Użytkownik nie zalogował się poprawnie, przerwanie ładowania pluginu
 
@@ -235,17 +236,33 @@ class MoekEditor:
             if self.dockwidget == None:
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = MoekEditorDockWidget()
+                self.dockwidget.setUpdatesEnabled(False)
                 dlg_main(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do main.py
                 dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
+                dlg_widgets(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do widgets.py
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
-
             teams_loaded = teams_load() # Załadowanie team'ów
-            if not teams_loaded:
-                return  # Nie udało się załadować team'ów użytkownika, przerwanie ładowania pluginu
-
+            if not teams_loaded:  # Nie udało się załadować team'ów użytkownika, przerwanie ładowania pluginu
+                self.iface.removeDockWidget(self.dockwidget)
+                return
+            t1 = time.perf_counter()
+            teams_cb_changed()  # Załadowanie powiatów
+            t2 = time.perf_counter()
+            print(f"Proces ładowania powiatów trwał {round(t2 - t1, 2)} sek.")
+            t1 = time.perf_counter()
+            powiaty_cb_changed()  # Ustawienie aktywnego powiatu
+            t2 = time.perf_counter()
+            print(f"Proces ustawiania trybu wyświetlania powiatów trwał {round(t2 - t1, 2)} sek.")
+            t1 = time.perf_counter()
+            vn_mode_changed(clicked=False)
+            t2 = time.perf_counter()
+            print(f"Proces ładowania vn trwał {round(t2 - t1, 2)} sek.")
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
-            self.dockwidget.show()
+            self.dockwidget.setUpdatesEnabled(True)
+            # self.dockwidget.show()
+            finish = time.perf_counter()
+            print(f"Proces ładowania pluginu trwał {round(finish - start, 2)} sek.")

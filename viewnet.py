@@ -310,7 +310,6 @@ def vn_add():
     sql = SQL_4 + str(team_i) +".team_viewnet AS tv SET user_id = " + str(user_id) + " FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
     if db:  # Udane połączenie z db
         db.query_exeval(sql, vn_ids)  # Rezultat kwerendy
-        db.close()
     layer.removeSelection()
     vn_ids = []
     stage_refresh()
@@ -329,7 +328,6 @@ def vn_sub():
     sql = SQL_4 + str(team_i) +".team_viewnet AS tv SET user_id = Null FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
     if db:  # Udane połączenie z db
         db.query_exeval(sql, sel_ids)  # Rezultat kwerendy
-        db.close()
     all_layer.removeSelection()
     vn_ids = []
     stage_refresh()

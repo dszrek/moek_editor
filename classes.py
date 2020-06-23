@@ -76,6 +76,8 @@ class PgConn:
             return
         else:
             return result
+        finally:
+            self.close()
 
     def query_exeval(self, query, values):
         """Wykonanie kwerendy EXECUTE_VALUES."""
@@ -85,6 +87,8 @@ class PgConn:
         except Exception as error:
             self.__error_msg("query", error, query)
             return
+        finally:
+            self.close()
 
     def close(self):
         """Zamykanie połączenia i czyszczenie instancji."""

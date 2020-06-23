@@ -30,7 +30,7 @@ from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
 from .resources import resources
 
-from .main import db_login, dlg_main, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
+from .main import dlg_main, db_login, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
 from .viewnet import dlg_viewnet
 from .widgets import dlg_widgets
 
@@ -219,10 +219,8 @@ class MoekEditor:
             QMessageBox.information(None, "Informacja", "Wtyczka jest już uruchomiona")
             return  # Uniemożliwienie uruchomienia drugiej instancji pluginu
 
-        # Logowanie użytkownika do bazy danych
-        user_logged = db_login()
-
-        if not user_logged:
+        # Logowanie użytkownika do bazy danych:
+        if not db_login():
             return  # Użytkownik nie zalogował się poprawnie, przerwanie ładowania pluginu
 
         if not self.plugin_is_active:
@@ -243,22 +241,14 @@ class MoekEditor:
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
-            teams_loaded = teams_load() # Załadowanie team'ów
-            if not teams_loaded:  # Nie udało się załadować team'ów użytkownika, przerwanie ładowania pluginu
+
+            # Załadowanie team'ów:
+            if not teams_load():  # Nie udało się załadować team'ów użytkownika, przerwanie ładowania pluginu
                 self.iface.removeDockWidget(self.dockwidget)
                 return
-            t1 = time.perf_counter()
+
             teams_cb_changed()  # Załadowanie powiatów
-            t2 = time.perf_counter()
-            print(f"Proces ładowania powiatów trwał {round(t2 - t1, 2)} sek.")
-            t1 = time.perf_counter()
-            powiaty_cb_changed()  # Ustawienie aktywnego powiatu
-            t2 = time.perf_counter()
-            print(f"Proces ustawiania trybu wyświetlania powiatów trwał {round(t2 - t1, 2)} sek.")
-            t1 = time.perf_counter()
-            vn_mode_changed(clicked=False)
-            t2 = time.perf_counter()
-            print(f"Proces ładowania vn trwał {round(t2 - t1, 2)} sek.")
+
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)

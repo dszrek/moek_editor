@@ -5,8 +5,8 @@ from PyQt5.QtWidgets import QWidget, QFrame, QToolButton, QComboBox, QListView, 
 from PyQt5.QtCore import Qt, QSize, pyqtSignal, QRect
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QBrush, QColor
 
-from .main import vn_load, vn_setup_mode, powiaty_mode_changed, vn_mode_changed
-from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom
+from .main import vn_setup_mode, powiaty_mode_changed, vn_mode_changed
+# from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 
@@ -20,6 +20,7 @@ def dlg_widgets(_dlg):
 class MoekBoxPanel(QFrame):
     """Nadrzędny obiekt panelu."""
     activated = pyqtSignal(bool)
+    blocked = pyqtSignal(bool)
 
     def __init__(self, title="", switch=True, io_fn="", config=False, cfg_fn="", pages=1):
         super().__init__()
@@ -39,7 +40,10 @@ class MoekBoxPanel(QFrame):
         self.cfg_fn = cfg_fn
         self.config = config
         self.active = True
+        self.t_active = True
         self.activated.connect(self.active_change)
+        self.block = False
+        self.blocked.connect(self.block_change)
         self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         self.set_style(True)
         vlay = QVBoxLayout()
@@ -54,6 +58,8 @@ class MoekBoxPanel(QFrame):
         super().__setattr__(attr, val)
         if attr == "active":
             self.activated.emit(val)
+        elif attr == "block":
+            self.blocked.emit(val)
 
     def io_clicked(self, value):
         """Zmiana trybu active po kliknięciu na przycisk io."""
@@ -100,6 +106,11 @@ class MoekBoxPanel(QFrame):
                 self.bar.cfg_btn.setChecked(False)
                 self.bar.cfg_clicked()
 
+    def block_change(self, value):
+        """Zmiana trybu block."""
+        print("<block_change(", self.bar.l_title.text(), "):", value, ">")
+        self.bar.io_btn.setEnabled(not value)
+
     def add_button(self, dict):
         icon_name = dict["icon"] if "icon" in dict else dict["name"]
         _btn = MoekButton(size=dict["size"], name=icon_name, enabled=True, checkable=dict["checkable"], tooltip=dict["tooltip"])
@@ -116,6 +127,7 @@ class MoekBoxPanel(QFrame):
 class MoekBarPanel(QFrame):
     """Nadrzędny obiekt panelu."""
     activated = pyqtSignal(bool)
+    blocked = pyqtSignal(bool)
 
     def __init__(self, title="", title_off="", switch=True, io_fn=""):
         super().__init__()
@@ -134,6 +146,8 @@ class MoekBarPanel(QFrame):
         self.io_fn = io_fn
         self.active = True
         self.activated.connect(self.active_change)
+        self.block = False
+        self.blocked.connect(self.block_change)
         self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         self.title = title
         self.title_off = title_off
@@ -164,6 +178,8 @@ class MoekBarPanel(QFrame):
         super().__setattr__(attr, val)
         if attr == "active":
             self.activated.emit(val)
+        elif attr == "block":
+            self.blocked.emit(val)
 
     def is_active(self):
         """Zwraca, czy panel jest w trybie active."""
@@ -193,6 +209,11 @@ class MoekBarPanel(QFrame):
             self.l_title.setText(self.title_off) if len(self.title_off) > 0 else self.l_title.setText(self.title)
         if self.switch:
             self.io_btn.setChecked(value)
+
+    def block_change(self, value):
+        """Zmiana trybu block."""
+        print("<block_change(", self.title, "):", value, ">")
+        self.io_btn.setEnabled(not value)
 
     def add_button(self, dict):
         _btn = MoekButton(size=dict["size"], name=dict["name"], enabled=True, checkable=dict["checkable"], tooltip=dict["tooltip"])

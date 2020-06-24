@@ -97,9 +97,6 @@ class PgConn:
             self.connection.close()
             PgConn._instance = None
 
-    def __del__(self):
-        self.close()
-
 
 class CfgPars(ConfigParser):
     """Parser parametrów konfiguracji połączenia z bazą danych."""

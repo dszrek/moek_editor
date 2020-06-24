@@ -7,7 +7,7 @@ from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
 from .classes import PgConn, CfgPars
-from .viewnet import vn_set_gvars
+from .viewnet import vn_set_gvars, stage_refresh
 
 # Stałe globalne
 SQL_1 = " WHERE user_id = "
@@ -32,7 +32,7 @@ def dlg_main(_dlg):
 
 def db_login():
     """Logowanie do bazy danych."""
-    print("[db_login]")
+    # print("[db_login]")
     global user_id, user_name, team_i
     db = PgConn()
     # Wyszukanie aliasu systemowego w tabeli users:
@@ -54,7 +54,7 @@ def db_login():
 
 def teams_load():
     """Wczytanie team'ów użytkownika z bazy danych i wgranie ich do combobox'a (cmb_team_act)."""
-    print("[teams_load]")
+    # print("[teams_load]")
     global team_i, team_t, teams
     db = PgConn()
     # Wyszukanie nazw team'ów użytkownika:
@@ -84,7 +84,7 @@ def teams_load():
 
 def teams_cb_changed():
     """Zmiana w cb aktywnego team'u."""
-    print("[teams_cb_changed]")
+    # print("[teams_cb_changed]")
     global team_t, team_i
     t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Zapamiętanie aktualnego team_t
     list_srch = [t for t in teams if t_team_t in t]
@@ -111,9 +111,42 @@ def teams_cb_changed():
         dlg.p_team.box.widgets["cmb_team_act"].currentIndexChanged.connect(teams_cb_changed)
         print("Nie udało się zmienić team'u!")
 
+def teamusers_load():
+    """Wczytanie użytkowników z wybranego team'u i wgranie ich do cmb_teamusers."""
+    # print("[teamusers_load]")
+    db = PgConn()
+    # Wyszukanie użytkowników z aktywnego team'u:
+    sql = "SELECT tu.user_id, u.t_user_name FROM team_users tu JOIN users u ON tu.user_id = u.user_id WHERE tu.team_id = " + str(team_i) + ";"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            dlg.team_users = [(r[0],r[1]) for r in res]  # Populacja globalnej listy team_users numerami id użytkowników i ich nazwiskami
+            dlg.p_vn.widgets["cmb_teamusers"].clear()  # Skasowanie zawartości combobox'a
+            dlg.p_vn.widgets["cmb_teamusers"].addItems([r[1] for r in res])  # Populacja combobox'a nazwiskami użytkowników
+            dlg.t_user_name = user_name  # Ustawienie aktywnego użytkownika na tymczasowo aktywnego użytkownika w trybie vn_setup
+            list_srch = [t for t in dlg.team_users if dlg.t_user_name in t]
+            dlg.t_user_id = list_srch[0][0]  # User_id tymczasowo aktywnego użytkownika
+            # Aktualizacja wartości aktywnej combobox'a:
+            dlg.p_vn.widgets["cmb_teamusers"].setCurrentText(dlg.t_user_name)
+            # Podłączenie eventu zmiany cb:
+            dlg.p_vn.widgets["cmb_teamusers"].currentIndexChanged.connect(teamusers_cb_changed)
+            QgsProject.instance().mapLayersByName("vn_all")[0].selectionChanged.connect(vn_sel_changed)
+            vn_sel_changed()
+
+        else:
+            print("Nie udało się wczytać użytkowników team'u do combobox'a!")
+
+def teamusers_cb_changed():
+    """Zmiana w combobox'ie (cmb_teamusers) aktywnego użytkownika w trybie vn_setup."""
+    # print("[teamusers_cb_changed]")
+    dlg.t_user_name = dlg.p_vn.widgets["cmb_teamusers"].currentText()  # Zapamiętanie nazwiska aktywnego w trybie vn_setup użytkownika
+    list_srch = [t for t in dlg.team_users if dlg.t_user_name in t]
+    dlg.t_user_id = list_srch[0][0]  # User_id tymczasowo aktywnego użytkownika
+    vn_layer_update()
+
 def powiaty_load():
     """Wczytanie powiatów z wybranego team'u i wgranie ich do cmb_pow_act."""
-    print("[powiaty_load]")
+    # print("[powiaty_load]")
     global team_i, powiat_i, powiat_t, powiaty
     db = PgConn()
     # Wyszukanie powiatów z aktywnego team'u:
@@ -141,7 +174,7 @@ def powiaty_load():
 
 def powiaty_mode_changed(clicked):
     """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
-    print("[powiaty_mode_changed:", clicked, "]")
+    # print("[powiaty_mode_changed:", clicked, "]")
     if clicked:  # Zmiana trybu wyświetlania powiatów spowodowana kliknięciem w io_btn
         db_attr_change(tbl="team_users", attr="b_pow_mode", val=dlg.p_pow.is_active(), sql_bns=" AND team_id = " + str(team_i))  # Aktualizacja b_pow_mode w db
     else:  # Zmiana trybu wyświetlania powiatów spowodowana zmianą aktywnego team'u
@@ -151,7 +184,7 @@ def powiaty_mode_changed(clicked):
 
 def powiaty_cb_changed():
     """Zmiana w combobox'ie (cmb_pow_act) aktywnego powiatu."""
-    print("[powiaty_cb_changed]")
+    # print("[powiaty_cb_changed]")
     global powiat_t, powiat_i
     t_powiat_t = dlg.p_pow.box.widgets["cmb_pow_act"].currentText()  # Zapamiętanie nazwy aktualnego powiatu
     list_srch = [t for t in powiaty if t_powiat_t in t]
@@ -169,7 +202,7 @@ def powiaty_cb_changed():
 
 def pow_layer_update():
     """Aktualizacja warstwy powiatów."""
-    print("[pow_layer_update]")
+    # print("[pow_layer_update]")
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
@@ -179,10 +212,11 @@ def pow_layer_update():
     layer = QgsProject.instance().mapLayersByName("mv_team_powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     layer_zoom(layer)  # Przybliżenie widoku mapy do wybranego powiatu/powiatów
+    stage_refresh()  # Odświeżenie sceny
 
 def vn_mode_changed(clicked):
     """Włączenie bądź wyłączenie viewnet."""
-    print("[vn_mode_changed:", clicked, "]")
+    # print("[vn_mode_changed:", clicked, "]")
     if clicked:  # Włączenie/wyłączenie vn spowodowane kliknięciem w io_btn
         db_attr_change(tbl="team_users", attr="b_vn_mode", val=dlg.p_vn.is_active(), sql_bns=" AND team_id = " + str(team_i))  # Aktualizacja b_vn_mode w db
     else:  # Włączenie/wyłączenie vn spowodowane zmianą team'u
@@ -201,7 +235,7 @@ def vn_mode_changed(clicked):
 
 def vn_pow():
     """Ustalenie w db zakresu wyświetlanych vn'ów dla wybranego powiatu/powiatów."""
-    print("[vn_pow]")
+    # print("[vn_pow]")
     # Resetowanie b_pow () w db
     if db_vn_pow_reset():
         print("Zresetowano b_pow w db")
@@ -220,7 +254,7 @@ def vn_pow():
 
 def db_vn_pow_reset():
     """Ustawienie b_pow = False dla wszystkich vn'ów użytkownika z team_viewnet."""
-    print("[db_vn_pow_reset]")
+    # print("[db_vn_pow_reset]")
     db = PgConn()
     # Aktualizacja b_pow = False w tabeli 'team_viewnet':
     sql = "UPDATE team_" + str(team_i) + ".team_viewnet SET b_pow = False WHERE user_id = " + str(user_id) + ";"
@@ -235,7 +269,7 @@ def db_vn_pow_reset():
 
 def user_has_vn():
     """Sprawdzenie czy użytkownik ma przydzielone vn w aktywnym teamie."""
-    print("[user_has_vn]")
+    # print("[user_has_vn]")
     db = PgConn()
     if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
         sql = "SELECT vn_id FROM team_" + str(team_i) + ".team_viewnet WHERE user_id = " + str(user_id) + " AND b_pow is True;"
@@ -252,28 +286,54 @@ def user_has_vn():
 
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
-    print("[vn_setup_mode:", b_flag, "]")
+    # print("[vn_setup_mode:", b_flag, "]")
     global vn_setup
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą
         dlg.p_pow.active = False  # Wyłączenie trybu wybranego powiatu
-        dlg.p_pow.block = True
+        dlg.p_pow.block = True  # Zablokowanie p_pow.io_btn
+        # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
+        try:
+            dlg.p_vn.widgets["cmb_teamusers"].currentIndexChanged.disconnect(teamusers_cb_changed)
+            QgsProject.instance().mapLayersByName("vn_all")[0].selectionChanged.disconnect(vn_sel_changed)
+        except TypeError:
+            print("Obiekt nie jest jeszcze podłączony.")
+        teamusers_load()  # Wczytanie użytkowników do cmb_teamusers
         dlg.p_vn.box.setCurrentIndex(1)  # zmiana strony p_vn
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
         dlg.p_pow.active = dlg.p_pow.t_active  # Ewentualne przywrócenie trybu powiatu sprzed zmiany
         dlg.p_pow.block = False
+        # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
+        try:
+            dlg.p_vn.widgets["cmb_teamusers"].currentIndexChanged.disconnect(teamusers_cb_changed)
+            QgsProject.instance().mapLayersByName("vn_all")[0].selectionChanged.disconnect(vn_sel_changed)
+        except TypeError:
+            print("Obiekt nie jest jeszcze podłączony.")
         dlg.p_vn.box.setCurrentIndex(0)  # zmiana strony p_vn
     pow_layer_update()
+    vn_layer_update()
+
+def vn_sel_changed():
+    """Rekonfiguracja przycisków w zależności od stanu zaznaczenia vn'ów."""
+    vn_layer = QgsProject.instance().mapLayersByName("vn_all")[0]
+    value = True if vn_layer.selectedFeatureCount() > 0 else False
+    dlg.p_vn.widgets["btn_vn_add"].setEnabled(value)
+    dlg.p_vn.widgets["btn_vn_sub"].setEnabled(value)
+    dlg.p_vn.widgets["btn_vn_unsel"].setEnabled(value)
 
 def vn_layer_update():
     """Załadowanie vn z obszaru wybranych powiatów."""
-    print("[vn_layer_update]")
+    # print("[vn_layer_update]")
     with CfgPars() as cfg:
         params = cfg.uri()
     proj = QgsProject.instance()
     URI_CONST = params + ' table="team_'
+
+    # Wartość user_id w zależności od włączenia trybu vn_setup:
+    _user_id = dlg.t_user_id if vn_setup else user_id
+    # print("_user_id:", _user_id)
 
     if dlg.p_pow.is_active():
         SQL_POW = " AND b_pow = True"
@@ -297,9 +357,9 @@ def vn_layer_update():
     # Wyrażenia sql dla warstw vn
     layer_sql = {"vn_all": "",
                 "vn_null": "user_id IS NULL",
-                "vn_other": "user_id <> " + str(user_id) + " AND user_id IS NOT NULL",
-                "vn_user": "user_id = " + str(user_id)  + SQL_POW,
-                "vn_sel": "user_id = " + str(user_id) + " AND b_sel IS TRUE" + SQL_POW}
+                "vn_other": "user_id <> " + str(_user_id) + " AND user_id IS NOT NULL",
+                "vn_user": "user_id = " + str(_user_id)  + SQL_POW,
+                "vn_sel": "user_id = " + str(_user_id) + " AND b_sel IS TRUE" + SQL_POW}
 
     # Usuwanie wyrażeń sql warstw wyłączonych
     [layer_sql.pop(i) for i in hide_layers if i in layer_sql.keys()]
@@ -310,9 +370,11 @@ def vn_layer_update():
         layer = QgsProject.instance().mapLayersByName(key)[0]
         pg_layer_change(uri, layer)
 
+    stage_refresh()  # Odświeżenie sceny
+
 def db_attr_check(attr):
     """Zwraca parametr z db."""
-    print("[db_attr_check:", attr, "]")
+    # print("[db_attr_check:", attr, "]")
     db = PgConn()
     # Wyszukanie t_active_pow w db:
     sql = "SELECT " + attr + " FROM team_users WHERE team_id = " + str(team_i) + " AND user_id = " + str(user_id) + ";"
@@ -323,7 +385,7 @@ def db_attr_check(attr):
 
 def db_attr_change(tbl, attr, val, sql_bns):
     """Zmiana atrybutu w db."""
-    print("[db_attr_change(", tbl, ",", attr, "):", val, "]")
+    # print("[db_attr_change(", tbl, ",", attr, "):", val, "]")
     db = PgConn()
     # Aktualizacja atrybutu (attr) w tabeli (tbl) na wartość (val):
     sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + SQL_1 + str(user_id) + sql_bns + ";"
@@ -338,7 +400,7 @@ def db_attr_change(tbl, attr, val, sql_bns):
 
 def pg_layer_change(uri, layer):
     """Zmiana zawartości warstwy postgis na podstawie Uri"""
-    print("[pg_layer_change:", uri, layer, "]")
+    # print("[pg_layer_change:", uri, layer, "]")
     xml_document = QDomDocument("style")
     xml_maplayers = xml_document.createElement("maplayers")
     xml_maplayer = xml_document.createElement("maplayer")
@@ -349,12 +411,11 @@ def pg_layer_change(uri, layer):
     xml_maplayers.appendChild(xml_maplayer)
     xml_document.appendChild(xml_maplayers)
     layer.readLayerXml(xml_maplayer, context)
-    iface.actionDraw().trigger()
-    iface.mapCanvas().refresh()
+    iface.layerTreeView().refreshLayerSymbology(layer.id())
 
 def layer_zoom(layer):
     """Zbliżenie mapy do obiektów z danej warstwy."""
-    print("[layer_zoom:", layer, "]")
+    # print("[layer_zoom:", layer, "]")
     layer.selectAll()
     iface.mapCanvas().zoomToSelected(layer)
     layer.removeSelection()

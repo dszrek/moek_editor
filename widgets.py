@@ -96,7 +96,6 @@ class MoekBoxPanel(QFrame):
 
     def active_change(self, value):
         """Zmiana trybu active."""
-        print("<active_change(", self.bar.l_title.text(), "):", value, ">")
         self.set_style(value)
         self.bar.io_btn.setChecked(value)
         self.box.setVisible(value)
@@ -108,7 +107,6 @@ class MoekBoxPanel(QFrame):
 
     def block_change(self, value):
         """Zmiana trybu block."""
-        print("<block_change(", self.bar.l_title.text(), "):", value, ">")
         self.bar.io_btn.setEnabled(not value)
 
     def add_button(self, dict):
@@ -200,7 +198,6 @@ class MoekBarPanel(QFrame):
 
     def active_change(self, value):
         """Zmiana trybu active."""
-        print("<active_change(", self.title, "):", value, ">")
         self.set_style(value)
         self.box.setVisible(value)
         if value:
@@ -212,7 +209,6 @@ class MoekBarPanel(QFrame):
 
     def block_change(self, value):
         """Zmiana trybu block."""
-        print("<block_change(", self.title, "):", value, ">")
         self.io_btn.setEnabled(not value)
 
     def add_button(self, dict):
@@ -257,10 +253,6 @@ class MoekBar(QFrame):
             hlay.addWidget(self.cfg_btn)
             self.cfg_btn.clicked.connect(self.cfg_clicked)
         self.setLayout(hlay)
-
-    # def io_clicked(self):
-    #     """Zmiana trybu active po kliknięciu na przycisk io."""
-    #     self.parent().active = self.io_btn.isChecked()
 
     def cfg_clicked(self):
         """Uruchomienie zdefiniowanej funkcji po kliknięciu na przycisk cfg."""
@@ -393,7 +385,4 @@ class MoekComboBox(QComboBox):
                                 background-color: white;
                             }
                            """)
-        # self.addItem("Kamila Andrzejewska-Kubrak")
-        # self.addItem("Władysław Ślusarek")
-        # self.addItem("Dominik Szrek")
         self.findChild(QFrame).setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)

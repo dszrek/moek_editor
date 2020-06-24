@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import time
 
 from qgis.core import QgsProject, QgsFeature
 from qgis.utils import iface
@@ -136,6 +137,7 @@ def vn_polysel(geom):
     select_vn(sel_geom)
 
 def select_vn(sel_geom):
+    """Wybranie vn'ów znajdujących się w obrębie geometrii sel_geom."""
     global vn_ids
     vn_layer = QgsProject.instance().mapLayersByName("vn_all")[0]
     vn_feats = vn_layer.getFeatures()
@@ -306,10 +308,10 @@ def vn_add():
     """Przydzielenie wybranych vn'ów do użytkownika."""
     global vn_ids
     layer = QgsProject.instance().mapLayersByName("vn_all")[0]
-    db = PgConn()  # Tworzenie obiektu połączenia z db
-    sql = SQL_4 + str(team_i) +".team_viewnet AS tv SET user_id = " + str(user_id) + " FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
-    if db:  # Udane połączenie z db
-        db.query_exeval(sql, vn_ids)  # Rezultat kwerendy
+    db = PgConn()
+    sql = SQL_4 + str(team_i) +".team_viewnet AS tv SET user_id = " + str(dlg.t_user_id) + " FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
+    if db:
+        db.query_exeval(sql, vn_ids)
     layer.removeSelection()
     vn_ids = []
     stage_refresh()
@@ -324,10 +326,10 @@ def vn_sub():
     for feat in user_layer.getFeatures():
         user_ids.append((feat["vn_id"],))
     sel_ids = [value for value in user_ids if value in vn_ids]
-    db = PgConn()  # Tworzenie obiektu połączenia z db
+    db = PgConn()
     sql = SQL_4 + str(team_i) +".team_viewnet AS tv SET user_id = Null FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
-    if db:  # Udane połączenie z db
-        db.query_exeval(sql, sel_ids)  # Rezultat kwerendy
+    if db:
+        db.query_exeval(sql, sel_ids)
     all_layer.removeSelection()
     vn_ids = []
     stage_refresh()
@@ -444,5 +446,8 @@ def vn_first_last(axis, order):
 
 def stage_refresh():
     """Odświeżenie zawartości mapy."""
+    t1 = time.perf_counter()
     iface.actionDraw().trigger()
     iface.mapCanvas().refresh()
+    t2 = time.perf_counter()
+    print(f"************* {round(t2 - t1, 2)} sek.")

@@ -56,7 +56,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
-        # self.iface = iface
+
+        self.iface = iface
         self.setupUi(self)
         p_team_widgets = [
                     {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
@@ -69,11 +70,11 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_zoom", "size": 50, "checkable": False, "tooltip": u"przybliż do pola"},
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_done", "icon": "vn_doneT", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE"'},
                     {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_doneF", "icon": "vn_doneTf", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE" i idź do następnego'},
-                    {"page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 3, "item": "combobox", "name": "team_users", "border": 1, "b_round": "none"},
-                    {"page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_powsel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola siatki widoków znajdujące się w granicach wybranego powiatu"},
-                    {"page": 1, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_polysel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola znajdujące się w granicach narysowanego poligonu"},
-                    {"page": 1, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_unsel", "size": 50, "checkable": False, "tooltip": u"wyczyść zaznaczenie pól siatki widoków"},
-                    {"page": 1, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_add", "size": 50, "checkable": False, "tooltip": u"dodaj wybrane pola siatki widoków do zakresu poszukiwań wskazanego użytkownika"},
+                    {"page": 1, "row": 0, "col": 1, "r_span": 1, "c_span": 3, "item": "combobox", "name": "teamusers", "border": 1, "b_round": "none"},
+                    {"page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_powsel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola siatki widoków znajdujące się w granicach wybranego powiatu"},
+                    {"page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_polysel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola znajdujące się w granicach narysowanego poligonu"},
+                    {"page": 1, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_unsel", "size": 50, "checkable": False, "tooltip": u"wyczyść zaznaczenie pól siatki widoków"},
+                    {"page": 1, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_add", "size": 50, "checkable": False, "tooltip": u"dodaj wybrane pola siatki widoków do zakresu poszukiwań wskazanego użytkownika"},
                     {"page": 1, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sub", "size": 50, "checkable": False, "tooltip": u"odejmij wybrane pola siatki widoków od zakresu poszukiwań wskazanego użytkownika"}
                     ]
         self.p_team = MoekBarPanel(
@@ -171,8 +172,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_zoom"].pressed.connect(vn_zoom)
         self.p_vn.widgets["btn_vn_done"].pressed.connect(lambda: change_done(False))
         self.p_vn.widgets["btn_vn_doneF"].pressed.connect(lambda: change_done(True))
-        self.p_vn.widgets["btn_vn_powsel"].clicked.connect(lambda: self.ident_mt_init(self.p_vn.widgets["btn_vn_powsel"], "mv_team_powiaty", vn_powsel))
-        self.p_vn.widgets["btn_vn_polysel"].clicked.connect(lambda: self.poly_mt_init(self.p_vn.widgets["btn_vn_polysel"], vn_polysel))
+        self.p_vn.widgets["btn_vn_powsel"].clicked.connect(lambda: self.ident_mt_init(btn=self.p_vn.widgets["btn_vn_powsel"], lyr="mv_team_powiaty", fn=vn_powsel))
+        self.p_vn.widgets["btn_vn_polysel"].clicked.connect(lambda: self.poly_mt_init(btn=self.p_vn.widgets["btn_vn_polysel"], fn=vn_polysel))
         self.p_vn.widgets["btn_vn_unsel"].pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
@@ -192,25 +193,25 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             icon.addFile(ICON_PATH + icon_name + "_1.png", size=QSize(size, size), mode=QIcon.Selected, state=QIcon.On)
         btn.setIcon(icon)
 
-    def ident_mt_init(self, btn, layer_name, callback):
+    def ident_mt_init(self, btn, lyr, fn):
         """Initializacja maptool'a do identyfikacji obiektu na określonej warstwie."""
         canvas = self.iface.mapCanvas()
-        layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+        layer = QgsProject.instance().mapLayersByName(lyr)[0]
         if btn.isChecked() is False:
             canvas.unsetMapTool(self.maptool)
             return
         self.maptool = IdentMapTool(canvas, layer)
-        self.maptool.identified.connect(callback)
+        self.maptool.identified.connect(fn)
         canvas.setMapTool(self.maptool)
 
-    def poly_mt_init(self, btn, callback):
+    def poly_mt_init(self, btn, fn):
         """Initializacja maptool'a do poligonalnego zaznaczania obiektów na określonej warstwie."""
         canvas = self.iface.mapCanvas()
         if btn.isChecked() is False:
             canvas.unsetMapTool(self.maptool)
             return
         self.maptool = PolySelMapTool(canvas)
-        self.maptool.selected.connect(callback)
+        self.maptool.selected.connect(fn)
         canvas.setMapTool(self.maptool)
 
     def closeEvent(self, event):

@@ -235,6 +235,12 @@ class MoekEditor:
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = MoekEditorDockWidget()
                 self.dockwidget.setUpdatesEnabled(False)
+
+                # Zmienne globalne:
+                self.dockwidget.t_user_id = int()
+                self.dockwidget.t_user_name = ""
+                self.dockwidget.team_users = []
+
                 dlg_main(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do main.py
                 dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
                 dlg_widgets(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do widgets.py

@@ -35,7 +35,7 @@ from qgis.utils import iface
 from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom
 from .viewnet import hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .classes import IdentMapTool, PolySelMapTool
-from .widgets import MoekBoxPanel, MoekBarPanel
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekMapPanel
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -92,10 +92,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                             title_off="Wszystkie powiaty",
                             io_fn="powiaty_mode_changed(clicked=True)"
                             )
-        self.p_map = MoekBoxPanel(
-                            title="Podkłady mapowe",
-                            switch=False
-                            )
+        self.p_map = MoekMapPanel()
         self.p_vn = MoekBoxPanel(
                             title="Siatka widoków",
                             io_fn="vn_mode_changed(clicked=True)",

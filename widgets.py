@@ -29,6 +29,7 @@ class MoekBoxPanel(QFrame):
         self.setGraphicsEffect(shadow)
         self.bar = MoekBar(title=title, switch=switch, config=config)
         self.box = MoekStackedBox()
+        self.box.setObjectName("box")
         self.box.pages = {}
         for p in range(pages):
             _page = MoekGridBox()
@@ -121,6 +122,49 @@ class MoekBoxPanel(QFrame):
         exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_cmb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
         cmb_name = f'cmb_{dict["name"]}'
         self.widgets[cmb_name] = _cmb
+
+
+class MoekMapPanel(QFrame):
+    """Nadrzędny obiekt panelu."""
+
+    def __init__(self,io_fn="", pages=1):
+        super().__init__()
+        self.setObjectName("mappnl")
+        shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(180, 180, 180), xOffset=0, yOffset=0)
+        self.setGraphicsEffect(shadow)
+        self.box = MoekStackedBox()
+        self.box.setObjectName("box")
+        self.box.pages = {}
+        for p in range(pages):
+            _page = MoekGridBox()
+            page_id = f'page_{p}'
+            self.box.pages[page_id] = _page
+            self.box.addWidget(_page)
+        self.widgets = {}
+        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        self.setStyleSheet("""
+                    QFrame#mappnl {background-color: white; border: none; border-radius: 6px}
+                    QFrame#box {background-color: transparent; border: none}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(0, 0, 0, 0)
+        vlay.setSpacing(0)
+        vlay.addWidget(self.box)
+        self.setLayout(vlay)
+
+    def add_button(self, dict):
+        icon_name = dict["icon"] if "icon" in dict else dict["name"]
+        _btn = MoekButton(size=dict["size"], name=icon_name, enabled=True, checkable=dict["checkable"], tooltip=dict["tooltip"])
+        exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_btn, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+        btn_name = f'btn_{dict["name"]}'
+        self.widgets[btn_name] = _btn
+
+    def add_combobox(self, dict):
+        _cmb = MoekComboBox(name=dict["name"], border=dict["border"], b_round=dict["b_round"])
+        exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_cmb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+        cmb_name = f'cmb_{dict["name"]}'
+        self.widgets[cmb_name] = _cmb
+
 
 class MoekBarPanel(QFrame):
     """Nadrzędny obiekt panelu."""

@@ -25,7 +25,7 @@ class MoekBoxPanel(QFrame):
     def __init__(self, title="", switch=True, io_fn="", config=False, cfg_fn="", pages=1):
         super().__init__()
         self.setObjectName("boxpnl")
-        shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(180, 180, 180), xOffset=0, yOffset=0)
+        shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow)
         self.bar = MoekBar(title=title, switch=switch, config=config)
         self.box = MoekStackedBox()
@@ -130,7 +130,7 @@ class MoekMapPanel(QFrame):
     def __init__(self,io_fn="", pages=1):
         super().__init__()
         self.setObjectName("mappnl")
-        shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(180, 180, 180), xOffset=0, yOffset=0)
+        shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow)
         self.box = MoekStackedBox()
         self.box.setObjectName("box")
@@ -175,7 +175,7 @@ class MoekBarPanel(QFrame):
         super().__init__()
         self.setObjectName("barpnl")
         self.setMinimumHeight(33)
-        shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(180, 180, 180), xOffset=0, yOffset=0)
+        shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow)
         self.box = MoekHBox()
         self.box.widgets = {}

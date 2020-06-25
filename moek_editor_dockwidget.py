@@ -69,7 +69,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "map_sat", "size": 50, "checkable": True, "tooltip": u"fotomapa"},
                     {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "map_ter", "size": 50, "checkable": True, "tooltip": u"numeryczny model terenu"},
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "map_ser", "size": 50, "checkable": True, "tooltip": u"fotomapa + numeryczny model terenu"},
-                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "map_car", "size": 50, "checkable": True, "tooltip": u"mapa samochodowa"}
+                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "map_car", "size": 50, "checkable": True, "tooltip": u"mapa samochodowa"},
+                    {"page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 4, "item": "spinbox", "name": "map_name"}
                     ]
         p_vn_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sel", "size": 50, "checkable": True, "tooltip": u"wybierz pole"},
@@ -108,6 +109,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     panel.add_button(widget)
                 elif widget["item"] == "combobox":
                     panel.add_combobox(widget)
+                elif widget["item"] == "spinbox":
+                    panel.add_spinbox(widget)
             self.vl_main.addWidget(panel)
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)

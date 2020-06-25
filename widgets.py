@@ -143,7 +143,7 @@ class MoekMapPanel(QFrame):
         self.widgets = {}
         self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         self.setStyleSheet("""
-                    QFrame#mappnl {background-color: white; border: none; border-radius: 6px}
+                    QFrame#mappnl {background-color: white; border: none; border-top-left-radius: 6px; border-bottom-left-radius: 16px; border-top-right-radius: 6px; border-bottom-right-radius: 16px}
                     QFrame#box {background-color: transparent; border: none}
                     """)
         vlay = QVBoxLayout()
@@ -159,11 +159,11 @@ class MoekMapPanel(QFrame):
         btn_name = f'btn_{dict["name"]}'
         self.widgets[btn_name] = _btn
 
-    def add_combobox(self, dict):
-        _cmb = MoekComboBox(name=dict["name"], border=dict["border"], b_round=dict["b_round"])
-        exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_cmb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
-        cmb_name = f'cmb_{dict["name"]}'
-        self.widgets[cmb_name] = _cmb
+    def add_spinbox(self, dict):
+        _spb = MoekHSpinBox()
+        exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_spb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+        spb_name = f'spb_{dict["name"]}'
+        self.widgets[spb_name] = _spb
 
 
 class MoekBarPanel(QFrame):
@@ -336,6 +336,30 @@ class MoekStackedBox(QStackedWidget):
 
     def minimumSizeHint(self):
         return self.currentWidget().minimumSizeHint()
+
+
+class MoekHSpinBox(QFrame):
+    """Widget z centralnie umieszczonym labelem i przyciskami zmiany po jego obu stronach."""
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("frm")
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.prev_btn = MoekButton(size=25, name="prev", enabled=True, checkable=False)
+        self.next_btn = MoekButton(size=25, name="next", enabled=True, checkable=False)
+        self.label = QLabel()
+        self.label.setText("Geoportal HD")
+        self.label.setObjectName("lbl")
+        self.setStyleSheet("""
+                    QFrame#frm {border: 2px solid rgb(52, 132, 240); border-radius: 14px}
+                    QFrame#lbl {color: rgb(52, 132, 240); font-size: 10pt; qproperty-alignment: AlignCenter}
+                    """)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(0)
+        hlay.addWidget(self.prev_btn, 1)
+        hlay.addWidget(self.label, 10)
+        hlay.addWidget(self.next_btn, 1)
+        self.setLayout(hlay)
 
 
 class MoekButton(QToolButton):

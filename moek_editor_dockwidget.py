@@ -65,6 +65,12 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         p_pow_widgets = [
                     {"item": "combobox", "name": "pow_act", "height": 21, "border": 1, "b_round": "none"}
                     ]
+        p_map_widgets = [
+                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "map_sat", "size": 50, "checkable": True, "tooltip": u"fotomapa"},
+                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "map_ter", "size": 50, "checkable": True, "tooltip": u"numeryczny model terenu"},
+                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "map_ser", "size": 50, "checkable": True, "tooltip": u"fotomapa + numeryczny model terenu"},
+                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "map_car", "size": 50, "checkable": True, "tooltip": u"mapa samochodowa"}
+                    ]
         p_vn_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sel", "size": 50, "checkable": True, "tooltip": u"wybierz pole"},
                     {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_zoom", "size": 50, "checkable": False, "tooltip": u"przybliż do pola"},
@@ -86,14 +92,18 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                             title_off="Wszystkie powiaty",
                             io_fn="powiaty_mode_changed(clicked=True)"
                             )
+        self.p_map = MoekBoxPanel(
+                            title="Podkłady mapowe",
+                            switch=False
+                            )
         self.p_vn = MoekBoxPanel(
                             title="Siatka widoków",
                             io_fn="vn_mode_changed(clicked=True)",
                             config=True,
                             cfg_fn="vn_setup_mode(self.cfg_btn.isChecked())",
                             pages=2)
-        self.panels = [self.p_team, self.p_pow, self.p_vn]
-        self.widgets = [p_team_widgets, p_pow_widgets, p_vn_widgets]
+        self.panels = [self.p_team, self.p_pow, self.p_map, self.p_vn]
+        self.widgets = [p_team_widgets, p_pow_widgets, p_map_widgets, p_vn_widgets]
 
         for (panel, widgets) in zip(self.panels, self.widgets):
             for widget in widgets:

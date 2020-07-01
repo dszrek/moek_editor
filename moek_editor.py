@@ -219,8 +219,9 @@ class MoekEditor:
             QMessageBox.information(None, "Informacja", "Wtyczka jest już uruchomiona")
             return  # Uniemożliwienie uruchomienia drugiej instancji pluginu
 
-        # Logowanie użytkownika do bazy danych:
-        if not db_login():
+        # Logowanie użytkownika do bazy danych i pobranie wartości podstawowych zmiennych:
+        user_id, user_name, team_i = db_login()
+        if not user_id:
             return  # Użytkownik nie zalogował się poprawnie, przerwanie ładowania pluginu
 
         if not self.plugin_is_active:
@@ -237,13 +238,22 @@ class MoekEditor:
                 self.dockwidget.setUpdatesEnabled(False)
 
                 # Zmienne globalne:
+                self.dockwidget.user_id = user_id
+                self.dockwidget.user_name = user_name
                 self.dockwidget.t_user_id = int()
                 self.dockwidget.t_user_name = ""
+                self.dockwidget.powiaty = []
+                self.dockwidget.powiat_i = int()
+                self.dockwidget.powiat_t = ""
                 self.dockwidget.team_users = []
+                self.dockwidget.teams = []
+                self.dockwidget.team_i = team_i
+                self.dockwidget.team_t = ""
 
                 dlg_main(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do main.py
                 dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
                 dlg_widgets(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do widgets.py
+                dlg_basemaps(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)

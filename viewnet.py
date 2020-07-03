@@ -8,11 +8,8 @@ from .classes import PgConn
 
 # Zmienne globalne:
 dlg = None
-user_id = int()
-team_i = int()
 powiat_m = None
 vn = None
-hk_active = None
 vn_ids = []  # type: ignore
 
 # Stałe globalne:
@@ -33,24 +30,10 @@ class SelVN:
     d_btn = None
 
     def __init__(self, l=-1, x=-1, y=-1, d=None):
-        """Inicjalizator."""
         self.l = l
         self.x = x
         self.y = y
         self.d = d
-
-    @staticmethod
-    def _active(val):
-        """Włączenie/wyłączenie skrótów klawiszowych"""
-        global hk_active
-        if val != hk_active:
-            if val == True:
-                hk_active = True
-                dlg.toggle_hk(True)  # Aktywacja skrótów klawiszowych
-            elif val == False:
-                if hk_active:
-                    dlg.toggle_hk(False)  # Deaktywacja skrótów klawiszowych
-                hk_active = False
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -80,7 +63,7 @@ class SelVN:
         """Włączenie lub wyłączenie przycisków vn w zależności od atrybutu l."""
         if val > 0:
             # Włączenie/wyłączenie skrótów klawiszowych
-            SelVN._active(False) if val == 1 else SelVN._active(True)
+            dlg.hk_vn = False if val == 1 else True
             if val == 1:
                 vn_btn_enable(False)  # Wyłączenie przycisków
             elif val == 2:
@@ -99,12 +82,10 @@ class SelVN:
 
 def vn_btn_enable(state):
     """Włączenie lub wyłączenie przycisków vn."""
-    # Lista przycisków do włączenia/wyłączenia
     buttons = [dlg.p_vn.widgets["btn_vn_sel"],
                dlg.p_vn.widgets["btn_vn_zoom"],
                dlg.p_vn.widgets["btn_vn_done"],
                dlg.p_vn.widgets["btn_vn_doneF"]]
-
     for button in buttons:
         button.setEnabled(state)
 
@@ -157,11 +138,9 @@ def unset_maptool(btn):
     btn.setChecked(False)  # Odznaczenie przycisku
     dlg.iface.mapCanvas().unsetMapTool(dlg.maptool)
 
-def vn_set_gvars(_user_id, _team_i, _powiat_m, no_vn):
+def vn_set_gvars(_powiat_m, no_vn):
     """Ustawienie globalnych zmiennych dotyczących aktywnego vn dla aktywnego teamu."""
-    global user_id, team_i, powiat_m, vn
-    user_id = _user_id
-    team_i = _team_i
+    global powiat_m, vn
     powiat_m = _powiat_m
     if vn:  # Kasowanie obiektu SelVN, jeżeli już istnieje
         del vn

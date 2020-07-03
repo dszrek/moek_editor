@@ -49,9 +49,9 @@ b_scroll = None
 class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     closingPlugin = pyqtSignal()
+    hk_vn_changed = pyqtSignal(bool)
 
     def __init__(self, parent=None):
-        """Constructor."""
         super(MoekEditorDockWidget, self).__init__(parent)
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
@@ -113,11 +113,13 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.resizeEvent = self.resize_panel
 
         self.__button_conn()
+        self.hk_vn_load()
 
-        hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space"}
-
-        for key, val in hotkeys.items():
-            exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", iface.mainWindow())")
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "hk_vn":
+            self.hk_vn_changed.emit(val)
 
     def resize_panel(self, event):
         """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
@@ -136,7 +138,9 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             h_sum += panel.rect().height()
         if w_max == 640:  # Szerokość bazowa przy tworzeniu widget'u
             return
-        # Wyrównanie szerokości paneli do najszerszego widget'u
+        elif w_max < 208:  # Ustawienie minimalnej szerokości paneli
+            w_max = 208
+        # Wyrównanie szerokości paneli do najszerszego panelu
         for panel in self.panels:
             panel.setMinimumWidth(w_max)
         # Algorytm wykrywania i obsługi pionowego scrollbar'u
@@ -157,19 +161,39 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             self.resize(p_width, self.height())
         iface.actionDraw().trigger()
 
-    def toggle_hk(self, enabled):
-        hotkeys = {"hk_up": "hk_up_pressed",
-                   "hk_down": "hk_down_pressed",
-                   "hk_left": "hk_left_pressed",
-                   "hk_right": "hk_right_pressed",
-                   "hk_space": "lambda: change_done(True)"}
-        io = "connect" if enabled else "disconnect"
+    def hk_vn_load(self):
+        """Załadowanie skrótów klawiszowych do obsługi vn."""
+        hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space"}
+        for key, val in hotkeys.items():
+            exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", self)")
+            exec(SELF + key + ".setEnabled(False)")
+        self.hk_vn_active = False
+        self.t_hk_vn = False
+        self.hk_vn_changed.connect(self.hk_vn_change)
+
+    def hk_vn_change(self):
+        """Włączenie/wyłączenie skrótów klawiszowych do obsługi vn."""
+        if self.hk_vn_active == self.hk_vn:  # hk_vn już ma odpowiednią wartość
+            return
+        hk_fn = {"hk_up": "hk_up_pressed",
+                "hk_down": "hk_down_pressed",
+                "hk_left": "hk_left_pressed",
+                "hk_right": "hk_right_pressed",
+                "hk_space": "lambda: change_done(True)"}
+        io = "connect" if self.hk_vn else "disconnect"
         try:
-            for key, val in hotkeys.items():
-                exec(SELF + key + ".setEnabled(enabled)")
+            for key, val in hk_fn.items():
+                # Aktywacja/dezaktywacja skrótów klawiszowych:
+                exec(SELF + key + ".setEnabled(self.hk_vn)")
+                # Usunięcie nazwy funkcji z nawiasu przy odłączaniu skrótów klawiszowych:
+                if not self.hk_vn:
+                    val = ""
+                # Podłączenie/odłączenie sygnału:
                 exec(SELF + key + ".activated." + io + "(" + val + ")")
         except Exception as error:
-            print("hotkeys exception: {}".format(error))
+            print(f"hotkeys exception ({key}): {error}")
+        finally:
+            self.hk_vn_active = self.hk_vn  # Zapamiętanie stanu hk_vn
 
     def __button_conn(self):
         """Przyłączenia przycisków do funkcji."""
@@ -220,6 +244,6 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         canvas.setMapTool(self.maptool)
 
     def closeEvent(self, event):
-        self.toggle_hk(False)  # Deaktywacja skrótów klawiszowych
+        self.hk_vn = False  # Deaktywacja skrótów klawiszowych
         self.closingPlugin.emit()
         event.accept()

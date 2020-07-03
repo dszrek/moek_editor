@@ -210,6 +210,7 @@ def vn_mode_changed(clicked):
         # Wczytanie z db b_vn_mode dla nowowybranego team'u i ustawienie trybu active dla p_vn:
         dlg.p_vn.active = db_attr_check("b_vn_mode")
     if not dlg.p_vn.is_active():  # Vn jest wyłączony
+        dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych
         vn_layer_update()  # Aktualizacja warstw z vn
         return
     if dlg.p_pow.is_active():  # Włączony tryb pojedynczego powiatu
@@ -277,6 +278,9 @@ def vn_setup_mode(b_flag):
     global vn_setup
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
+        if dlg.hk_vn:  # Skróty klawiszowe vn włączone
+            dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
+        dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą
         dlg.p_pow.active = False  # Wyłączenie trybu wybranego powiatu
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
@@ -289,6 +293,9 @@ def vn_setup_mode(b_flag):
         dlg.p_vn.box.setCurrentIndex(1)  # zmiana strony p_vn
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
+        if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
+            dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
+            dlg.t_hk_vn = False
         dlg.p_pow.active = dlg.p_pow.t_active  # Ewentualne przywrócenie trybu powiatu sprzed zmiany
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
         try:

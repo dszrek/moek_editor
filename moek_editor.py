@@ -33,6 +33,7 @@ from .resources import resources
 from .main import dlg_main, db_login, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
 from .viewnet import dlg_viewnet
 from .widgets import dlg_widgets
+from .basemaps import dlg_basemaps, basemaps_load
 
 # Import the code for the DockWidget
 from .moek_editor_dockwidget import MoekEditorDockWidget
@@ -262,8 +263,9 @@ class MoekEditor:
             if not teams_load():  # Nie udało się załadować team'ów użytkownika, przerwanie ładowania pluginu
                 self.iface.removeDockWidget(self.dockwidget)
                 return
-
             teams_cb_changed()  # Załadowanie powiatów
+            basemaps_load()  # Załadowanie podkładów mapowych
+            self.dockwidget.p_map.cat = "sat"
 
             # show the dockwidget
             # TODO: fix to allow choice of dock location

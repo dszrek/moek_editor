@@ -32,10 +32,12 @@ from PyQt5.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject
 from qgis.utils import iface
 
-from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom
-from .viewnet import hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .classes import IdentMapTool, PolySelMapTool
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekMapPanel
+from .main import vn_mode_changed
+from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
+from .widgets import MoekBoxPanel, MoekBarPanel
+from .basemaps import MoekMapPanel
+
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -59,19 +61,14 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
         self.iface = iface
         self.setupUi(self)
+
         p_team_widgets = [
                     {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
                     ]
         p_pow_widgets = [
                     {"item": "combobox", "name": "pow_act", "height": 21, "border": 1, "b_round": "none"}
                     ]
-        p_map_widgets = [
-                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "map_sat", "size": 50, "checkable": True, "tooltip": u"fotomapa"},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "map_ter", "size": 50, "checkable": True, "tooltip": u"numeryczny model terenu"},
-                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "map_ser", "size": 50, "checkable": True, "tooltip": u"fotomapa + numeryczny model terenu"},
-                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "map_car", "size": 50, "checkable": True, "tooltip": u"mapa samochodowa"},
-                    {"page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 4, "item": "spinbox", "name": "map_name"}
-                    ]
+        p_map_widgets = []
         p_vn_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sel", "size": 50, "checkable": True, "tooltip": u"wybierz pole"},
                     {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_zoom", "size": 50, "checkable": False, "tooltip": u"przybliż do pola"},
@@ -109,8 +106,6 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     panel.add_button(widget)
                 elif widget["item"] == "combobox":
                     panel.add_combobox(widget)
-                elif widget["item"] == "spinbox":
-                    panel.add_spinbox(widget)
             self.vl_main.addWidget(panel)
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)

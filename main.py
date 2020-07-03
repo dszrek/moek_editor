@@ -404,3 +404,9 @@ def layer_zoom(layer):
     iface.mapCanvas().zoomToSelected(layer)
     layer.removeSelection()
     iface.mapCanvas().refresh()
+
+def block_panels(_panel, value):
+    """Zablokowanie wszystkich paneli prócz wybranego."""
+    for panel in dlg.panels:
+        if panel != _panel or panel == "p_map":
+            panel.setEnabled(not value)

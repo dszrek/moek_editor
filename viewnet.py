@@ -157,13 +157,13 @@ def vn_set_gvars(_powiat_m, no_vn):
 
 def vn_with_sel():
     """Sprawdzenie czy użytkownik ma aktywny vn w aktywnym teamie i zwrócenie jego parametrów."""
-    db = PgConn() # Tworzenie obiektu połączenia z db
-    if powiat_m:  # Właczony jest tryb wyświetlania pojedynczego powiatu
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND b_pow is True AND b_sel is True;"
+    db = PgConn()
+    if powiat_m:  # Włączony jest tryb wyświetlania pojedynczego powiatu
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND b_pow is True AND b_sel is True;"
     else:
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND b_sel is True;"
-    if db: # Udane połączenie z bazą danych
-        res = db.query_sel(sql, False) # Rezultat kwerendy
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND b_sel is True;"
+    if db:
+        res = db.query_sel(sql, False)
         if not res: # Użytkownik nie ma wybranego vn w aktywnym teamie
             return vn_first_undone_sel()  # Wybieramy pierwszy z kolei vn
         return res  # Zwracamy parametry wybranego vn
@@ -172,13 +172,13 @@ def vn_with_sel():
 
 def vn_first_undone_sel():
     """Wybranie pierwszego z kolei niesprawdzonego vn."""
-    db = PgConn() # Tworzenie obiektu połączenia z db
-    if powiat_m:  # Właczony jest tryb wyświetlania pojedynczego powiatu
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND b_done is False AND b_pow is True ORDER BY vn_id"
+    db = PgConn()
+    if powiat_m:  # Włączony jest tryb wyświetlania pojedynczego powiatu
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND b_done is False AND b_pow is True ORDER BY vn_id"
     else:
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + SQL_5
-    if db: # Udane połączenie z bazą danych
-        res = db.query_sel(sql, False) # Rezultat kwerendy
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + SQL_5
+    if db:
+        res = db.query_sel(sql, False)
         if res:  # Zwracamy parametry pierwszego z kolei niesprawdzonego vn'a
             return vn_set_sel(*res)
         else:
@@ -188,13 +188,13 @@ def vn_first_undone_sel():
 
 def vn_first_sel():
     """Wybranie pierwszego z kolei vn."""
-    db = PgConn() # Tworzenie obiektu połączenia z db
-    if powiat_m:  # Właczony jest tryb wyświetlania pojedynczego powiatu
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND b_pow is True ORDER BY vn_id"
+    db = PgConn()
+    if powiat_m:  # Włączony jest tryb wyświetlania pojedynczego powiatu
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND b_pow is True ORDER BY vn_id"
     else:
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " ORDER BY vn_id"
-    if db: # Udane połączenie z bazą danych
-        res = db.query_sel(sql, False) # Rezultat kwerendy
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " ORDER BY vn_id"
+    if db:
+        res = db.query_sel(sql, False)
         if res:  # Zwracamy parametry pierwszego z kolei vn'a
             return vn_set_sel(*res)
     else:
@@ -209,10 +209,10 @@ def vn_set_sel(*params):
          return vn.l, vn.x, vn.y, vn.d  # Zwracamy poprzednio wybranego vn'a i przerywamy algorytm
     db = PgConn() # Tworzenie obiektu połączenia z db
     # Ustawienie b_sel = True dla nowo wybranego vn'a
-    sql = SQL_4 + str(team_i) + ".team_viewnet SET b_sel = True WHERE vn_id = " + str(t_l) + ";"
-    if db: # Udane połączenie z bazą danych
-        res = db.query_upd(sql) # Rezultat kwerendy
-        if res: # Udało się zaktualizować wybrany vn
+    sql = SQL_4 + str(dlg.team_i) + ".team_viewnet SET b_sel = True WHERE vn_id = " + str(t_l) + ";"
+    if db:
+        res = db.query_upd(sql)
+        if res:
             # Aktualizacja globalów do parametrów nowowybranego vn'a
             vn.l, vn.x, vn.y, vn.d = t_l, t_x, t_y, t_d
         else:
@@ -221,10 +221,10 @@ def vn_set_sel(*params):
 
 def vn_set_clear():
     """Ustawienie b_sel wszystkich vn'ów użytkownika na False."""
-    db = PgConn() # Tworzenie obiektu połączenia z db
-    sql = SQL_4 + str(team_i) + ".team_viewnet SET b_sel = False WHERE user_id = " + str(user_id) + " AND b_sel = True;"
-    if db: # Udane połączenie z bazą danych
-        db.query_upd(sql) # Rezultat kwerendy
+    db = PgConn()
+    sql = SQL_4 + str(dlg.team_i) + ".team_viewnet SET b_sel = False WHERE user_id = " + str(dlg.user_id) + " AND b_sel = True;"
+    if db:
+        db.query_upd(sql)
         return True
     else:
         return False
@@ -243,25 +243,25 @@ def vn_forward():
 
 def vn_next():
     """Ustalenie parametrów pierwszego niesprawdzonego vn'a."""
-    db = PgConn() # Tworzenie obiektu połączenia z db
-    if powiat_m:  # Właczony jest tryb wyświetlania pojedynczego powiatu
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND vn_id > " + str(vn.l) + " AND b_pow is True AND b_done is False ORDER BY vn_id"
+    db = PgConn()
+    if powiat_m:  # Włączony jest tryb wyświetlania pojedynczego powiatu
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND vn_id > " + str(vn.l) + " AND b_pow is True AND b_done is False ORDER BY vn_id"
     else:
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND vn_id > " + str(vn.l) + SQL_5
-    if db:  # Udane połączenie z bazą danych
-        res = db.query_sel(sql, False) # Rezultat kwerendy
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND vn_id > " + str(vn.l) + SQL_5
+    if db:
+        res = db.query_sel(sql, False)
         if res:  # Po wskazanej stronie jest jeszcze vn - zwracamy jego parametry
            return res
 
 def vn_first():
     """Ustalenie parametrów następnego vn'a."""
-    db = PgConn() # Tworzenie obiektu połączenia z db
-    if powiat_m:  # Właczony jest tryb wyświetlania pojedynczego powiatu
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND b_pow is True AND b_done is False ORDER BY vn_id"
+    db = PgConn()
+    if powiat_m:  # Włączony jest tryb wyświetlania pojedynczego powiatu
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND b_pow is True AND b_done is False ORDER BY vn_id"
     else:
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + SQL_5
-    if db:  # Udane połączenie z bazą danych
-        res = db.query_sel(sql, False) # Rezultat kwerendy
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + SQL_5
+    if db:
+        res = db.query_sel(sql, False)
         if res:  # Po wskazanej stronie jest jeszcze vn - zwracamy jego parametry
            return res
 
@@ -288,7 +288,7 @@ def vn_add():
     global vn_ids
     layer = QgsProject.instance().mapLayersByName("vn_all")[0]
     db = PgConn()
-    sql = SQL_4 + str(team_i) +".team_viewnet AS tv SET user_id = " + str(dlg.t_user_id) + " FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
+    sql = SQL_4 + str(dlg.team_i) +".team_viewnet AS tv SET user_id = " + str(dlg.t_user_id) + " FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
     if db:
         db.query_exeval(sql, vn_ids)
     layer.removeSelection()
@@ -298,7 +298,7 @@ def vn_add():
 def vn_sub():
     """Zabranie wybranych vn'ów użytkownikowi."""
     global vn_ids
-    sel_ids = []  # Lista dla wybieranych vn'ów
+    sel_ids = []
     all_layer = QgsProject.instance().mapLayersByName("vn_all")[0]
     user_layer = QgsProject.instance().mapLayersByName("vn_user")[0]
     user_ids = []
@@ -306,7 +306,7 @@ def vn_sub():
         user_ids.append((feat["vn_id"],))
     sel_ids = [value for value in user_ids if value in vn_ids]
     db = PgConn()
-    sql = SQL_4 + str(team_i) +".team_viewnet AS tv SET user_id = Null FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
+    sql = SQL_4 + str(dlg.team_i) +".team_viewnet AS tv SET user_id = Null FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
     if db:
         db.query_exeval(sql, sel_ids)
     all_layer.removeSelection()
@@ -316,15 +316,15 @@ def vn_sub():
 def change_done(forward):
     """Zmiana parametru b_done wybranego vn'a."""
     global vn
-    db = PgConn() # Tworzenie obiektu połączenia z db
+    db = PgConn()
     # Ustawienie przeciwnego do obecnego parametru b_done wybranego vn'a
     if vn.d == False:
         t_d = True
     elif vn.d == True:
         t_d = False
-    sql = SQL_4 + str(team_i) + ".team_viewnet SET b_done = " + str(t_d) + " WHERE vn_id = " + str(vn.l) + ";"
-    if db: # Udane połączenie z bazą danych
-        res = db.query_upd(sql) # Rezultat kwerendy
+    sql = SQL_4 + str(dlg.team_i) + ".team_viewnet SET b_done = " + str(t_d) + " WHERE vn_id = " + str(vn.l) + ";"
+    if db:
+        res = db.query_upd(sql)
         if res: # Udało się zaktualizować wybrany vn
             # Aktualizacja parametru b_done wybranego vn'a
             vn.d = t_d
@@ -395,13 +395,13 @@ def vn_neighbour(axis, operand, order):
         op = ">"
     elif operand == "ls":
         op = "<"
-    db = PgConn() # Tworzenie obiektu połączenia z db
-    if powiat_m:  # Właczony jest tryb wyświetlania pojedynczego powiatu
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND b_pow is True AND " + st_row + SQL_3 + "= " + str(st_vn) + " AND " + nd_row + SQL_3 + op + " " + str(nd_vn) + " ORDER BY " + nd_row + SQL_3 + order +";"
+    db = PgConn()
+    if powiat_m:  # Włączony jest tryb wyświetlania pojedynczego powiatu
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND b_pow is True AND " + st_row + SQL_3 + "= " + str(st_vn) + " AND " + nd_row + SQL_3 + op + " " + str(nd_vn) + " ORDER BY " + nd_row + SQL_3 + order +";"
     else:
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND " + st_row + SQL_3 + "= " + str(st_vn) + " AND " + nd_row + SQL_3 + op + " " + str(nd_vn) + " ORDER BY " + nd_row + SQL_3 + order +";"
-    if db:  # Udane połączenie z bazą danych
-        res = db.query_sel(sql, False) # Rezultat kwerendy
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND " + st_row + SQL_3 + "= " + str(st_vn) + " AND " + nd_row + SQL_3 + op + " " + str(nd_vn) + " ORDER BY " + nd_row + SQL_3 + order +";"
+    if db:
+        res = db.query_sel(sql, False)
         if res:  # Po wskazanej stronie jest jeszcze vn - zwracamy jego parametry
            return res
 
@@ -413,13 +413,13 @@ def vn_first_last(axis, order):
     elif axis == "v":
         st_row, nd_row = "x", "y"
         st_vn, nd_vn = vn.x, vn.y
-    db = PgConn() # Tworzenie obiektu połączenia z db
-    if powiat_m:  # Właczony jest tryb wyświetlania pojedynczego powiatu
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND b_pow is True AND " + st_row + SQL_3 + "= " + str(st_vn) + " ORDER BY " + nd_row + SQL_3 + order +";"
+    db = PgConn()
+    if powiat_m:  # Włączony jest tryb wyświetlania pojedynczego powiatu
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND b_pow is True AND " + st_row + SQL_3 + "= " + str(st_vn) + " ORDER BY " + nd_row + SQL_3 + order +";"
     else:
-        sql = SQL_1 + str(team_i) + SQL_2 + str(user_id) + " AND " + st_row + SQL_3 + "= " + str(st_vn) + " ORDER BY " + nd_row + SQL_3 + order +";"
-    if db:  # Udane połączenie z bazą danych
-        res = db.query_sel(sql, False) # Rezultat kwerendy
+        sql = SQL_1 + str(dlg.team_i) + SQL_2 + str(dlg.user_id) + " AND " + st_row + SQL_3 + "= " + str(st_vn) + " ORDER BY " + nd_row + SQL_3 + order +";"
+    if db:
+        res = db.query_sel(sql, False)
         if res:  # Zwracamy parametry nowowybranego vn'a
            return res
 
@@ -429,4 +429,4 @@ def stage_refresh():
     iface.actionDraw().trigger()
     iface.mapCanvas().refresh()
     t2 = time.perf_counter()
-    print(f"************* {round(t2 - t1, 2)} sek.")
+    # print(f"************* {round(t2 - t1, 2)} sek.")

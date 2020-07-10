@@ -29,22 +29,25 @@ def basemaps_load():
             if not dlg.p_map.loaded:  # Checkbox'y z mapami jeszcze nie istnieją
                 for r in res:
                     # Dodanie checkbox'ów z mapami do p_map:
-                    dlg.p_map.add_checkbox(cat=r[1], name=r[2], enabled=r[5])
+                    if r[1] == "sat" or r[1] == "topo":
+                        dlg.p_map.add_checkbox(cat=r[1], name=r[2], enabled=r[5])
                     # Utworzenie listy nazw warstw z podkładami:
-                    dlg.p_map.layers.append(r[3])
-                    if r[4]:  # Dwie warstwy w rekordzie
-                        dlg.p_map.layers.append(r[4])
-                dlg.p_map.loaded = True  # Zapamiętanie, że checkbox'y już istnieją
+                    if r[1] != "snmt":
+                        dlg.p_map.layers.append(r[3])
+                        if r[4]:  # Dwie warstwy w rekordzie
+                            dlg.p_map.layers.append(r[4])
+                    # Utworzenie zbiorczej listy podkładów mapowych:
+                    dlg.p_map.all.append({"id":r[0], "cat":r[1],"name":r[2], "lyr_1":r[3], "lyr_2":r[4], "enabled":r[5]})
+                dlg.p_map.loaded = True  # Zapamiętanie, że pobrano dane z db
+                dlg.p_map.map = 2  # Wstępne ustawienie podkładu mapowego na "Google Satellite"
             else:  # Checkbox'y już istnieją
+                dlg.p_map.all.clear()  # Wyczyszczenie poprzedniej listy zbiorczej
                 # Aktualizacja parametru setChecked w checkbox'ach:
                 for r in res:
-                    exec('dlg.p_map.widgets["chk_' + r[2] + '"].setChecked(r[5])')
-            # Utworzenie listy włączonych (b_map_enabled) map z kategorii "sat" i "topo":
-            dlg.p_map.sat = []
-            dlg.p_map.topo = []
-            dlg.p_map.sat = [r for r in res if r[1] == "sat" and r[5]]
-            dlg.p_map.topo = [r for r in res if r[1] == "topo" and r[5]]
-
+                    if r[1] == "sat" or r[1] == "topo":
+                        exec('dlg.p_map.widgets["chk_' + r[2] + '"].setChecked(r[5])')
+                    # Utworzenie zbiorczej listy podkładów mapowych:
+                    dlg.p_map.all.append({"id":r[0], "cat":r[1],"name":r[2], "lyr_1":r[3], "lyr_2":r[4], "enabled":r[5]})
         else:
             print("Nie udało się wczytać ustawień basemaps użytkownika do list checkbox'ów!")
 
@@ -82,7 +85,7 @@ def db_basemaps_update(list):
 
 class MoekMapPanel(QFrame):
     """Panel zarządzający wyświetalniem podkładów mapowych."""
-    cat_changed = pyqtSignal(str)
+    map_changed = pyqtSignal(int)
 
     def __init__(self):
         super().__init__()
@@ -117,138 +120,111 @@ class MoekMapPanel(QFrame):
         exit_btn_2.clicked.connect(self.exit_clicked)
         self.box.pages["page_2"].glay.addWidget(exit_btn_2, 0, 1, 1, 1)
         self.cat = ""
+        self.map = int()
         self.loaded = False
         self.layers = []
-        self.sat = []
-        self.topo = []
+        self.all = []
+        self.map_changed.connect(self.map_change)
         self.sat_cnt = int()
         self.topo_cnt = int()
-        self.sat_act = 1
-        self.topo_act = 1
-        self.cat_changed.connect(self.cat_change)
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
-        if attr == "cat":
-            self.cat_changed.emit(val)
-
-    def next_map(self):
-        """Wyświetlenie następnej w kolejności mapy z aktywnej kategorii."""
-        if self.cat == "sat" or self.cat == "snmt":
-            self.sat_act = self.sat_act + 1 if self.sat_act < len(self.sat) else 1
-        elif self.cat == "topo":
-            self.topo_act = self.topo_act + 1 if self.topo_act < len(self.topo) else 1
-        self.map_change()
-
-    def prev_map(self):
-        """Wyświetlenie poprzedniej w kolejności mapy z aktywnej kategorii."""
-        if self.cat == "sat" or self.cat == "snmt":
-            self.sat_act = self.sat_act - 1 if self.sat_act > 1 else len(self.sat)
-        elif self.cat == "topo":
-            self.topo_act = self.topo_act - 1 if self.topo_act > 1 else len(self.topo)
-        self.map_change()
-
-    def prevnext_update(self):
-        """Pokazanie lub ukrycie prev_btn i next_btn w zależności od ilości włączonych map w danej kategorii."""
-        if self.cat == "sat" or self.cat == "snmt":
-            map_cnt = len(self.sat)
-        elif self.cat == "topo":
-            map_cnt = len(self.topo)
-        elif self.cat == "nmt":
-            map_cnt = 1
-        if map_cnt > 1:
-            self.box.pages["page_0"].label.contract()  # Skrocenie szerokości label'u przed pojawieniem się przycisków
-        self.box.pages["page_0"].prev_btn.setVisible(True) if map_cnt > 1 else self.box.pages["page_0"].prev_btn.setVisible(False)
-        self.box.pages["page_0"].next_btn.setVisible(True) if map_cnt > 1 else self.box.pages["page_0"].next_btn.setVisible(False)
-        self.box.pages["page_0"].cfg_btn.setVisible(False) if self.cat == "nmt" else self.box.pages["page_0"].cfg_btn.setVisible(True)
-        if map_cnt > 1 or self.cat == "nmt":
-            self.box.pages["page_0"].hlay.setContentsMargins(0, 0, 0, 0)
-        else:
-            self.box.pages["page_0"].hlay.setContentsMargins(0, 0, 10, 0)
-
-    def cat_change(self, value):
-        """Zmiana kategorii mapy."""
-        self.prevnext_update()
-        self.map_change()
-        if value == "sat":
-            self.btns.sat_btn.button.setChecked(True)
-            self.btns.sat_btn.line.setVisible(True)
-            self.btns.nmt_btn.button.setChecked(False)
-            self.btns.nmt_btn.line.setVisible(False)
-            self.btns.topo_btn.button.setChecked(False)
-            self.btns.topo_btn.line.setVisible(False)
-            self.btns.map_snmt_btn.button.setChecked(False)
-            self.btns.map_snmt_btn.line.setVisible(False)
-        if value == "nmt":
-            self.btns.sat_btn.button.setChecked(False)
-            self.btns.sat_btn.line.setVisible(False)
-            self.btns.nmt_btn.button.setChecked(True)
-            self.btns.nmt_btn.line.setVisible(True)
-            self.btns.topo_btn.button.setChecked(False)
-            self.btns.topo_btn.line.setVisible(False)
-            self.btns.map_snmt_btn.button.setChecked(False)
-            self.btns.map_snmt_btn.line.setVisible(False)
-        if value == "topo":
-            self.btns.sat_btn.button.setChecked(False)
-            self.btns.sat_btn.line.setVisible(False)
-            self.btns.nmt_btn.button.setChecked(False)
-            self.btns.nmt_btn.line.setVisible(False)
-            self.btns.topo_btn.button.setChecked(True)
-            self.btns.topo_btn.line.setVisible(True)
-            self.btns.map_snmt_btn.button.setChecked(False)
-            self.btns.map_snmt_btn.line.setVisible(False)
-        if value == "snmt":
-            self.btns.sat_btn.button.setChecked(True)
-            self.btns.sat_btn.line.setVisible(False)
-            self.btns.nmt_btn.button.setChecked(True)
-            self.btns.nmt_btn.line.setVisible(False)
-            self.btns.topo_btn.button.setChecked(False)
-            self.btns.topo_btn.line.setVisible(False)
-            self.btns.map_snmt_btn.button.setChecked(True)
-            self.btns.map_snmt_btn.line.setVisible(True)
+        if attr == "map":
+            self.map_changed.emit(val)
 
     def map_change(self):
-        """Zmiana mapy."""
-        if self.cat == "sat" or self.cat == "snmt":
-            map_act = self.sat_act - 1
-            map_name = self.sat[map_act][2]
-            lyr_1 = self.sat[map_act][3]
-            lyr_2 = self.sat[map_act][4]
-        elif self.cat == "topo":
-            map_act = self.topo_act - 1
-            map_name = self.topo[map_act][2]
-            lyr_1 = self.topo[map_act][3]
-            lyr_2 = self.topo[map_act][4]
-        elif self.cat == "nmt":
-            lyr_1, lyr_2 = "", ""
-        # Zmiana tytułu mapy wyświetlanego w spinbox'ie:
-        if self.cat == "sat" or self.cat == "topo":
-            self.box.pages["page_0"].label.setText(map_name)
-        elif self.cat == "snmt":
-            self.box.pages["page_0"].label.setText(map_name + " + ISOK")
-        elif self.cat == "nmt":
-            self.box.pages["page_0"].label.setText("Numeryczny model terenu (ISOK)")
+        """Zmiana podkładu mapowego."""
+        self.cat_change()  # Zmiana kategorii, jeśli potrzebna
+        # Zmiana wyświetlanego w spinbox'ie tytułu podkładu mapowego:
+        self.box.pages["page_0"].label.setText(self.map_attr(self.map)["name"])
         # Ustawienie widoczności warstw z podkładami mapowymi:
         for layer in self.layers:
-            if layer == lyr_1 or layer == lyr_2:
+            if layer == self.map_attr(self.map)["lyr_1"] or layer == self.map_attr(self.map)["lyr_2"]:
                 exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(True)')
             else:
                 exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(False)')
-        # Ustawienie widoczności warstwy ISOK:
-        if self.cat == "nmt" or self.cat == "snmt":
-            QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("ISOK")[0].id()).setItemVisibilityChecked(True)
+
+    def cat_change(self):
+        """Dostosowanie wiget'ów panelu mapowego do zmiany bieżącej kategorii."""
+        if self.cat == self.map_attr(self.map)["cat"]:  # Kategoria się nie zmieniła
+            return
+        self.cat = self.map_attr(self.map)["cat"]  # Zmiana kategorii
+        self.btns_update()  # Zmiana wyglądu przycisków
+        self.spb_update()  # Aktualizacja spinbox'a
+
+    def map_cnt(self):
+        """Zwraca ilość włączonych podkładów mapowych w bieżącej kategorii."""
+        return len([map for map in self.all if map["cat"] == self.cat and map["enabled"]])
+
+    def btns_update(self):
+        """Ustawienie stanu i wyglądu przycisków mapowych, w zależności od zmienionej kategorii podkładów mapowych."""
+        for btn in self.btns.findChildren(MoekMapButton):
+            if self.cat == "snmt" and (btn.name == "sat" or btn.name == "nmt"):
+                btn.button.setChecked(True)
+                btn.line.setVisible(False)
+            else:
+                val = True if self.cat == btn.name else False
+                btn.button.setChecked(val)
+                btn.line.setVisible(val)
+
+    def map_attr(self, map_id):
+        """Wyszukuje na liście wybrany podkład mapowy i zwraca słownik z jego parametrami."""
+        for map in self.all:
+            if map["id"] == map_id:
+                return map
+
+    def first_map(self, cat):
+        """Ustawienie pierwszego dostępnego podkładu mapowego z wybranej kategorii."""
+        self.map = [map for map in self.all if map["cat"] == cat and map["enabled"]][0]["id"]
+
+    def spb_update(self):
+        """Aktualizacja spinbox'a panelu mapowego."""
+        if self.map_cnt() > 1:  # W danej kategorii jest więcej niż jeden podkład mapowy
+            self.box.pages["page_0"].label.contract()  # Skrócenie szerokości label'u przed pojawieniem się przycisków
+        # Ukrycie lub pokazanie przycisków:
+        self.box.pages["page_0"].prev_btn.setVisible(True) if self.map_cnt() > 1 else self.box.pages["page_0"].prev_btn.setVisible(False)
+        self.box.pages["page_0"].prev_btn.shown = True if self.map_cnt() > 1 else False
+        self.box.pages["page_0"].next_btn.setVisible(True) if self.map_cnt() > 1 else self.box.pages["page_0"].next_btn.setVisible(False)
+        self.box.pages["page_0"].next_btn.shown = True if self.map_cnt() > 1 else False
+        self.box.pages["page_0"].cfg_btn.setVisible(False) if self.cat == "nmt" else self.box.pages["page_0"].cfg_btn.setVisible(True)
+        self.box.pages["page_0"].cfg_btn.shown = False if self.cat == "nmt" else True
+        # Dopasowanie marginesów spinbox'a:
+        if self.map_cnt() > 1 or self.cat == "nmt":
+            self.box.pages["page_0"].hlay.setContentsMargins(0, 0, 0, 0)
         else:
-            QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("ISOK")[0].id()).setItemVisibilityChecked(False)
+            self.box.pages["page_0"].hlay.setContentsMargins(0, 0, 10, 0)
+        self.box.pages["page_0"].label.label_update()  # Aktualizacja label'u spinbox'a
+
+    def prev_map(self):
+        """Wyświetlenie poprzedniej w kolejności mapy z bieżącej kategorii."""
+        m = self.cur_map() - 1 if self.cur_map() >= 0 else self.map_cnt()
+        self.map = [map for map in self.all if map["cat"] == self.cat and map["enabled"]][m]["id"]
+
+    def next_map(self):
+        """Wyświetlenie następnej w kolejności mapy z bieżącej kategorii."""
+        m = self.cur_map() + 1 if self.cur_map() < self.map_cnt() - 1 else 0
+        self.map = [map for map in self.all if map["cat"] == self.cat and map["enabled"]][m]["id"]
+
+    def cur_map(self):
+        """Wyświetlenie następnej w kolejności mapy z bieżącej kategorii."""
+        maps = [map for map in self.all if map["cat"] == self.cat and map["enabled"]]
+        i = 0
+        for map in maps:
+            if map["id"] == self.map:
+                return i
+            else:
+                i += 1
 
     def add_checkbox(self, cat, name, enabled):
-        """Dodanie checkbox'a do pojemnika wyboru map."""
+        """Dodanie checkbox'a do odpowiedniego pojemnika wyboru map."""
         _chk = MoekCheckBox(name=name, checked=enabled)
         if cat == "sat":
             page = 1
             self.sat_cnt += 1
             row = self.sat_cnt - 1
-        else:
+        elif cat == "topo":
             page = 2
             self.topo_cnt += 1
             row = self.topo_cnt - 1
@@ -268,7 +244,7 @@ class MoekMapPanel(QFrame):
         block_panels(self, False)  # Odblokowanie pozostałych paneli
         dlg.p_map.btns.setEnabled(True)  # Odblokowanie przycisków z p_map
         m_list = []
-        blokada = True  # Zabezpieczenie przed odznaczeniem wszystkich map z kategorii
+        blokada = True  # Zabezpieczenie przed odznaczeniem wszystkich map z kategorii (musi być przynajmniej jedna)
         if self.cat == "sat" or self.cat == "snmt":
             layout = self.box.pages["page_1"].glay
         else:
@@ -287,13 +263,9 @@ class MoekMapPanel(QFrame):
         else:
             db_basemaps_update(m_list)  # Aktualizacja b_map_enabled w db
             basemaps_load()  # Ponowne wczytanie wartości checkbox'ów
-            # Przejscie do pierwszej wybranej mapy z aktualnej kategorii:
-            if self.cat == "sat" or self.cat == "snmt":
-                self.sat_act = 1
-            else:
-                self.topo_act = 1
-            self.cat = self.cat  # Wzbudzenie sygnału cat_change
-
+            # Przejście do pierwszej wybranej mapy z aktualnej kategorii:
+            self.first_map(self.cat)
+            self.spb_update()  # Wymuszenie odświeżenia spinbox'a
 
 class MoekMapButtons(QFrame):
     """Pojemnik z przyciskami panelu mapowego."""
@@ -305,7 +277,7 @@ class MoekMapButtons(QFrame):
         self.nmt_btn = MoekMapButton(self, name="nmt", icon="map_nmt", tooltip="numeryczny model terenu")
         self.topo_btn = MoekMapButton(self, name="topo", icon="map_topo", tooltip="mapy topograficzne")
         self.ge_btn = MoekButton(self, size=50, name="ge", tooltip="pokaż widok mapy w Google Earth Pro")
-        self.map_snmt_btn = MoekMapButton(self, name="snmt", icon="map_snmt", wsize=24, hsize=24, l=18)
+        self.snmt_btn = MoekMapButton(self, name="snmt", icon="map_snmt", wsize=24, hsize=24, l=18)
     
     def setEnabled(self, value):
         """Ustawienie koloru linii w MoekMapButtons w zależności od parametru setEnabled."""
@@ -326,7 +298,7 @@ class MoekMapButtons(QFrame):
         self.nmt_btn.setGeometry(w_4 + marg_2, 0, b, b)
         self.topo_btn.setGeometry(2 * w_4 + marg_2, 0, b, b)
         self.ge_btn.setGeometry(3 * w_4 + marg_2, 0, b, b)
-        self.map_snmt_btn.setGeometry(w_4 - 12, 13, 24, 37)
+        self.snmt_btn.setGeometry(w_4 - 12, 13, 24, 37)
 
 
 class MoekMapButton(QFrame):
@@ -359,7 +331,7 @@ class MoekMapButton(QFrame):
 
     def btn_clicked(self):
         """Zmiana kategorii map po wciśnięciu przycisku."""
-        self.parent().parent().cat = self.name
+        self.parent().parent().first_map(cat=self.name)
 
 
 class MoekMapsBox(QFrame):

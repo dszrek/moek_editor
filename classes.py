@@ -11,6 +11,7 @@ from qgis.core import QgsGeometry, QgsWkbTypes
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QKeySequence
 
+DB_SOURCE = "MOEK"
 
 class PgConn:
     """Połączenie z bazą PostgreSQL przez psycopg2."""
@@ -100,7 +101,7 @@ class PgConn:
 
 class CfgPars(ConfigParser):
     """Parser parametrów konfiguracji połączenia z bazą danych."""
-    def __init__(self, filename='database.ini', section='intranet'):
+    def __init__(self, filename='database.ini', section=DB_SOURCE):
         super().__init__()
         self.filename = self.resolve(filename)
         self.section = section

@@ -142,7 +142,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             w_max = 208
         # Wyrównanie szerokości paneli do najszerszego panelu
         for panel in self.panels:
-            panel.setMinimumWidth(w_max)
+            # TODO: panel.setMinimumWidth(w_max)
+            panel.setFixedWidth(208)
         # Algorytm wykrywania i obsługi pionowego scrollbar'u
         dock_height = h_header + h_sum + (p_count * h_margin) - h_margin
         self.setMinimumHeight(dock_height)

@@ -34,6 +34,7 @@ from .main import dlg_main, db_login, teams_load, teams_cb_changed, powiaty_cb_c
 from .viewnet import dlg_viewnet
 from .widgets import dlg_widgets
 from .basemaps import dlg_basemaps, basemaps_load
+from .sequences import dlg_sequences, sequences_load
 
 # Import the code for the DockWidget
 from .moek_editor_dockwidget import MoekEditorDockWidget
@@ -255,6 +256,7 @@ class MoekEditor:
                 dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
                 dlg_widgets(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do widgets.py
                 dlg_basemaps(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
+                dlg_sequences(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do sequences.py
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
@@ -265,7 +267,7 @@ class MoekEditor:
                 return
             teams_cb_changed()  # Załadowanie powiatów
             basemaps_load()  # Załadowanie podkładów mapowych
-            self.dockwidget.p_map.cat = "sat"
+            sequences_load()
 
             # show the dockwidget
             # TODO: fix to allow choice of dock location

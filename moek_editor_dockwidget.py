@@ -37,6 +37,7 @@ from .main import vn_mode_changed
 from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .widgets import MoekBoxPanel, MoekBarPanel
 from .basemaps import MoekMapPanel
+from .sequences import prev_map, next_map, seq
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -74,13 +75,19 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_zoom", "size": 50, "checkable": False, "tooltip": u"przybliż do pola"},
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_done", "icon": "vn_doneT", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE"'},
                     {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_doneF", "icon": "vn_doneTf", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE" i idź do następnego'},
-                    {"page": 1, "row": 0, "col": 1, "r_span": 1, "c_span": 3, "item": "combobox", "name": "teamusers", "border": 1, "b_round": "none"},
-                    {"page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_powsel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola siatki widoków znajdujące się w granicach wybranego powiatu"},
-                    {"page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_polysel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola znajdujące się w granicach narysowanego poligonu"},
-                    {"page": 1, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_unsel", "size": 50, "checkable": False, "tooltip": u"wyczyść zaznaczenie pól siatki widoków"},
-                    {"page": 1, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_add", "size": 50, "checkable": False, "tooltip": u"dodaj wybrane pola siatki widoków do zakresu poszukiwań wskazanego użytkownika"},
-                    {"page": 1, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sub", "size": 50, "checkable": False, "tooltip": u"odejmij wybrane pola siatki widoków od zakresu poszukiwań wskazanego użytkownika"}
+                    {"page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 4, "item": "seqbox", "name": "seq"},
+                    {"page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "seqaddbox", "name": "sab_seq1", "id": 1, "height": 21, "border": 1, "b_round": "none"},
+                    {"page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "seqcfgbox", "name": "scg_seq1", "id": 1, "height": 21, "border": 1, "b_round": "none"},
+                    {"page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "seqaddbox", "name": "sab_seq2", "id":2, "height": 21, "border": 1, "b_round": "none"},
+                    {"page": 2, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "seqcfgbox", "name": "scg_seq2", "id": 2, "height": 21, "border": 1, "b_round": "none"},
+                    {"page": 3, "row": 0, "col": 1, "r_span": 1, "c_span": 3, "item": "combobox", "name": "teamusers", "border": 1, "b_round": "none"},
+                    {"page": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_powsel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola siatki widoków znajdujące się w granicach wybranego powiatu"},
+                    {"page": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_polysel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola znajdujące się w granicach narysowanego poligonu"},
+                    {"page": 3, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_unsel", "size": 50, "checkable": False, "tooltip": u"wyczyść zaznaczenie pól siatki widoków"},
+                    {"page": 3, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_add", "size": 50, "checkable": False, "tooltip": u"dodaj wybrane pola siatki widoków do zakresu poszukiwań wskazanego użytkownika"},
+                    {"page": 3, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sub", "size": 50, "checkable": False, "tooltip": u"odejmij wybrane pola siatki widoków od zakresu poszukiwań wskazanego użytkownika"},
                     ]
+
         self.p_team = MoekBarPanel(
                             title="Zespół:",
                             switch=False
@@ -95,8 +102,9 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                             title="Siatka widoków",
                             io_fn="vn_mode_changed(clicked=True)",
                             config=True,
-                            cfg_fn="vn_setup_mode(self.cfg_btn.isChecked())",
-                            pages=2)
+                            cfg_fn="vn_cfg()",
+                            resize=True,
+                            pages=4)
         self.panels = [self.p_team, self.p_pow, self.p_map, self.p_vn]
         self.widgets = [p_team_widgets, p_pow_widgets, p_map_widgets, p_vn_widgets]
 
@@ -106,6 +114,12 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     panel.add_button(widget)
                 elif widget["item"] == "combobox":
                     panel.add_combobox(widget)
+                elif widget["item"] == "seqbox":
+                    panel.add_seqbox(widget)
+                elif widget["item"] == "seqaddbox":
+                    panel.add_seqaddbox(widget)
+                elif widget["item"] == "seqcfgbox":
+                    panel.add_seqcfgbox(widget)
             self.vl_main.addWidget(panel)
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)
@@ -164,7 +178,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     def hk_vn_load(self):
         """Załadowanie skrótów klawiszowych do obsługi vn."""
-        hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space"}
+        hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space", "hk_1": "1", "hk_2": "2", "hk_tilde": "QuoteLeft", "hk_tab": "Tab"}
         for key, val in hotkeys.items():
             exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", self)")
             exec(SELF + key + ".setEnabled(False)")
@@ -180,11 +194,15 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                 "hk_down": "hk_down_pressed",
                 "hk_left": "hk_left_pressed",
                 "hk_right": "hk_right_pressed",
-                "hk_space": "lambda: change_done(True)"}
+                "hk_space": "lambda: change_done(True)",
+                "hk_1": "lambda: seq(1)",
+                "hk_2": "lambda: seq(2)",
+                "hk_tilde": "prev_map",
+                "hk_tab": "next_map"}
         io = "connect" if self.hk_vn else "disconnect"
         try:
             for key, val in hk_fn.items():
-                # Aktywacja/dezaktywacja skrótów klawiszowych:
+                # Aktywacja/deaktywacja skrótów klawiszowych:
                 exec(SELF + key + ".setEnabled(self.hk_vn)")
                 # Usunięcie nazwy funkcji z nawiasu przy odłączaniu skrótów klawiszowych:
                 if not self.hk_vn:

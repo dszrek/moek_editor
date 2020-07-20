@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QFrame, QVBoxLayout, QGridLayout, QGraphicsDropShadowEffect, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QFrame, QVBoxLayout, QGridLayout, QGraphicsDropShadowEffect, QSizePolicy, QMessageBox
 from PyQt5.QtGui import QColor
 from qgis.core import QgsProject
+from qgis.utils import iface
 
 from .classes import PgConn
 from .main import block_panels
 from .widgets import MoekButton, MoekCheckBox, MoekStackedBox, MoekCfgHSpinBox
+from .sequences import db_sequence_reset, sequences_load
 
 dlg = None
 
@@ -39,7 +41,7 @@ def basemaps_load():
                     # Utworzenie zbiorczej listy podkładów mapowych:
                     dlg.p_map.all.append({"id":r[0], "cat":r[1],"name":r[2], "lyr_1":r[3], "lyr_2":r[4], "enabled":r[5]})
                 dlg.p_map.loaded = True  # Zapamiętanie, że pobrano dane z db
-                dlg.p_map.map = 2  # Wstępne ustawienie podkładu mapowego na "Google Satellite"
+                dlg.p_map.first_map("sat")  # Wstępne ustawienie podkładu mapowego na pierwszą dostępną pozycję z kategorii "sat"
             else:  # Checkbox'y już istnieją
                 dlg.p_map.all.clear()  # Wyczyszczenie poprzedniej listy zbiorczej
                 # Aktualizacja parametru setChecked w checkbox'ach:
@@ -99,7 +101,7 @@ class MoekMapPanel(QFrame):
                     """)
         self.widgets = {}
         self.btns = MoekMapButtons()
-        self.box = MoekStackedBox()
+        self.box = MoekStackedBox(resize=False)
         self.box.setObjectName("box")
         self.box.pages = {}
         for p in range(3):
@@ -240,15 +242,14 @@ class MoekMapPanel(QFrame):
     
     def exit_clicked(self):
         """Wyjście z ustawień wyboru map z aktywnej kategorii."""
-        self.box.setCurrentIndex(0)  # Powrót do spinbox'a
-        block_panels(self, False)  # Odblokowanie pozostałych paneli
-        dlg.p_map.btns.setEnabled(True)  # Odblokowanie przycisków z p_map
         m_list = []
         blokada = True  # Zabezpieczenie przed odznaczeniem wszystkich map z kategorii (musi być przynajmniej jedna)
         if self.cat == "sat" or self.cat == "snmt":
             layout = self.box.pages["page_1"].glay
+            add_nmt = True
         else:
             layout = self.box.pages["page_2"].glay
+            add_nmt = False
         w_idx = layout.count()
         while w_idx > 0:
             w_idx -= 1
@@ -257,15 +258,57 @@ class MoekMapPanel(QFrame):
                 if widget.isChecked() and blokada:
                     blokada = False
                 m_list.append((widget.text(), widget.isChecked()))
+                if add_nmt:  # Uwzględnienie w modyfikacjach kategorii "snmt"
+                    m_list.append((widget.text() + " + ISOK", widget.isChecked()))
         if blokada:
             QMessageBox.warning(None, "Podkłady mapowe", "Zmiany nie zostały wprowadzone. Przynajmniej jedna mapa musi pozostać zaznaczona.")
             basemaps_load()  # Ponowne wczytanie wartości checkbox'ów
         else:
+            # Podkłady, które zostają wyłączone:
+            out_maps = [all["id"] for m in m_list for all in dlg.p_map.all if m[0] == all["name"] and not m[1]]
+            # Ustalenie podkładów, które występują w sekwencjach:
+            seq1_maps = [m[0] for m in dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_1"].maps]
+            seq2_maps = [m[0] for m in dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_2"].maps]
+            seq1_out = [i for i in seq1_maps if i  in out_maps]
+            seq2_out = [i for i in seq2_maps if i  in out_maps]
+            del1 = True if len(seq1_out) > 0 else False
+            del2 = True if len(seq2_out) > 0 else False
+            if del1 or del2:  # W ktorejś sekwencji zostaną usunięte podkłady
+                if del1 and not del2:
+                    s_text = "nr 1"
+                    t_text = "tej"
+                elif not del1 and del2:
+                    s_text = "nr 2"
+                    t_text = "tej"
+                elif del1 and del2:
+                    s_text = "nr 1 i 2"
+                    t_text = "tych"
+                m_text = f"Próbujesz wyłączyć podkład, który jest częścią sekwencji {s_text}. Naciśnięcie Tak spowoduje wyczyszczenie {t_text} sekwencji."
+                reply = QMessageBox.question(iface.mainWindow(), "Kontynuować?", m_text, QMessageBox.Yes, QMessageBox.No)
+                if reply == QMessageBox.No:
+                    dlg.p_vn.bar.cfg_btn.setChecked(True)
+                    return
+                # Czyszczenie sekwencji w db:
+                # for scg in self.parent().findChildren(MoekSeqCfg):
+                #     scg.map, scg.spinbox.value = 0, 0
+                if del1:
+                    db_sequence_reset(1)
+                if del2:
+                    db_sequence_reset(2)
+                sequences_load()
+            block_panels(self, False)  # Odblokowanie pozostałych paneli
+            dlg.p_map.btns.setEnabled(True)  # Odblokowanie przycisków z p_map
             db_basemaps_update(m_list)  # Aktualizacja b_map_enabled w db
             basemaps_load()  # Ponowne wczytanie wartości checkbox'ów
+            # Aktualizacje combobox'ów:
+            dlg.p_vn.widgets["sab_seq" + str(1)].combobox_update(1)
+            dlg.p_vn.widgets["sab_seq" + str(2)].combobox_update(2)
             # Przejście do pierwszej wybranej mapy z aktualnej kategorii:
             self.first_map(self.cat)
             self.spb_update()  # Wymuszenie odświeżenia spinbox'a
+            self.box.setCurrentIndex(0)  # Powrót do spinbox'a
+            dlg.p_vn.box.currentChange()
+
 
 class MoekMapButtons(QFrame):
     """Pojemnik z przyciskami panelu mapowego."""

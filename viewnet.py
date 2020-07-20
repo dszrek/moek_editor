@@ -20,7 +20,7 @@ SQL_4 = "UPDATE team_"
 SQL_5 = " AND b_done is False ORDER BY vn_id"
 
 def dlg_viewnet(_dlg):
-    """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""
+    """Przekazanie referencji interfejsu dockwiget'u do zmiennej globalnej."""
     global dlg
     dlg = _dlg
 
@@ -238,8 +238,11 @@ def vn_forward():
             print("vn_forward error!")
             return
     vn_set_sel(*new_vn)  # Zmieniamy na vn'a o ustalonych parametrach
-    vn_zoom()
-    stage_refresh()
+    if dlg.p_vn.widgets["sqb_seq"].num > 0:  # Włączony tryb sekwencyjnego wczytywania podkładów mapowych
+        dlg.p_vn.widgets["sqb_seq"].player()
+    else:
+        vn_zoom()
+        stage_refresh()
 
 def vn_next():
     """Ustalenie parametrów pierwszego niesprawdzonego vn'a."""

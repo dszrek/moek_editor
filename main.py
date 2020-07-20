@@ -272,15 +272,32 @@ def user_has_vn():
     else:
         return False
 
+def vn_cfg(seq=0):
+    """Wejście lub wyjście z odpowiedniego trybu konfiguracyjnego panelu viewnet (vn_setup lub sekwencje podkładów mapowych)."""
+    if dlg.p_vn.bar.cfg_btn.isChecked():  # Przycisk konfiguracyjny został wciśnięty
+        if dlg.hk_vn:  # Skróty klawiszowe vn włączone
+            dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
+        dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
+        if seq == 0:  # Włączenie trybu vn_setup
+            vn_setup_mode(True)
+        else:  # Włączenie ustawień którejś z sekwencji
+            dlg.p_vn.widgets["sqb_seq"].enter_setup(seq)
+            # dlg.p_vn.box.setCurrentIndex(seq)
+    else:  # Przycisk konfiguracyjny został wyciśnięty
+        if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
+            dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
+            dlg.t_hk_vn = False
+        if dlg.p_vn.box.currentIndex() == 3:  # Wychodzenie z trybu vn_setup
+            vn_setup_mode(False)
+        else:  # Wychodzenie z ustawień któreś z sekwencji
+            dlg.p_vn.widgets["sqb_seq"].exit_setup()
+
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     # print("[vn_setup_mode:", b_flag, "]")
     global vn_setup
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
-        if dlg.hk_vn:  # Skróty klawiszowe vn włączone
-            dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
-        dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą
         dlg.p_pow.active = False  # Wyłączenie trybu wybranego powiatu
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
@@ -290,12 +307,9 @@ def vn_setup_mode(b_flag):
         except TypeError:
             print("Obiekt nie jest jeszcze podłączony.")
         teamusers_load()  # Wczytanie użytkowników do cmb_teamusers
-        dlg.p_vn.box.setCurrentIndex(1)  # zmiana strony p_vn
+        dlg.p_vn.box.setCurrentIndex(3)  # zmiana strony p_vn
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
-        if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
-            dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
-            dlg.t_hk_vn = False
         dlg.p_pow.active = dlg.p_pow.t_active  # Ewentualne przywrócenie trybu powiatu sprzed zmiany
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
         try:

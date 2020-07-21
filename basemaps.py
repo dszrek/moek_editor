@@ -6,7 +6,7 @@ from qgis.core import QgsProject
 from qgis.utils import iface
 
 from .classes import PgConn
-from .main import block_panels
+from .main import block_panels, q2ge
 from .widgets import MoekButton, MoekCheckBox, MoekStackedBox, MoekCfgHSpinBox
 from .sequences import db_sequence_reset, sequences_load
 
@@ -321,6 +321,7 @@ class MoekMapButtons(QFrame):
         self.topo_btn = MoekMapButton(self, name="topo", icon="map_topo", tooltip="mapy topograficzne")
         self.ge_btn = MoekButton(self, size=50, name="ge", tooltip="pokaż widok mapy w Google Earth Pro")
         self.snmt_btn = MoekMapButton(self, name="snmt", icon="map_snmt", wsize=24, hsize=24, l=18)
+        self.ge_btn.clicked.connect(q2ge)
     
     def setEnabled(self, value):
         """Ustawienie koloru linii w MoekMapButtons w zależności od parametru setEnabled."""

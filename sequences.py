@@ -48,7 +48,6 @@ def sequences_load():
             dlg.p_vn.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].map = map[0]  # Id mapy
             m += 1
 
-
 def db_seq(num):
     """Sprawdzenie, czy w tabeli basemaps z aktywnego teamu dla zalogowanego użytkownika są ustawienia dla sekwencji nr 1 lub 2."""
     # print("[db_seq]")

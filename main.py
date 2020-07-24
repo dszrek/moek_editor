@@ -287,7 +287,7 @@ def vn_cfg(seq=0):
         if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
             dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
             dlg.t_hk_vn = False
-        if dlg.p_vn.box.currentIndex() == 3:  # Wychodzenie z trybu vn_setup
+        if dlg.p_vn.box.currentIndex() == 4:  # Wychodzenie z trybu vn_setup
             vn_setup_mode(False)
         else:  # Wychodzenie z ustawień któreś z sekwencji
             dlg.p_vn.widgets["sqb_seq"].exit_setup()
@@ -307,7 +307,7 @@ def vn_setup_mode(b_flag):
         except TypeError:
             print("Obiekt nie jest jeszcze podłączony.")
         teamusers_load()  # Wczytanie użytkowników do cmb_teamusers
-        dlg.p_vn.box.setCurrentIndex(3)  # zmiana strony p_vn
+        dlg.p_vn.box.setCurrentIndex(4)  # zmiana strony p_vn
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
         dlg.p_pow.active = dlg.p_pow.t_active  # Ewentualne przywrócenie trybu powiatu sprzed zmiany

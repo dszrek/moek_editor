@@ -80,12 +80,14 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "seqcfgbox", "name": "scg_seq1", "id": 1, "height": 21, "border": 1, "b_round": "none"},
                     {"page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "seqaddbox", "name": "sab_seq2", "id":2, "height": 21, "border": 1, "b_round": "none"},
                     {"page": 2, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "seqcfgbox", "name": "scg_seq2", "id": 2, "height": 21, "border": 1, "b_round": "none"},
-                    {"page": 3, "row": 0, "col": 1, "r_span": 1, "c_span": 3, "item": "combobox", "name": "teamusers", "border": 1, "b_round": "none"},
-                    {"page": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_powsel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola siatki widoków znajdujące się w granicach wybranego powiatu"},
-                    {"page": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_polysel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola znajdujące się w granicach narysowanego poligonu"},
-                    {"page": 3, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_unsel", "size": 50, "checkable": False, "tooltip": u"wyczyść zaznaczenie pól siatki widoków"},
-                    {"page": 3, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_add", "size": 50, "checkable": False, "tooltip": u"dodaj wybrane pola siatki widoków do zakresu poszukiwań wskazanego użytkownika"},
-                    {"page": 3, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sub", "size": 50, "checkable": False, "tooltip": u"odejmij wybrane pola siatki widoków od zakresu poszukiwań wskazanego użytkownika"},
+                    {"page": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "seqaddbox", "name": "sab_seq3", "id":3, "height": 21, "border": 1, "b_round": "none"},
+                    {"page": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "seqcfgbox", "name": "scg_seq3", "id": 3, "height": 21, "border": 1, "b_round": "none"},
+                    {"page": 4, "row": 0, "col": 1, "r_span": 1, "c_span": 3, "item": "combobox", "name": "teamusers", "border": 1, "b_round": "none"},
+                    {"page": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_powsel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola siatki widoków znajdujące się w granicach wybranego powiatu"},
+                    {"page": 4, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_polysel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola znajdujące się w granicach narysowanego poligonu"},
+                    {"page": 4, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_unsel", "size": 50, "checkable": False, "tooltip": u"wyczyść zaznaczenie pól siatki widoków"},
+                    {"page": 4, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_add", "size": 50, "checkable": False, "tooltip": u"dodaj wybrane pola siatki widoków do zakresu poszukiwań wskazanego użytkownika"},
+                    {"page": 4, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sub", "size": 50, "checkable": False, "tooltip": u"odejmij wybrane pola siatki widoków od zakresu poszukiwań wskazanego użytkownika"},
                     ]
 
         self.p_team = MoekBarPanel(
@@ -104,7 +106,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                             config=True,
                             cfg_fn="vn_cfg()",
                             resize=True,
-                            pages=4)
+                            pages=5)
         self.panels = [self.p_team, self.p_pow, self.p_map, self.p_vn]
         self.widgets = [p_team_widgets, p_pow_widgets, p_map_widgets, p_vn_widgets]
 
@@ -178,7 +180,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     def hk_vn_load(self):
         """Załadowanie skrótów klawiszowych do obsługi vn."""
-        hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space", "hk_1": "1", "hk_2": "2", "hk_tilde": "QuoteLeft", "hk_tab": "Tab"}
+        hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space", "hk_1": "1", "hk_2": "2",  "hk_3": "3", "hk_tilde": "QuoteLeft", "hk_tab": "Tab"}
         for key, val in hotkeys.items():
             exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", self)")
             exec(SELF + key + ".setEnabled(False)")
@@ -197,6 +199,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                 "hk_space": "lambda: change_done(True)",
                 "hk_1": "lambda: seq(1)",
                 "hk_2": "lambda: seq(2)",
+                "hk_3": "lambda: seq(3)",
                 "hk_tilde": "prev_map",
                 "hk_tab": "next_map"}
         io = "connect" if self.hk_vn else "disconnect"

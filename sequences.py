@@ -22,7 +22,7 @@ def dlg_sequences(_dlg):
 def sequences_load():
     """Załadowanie z db ustawień użytkownika, dotyczących sekwencyjnego wczytywania podkładów mapowych."""
     # print("[sequences_load]")
-    for s in range(1,3):  # Iteracja dla sekwencji nr 1 i nr 2
+    for s in range(1, 4):
         seq = db_seq(s)  # Pobranie danych sekwencji
         if seq:  # Sekwencja nie jest pusta
             # Ustawienie parametru empty w przycisku sekwencji:
@@ -43,13 +43,14 @@ def sequences_load():
             # Wczytanie danych do przycisku sekwencji:
             if map[0] > 0:  # Pominięcie w przycisku pustych podkładów
                 dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].maps.append([map[0], map[1]])
+                # TODO: if map[0] = 6 or map[0] = 10:
             # Wczytanie danych do seqcfg'ów (obiektów przechowujących ustawienia podkładów mapowych z sekwencji):
             dlg.p_vn.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].spinbox.value = map[1]  # Opóźnienie
             dlg.p_vn.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].map = map[0]  # Id mapy
             m += 1
 
 def db_seq(num):
-    """Sprawdzenie, czy w tabeli basemaps z aktywnego teamu dla zalogowanego użytkownika są ustawienia dla sekwencji nr 1 lub 2."""
+    """Sprawdzenie, czy w tabeli basemaps z aktywnego teamu dla zalogowanego użytkownika są ustawienia dla sekwencji."""
     # print("[db_seq]")
     db = PgConn()
     sql = "SELECT map_id, i_delay_" + str(num) + " FROM team_" + str(dlg.team_i) + ".basemaps WHERE user_id = " + str(dlg.user_id) + " AND i_order_" + str(num) + " IS NOT NULL ORDER BY i_order_" + str(num) + " ASC;"
@@ -117,19 +118,17 @@ class MoekSeqBox(QFrame):
 
     def __init__(self):
         super().__init__()
-        self.ge = MoekButton(name="ge_sync", size=50, checkable=True)
         self.seq_ctrl = MoekSeqCtrlButton()
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(0, 0, 0, 0)
         self.hlay.setSpacing(0)
         self.hlay.addWidget(self.seq_ctrl)
         self.sqb_btns = {}
-        for r in range(1, 3):
+        for r in range(1, 4):
             _sqb = MoekSeqButton(num=r)
             exec('self.hlay.addWidget(_sqb)')
             sqb_name = f'sqb_{r}'
             self.sqb_btns[sqb_name] = _sqb
-        self.hlay.addWidget(self.ge)
         self.setLayout(self.hlay)
         self.num_changed.connect(self.num_change)
         self.i_changed.connect(self.i_change)

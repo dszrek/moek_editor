@@ -6,7 +6,7 @@ from qgis.core import QgsProject
 from qgis.utils import iface
 
 from .classes import PgConn
-from .main import block_panels, q2ge
+from .main import block_panels
 from .widgets import MoekButton, MoekCheckBox, MoekStackedBox, MoekCfgHSpinBox
 from .sequences import db_sequence_reset, sequences_load
 
@@ -269,32 +269,25 @@ class MoekMapPanel(QFrame):
             # Ustalenie podkładów, które występują w sekwencjach:
             seq1_maps = [m[0] for m in dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_1"].maps]
             seq2_maps = [m[0] for m in dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_2"].maps]
+            seq3_maps = [m[0] for m in dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_3"].maps]
             seq1_out = [i for i in seq1_maps if i  in out_maps]
             seq2_out = [i for i in seq2_maps if i  in out_maps]
+            seq3_out = [i for i in seq3_maps if i  in out_maps]
             del1 = True if len(seq1_out) > 0 else False
             del2 = True if len(seq2_out) > 0 else False
-            if del1 or del2:  # W ktorejś sekwencji zostaną usunięte podkłady
-                if del1 and not del2:
-                    s_text = "nr 1"
-                    t_text = "tej"
-                elif not del1 and del2:
-                    s_text = "nr 2"
-                    t_text = "tej"
-                elif del1 and del2:
-                    s_text = "nr 1 i 2"
-                    t_text = "tych"
-                m_text = f"Próbujesz wyłączyć podkład, który jest częścią sekwencji {s_text}. Naciśnięcie Tak spowoduje wyczyszczenie {t_text} sekwencji."
+            del3 = True if len(seq3_out) > 0 else False
+            if del1 or del2 or del3:  # W ktorejś sekwencji zostaną usunięte podkłady
+                m_text = f"Próbujesz wyłączyć podkład, który jest częścią sekwencji. Naciśnięcie Tak spowoduje wyczyszczenie tej sekwencji."
                 reply = QMessageBox.question(iface.mainWindow(), "Kontynuować?", m_text, QMessageBox.Yes, QMessageBox.No)
                 if reply == QMessageBox.No:
                     dlg.p_vn.bar.cfg_btn.setChecked(True)
                     return
-                # Czyszczenie sekwencji w db:
-                # for scg in self.parent().findChildren(MoekSeqCfg):
-                #     scg.map, scg.spinbox.value = 0, 0
                 if del1:
                     db_sequence_reset(1)
                 if del2:
                     db_sequence_reset(2)
+                if del2:
+                    db_sequence_reset(3)
                 sequences_load()
             block_panels(self, False)  # Odblokowanie pozostałych paneli
             dlg.p_map.btns.setEnabled(True)  # Odblokowanie przycisków z p_map
@@ -303,6 +296,7 @@ class MoekMapPanel(QFrame):
             # Aktualizacje combobox'ów:
             dlg.p_vn.widgets["sab_seq" + str(1)].combobox_update(1)
             dlg.p_vn.widgets["sab_seq" + str(2)].combobox_update(2)
+            dlg.p_vn.widgets["sab_seq" + str(3)].combobox_update(3)
             # Przejście do pierwszej wybranej mapy z aktualnej kategorii:
             self.first_map(self.cat)
             self.spb_update()  # Wymuszenie odświeżenia spinbox'a
@@ -321,7 +315,7 @@ class MoekMapButtons(QFrame):
         self.topo_btn = MoekMapButton(self, name="topo", icon="map_topo", tooltip="mapy topograficzne")
         self.ge_btn = MoekButton(self, size=50, name="ge", tooltip="pokaż widok mapy w Google Earth Pro")
         self.snmt_btn = MoekMapButton(self, name="snmt", icon="map_snmt", wsize=24, hsize=24, l=18)
-        self.ge_btn.clicked.connect(q2ge)
+        # self.ge_btn.clicked.connect(q2ge)
     
     def setEnabled(self, value):
         """Ustawienie koloru linii w MoekMapButtons w zależności od parametru setEnabled."""

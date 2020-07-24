@@ -1,10 +1,8 @@
 #!/usr/bin/python
 import os
-import tempfile
-import codecs
 
 from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.core import QgsReadWriteContext, QgsProject, QgsPointXY, QgsCoordinateReferenceSystem, QgsCoordinateTransform
+from qgis.core import QgsReadWriteContext, QgsProject
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
@@ -433,53 +431,3 @@ def block_panels(_panel, value):
     for panel in dlg.panels:
         if panel != _panel or panel == "p_map":
             panel.setEnabled(not value)
-
-def q2ge(self):
-    """Wyświetlenie w Google Earth Pro obszaru mapy z QGIS'a."""
-    canvas = iface.mapCanvas()
-    map_rect = canvas.extent()  # Zasięg widoku mapy w QGIS'ie
-    crs_src = canvas.mapSettings().destinationCrs()  # PL1992
-    crs_dest = QgsCoordinateReferenceSystem(4326)  # WGS84
-    xform = QgsCoordinateTransform(crs_src, crs_dest, QgsProject.instance())  # Transformacja między układami
-    # Współrzędne rogów widoku mapy:
-    x1 = map_rect.xMinimum()
-    x2 = map_rect.xMaximum()
-    y1 = map_rect.yMinimum()
-    y2 = map_rect.yMaximum()
-    # Wyznaczenie punktu centralnego:
-    x = (x1 + x2) / 2
-    y = (y1 + y2) / 2
-    proj = QgsPointXY(x, y)  # Punkt centralny w PL1992
-    # Transformacja punktu centralnego do WGS84:
-    geo = xform.transform(QgsPointXY(proj.x(), proj.y()))
-    # Współrzędne geograficzne punktu centralnego:
-    lon = geo.x()
-    lat = geo.y()
-    # Ustalenie kąta obrotu mapy w GE:
-    rot = -3.85 + (lon-14.11677234)*7.85/10.02872526
-    # Ustalenie wysokości kamery w GE:
-    rng = canvas.scale() * 0.387
-    temp_dir = tempfile.gettempdir()  # Ścieżka do folderu TEMP
-    # Utworzenie pliku kml:
-    kml = codecs.open(temp_dir + '/moek.kml', 'w', encoding='utf-8')
-    kml.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    kml.write('<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">\n')
-    kml.write('    <Document>\n')
-    kml.write('        <LookAt>\n')
-    k_txt = f'            <longitude>{lon}</longitude>\n'
-    kml.write(k_txt)
-    k_txt = f'            <latitude>{lat}</latitude>\n'
-    kml.write(k_txt)
-    kml.write('            <altitude>0</altitude>\n')
-    k_txt = f'            <heading>{rot}</heading>\n'
-    kml.write(k_txt)
-    kml.write('            <tilt>0</tilt>\n')
-    k_txt = f'            <range>{rng}</range>\n'
-    kml.write(k_txt)
-    kml.write('            <gx:altitudeMode>relativeToGround</gx:altitudeMode>\n')
-    kml.write('        </LookAt>\n')
-    kml.write('    </Document>\n')
-    kml.write('</kml>\n')
-    kml.close()
-    # Uruchomienie pliku kml w GE:
-    os.startfile(temp_dir + '/moek.kml')

@@ -264,5 +264,6 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     def closeEvent(self, event):
         self.hk_vn = False  # Deaktywacja skrótów klawiszowych
+        self.ge = None
         self.closingPlugin.emit()
         event.accept()

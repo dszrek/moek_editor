@@ -35,6 +35,7 @@ from .viewnet import dlg_viewnet
 from .widgets import dlg_widgets
 from .basemaps import dlg_basemaps, basemaps_load
 from .sequences import dlg_sequences, sequences_load
+from .classes import GESync
 
 # Import the code for the DockWidget
 from .moek_editor_dockwidget import MoekEditorDockWidget
@@ -272,6 +273,7 @@ class MoekEditor:
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
+            self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
             self.dockwidget.setUpdatesEnabled(True)
             # self.dockwidget.show()
             finish = time.perf_counter()

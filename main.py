@@ -321,6 +321,7 @@ def vn_setup_mode(b_flag):
         except TypeError:
             print("Obiekt nie jest jeszcze podłączony.")
         dlg.p_vn.box.setCurrentIndex(0)  # zmiana strony p_vn
+        vn_mode_changed(False)
     pow_layer_update()
     vn_layer_update()
 

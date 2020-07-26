@@ -239,6 +239,7 @@ class MoekMapPanel(QFrame):
         self.box.setCurrentIndex(1) if self.cat == "sat" or self.cat == "snmt" else self.box.setCurrentIndex(2)
         block_panels(self, True)  # Zablokowanie pozostałych paneli na czas wyboru map
         dlg.p_map.btns.setEnabled(False)  # Zablokowanie przycisków z p_map
+        dlg.p_vn.widgets["sqb_seq"].num = 0  # Deaktywacja sekwencji
     
     def exit_clicked(self):
         """Wyjście z ustawień wyboru map z aktywnej kategorii."""

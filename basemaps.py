@@ -370,7 +370,12 @@ class MoekMapButton(QFrame):
 
     def btn_clicked(self):
         """Zmiana kategorii map po wciśnięciu przycisku."""
-        self.parent().parent().first_map(cat=self.name)
+        if self.name == "snmt" and dlg.p_map.map in range(2, 7):  # Wybranie odpowiedniej mapy sat do nmt
+            dlg.p_map.map += 5
+        elif self.name == "sat" and dlg.p_map.map in range(7, 12):  # Powrót do mapy sat bez nmt
+            dlg.p_map.map -= 5
+        else:
+            self.parent().parent().first_map(cat=self.name)
 
 
 class MoekMapsBox(QFrame):

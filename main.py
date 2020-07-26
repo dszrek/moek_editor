@@ -12,8 +12,10 @@ from .viewnet import vn_set_gvars, stage_refresh
 # Stałe globalne
 SQL_1 = " WHERE user_id = "
 
+USER = "asko"
+
 # Zmienne globalne
-user_login = "asko"  # os.getlogin()
+
 dlg = None
 vn_setup = False
 
@@ -25,6 +27,7 @@ def dlg_main(_dlg):
 def db_login():
     """Logowanie do bazy danych."""
     # print("[db_login]")
+    user_login = os.getlogin() if USER == "" else USER
     db = PgConn()
     # Wyszukanie aliasu systemowego w tabeli users:
     sql = "SELECT user_id, t_user_name, i_active_team FROM users WHERE t_user_alias = '" + user_login + "';"

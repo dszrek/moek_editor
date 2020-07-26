@@ -168,8 +168,8 @@ class GESync:
         self.bmp_hwnd = None  # Handler subokna Google Earth Pro z widokiem samej mapy
         self.bytes = int()  # Rozmiar aktualnego pliku jpg
         self.is_ge = False  # Czy Google Earth Pro jest uruchomiony?
-        self.tmp_num = 0  # Numer pliku tymczasowego
         self.is_on = False  # Czy warstwa 'Google Earth Pro' jest włączona?
+        self.tmp_num = 0  # Numer pliku tymczasowego
         self.extent = None  # Zasięg geoprzestrzenny aktualnego widoku mapy
         self.t_void = False  # Blokada stopera
         self.ge_layer = QgsProject.instance().mapLayersByName('Google Earth Pro')[0]  # Referencja warstwy 'Google Earth Pro'
@@ -178,9 +178,6 @@ class GESync:
         self.bmp_h = int()  # Wysokość bmp
         self.jpg_file = ""  # Ścieżka do pliku jpg
         self.get_handlers()
-        ge_layer = QgsProject.instance().mapLayersByName('Google Earth Pro')[0]
-        self.ge_legend.visibilityChanged.connect(self.visible_changed)
-        iface.mapCanvas().extentsChanged.connect(self.extent_changed)
 
     def extent_changed(self):
         """Zmiana zakresu geoprzestrzennego widoku mapy."""
@@ -206,9 +203,9 @@ class GESync:
             self.extent = iface.mapCanvas().extent()
             self.ge_sync()
 
-    def visible_changed(self):
-        """Włączenie / wyłączenie warstwy "Google Earth Pro"."""
-        if self.ge_legend.itemVisibilityChecked():  # Włączono warstwę
+    def visible_changed(self, value):
+        """Włączenie / wyłączenie warstwy 'Google Earth Pro'."""
+        if value:  # Włączono warstwę
             self.is_on = True
             self.extent = iface.mapCanvas().extent()
             self.ge_sync()
@@ -256,17 +253,32 @@ class GESync:
 
     def ge_sync(self):
         """Wyświetlenie w Google Earth Pro obszaru mapy z QGIS'a."""
+        if not self.is_ge:
+            self.q2ge()
+            self.get_handlers()
+            return
+        # Sprawdzenie, czy Google Earth Pro jeszcze działa:
+        try:
+            win32gui.GetClientRect(self.bmp_hwnd)
+        except:
+            self.is_ge = False
+            return
+        self.q2ge()
+        self.ge_grabber()
+
+    def q2ge(self, back=True):
+        """Przejście w Google Earth Pro do widoku mapy z QGIS'a."""
         canvas = iface.mapCanvas()
         crs_src = canvas.mapSettings().destinationCrs()  # PL1992
         crs_dest = QgsCoordinateReferenceSystem(4326)  # WGS84
         xform = QgsCoordinateTransform(crs_src, crs_dest, QgsProject.instance())  # Transformacja między układami
+        if not self.extent or not back:
+            self.extent = iface.mapCanvas().extent()
         # Współrzędne rogów widoku mapy:
         x1 = self.extent.xMinimum()
         x2 = self.extent.xMaximum()
         y1 = self.extent.yMinimum()
         y2 = self.extent.yMaximum()
-        width = x2 - x1
-        height = y2 - y1
         # Wyznaczenie punktu centralnego:
         x = (x1 + x2) / 2
         y = (y1 + y2) / 2
@@ -303,10 +315,10 @@ class GESync:
         kml.write('</kml>\n')
         kml.close()
         # Włączenie dla QGIS'a funkcji always on top:
-        win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
+        if back:
+            win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
         # Odpalenie pliku w Google Earth Pro:
         os.startfile(TEMP_PATH + '/moek.kml')
-        self.ge_grabber()  # Przechwycenie obrazu
 
     def ge_grabber(self):
         """Główna funkcja przechwytywania obrazu z Google Earth Pro."""

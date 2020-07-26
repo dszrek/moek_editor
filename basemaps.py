@@ -124,6 +124,7 @@ class MoekMapPanel(QFrame):
         self.cat = ""
         self.map = int()
         self.loaded = False
+        self.ge = False
         self.layers = []
         self.all = []
         self.map_changed.connect(self.map_change)
@@ -141,6 +142,18 @@ class MoekMapPanel(QFrame):
         self.cat_change()  # Zmiana kategorii, jeśli potrzebna
         # Zmiana wyświetlanego w spinbox'ie tytułu podkładu mapowego:
         self.box.pages["page_0"].label.setText(self.map_attr(self.map)["name"])
+        if self.map == 6 or self.map == 11:  # Włączenie warstwy "Google Earth Pro"
+            if not self.ge:
+                iface.mapCanvas().extentsChanged.connect(dlg.ge.extent_changed)
+                dlg.ge.visible_changed(True)
+                self.ge = True
+                print("warstwa GEP włączona")
+        else:
+            if self.ge:
+                iface.mapCanvas().extentsChanged.disconnect(dlg.ge.extent_changed)
+                dlg.ge.visible_changed(False)
+                self.ge = False
+                print("warstwa GEP wyłączona")
         # Ustawienie widoczności warstw z podkładami mapowymi:
         for layer in self.layers:
             if layer == self.map_attr(self.map)["lyr_1"] or layer == self.map_attr(self.map)["lyr_2"]:
@@ -316,8 +329,8 @@ class MoekMapButtons(QFrame):
         self.topo_btn = MoekMapButton(self, name="topo", icon="map_topo", tooltip="mapy topograficzne")
         self.ge_btn = MoekButton(self, size=50, name="ge", tooltip="pokaż widok mapy w Google Earth Pro")
         self.snmt_btn = MoekMapButton(self, name="snmt", icon="map_snmt", wsize=24, hsize=24, l=18)
-        # self.ge_btn.clicked.connect(q2ge)
-    
+        self.ge_btn.clicked.connect(self.ge_clicked)
+
     def setEnabled(self, value):
         """Ustawienie koloru linii w MoekMapButtons w zależności od parametru setEnabled."""
         super().setEnabled(value)
@@ -338,6 +351,13 @@ class MoekMapButtons(QFrame):
         self.topo_btn.setGeometry(2 * w_4 + marg_2, 0, b, b)
         self.ge_btn.setGeometry(3 * w_4 + marg_2, 0, b, b)
         self.snmt_btn.setGeometry(w_4 - 12, 13, 24, 37)
+
+    def ge_clicked(self):
+        """Synchronizacja widoku QGIS'a i Google Earth Pro."""
+        if dlg.p_map.ge:  # Warstwa z Google Earth Pro jest włączona
+            dlg.ge.ge_sync()  # Synchronizacja widoków
+        else:
+            dlg.ge.q2ge(False)  # Pokazanie widoku QGIS'a w Google Earth Pro
 
 
 class MoekMapButton(QFrame):

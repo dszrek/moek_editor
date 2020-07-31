@@ -371,9 +371,9 @@ class MoekMapButton(QFrame):
         self.line.setObjectName("ln")
         self.line.setFixedWidth(2)
         self.line.setVisible(False)
-        self.set_style(True)
         self.button = MoekButton(self, size=wsize, hsize=hsize, name=name, icon=icon, checkable=checkable, tooltip=tooltip)
         self.button.clicked.connect(self.btn_clicked)
+        self.set_style(True)
 
     def set_style(self, value):
         """Modyfikacja stylesheet przy zmianie parametru setEnabled."""
@@ -390,6 +390,7 @@ class MoekMapButton(QFrame):
 
     def btn_clicked(self):
         """Zmiana kategorii map po wciśnięciu przycisku."""
+        self.button.setChecked(True) if self.name == self.parent().parent().cat else self.button.setChecked(False)
         if self.name == "snmt" and dlg.p_map.map in range(2, 7):  # Wybranie odpowiedniej mapy sat do nmt
             dlg.p_map.map += 5
         elif self.name == "sat" and dlg.p_map.map in range(7, 12):  # Powrót do mapy sat bez nmt

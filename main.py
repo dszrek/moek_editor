@@ -86,6 +86,7 @@ def teams_cb_changed():
         dlg.team_t = t_team_t
         dlg.team_i = t_team_i
         print("Pomyślnie załadowano team: ", dlg.team_t)
+        flag_layer_update()  # Aktualizacja warstwy z flagami
         # Próba (bo może być jeszcze nie podłączony) odłączenia sygnału zmiany cmb_pow_act:
         try:
             dlg.p_pow.box.widgets["cmb_pow_act"].currentIndexChanged.disconnect(powiaty_cb_changed)
@@ -203,6 +204,15 @@ def pow_layer_update():
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     layer_zoom(layer)  # Przybliżenie widoku mapy do wybranego powiatu/powiatów
     stage_refresh()  # Odświeżenie sceny
+
+def flag_layer_update():
+    """Aktualizacja warstwy powiatów."""
+    # print("[flag_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    uri = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom)'
+    layer = QgsProject.instance().mapLayersByName("flagi")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy flag
 
 def vn_mode_changed(clicked):
     """Włączenie bądź wyłączenie viewnet."""

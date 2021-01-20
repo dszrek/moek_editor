@@ -51,6 +51,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     closingPlugin = pyqtSignal()
     hk_vn_changed = pyqtSignal(bool)
+    hk_seq_changed = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super(MoekEditorDockWidget, self).__init__(parent)
@@ -130,12 +131,16 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
         self.__button_conn()
         self.hk_vn_load()
+        self.hk_seq_load()
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "hk_vn":
             self.hk_vn_changed.emit(val)
+        if attr == "hk_seq":
+            self.hk_seq_changed.emit(val)
+
 
     def resize_panel(self, event):
         """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
@@ -180,7 +185,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     def hk_vn_load(self):
         """Załadowanie skrótów klawiszowych do obsługi vn."""
-        hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space", "hk_1": "1", "hk_2": "2",  "hk_3": "3", "hk_tilde": "QuoteLeft", "hk_tab": "Tab"}
+        hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space"}
         for key, val in hotkeys.items():
             exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", self)")
             exec(SELF + key + ".setEnabled(False)")
@@ -196,12 +201,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                 "hk_down": "hk_down_pressed",
                 "hk_left": "hk_left_pressed",
                 "hk_right": "hk_right_pressed",
-                "hk_space": "lambda: change_done(True)",
-                "hk_1": "lambda: seq(1)",
-                "hk_2": "lambda: seq(2)",
-                "hk_3": "lambda: seq(3)",
-                "hk_tilde": "prev_map",
-                "hk_tab": "next_map"}
+                "hk_space": "lambda: change_done(True)"
+                }
         io = "connect" if self.hk_vn else "disconnect"
         try:
             for key, val in hk_fn.items():
@@ -216,6 +217,40 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             print(f"hotkeys exception ({key}): {error}")
         finally:
             self.hk_vn_active = self.hk_vn  # Zapamiętanie stanu hk_vn
+
+    def hk_seq_load(self):
+        """Załadowanie skrótów klawiszowych do obsługi sekwencji podkładów mapowych."""
+        hotkeys = {"hk_1": "1", "hk_2": "2",  "hk_3": "3", "hk_tilde": "QuoteLeft", "hk_tab": "Tab"}
+        for key, val in hotkeys.items():
+            exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", self)")
+            exec(SELF + key + ".setEnabled(False)")
+        self.hk_seq_active = False
+        self.hk_seq_changed.connect(self.hk_seq_change)
+        self.hk_seq = True
+
+    def hk_seq_change(self):
+        """Włączenie/wyłączenie skrótów klawiszowych do obsługi vn."""
+        if self.hk_seq_active == self.hk_seq:  # hk_seq już ma odpowiednią wartość
+            return
+        hk_fn = {"hk_1": "lambda: seq(1)",
+                "hk_2": "lambda: seq(2)",
+                "hk_3": "lambda: seq(3)",
+                "hk_tilde": "prev_map",
+                "hk_tab": "next_map"}
+        io = "connect" if self.hk_seq else "disconnect"
+        try:
+            for key, val in hk_fn.items():
+                # Aktywacja/deaktywacja skrótów klawiszowych:
+                exec(SELF + key + ".setEnabled(self.hk_seq)")
+                # Usunięcie nazwy funkcji z nawiasu przy odłączaniu skrótów klawiszowych:
+                if not self.hk_seq:
+                    val = ""
+                # Podłączenie/odłączenie sygnału:
+                exec(SELF + key + ".activated." + io + "(" + val + ")")
+        except Exception as error:
+            print(f"hotkeys exception ({key}): {error}")
+        finally:
+            self.hk_seq_active = self.hk_seq  # Zapamiętanie stanu hk_seq
 
     def __button_conn(self):
         """Przyłączenia przycisków do funkcji."""

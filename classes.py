@@ -145,7 +145,6 @@ class CfgPars(ConfigParser):
     def uri(self):
         """Przekazanie parametrów połączenia z db za pośrednictwem Uri."""
         result = ""
-        # uri = 'dbname="moek_ripper" host=localhost port=5432 user="pgi_user" table="public"."mv_team_powiaty" (geom) sql=team_id = ' + str(team_i)
         # Ładowanie parametrów do słownika
         params = self.items(self.section)
         for key, val in params:
@@ -161,6 +160,7 @@ class CfgPars(ConfigParser):
 class GESync:
     """Integracja QGIS'a z Google Earth Pro."""
     def __init__(self):
+        self.screen_scale = 1  # Wartość skalowania rozdzielczości ekranowej
         self.q_id = None  # Id procesu QGIS'a
         self.ge_id = None  # Id procesu Google Earth Pro
         self.q_hwnd = None  # Handler okna QGIS'a
@@ -209,14 +209,26 @@ class GESync:
             self.timer.deleteLater()
             self.t_void = False
             self.extent = iface.mapCanvas().extent()
-            self.ge_sync()
+            # self.loaded = True
+            # print(f"loaded: {self.loaded}")
+            # Włączenie warstwy z maską powiatu:
+            QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("powiaty_mask")[0].id()).setItemVisibilityChecked(True)
+            if self.is_on:
+                self.ge_sync()
 
     def visible_changed(self, value):
         """Włączenie / wyłączenie warstwy 'Google Earth Pro'."""
+        print(f"[visible_changed]")
         if value:  # Włączono warstwę
             self.is_on = True
-            self.extent = iface.mapCanvas().extent()
-            self.ge_sync()
+            print(f"{self.extent} - {iface.mapCanvas().extent()}")
+            if self.extent != iface.mapCanvas().extent():
+                self.extent = iface.mapCanvas().extent()
+                self.ge_sync()
+                print(f"ge_sync")
+            if self.player or not self.loaded:
+                self.ge_grabber()
+                print(f"ge_grabber")
         else:  # Wyłączono warstwę
             self.is_on = False
 
@@ -227,12 +239,14 @@ class GESync:
         process_list = [(p.Properties_("ProcessID").Value, p.Properties_("Name").Value) for p in processes]
         ge_flag = False
         for p in process_list:
-            if p[1] == "qgis-bin-g7.exe" or p[1] == "qgis-bin.exe":
+            if p[1] == "qgis-bin-g7.exe" or p[1] == "qgis-bin.exe" or p[1] == "qgis-ltr-bin.exe" or p[1] == "qgis-ltr-bin-g7.exe":
                 self.q_id = p[0]
+                print(f"qgis: {p[1]}")
             elif p[1] == "googleearth.exe":
                 ge_flag = True
                 self.is_ge = True
                 self.ge_id = p[0]
+                print(f"is_ge: {self.is_ge}, ge_id: {self.ge_id}")
         if not ge_flag:  # Google Earth Pro nie jest uruchomiony
             self.ge_id = None
             self.is_ge = False
@@ -242,26 +256,37 @@ class GESync:
     def _enum_callback(self, hwnd, extras):
         """Ustalenie handlerów dla QGIS i Google Earth Pro."""
         # Wyszukanie handlera QGIS'a:
-        if win32process.GetWindowThreadProcessId(hwnd)[1] == self.q_id:
-            w_title = win32gui.GetWindowText(hwnd)
-            if w_title.find("MOEK") != -1:  # W nazwie otwartego pliku .qgz musi być fraza "MOEK"
-                self.q_hwnd = hwnd
+        # if win32process.GetWindowThreadProcessId(hwnd)[1] == self.q_id:
+        w_title = win32gui.GetWindowText(hwnd)
+        # print(f"w_title: {w_title}")
+        if w_title.find("*MOEK_editor") != -1:  # W nazwie otwartego pliku .qgz musi być fraza "*MOEK_editor"
+            self.q_hwnd = hwnd
+            print(f"self.q_hwnd: {self.q_hwnd}")
         # Wyszukanie handlera Google Earth Pro:
-        if self.is_ge and win32gui.GetWindowText(hwnd) == "Google Earth Pro":
+        if self.is_ge and w_title == "Google Earth Pro":
             self.ge_hwnd = hwnd
+            print(f"self.ge_hwnd: {self.ge_hwnd}")
             # Wyszukanie handlera subokna Google Earth Pro z obrazem mapy:
             self.child = 0
-            win32gui.EnumChildWindows(self.ge_hwnd, self._enum_children, None)
+            try:
+                win32gui.EnumChildWindows(self.ge_hwnd, self._enum_children, None)
+            except:
+                print(f"EnumChildWindows exception!")
 
     def _enum_children(self, hwnd, extras):
         """Ustalenie handlera subokna Google Earth Pro z obrazem mapy."""
+        print(f"child: {self.child}")
         self.child += 1
+        rect = win32gui.GetWindowRect(hwnd)
+        print(f"ge_width: {rect[2] - rect[0]}, ge_height: {rect[3] - rect[1]}")
         if self.child == 12:
             self.bmp_hwnd = hwnd
 
     def ge_sync(self):
         """Wyświetlenie w Google Earth Pro obszaru mapy z QGIS'a."""
+        print("[ge_sync]")
         if not self.is_ge:
+            print(f"2. q2ge")
             self.q2ge()
             self.get_handlers()
             return
@@ -271,16 +296,22 @@ class GESync:
         except:
             self.is_ge = False
             return
+        print(f"3. q2ge")
         self.q2ge()
         self.ge_grabber()
 
-    def q2ge(self, back=True):
+    def q2ge(self, back=True, player=False):
         """Przejście w Google Earth Pro do widoku mapy z QGIS'a."""
+        print(f"[q2ge]")
+        if not self.is_ge:
+            self.get_handlers()
         canvas = iface.mapCanvas()
         crs_src = canvas.mapSettings().destinationCrs()  # PL1992
         crs_dest = QgsCoordinateReferenceSystem(4326)  # WGS84
         xform = QgsCoordinateTransform(crs_src, crs_dest, QgsProject.instance())  # Transformacja między układami
-        if not self.extent or not back:
+        if not self.extent or not back or player:
+            print("extent changed")
+            self.loaded = False
             self.extent = iface.mapCanvas().extent()
         # Współrzędne rogów widoku mapy:
         x1 = self.extent.xMinimum()
@@ -299,7 +330,7 @@ class GESync:
         # Ustalenie kąta obrotu mapy w GE:
         rot = -3.85 + (lon-14.11677234)*7.85/10.02872526
         # Ustalenie wysokości kamery w GE:
-        rng = canvas.scale() * (canvas.width()/100) *0.02285 #0.0228
+        rng = canvas.scale() * (canvas.width()/100) * (0.022875 / self.screen_scale)
         TEMP_PATH = tempfile.gettempdir()  # Ścieżka do folderu TEMP
         # Utworzenie pliku kml:
         kml = codecs.open(TEMP_PATH + '/moek.kml', 'w', encoding='utf-8')
@@ -323,17 +354,43 @@ class GESync:
         kml.write('</kml>\n')
         kml.close()
         # Włączenie dla QGIS'a funkcji always on top:
-        if back:
-            win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
+        if back and self.is_ge:
+            print(f"qgis on top: True")
+            try:
+                win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
+            except:
+                print(f"q_hwnd ({self.q_hwnd}) exception!")
+                pass
         # Odpalenie pliku w Google Earth Pro:
         os.startfile(TEMP_PATH + '/moek.kml')
+        if back and self.is_ge:
+            QTimer.singleShot(1000, self.on_top_off)
+
+    def on_top_off(self):
+        """Wyłączenie dla QGIS'a funkcji always on top."""
+        # print(f"[on_top_off]")
+        try:
+            win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
+            win32gui.SetForegroundWindow(self.q_hwnd)
+            print(f"qgis on top: False")
+        except:
+            print(f"q_hwnd ({self.q_hwnd}) exception!")
+            self.get_handlers()
 
     def ge_grabber(self):
         """Główna funkcja przechwytywania obrazu z Google Earth Pro."""
         # Ekranowe wymiary obrazka do przechwycenia:
-        l,t,r,b = win32gui.GetClientRect(self.bmp_hwnd)
-        self.bmp_w = r - l
-        self.bmp_h = b - t
+        print("[ge_grabber]")
+        try:
+            l,t,r,b = win32gui.GetClientRect(self.bmp_hwnd)
+        except:
+            print("ge_grabber exception!")
+            self.get_handlers()
+            self.ge_sync()
+            return
+        self.bmp_w = int((r - l) / self.screen_scale)
+        self.bmp_h = int((b - t)  / self.screen_scale)
+        print(f"bmp_w: {self.bmp_w}, bmp_h: {self.bmp_h}")
         self.tmp_num = 0
         self.bytes = 0
         # Przechwycenie obrazu i określenie ile waży zapisany jpg:
@@ -344,16 +401,19 @@ class GESync:
                 break
             self.tmp_num += 1
             self.bytes = tmp_bytes
-            time.sleep(0.1)
+            time.sleep(0.2)
             tmp_bytes = self.create_jpg()
         self.create_jpg()  # Ostateczne zapisanie pliku
         self.wld_creator()  # Utworzenie pliku z georeferencjami
         self.layer_update()  # Wczytanie jpg'a do warstwy
-        # Wyłączenie dla QGIS'a funkcji always on top
-        win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
+        self.loaded = True
+        print(f"loaded: {self.loaded}")
+        # Wyłączenie dla QGIS'a funkcji always on top:
+        self.on_top_off()
 
     def create_jpg(self):
         """Przechwycenie obrazu z Google Earth Pro i zapisanie go do .jpg."""
+        print(f"[create_jpg]")
         dc = win32gui.GetDC(self.bmp_hwnd)
         hdc = win32ui.CreateDCFromHandle(dc)
         new_dc = hdc.CreateCompatibleDC()

@@ -144,13 +144,13 @@ class MoekMapPanel(QFrame):
         self.box.pages["page_0"].label.setText(self.map_attr(self.map)["name"])
         if self.map == 6 or self.map == 11:  # Włączenie warstwy "Google Earth Pro"
             if not self.ge:
-                iface.mapCanvas().extentsChanged.connect(dlg.ge.extent_changed)
+                # iface.mapCanvas().extentsChanged.connect(dlg.ge.extent_changed)
                 dlg.ge.visible_changed(True)
                 self.ge = True
                 print("warstwa GEP włączona")
         else:
             if self.ge:
-                iface.mapCanvas().extentsChanged.disconnect(dlg.ge.extent_changed)
+                # iface.mapCanvas().extentsChanged.disconnect(dlg.ge.extent_changed)
                 dlg.ge.visible_changed(False)
                 self.ge = False
                 print("warstwa GEP wyłączona")
@@ -357,6 +357,7 @@ class MoekMapButtons(QFrame):
         if dlg.p_map.ge:  # Warstwa z Google Earth Pro jest włączona
             dlg.ge.ge_sync()  # Synchronizacja widoków
         else:
+            print(f"4. q2ge")
             dlg.ge.q2ge(False)  # Pokazanie widoku QGIS'a w Google Earth Pro
 
 

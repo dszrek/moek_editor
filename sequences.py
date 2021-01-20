@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import time
 
 from PyQt5.QtWidgets import QWidget, QFrame, QSpinBox, QComboBox, QToolButton, QLabel, QHBoxLayout, QVBoxLayout, QSizePolicy, QMessageBox
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtSignal, QTimer
@@ -43,7 +44,9 @@ def sequences_load():
             # Wczytanie danych do przycisku sekwencji:
             if map[0] > 0:  # Pominięcie w przycisku pustych podkładów
                 dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].maps.append([map[0], map[1]])
-                # TODO: if map[0] = 6 or map[0] = 10:
+            # Ustawienie w sekwencji atrybute ge (czy w sekwencji jest Google Earth Pro):
+            if map[0] == 6 or map[0] == 11:
+                dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].ge = True
             # Wczytanie danych do seqcfg'ów (obiektów przechowujących ustawienia podkładów mapowych z sekwencji):
             dlg.p_vn.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].spinbox.value = map[1]  # Opóźnienie
             dlg.p_vn.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].map = map[0]  # Id mapy
@@ -201,6 +204,7 @@ class MoekSeqBox(QFrame):
 
     def player(self):
         """Odtwarzanie sekwencyjnego wczytywania podkładów mapowych."""
+        print(f"[player]")
         # Przerwanie poprzedniego sekwencyjnego wczytywania, jeśli jeszcze trwa:
         try:
             self.timer.stop()
@@ -208,17 +212,26 @@ class MoekSeqBox(QFrame):
             self.sqb_btns["sqb_" + str(self.num)].progbar.value = 0
         except (AttributeError, RuntimeError):
             pass
+        vn_zoom(player=True)  # Przybliżenie widoku mapy do nowego vn'a
+        print(f'seq_ge: {self.sqb_btns["sqb_" + str(self.num)].ge}, is_ge: {dlg.ge.is_ge}')
+        if self.sqb_btns["sqb_" + str(self.num)].ge:  # W sekwencji jest Google Earth Pro
+            print(f"+++++++++++++++++++++++++  1  +++++++++++++++++++++++++++++")
+            dlg.ge.q2ge(player=True, back=True)
+        elif dlg.ge.is_ge:  # Google Earth Pro jest włączony
+            print(f"+++++++++++++++++++++++++  2  +++++++++++++++++++++++++++++")
+            dlg.ge.q2ge(player=True, back=True)
         self.i = 0  # Przejście do pierwszego podkładu mapowego z sekwencji
         delay = self.sqb_btns["sqb_" + str(self.num)].maps[self.i][1]  # Pobranie opóźnienia
         self.set_timer(delay)  # Uruchomienie stopera
-        vn_zoom()  # Przybliżenie widoku mapy do nowego vn'a
 
     def set_timer(self, period):
         """Ustawienie i odpalenie funkcji odmierzającej czas."""
+        # print(f"[set_timer]")
         self.period = period  # Całkowity czas
         self.tick = period / 10  # Interwał odświeżania progressbar'a
         self.tack = 0  # Wartość dla progressbar'a
         self.lasted = 0.0  # Czas, który już minął
+        dlg.ge.player = True  # Przekazanie do GESync informacji o aktywacji player'a
         # Stworzenie stopera i jego odpalenie:
         self.timer = QTimer(self, interval=self.tick * 1000)
         self.timer.timeout.connect(self.run_timer)
@@ -226,17 +239,26 @@ class MoekSeqBox(QFrame):
 
     def run_timer(self):
         """Funkcja odmierzająca czas."""
+        # print(f"[run_timer]")
         self.lasted += self.tick
         self.tack += 1
         # if self.tack == 5:
         #     iface.mapCanvas().refresh()
         # Odświeżenie progressbar'a:
-        self.sqb_btns["sqb_" + str(self.num)].progbar.value = self.tack
+        try:
+            self.sqb_btns["sqb_" + str(self.num)].progbar.value = self.tack
+        except:
+            pass
         if self.lasted >= self.period:  # Czas dobiegł końca
             # Kasowanie licznika:
-            self.timer.stop()
-            self.timer.deleteLater()
-            self.sqb_btns["sqb_" + str(self.num)].progbar.value = 0
+            try:
+                self.timer.stop()
+                self.timer.deleteLater()
+            except:
+                pass
+            dlg.ge.player = False  # Przekazanie do GESync informacji o uruchomieniu player'a
+            if self.num > 0:
+                self.sqb_btns["sqb_" + str(self.num)].progbar.value = 0
             if self.i < len(self.sqb_btns["sqb_" + str(self.num)].maps) - 1:
                 self.next_map(player=True)  # Wczytanie kolejnego podkładu
 
@@ -305,6 +327,7 @@ class MoekSeqButton(QFrame):
         self.cfg_btn.setFixedSize(19, 19)
         self.cfg_btn.setGeometry(15.5, 32, 19, 19)
         self.maps = []
+        self.ge = False
         self.empty_changed.connect(self.empty_change)
         self.activated.connect(self.active_change)
         self.cfg_btn.clicked.connect(self.cfg_clicked)
@@ -851,7 +874,7 @@ class MoekSeqLabel(QLabel):
             f.setPointSize(f_size)
             self.setFont(f)
             f_w = self.fontMetrics().boundingRect(self.text()).width() + marg
-            if f_size == 8:  # Ograniczenie zmniejszenia czcionki
+            if f_size == 6:  # Ograniczenie zmniejszenia czcionki
                 return
 
 
@@ -875,7 +898,7 @@ class MoekButton(QToolButton):
         self.setEnabled(enabled)
         self.setCheckable(checkable)
         self.setToolTip(tooltip)
-        self.wsize = size if hsize == 0 else size
+        self.wsize = size# if hsize == 0 else size
         self.hsize = size if hsize == 0 else hsize
         self.setFixedSize(self.wsize, self.hsize)
         self.setIconSize(QSize(self.wsize, self.hsize))

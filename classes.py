@@ -172,22 +172,30 @@ class GESync:
         self.tmp_num = 0  # Numer pliku tymczasowego
         self.extent = None  # Zasięg geoprzestrzenny aktualnego widoku mapy
         self.t_void = False  # Blokada stopera
+        self.player = False  # Czy w danym momencie uruchomiony jest player sekwencji?
+        self.loaded = False  # Czy widok mapy się załadował?
         self.ge_layer = QgsProject.instance().mapLayersByName('Google Earth Pro')[0]  # Referencja warstwy 'Google Earth Pro'
         self.ge_legend = QgsProject.instance().layerTreeRoot().findLayer(self.ge_layer.id())  # Referencja warstwy w legendzie
         self.bmp_w = int()  # Szerokość bmp
         self.bmp_h = int()  # Wysokość bmp
         self.jpg_file = ""  # Ścieżka do pliku jpg
         self.get_handlers()
+        iface.mapCanvas().extentsChanged.connect(self.extent_changed)
 
     def extent_changed(self):
         """Zmiana zakresu geoprzestrzennego widoku mapy."""
-        # Wyjście z funkcji, jeśli warstwa "Google Earth Pro" jest wyłączona, albo stoper obecnie pracuje:
-        if not self.is_on or self.t_void:
+        # Wyjście z funkcji, jeśli stoper obecnie pracuje:
+        if self.t_void:
             return
         self.t_void = True
-        self.extent = iface.mapCanvas().extent()
+        if self.is_on:
+            self.extent = iface.mapCanvas().extent()
+            self.loaded = False
+        # print(f"loaded: {self.loaded}")
+        # Wyłączenie warstwy z maską powiatu (QGIS zawiesza się przy częstym zoomowaniu z tą włączoną warstwą):
+        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("powiaty_mask")[0].id()).setItemVisibilityChecked(False)
         self.timer = QTimer()
-        self.timer.setInterval(100)
+        self.timer.setInterval(200)
         self.timer.timeout.connect(self.check_extent)
         self.timer.start()  # Odpalenie stopera
 

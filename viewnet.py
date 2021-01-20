@@ -268,14 +268,32 @@ def vn_first():
         if res:  # Po wskazanej stronie jest jeszcze vn - zwracamy jego parametry
            return res
 
-def vn_zoom():
+def vn_zoom(player=False):
     """Zbliżenie mapy do wybranego vn'a."""
     layer = QgsProject.instance().mapLayersByName("vn_sel")[0]
     layer.selectAll()
     canvas = iface.mapCanvas()
     canvas.zoomToSelected(layer)
+    QgsApplication.processEvents()
     layer.removeSelection()
     canvas.refresh()
+    # # Ustawienie widoczności warstw z podkładami mapowymi:
+    # if player:
+    #     for layer in dlg.p_map.layers:
+    #         exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(True)')
+    #     dlg.p_vn.widgets["sqb_seq"].pretimer = QTimer()
+    #     dlg.p_vn.widgets["sqb_seq"].pretimer.setInterval(1200)
+    #     dlg.p_vn.widgets["sqb_seq"].pretimer.timeout.connect(dlg.p_vn.widgets["sqb_seq"].set_pretimer)
+    #     dlg.p_vn.widgets["sqb_seq"].pretimer.start()  # Odpalenie stopera
+#     if player:
+#         for layer in dlg.p_map.layers:
+#             t1 = threading.Thread(target=thread_layer, args=(layer,))
+#             t1.start()
+
+# def thread_layer(layer):
+#     print(layer)
+#     exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(True)')
+#     QgsProject.instance().mapLayersByName(layer)[0].updateExtents()
 
 def vn_pan():
     """Wyśrodkowanie mapy na wybranego vn'a."""

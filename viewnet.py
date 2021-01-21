@@ -1,7 +1,8 @@
 #!/usr/bin/python
 import time
 
-from qgis.core import QgsProject, QgsFeature
+from PyQt5.QtCore import QTimer
+from qgis.core import QgsProject, QgsFeature, QgsApplication
 from qgis.utils import iface
 
 from .classes import PgConn
@@ -78,7 +79,7 @@ class SelVN:
                 dlg.button_cfg(dlg.p_vn.widgets["btn_vn_doneF"],'vn_doneTf', tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
             if val == True:
                 dlg.button_cfg(dlg.p_vn.widgets["btn_vn_done"],'vn_doneF', tooltip=u'oznacz jako "NIESPRAWDZONE"')
-                dlg.button_cfg(dlg.p_vn.widgets["btn_vn_doneF"],'vn_doneFf', tooltip=u'oznacz jako "NIESPRAWDZONE" i idź do następnego')
+                dlg.button_cfg(dlg.p_vn.widgets["btn_vn_doneF"],'vn_doneTf', tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
 
 def vn_btn_enable(state):
     """Włączenie lub wyłączenie przycisków vn."""
@@ -337,18 +338,17 @@ def vn_sub():
 def change_done(forward):
     """Zmiana parametru b_done wybranego vn'a."""
     global vn
+    if forward and vn.d:  # Vn już jest oznaczony, tylko przejście do następnego
+        vn_forward()
+        return
+    # Ustawienie przeciwnego do obecnego parametru b_done wybranego vn'a:
+    t_d = False if vn.d else True
     db = PgConn()
-    # Ustawienie przeciwnego do obecnego parametru b_done wybranego vn'a
-    if vn.d == False:
-        t_d = True
-    elif vn.d == True:
-        t_d = False
     sql = SQL_4 + str(dlg.team_i) + ".team_viewnet SET b_done = " + str(t_d) + " WHERE vn_id = " + str(vn.l) + ";"
     if db:
         res = db.query_upd(sql)
         if res: # Udało się zaktualizować wybrany vn
-            # Aktualizacja parametru b_done wybranego vn'a
-            vn.d = t_d
+            vn.d = t_d  # Aktualizacja parametru b_done wybranego vn'a
             if forward:
                 vn_forward()
             else:

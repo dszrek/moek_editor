@@ -2,7 +2,7 @@
 import os
 
 from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.core import QgsReadWriteContext, QgsProject
+from qgis.core import QgsReadWriteContext, QgsProject, QgsDataSourceUri, QgsVectorLayer
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
@@ -86,7 +86,6 @@ def teams_cb_changed():
         dlg.team_t = t_team_t
         dlg.team_i = t_team_i
         print("Pomyślnie załadowano team: ", dlg.team_t)
-        flag_layer_update()  # Aktualizacja warstwy z flagami
         # Próba (bo może być jeszcze nie podłączony) odłączenia sygnału zmiany cmb_pow_act:
         try:
             dlg.p_pow.box.widgets["cmb_pow_act"].currentIndexChanged.disconnect(powiaty_cb_changed)
@@ -192,27 +191,92 @@ def powiaty_cb_changed():
         print("Nie udało się zmienić powiatu!")
 
 def pow_layer_update():
-    """Aktualizacja warstwy powiatów."""
+    """Aktualizacja warstwy powiaty."""
     # print("[pow_layer_update]")
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
-        uri = params + 'table="public"."mv_team_powiaty" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."powiaty" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
     else:  # Tryb wielu powiatów
-        uri = params + 'table="public"."mv_team_powiaty" (geom) sql=team_id = ' + str(dlg.team_i)
-    layer = QgsProject.instance().mapLayersByName("mv_team_powiaty")[0]
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."powiaty" (geom)'
+    layer = QgsProject.instance().mapLayersByName("powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
+    ark_layer_update()  # Aktualizacja warstwy z arkuszami
+    flag_layer_update()  # Aktualizacja warstwy z flagami
+    wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
+    auto_layer_update()  # Aktualizacja warstwy z parkingami
+    marsz_layer_update()  # Aktualizacja warstwy z marszrutami
+    zloza_layer_update()  # Aktualizacja warstwy ze złożami
     layer_zoom(layer)  # Przybliżenie widoku mapy do wybranego powiatu/powiatów
     stage_refresh()  # Odświeżenie sceny
 
+def ark_layer_update():
+    """Aktualizacja warstwy arkusze."""
+    # print("[ark_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."arkusze" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
+    else:  # Tryb wielu powiatów
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."arkusze" (geom)'
+    layer = QgsProject.instance().mapLayersByName("arkusze")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
+
 def flag_layer_update():
-    """Aktualizacja warstwy powiatów."""
+    """Aktualizacja warstwy flagi."""
     # print("[flag_layer_update]")
     with CfgPars() as cfg:
         params = cfg.uri()
-    uri = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom)'
-    layer = QgsProject.instance().mapLayersByName("flagi")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy flag
+    if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
+        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = True"
+        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = False"
+    else:  # Tryb wielu powiatów
+        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=b_fieldcheck = True'
+        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=b_fieldcheck = False'
+    layer_1 = QgsProject.instance().mapLayersByName("flagi_z_teren")[0]
+    layer_2 = QgsProject.instance().mapLayersByName("flagi_bez_teren")[0]
+    # Zmiana zawartości warstwy flagi:
+    pg_layer_change(uri_1, layer_1)
+    pg_layer_change(uri_2, layer_2)
+
+def wyr_layer_update():
+    """Aktualizacja warstwy wyrobiska."""
+    # print("[wyr_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    uri = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (geom)'
+    layer = QgsProject.instance().mapLayersByName("wyrobiska")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy wyrobiska
+
+def auto_layer_update():
+    """Aktualizacja warstwy parking."""
+    # print("[parking_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    uri = params + 'table="team_' + str(dlg.team_i) + '"."auto" (geom)'
+    layer = QgsProject.instance().mapLayersByName("parking")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy parking
+
+def marsz_layer_update():
+    """Aktualizacja warstwy marsz."""
+    # print("[marsz_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    uri = params + 'table="team_' + str(dlg.team_i) + '"."marsz" (geom)'
+    layer = QgsProject.instance().mapLayersByName("marsz")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy mnarsz
+
+def zloza_layer_update():
+    """Aktualizacja warstwy zloza."""
+    # print("[flag_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
+        uri = params + 'key="zv_id" table="team_' + str(dlg.team_i) + '"."zloza" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
+    else:  # Tryb wielu powiatów
+        uri = params + ' key="zv_id" table="team_' + str(dlg.team_i) + '"."zloza" (geom)'
+    layer = QgsProject.instance().mapLayersByName("zloza")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy zloza
 
 def vn_mode_changed(clicked):
     """Włączenie bądź wyłączenie viewnet."""

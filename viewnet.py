@@ -1,7 +1,8 @@
 #!/usr/bin/python
 import time
 
-from qgis.core import QgsProject, QgsFeature
+from PyQt5.QtCore import QTimer
+from qgis.core import QgsProject, QgsFeature, QgsApplication
 from qgis.utils import iface
 
 from .classes import PgConn
@@ -20,7 +21,7 @@ SQL_4 = "UPDATE team_"
 SQL_5 = " AND b_done is False ORDER BY vn_id"
 
 def dlg_viewnet(_dlg):
-    """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""
+    """Przekazanie referencji interfejsu dockwiget'u do zmiennej globalnej."""
     global dlg
     dlg = _dlg
 
@@ -78,7 +79,7 @@ class SelVN:
                 dlg.button_cfg(dlg.p_vn.widgets["btn_vn_doneF"],'vn_doneTf', tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
             if val == True:
                 dlg.button_cfg(dlg.p_vn.widgets["btn_vn_done"],'vn_doneF', tooltip=u'oznacz jako "NIESPRAWDZONE"')
-                dlg.button_cfg(dlg.p_vn.widgets["btn_vn_doneF"],'vn_doneFf', tooltip=u'oznacz jako "NIESPRAWDZONE" i idź do następnego')
+                dlg.button_cfg(dlg.p_vn.widgets["btn_vn_doneF"],'vn_doneTf', tooltip=u'oznacz jako "SPRAWDZONE" i idź do następnego')
 
 def vn_btn_enable(state):
     """Włączenie lub wyłączenie przycisków vn."""
@@ -238,8 +239,11 @@ def vn_forward():
             print("vn_forward error!")
             return
     vn_set_sel(*new_vn)  # Zmieniamy na vn'a o ustalonych parametrach
-    vn_zoom()
-    stage_refresh()
+    if dlg.p_vn.widgets["sqb_seq"].num > 0:  # Włączony tryb sekwencyjnego wczytywania podkładów mapowych
+        dlg.p_vn.widgets["sqb_seq"].player()
+    else:
+        vn_zoom()
+        stage_refresh()
 
 def vn_next():
     """Ustalenie parametrów pierwszego niesprawdzonego vn'a."""
@@ -265,14 +269,32 @@ def vn_first():
         if res:  # Po wskazanej stronie jest jeszcze vn - zwracamy jego parametry
            return res
 
-def vn_zoom():
+def vn_zoom(player=False):
     """Zbliżenie mapy do wybranego vn'a."""
     layer = QgsProject.instance().mapLayersByName("vn_sel")[0]
     layer.selectAll()
     canvas = iface.mapCanvas()
     canvas.zoomToSelected(layer)
+    QgsApplication.processEvents()
     layer.removeSelection()
     canvas.refresh()
+    # # Ustawienie widoczności warstw z podkładami mapowymi:
+    # if player:
+    #     for layer in dlg.p_map.layers:
+    #         exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(True)')
+    #     dlg.p_vn.widgets["sqb_seq"].pretimer = QTimer()
+    #     dlg.p_vn.widgets["sqb_seq"].pretimer.setInterval(1200)
+    #     dlg.p_vn.widgets["sqb_seq"].pretimer.timeout.connect(dlg.p_vn.widgets["sqb_seq"].set_pretimer)
+    #     dlg.p_vn.widgets["sqb_seq"].pretimer.start()  # Odpalenie stopera
+#     if player:
+#         for layer in dlg.p_map.layers:
+#             t1 = threading.Thread(target=thread_layer, args=(layer,))
+#             t1.start()
+
+# def thread_layer(layer):
+#     print(layer)
+#     exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(True)')
+#     QgsProject.instance().mapLayersByName(layer)[0].updateExtents()
 
 def vn_pan():
     """Wyśrodkowanie mapy na wybranego vn'a."""
@@ -316,18 +338,17 @@ def vn_sub():
 def change_done(forward):
     """Zmiana parametru b_done wybranego vn'a."""
     global vn
+    if forward and vn.d:  # Vn już jest oznaczony, tylko przejście do następnego
+        vn_forward()
+        return
+    # Ustawienie przeciwnego do obecnego parametru b_done wybranego vn'a:
+    t_d = False if vn.d else True
     db = PgConn()
-    # Ustawienie przeciwnego do obecnego parametru b_done wybranego vn'a
-    if vn.d == False:
-        t_d = True
-    elif vn.d == True:
-        t_d = False
     sql = SQL_4 + str(dlg.team_i) + ".team_viewnet SET b_done = " + str(t_d) + " WHERE vn_id = " + str(vn.l) + ";"
     if db:
         res = db.query_upd(sql)
         if res: # Udało się zaktualizować wybrany vn
-            # Aktualizacja parametru b_done wybranego vn'a
-            vn.d = t_d
+            vn.d = t_d  # Aktualizacja parametru b_done wybranego vn'a
             if forward:
                 vn_forward()
             else:

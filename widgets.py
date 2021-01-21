@@ -2,11 +2,15 @@
 import os
 import time
 
-from PyQt5.QtWidgets import QFrame, QToolButton, QComboBox, QCheckBox, QLabel, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QFrame, QToolButton, QComboBox, QLineEdit, QCheckBox, QLabel, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtGui import QIcon, QColor, QFont
 
-from .main import vn_setup_mode, powiaty_mode_changed, vn_mode_changed
+from .main import vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed
+from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
+from .flags import flag_visibility
+from .wyrobiska import wyr_visibility
+from .komunikacja import auto_visibility
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 
@@ -21,13 +25,13 @@ class MoekBoxPanel(QFrame):
     """Panel z belką i pojemnikiem ze stronami."""
     activated = pyqtSignal(bool)
 
-    def __init__(self, title="", switch=True, io_fn="", config=False, cfg_fn="", pages=1):
+    def __init__(self, title="", switch=True, io_fn="", config=False, cfg_fn="", resize=False, pages=1):
         super().__init__()
         self.setObjectName("boxpnl")
         shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow)
         self.bar = MoekBar(title=title, switch=switch, config=config)
-        self.box = MoekStackedBox()
+        self.box = MoekStackedBox(resize=resize)
         self.box.setObjectName("box")
         self.box.pages = {}
         for p in range(pages):
@@ -39,9 +43,9 @@ class MoekBoxPanel(QFrame):
         self.io_fn = io_fn
         self.cfg_fn = cfg_fn
         self.config = config
-        self.active = True
         self.t_active = True
         self.activated.connect(self.active_change)
+        self.active = True if switch else False
         self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         self.set_style(True)
         vlay = QVBoxLayout()
@@ -108,7 +112,9 @@ class MoekBoxPanel(QFrame):
     def add_button(self, dict):
         """Dodanie przycisku do pojemnika panelu."""
         icon_name = dict["icon"] if "icon" in dict else dict["name"]
-        _btn = MoekButton(size=dict["size"], name=icon_name, checkable=dict["checkable"], tooltip=dict["tooltip"])
+        size = dict["size"] if "size" in dict else 0
+        hsize = dict["hsize"] if "hsize" in dict else 0
+        _btn = MoekButton(size=size, hsize=hsize, name=icon_name, checkable=dict["checkable"], tooltip=dict["tooltip"])
         exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_btn, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
         btn_name = f'btn_{dict["name"]}'
         self.widgets[btn_name] = _btn
@@ -120,12 +126,39 @@ class MoekBoxPanel(QFrame):
         cmb_name = f'cmb_{dict["name"]}'
         self.widgets[cmb_name] = _cmb
 
+    def add_lineedit(self, dict):
+        """Dodanie lineedit'a do pojemnika panelu."""
+        _led = MoekLineEdit(name=dict["name"], border=dict["border"])
+        exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_led, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+        led_name = f'led_{dict["name"]}'
+        self.widgets[led_name] = _led
+
+    def add_seqbox(self, dict):
+        """Dodanie do pojemnika panelu custom widget'a służącego dp sekwencyjnego wczytywania podkładów mapowych."""
+        _sqb = MoekSeqBox()
+        exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_sqb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+        sqb_name = f'sqb_{dict["name"]}'
+        self.widgets[sqb_name] = _sqb
+
+    def add_seqaddbox(self, dict):
+        """Dodanie zawartości do dwóch pojemników na wiget'y używane do dodawania podkładów mapowych do sekwencji."""
+        _sab = MoekSeqAddBox(dict["id"])
+        exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_sab, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+        sab_name = f'{dict["name"]}'
+        self.widgets[sab_name] = _sab
+
+    def add_seqcfgbox(self, dict):
+        """Dodanie zawartości do dwóch pojemników ustawień sekwencyjnego wczytywania podkładów mapowych."""
+        _scg = MoekSeqCfgBox(dict["id"])
+        exec('self.box.pages["page_' + str(dict["page"]) + '"].glay.addWidget(_scg, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+        scg_name = f'{dict["name"]}'
+        self.widgets[scg_name] = _scg
 
 class MoekBarPanel(QFrame):
     """Panel z pojemnikiem w belce."""
     activated = pyqtSignal(bool)
 
-    def __init__(self, title="", title_off="", switch=True, io_fn=""):
+    def __init__(self, title="", title_off="", switch=True, io_fn="", spacing=0, wmargin=4):
         super().__init__()
         self.setObjectName("barpnl")
         self.setMinimumHeight(33)
@@ -134,12 +167,13 @@ class MoekBarPanel(QFrame):
         self.box = MoekHBox()
         self.box.widgets = {}
         self.switch = switch
-        if self.switch:
-            self.io_btn = MoekButton(name="io", checkable=True)
-            self.io_btn.clicked.connect(self.io_clicked)
-        else:
-            self.io_btn = MoekButton(name="io", enabled=False)
-        self.io_fn = io_fn
+        if self.switch != None:
+            if self.switch:
+                self.io_btn = MoekButton(name="io", checkable=True)
+                self.io_btn.clicked.connect(self.io_clicked)
+            else:
+                self.io_btn = MoekButton(name="io", enabled=False)
+            self.io_fn = io_fn
         self.active = True
         self.activated.connect(self.active_change)
         self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
@@ -149,10 +183,11 @@ class MoekBarPanel(QFrame):
         self.l_title.setObjectName("title")
         self.set_style(True)
         self.hlay = QHBoxLayout()
-        self.hlay.setContentsMargins(4, 0, 4, 0)
-        self.hlay.setSpacing(0)
-        self.hlay.addWidget(self.io_btn)
-        self.hlay.addWidget(self.l_title, stretch=1)
+        self.hlay.setContentsMargins(wmargin, 0, wmargin, 0)
+        self.hlay.setSpacing(spacing)
+        if self.switch != None:
+            self.hlay.addWidget(self.io_btn)
+            self.hlay.addWidget(self.l_title, stretch=1)
         self.hlay.addWidget(self.box, stretch=3)
         self.setLayout(self.hlay)
 
@@ -179,14 +214,16 @@ class MoekBarPanel(QFrame):
 
     def set_style(self, value):
         """Modyfikacja stylesheet przy zmianie trybu active lub enabled."""
+        # Wielkości zaokrągleń ramki panelu:
+        b_rad = [6, 6, 6, 6] if self.switch == None else [16, 16, 6, 6]
         if value:
             self.setStyleSheet("""
-                               QFrame#barpnl {background-color: white; border: none; border-top-left-radius: 16px; border-bottom-left-radius: 16px; border-top-right-radius: 6px; border-bottom-right-radius: 6px}
+                               QFrame#barpnl {background-color: white; border: none; border-top-left-radius: """ + str(b_rad[0]) + """px; border-bottom-left-radius: """ + str(b_rad[1]) + """px; border-top-right-radius: """ + str(b_rad[2]) + """px; border-bottom-right-radius: """ + str(b_rad[3]) + """px}
                                QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: rgb(37,84,161)}
                                """)
         else:
             self.setStyleSheet("""
-                               QFrame#barpnl {background-color: rgb(245,245,245); border: none; border-top-left-radius: 16px; border-bottom-left-radius: 16px; border-top-right-radius: 6px; border-bottom-right-radius: 6px}
+                               QFrame#barpnl {background-color: rgb(245,245,245); border: none; border-top-left-radius: """ + str(b_rad[0]) + """px; border-bottom-left-radius: """ + str(b_rad[1]) + """px; border-top-right-radius: """ + str(b_rad[2]) + """px; border-bottom-right-radius: """ + str(b_rad[3]) + """px}
                                QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: rgb(150,150,150)}
                                """)
 
@@ -208,7 +245,10 @@ class MoekBarPanel(QFrame):
 
     def add_button(self, dict):
         """Dodanie przycisku do belki panelu."""
-        _btn = MoekButton(size=dict["size"], name=dict["name"], checkable=dict["checkable"], tooltip=dict["tooltip"])
+        icon_name = dict["icon"] if "icon" in dict else dict["name"]
+        size = dict["size"] if "size" in dict else 0
+        hsize = dict["hsize"] if "hsize" in dict else 0
+        _btn = MoekButton(size=size, hsize=hsize, name=icon_name, checkable=dict["checkable"], tooltip=dict["tooltip"])
         self.box.hlay.addWidget(_btn)
         btn_name = f'btn_{dict["name"]}'
         self.box.widgets[btn_name] = _btn
@@ -231,7 +271,7 @@ class MoekCfgHSpinBox(QFrame):
         self.prev_btn.clicked.connect(self.prev_clicked)
         self.next_btn = MoekButton(name="next", checkable=False)
         self.next_btn.clicked.connect(self.next_clicked)
-        self.label = MoekLabel()
+        self.label = MoekSpinLabel()
         self.label.setObjectName("lbl")
         self.cfg_btn = MoekButton(name="vcfg", size=17, checkable=False)
         self.cfg_btn.clicked.connect(self.cfg_clicked)
@@ -260,6 +300,11 @@ class MoekCfgHSpinBox(QFrame):
         """Uruchomienie funkcji po kliknięciu na przycisk next_bnt."""
         self.parent().parent().next_map()
 
+    def resizeEvent(self, e):
+        """Zmiana szerokości spinbox'a - aktualizacja labela w spinbox'ie."""
+        super().resizeEvent(e)
+        self.findChildren(MoekSpinLabel)[0].label_update()
+
 
 class MoekBar(QFrame):
     """Belka panelu z box'em."""
@@ -268,7 +313,7 @@ class MoekBar(QFrame):
         self.setObjectName("bar")
         self.setMinimumHeight(33)
         if switch:
-            self.io_btn = MoekButton(name="io", checkable=True)
+            self.io_btn = MoekButton(name="io", enabled=True, checkable=True)
             self.io_btn.clicked.connect(lambda: self.parent().io_clicked(self.io_btn.isChecked()))
         else:
             self.io_btn = MoekButton(name="io", enabled=False, checkable=True)
@@ -278,7 +323,7 @@ class MoekBar(QFrame):
             self.l_title = QLabel()
             self.l_title.setObjectName("title")
             self.l_title.setText(title)
-        spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         hlay = QHBoxLayout()
         hlay.setContentsMargins(4, 0, 4, 0)
         hlay.setSpacing(0)
@@ -298,10 +343,10 @@ class MoekBar(QFrame):
 
 class MoekGridBox(QFrame):
     """Zawartość panelu w kompozycji QGridLayout."""
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("gbox")
-        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        # self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         self.glay = QGridLayout()
         self.glay.setContentsMargins(4, 2, 4, 4)
         self.glay.setSpacing(0)
@@ -320,10 +365,26 @@ class MoekHBox(QFrame):
 
 
 class MoekStackedBox(QStackedWidget):
-    """Widget dzielący zawartość panela na strony."""
-    def __init__(self):
-        super().__init__()
-        self.setObjectName("box")
+    """Widget dzielący zawartość panelu na strony."""
+    def __init__(self, *args, resize=False):
+        super().__init__(*args)
+        self.resize = resize
+        if self.resize:
+            self.currentChanged.connect(self.currentChange)
+
+    def currentChange(self):
+        """Zmiana strony."""
+        if self.size().height() == 480 or not self.resize:
+            return
+        if self.currentIndex() == 1:
+            self.setMinimumHeight(dlg.p_vn.widgets["scg_seq" + str(self.currentIndex())].height)
+            self.setMaximumHeight(dlg.p_vn.widgets["scg_seq" + str(self.currentIndex())].height)
+        elif self.currentIndex() == 2:
+            self.setMinimumHeight(dlg.p_vn.widgets["scg_seq" + str(self.currentIndex())].height)
+            self.setMaximumHeight(dlg.p_vn.widgets["scg_seq" + str(self.currentIndex())].height)
+        else:
+            self.setMinimumHeight(self.currentWidget().minimumSizeHint().height())
+            self.setMaximumHeight(self.currentWidget().minimumSizeHint().height())
 
     def sizeHint(self):
         return self.currentWidget().sizeHint()
@@ -337,6 +398,7 @@ class MoekButton(QToolButton):
     def __init__(self, *args, size=25, hsize=0, name="", icon="", visible=True, enabled=True, checkable=False, tooltip=""):
         super().__init__(*args)
         name = icon if len(icon) > 0 else name
+        self.shown = visible  # Dubluje setVisible() - .isVisible() może zależeć od rodzica
         self.setVisible(visible)
         self.setEnabled(enabled)
         self.setCheckable(checkable)
@@ -441,6 +503,28 @@ class MoekComboBox(QComboBox):
                            """)
         self.findChild(QFrame).setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
 
+
+class MoekLineEdit(QLineEdit):
+    """Fabryka wpisywanych."""
+    def __init__(self, name="", height=25, border=2):
+        super().__init__()
+        self.setReadOnly(True)
+        self.setStyleSheet("""
+                            QLineEdit {
+                                border: """ + str(border) + """px solid rgb(52, 132, 240);
+                                padding: 0px 5px 0px 5px;
+                                min-width: 1px;
+                                min-height: """ + str(height) + """px;
+                                background: white;
+                                font-size: 8pt;
+                            }
+                            QLineEdit:read-only {
+                                background: white;
+                            }
+
+                           """)
+
+
 class MoekCheckBox(QCheckBox):
     """Fabryka pstryczków."""
     def __init__(self, *args, name="", checked=False):
@@ -478,12 +562,14 @@ class MoekCheckBox(QCheckBox):
                            """)
 
 
-class MoekLabel(QLabel):
+class MoekSpinLabel(QLabel):
     """Fabryka napisów."""
     def __init__(self):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(121, 25)
+        self.setFixedHeight(25)
+        self.setWordWrap(False)
+        self.contract()
 
     def contract(self):
         """Skrócenie szerokości label'u przed pojawieniem się przycisków."""
@@ -492,40 +578,40 @@ class MoekLabel(QLabel):
     def setText(self, text):
         """Aktualizacja po zmianie tekstu."""
         super().setText(text)
+        self.label_update()
+
+    def label_update(self):
+        """Aktualizacja labela po modyfikacji spinbox'a."""
         lbl_width = self.label_width()
         self.setFixedWidth(lbl_width)
-        self.label_update(lbl_width)
+        self.font_resize(lbl_width)
 
     def label_width(self):
         """Zwraca dostępną szerokość dla label'u."""
-        marg = 8
         btns_width = 0
-        all_width = self.parent().width()
-        if all_width == 640:  # Szerokość bazowa przy tworzeniu widget'u
-            all_width = 121  # Formatowanie do minimalnej szerokości
-        # Ustalenie łącznej szerokości przycisków:
+        spb_width = self.parent().width()
+        if spb_width == 640:  # Szerokość bazowa przy tworzeniu widget'u
+            spb_width = 121  # Formatowanie do minimalnej szerokości
+        # Ustalenie łącznej szerokości wyświetlanych przycisków:
         btns = self.parent().findChildren(MoekButton)
         for btn in btns:
-            if btn.isVisible():
+            if btn.isVisible() or btn.shown:
                 btns_width += btn.width()
         # Ustalenie szerokości label'u:
-        label_width = all_width - btns_width - marg
-        if label_width > 0:
-            return label_width
-        else:
-            return all_width
+        return spb_width - btns_width
 
-    def label_update(self, l_w):
+    def font_resize(self, l_w):
         """Zmniejszenie rozmiaru czcionki, jeśli napis się nie mieści."""
         f_size = 10
+        marg = 10
         f = QFont("Segoe UI", f_size)
         f.setPointSize(f_size)
         self.setFont(f)
-        f_w = self.fontMetrics().boundingRect(self.text()).width()
+        f_w = self.fontMetrics().boundingRect(self.text()).width() + marg
         while l_w < f_w:
             f_size -= 1
             f.setPointSize(f_size)
             self.setFont(f)
-            f_w = self.fontMetrics().boundingRect(self.text()).width()
+            f_w = self.fontMetrics().boundingRect(self.text()).width() + marg
             if f_size == 6:  # Ograniczenie zmniejszenia czcionki
                 return

@@ -2,7 +2,7 @@
 import os
 
 from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.core import QgsReadWriteContext, QgsProject
+from qgis.core import QgsReadWriteContext, QgsProject, QgsDataSourceUri, QgsVectorLayer
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
@@ -12,8 +12,10 @@ from .viewnet import vn_set_gvars, stage_refresh
 # Stałe globalne
 SQL_1 = " WHERE user_id = "
 
+USER = ""
+
 # Zmienne globalne
-user_login = "asko"  # os.getlogin()
+
 dlg = None
 vn_setup = False
 
@@ -25,6 +27,7 @@ def dlg_main(_dlg):
 def db_login():
     """Logowanie do bazy danych."""
     # print("[db_login]")
+    user_login = os.getlogin().lower() if USER == "" else USER
     db = PgConn()
     # Wyszukanie aliasu systemowego w tabeli users:
     sql = "SELECT user_id, t_user_name, i_active_team FROM users WHERE t_user_alias = '" + user_login + "';"
@@ -188,18 +191,92 @@ def powiaty_cb_changed():
         print("Nie udało się zmienić powiatu!")
 
 def pow_layer_update():
-    """Aktualizacja warstwy powiatów."""
+    """Aktualizacja warstwy powiaty."""
     # print("[pow_layer_update]")
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
-        uri = params + 'table="public"."mv_team_powiaty" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."powiaty" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
     else:  # Tryb wielu powiatów
-        uri = params + 'table="public"."mv_team_powiaty" (geom) sql=team_id = ' + str(dlg.team_i)
-    layer = QgsProject.instance().mapLayersByName("mv_team_powiaty")[0]
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."powiaty" (geom)'
+    layer = QgsProject.instance().mapLayersByName("powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
+    ark_layer_update()  # Aktualizacja warstwy z arkuszami
+    flag_layer_update()  # Aktualizacja warstwy z flagami
+    wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
+    auto_layer_update()  # Aktualizacja warstwy z parkingami
+    marsz_layer_update()  # Aktualizacja warstwy z marszrutami
+    zloza_layer_update()  # Aktualizacja warstwy ze złożami
     layer_zoom(layer)  # Przybliżenie widoku mapy do wybranego powiatu/powiatów
     stage_refresh()  # Odświeżenie sceny
+
+def ark_layer_update():
+    """Aktualizacja warstwy arkusze."""
+    # print("[ark_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."arkusze" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
+    else:  # Tryb wielu powiatów
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."arkusze" (geom)'
+    layer = QgsProject.instance().mapLayersByName("arkusze")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
+
+def flag_layer_update():
+    """Aktualizacja warstwy flagi."""
+    # print("[flag_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
+        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = True"
+        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = False"
+    else:  # Tryb wielu powiatów
+        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=b_fieldcheck = True'
+        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=b_fieldcheck = False'
+    layer_1 = QgsProject.instance().mapLayersByName("flagi_z_teren")[0]
+    layer_2 = QgsProject.instance().mapLayersByName("flagi_bez_teren")[0]
+    # Zmiana zawartości warstwy flagi:
+    pg_layer_change(uri_1, layer_1)
+    pg_layer_change(uri_2, layer_2)
+
+def wyr_layer_update():
+    """Aktualizacja warstwy wyrobiska."""
+    # print("[wyr_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    uri = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (geom)'
+    layer = QgsProject.instance().mapLayersByName("wyrobiska")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy wyrobiska
+
+def auto_layer_update():
+    """Aktualizacja warstwy parking."""
+    # print("[parking_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    uri = params + 'table="team_' + str(dlg.team_i) + '"."auto" (geom)'
+    layer = QgsProject.instance().mapLayersByName("parking")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy parking
+
+def marsz_layer_update():
+    """Aktualizacja warstwy marsz."""
+    # print("[marsz_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    uri = params + 'table="team_' + str(dlg.team_i) + '"."marsz" (geom)'
+    layer = QgsProject.instance().mapLayersByName("marsz")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy mnarsz
+
+def zloza_layer_update():
+    """Aktualizacja warstwy zloza."""
+    # print("[flag_layer_update]")
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
+        uri = params + 'key="zv_id" table="team_' + str(dlg.team_i) + '"."zloza" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
+    else:  # Tryb wielu powiatów
+        uri = params + ' key="zv_id" table="team_' + str(dlg.team_i) + '"."zloza" (geom)'
+    layer = QgsProject.instance().mapLayersByName("zloza")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy zloza
 
 def vn_mode_changed(clicked):
     """Włączenie bądź wyłączenie viewnet."""
@@ -272,15 +349,32 @@ def user_has_vn():
     else:
         return False
 
+def vn_cfg(seq=0):
+    """Wejście lub wyjście z odpowiedniego trybu konfiguracyjnego panelu viewnet (vn_setup lub sekwencje podkładów mapowych)."""
+    if dlg.p_vn.bar.cfg_btn.isChecked():  # Przycisk konfiguracyjny został wciśnięty
+        if dlg.hk_vn:  # Skróty klawiszowe vn włączone
+            dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
+        dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
+        if seq == 0:  # Włączenie trybu vn_setup
+            vn_setup_mode(True)
+        else:  # Włączenie ustawień którejś z sekwencji
+            dlg.p_vn.widgets["sqb_seq"].enter_setup(seq)
+            # dlg.p_vn.box.setCurrentIndex(seq)
+    else:  # Przycisk konfiguracyjny został wyciśnięty
+        if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
+            dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
+            dlg.t_hk_vn = False
+        if dlg.p_vn.box.currentIndex() == 4:  # Wychodzenie z trybu vn_setup
+            vn_setup_mode(False)
+        else:  # Wychodzenie z ustawień któreś z sekwencji
+            dlg.p_vn.widgets["sqb_seq"].exit_setup()
+
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     # print("[vn_setup_mode:", b_flag, "]")
     global vn_setup
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
-        if dlg.hk_vn:  # Skróty klawiszowe vn włączone
-            dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
-        dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą
         dlg.p_pow.active = False  # Wyłączenie trybu wybranego powiatu
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
@@ -290,12 +384,9 @@ def vn_setup_mode(b_flag):
         except TypeError:
             print("Obiekt nie jest jeszcze podłączony.")
         teamusers_load()  # Wczytanie użytkowników do cmb_teamusers
-        dlg.p_vn.box.setCurrentIndex(1)  # zmiana strony p_vn
+        dlg.p_vn.box.setCurrentIndex(4)  # zmiana strony p_vn
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
-        if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
-            dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
-            dlg.t_hk_vn = False
         dlg.p_pow.active = dlg.p_pow.t_active  # Ewentualne przywrócenie trybu powiatu sprzed zmiany
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
         try:
@@ -304,6 +395,7 @@ def vn_setup_mode(b_flag):
         except TypeError:
             print("Obiekt nie jest jeszcze podłączony.")
         dlg.p_vn.box.setCurrentIndex(0)  # zmiana strony p_vn
+        vn_mode_changed(False)
     pow_layer_update()
     vn_layer_update()
 

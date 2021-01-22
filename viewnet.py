@@ -92,7 +92,7 @@ def vn_btn_enable(state):
 
 def vn_change(vn_layer, feature):
     """Zmiana wybranego vn'a przy użyciu maptool'a"""
-    unset_maptool(dlg.p_vn.widgets["btn_vn_sel"])  # Dezaktywacja maptool'a
+    dlg.mt.tool_off()  # Wyłączenie maptool'a
     # Zmiana wybranego vn'a, jeśli maptool przechwycił obiekt vn'a
     if vn_layer:
         t_l = feature.attributes()[vn_layer.fields().indexFromName('vn_id')]
@@ -105,14 +105,14 @@ def vn_change(vn_layer, feature):
 def vn_powsel(pow_layer, feature):
     """Zaznaczenie vn'ów, znajdujących się w obrębie wybranego powiatu."""
     global vn_ids
-    unset_maptool(dlg.p_vn.widgets["btn_vn_powsel"])  # Dezaktywacja maptool'a
+    dlg.mt.tool_off()  # Wyłączenie maptool'a
     if pow_layer:  # Kliknięto na obiekt z właściwej warstwy
         sel_geom = feature.geometry()  # Geometria wybranego powiatu
         select_vn(sel_geom)
 
 def vn_polysel(geom):
     """Poligonalne zaznaczenie vn'ów."""
-    unset_maptool(dlg.p_vn.widgets["btn_vn_polysel"])  # Dezaktywacja maptool'a
+    dlg.mt.tool_off()  # Wyłączenie maptool'a
     feature = QgsFeature()
     feature.setGeometry(geom)
     sel_geom = feature.geometry()  # Geometria zaznaczenia poligonalnego
@@ -133,11 +133,6 @@ def select_vn(sel_geom):
             vn_ids.append((sel_vn["vn_id"], ))
     vn_layer.removeSelection()  # Na warstwie nie ma zaznaczonych obiektów
     vn_layer.selectByIds(sel_id)  # Selekcja wybranych vn'ów
-
-def unset_maptool(btn):
-    """Dezaktywacja aktywnego maptoola."""
-    btn.setChecked(False)  # Odznaczenie przycisku
-    dlg.iface.mapCanvas().unsetMapTool(dlg.maptool)
 
 def vn_set_gvars(_powiat_m, no_vn):
     """Ustawienie globalnych zmiennych dotyczących aktywnego vn dla aktywnego teamu."""

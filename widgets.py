@@ -8,9 +8,6 @@ from PyQt5.QtGui import QIcon, QColor, QFont
 
 from .main import vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
-from .flags import flag_visibility
-from .wyrobiska import wyr_visibility
-from .komunikacja import auto_visibility
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 

@@ -228,11 +228,11 @@ def flag_layer_update():
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
-        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = True"
-        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = False"
+        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = True"
+        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = False"
     else:  # Tryb wielu powiatów
-        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=b_fieldcheck = True'
-        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=b_fieldcheck = False'
+        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=b_fieldcheck = True'
+        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=b_fieldcheck = False'
     layer_1 = QgsProject.instance().mapLayersByName("flagi_z_teren")[0]
     layer_2 = QgsProject.instance().mapLayersByName("flagi_bez_teren")[0]
     # Zmiana zawartości warstwy flagi:
@@ -373,6 +373,7 @@ def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     # print("[vn_setup_mode:", b_flag, "]")
     global vn_setup
+    dlg.mt.tool_off()  # Wyłączenie maptool'a (mógł być uruchomiony)
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą

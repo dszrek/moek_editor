@@ -30,7 +30,7 @@ def db_login():
     user_login = os.getlogin().lower() if USER == "" else USER
     db = PgConn()
     # Wyszukanie aliasu systemowego w tabeli users:
-    sql = "SELECT user_id, t_user_name, i_active_team FROM users WHERE t_user_alias = '" + user_login + "';"
+    sql = "SELECT user_id, t_user_name, i_active_team FROM users WHERE t_user_alias = '" + user_login + "' AND b_active = true;"
     if db:
         res = db.query_sel(sql, False)
         if res: # Alias użytkownika znajduje się w tabeli users - logujemy
@@ -51,7 +51,7 @@ def teams_load():
     # print("[teams_load]")
     db = PgConn()
     # Wyszukanie nazw team'ów użytkownika:
-    sql = "SELECT t.team_id, t.t_team_name FROM teams AS t INNER JOIN team_users AS tu ON t.team_id = tu.team_id WHERE tu.user_id = " + str(dlg.user_id) + ";"
+    sql = "SELECT t.team_id, t.t_team_name FROM teams AS t INNER JOIN team_users AS tu ON t.team_id = tu.team_id WHERE tu.user_id = " + str(dlg.user_id) + " AND b_active = true;"
     if db:
         res = db.query_sel(sql, True)
         if res:  # Użytkownik jest przypisany do team'ów

@@ -31,13 +31,13 @@ class MapToolManager():
             {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel},
             {"name" : "flt_add", "class" : PointDrawMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_fchk"], "fn" : flag_add, "extra" : ['true']},
             {"name" : "flf_add", "class" : PointDrawMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_nfchk"], "fn" : flag_add, "extra" : ['false']},
-            {"name" : "flag_del", "class" : IdentMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_del"], "lyr" : ["flagi_z_teren", "flagi_bez_teren"], "fn" : flag_del},
-            {"name" : "wyr_add", "class" : PolyDrawMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_add"], "fn" : wyr_add},
-            {"name" : "wyr_del", "class" : IdentMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_del"], "lyr" : ["wyrobiska"], "fn" : wyr_del},
-            {"name" : "auto_add", "class" : PointDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_add"], "fn" : auto_add},
-            {"name" : "auto_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_del"], "lyr" : ["parking"], "fn" : auto_del},
-            {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_add"], "fn" : marsz_add},
-            {"name" : "marsz_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_del"], "lyr" : ["marsz"], "fn" : marsz_del}
+            {"name" : "flag_del", "class" : IdentMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_del"], "lyr" : ["flagi_z_teren", "flagi_bez_teren"], "fn" : flag_del}
+            # {"name" : "wyr_add", "class" : PolyDrawMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_add"], "fn" : wyr_add},
+            # {"name" : "wyr_del", "class" : IdentMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_del"], "lyr" : ["wyrobiska"], "fn" : wyr_del},
+            # {"name" : "auto_add", "class" : PointDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_add"], "fn" : auto_add},
+            # {"name" : "auto_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_del"], "lyr" : ["parking"], "fn" : auto_del},
+            # {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_add"], "fn" : marsz_add},
+            # {"name" : "marsz_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_del"], "lyr" : ["marsz"], "fn" : marsz_del}
         ]
 
     def init(self, maptool):

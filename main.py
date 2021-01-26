@@ -203,10 +203,10 @@ def pow_layer_update():
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     ark_layer_update()  # Aktualizacja warstwy z arkuszami
     flag_layer_update()  # Aktualizacja warstwy z flagami
-    wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
-    auto_layer_update()  # Aktualizacja warstwy z parkingami
-    marsz_layer_update()  # Aktualizacja warstwy z marszrutami
-    zloza_layer_update()  # Aktualizacja warstwy ze złożami
+    # wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
+    # auto_layer_update()  # Aktualizacja warstwy z parkingami
+    # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
+    # zloza_layer_update()  # Aktualizacja warstwy ze złożami
     layer_zoom(layer)  # Przybliżenie widoku mapy do wybranego powiatu/powiatów
     stage_refresh()  # Odświeżenie sceny
 

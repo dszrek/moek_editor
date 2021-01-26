@@ -147,8 +147,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                             title="Komunikacja",
                             io_fn="dlg.auto_visibility()")
 
-        self.panels = [self.p_team, self.p_pow, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_auto]
-        self.widgets = [p_team_widgets, p_pow_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_auto_widgets]
+        self.panels = [self.p_team, self.p_pow, self.p_map, self.p_ext, self.p_vn, self.p_flag] #, self.p_wyr, self.p_auto]
+        self.widgets = [p_team_widgets, p_pow_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets] #, p_wyr_widgets, p_auto_widgets]
 
         for (panel, widgets) in zip(self.panels, self.widgets):
             for widget in widgets:
@@ -194,7 +194,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         h_sum = 0
         p_count = len(self.panels)
         h_header = 25
-        h_margin = 6
+        h_margin = 8
         w_margin = 12
         w_scrollbar = 25
         # Ustalenie najszerszego panelu
@@ -315,12 +315,12 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_midas"], grp=True, name="MIDAS"))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_mgsp"], grp=True, name="MGSP"))
         self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_smgp"], grp=False, name="smgp_wyrobiska"))
-        self.p_wyr.widgets["btn_wyr_add"].clicked.connect(lambda: self.mt.init("wyr_add"))
-        self.p_wyr.widgets["btn_wyr_del"].clicked.connect(lambda: self.mt.init("wyr_del"))
-        self.p_auto.widgets["btn_auto_add"].clicked.connect(lambda: self.mt.init("auto_add"))
-        self.p_auto.widgets["btn_auto_del"].clicked.connect(lambda: self.mt.init("auto_del"))
-        self.p_auto.widgets["btn_marsz_add"].clicked.connect(lambda: self.mt.init("marsz_add"))
-        self.p_auto.widgets["btn_marsz_del"].clicked.connect(lambda: self.mt.init("marsz_del"))
+        # self.p_wyr.widgets["btn_wyr_add"].clicked.connect(lambda: self.mt.init("wyr_add"))
+        # self.p_wyr.widgets["btn_wyr_del"].clicked.connect(lambda: self.mt.init("wyr_del"))
+        # self.p_auto.widgets["btn_auto_add"].clicked.connect(lambda: self.mt.init("auto_add"))
+        # self.p_auto.widgets["btn_auto_del"].clicked.connect(lambda: self.mt.init("auto_del"))
+        # self.p_auto.widgets["btn_marsz_add"].clicked.connect(lambda: self.mt.init("marsz_add"))
+        # self.p_auto.widgets["btn_marsz_del"].clicked.connect(lambda: self.mt.init("marsz_del"))
 
     def button_cfg(self, btn, icon_name, size=50, tooltip=""):
         """Konfiguracja przycisków."""
@@ -345,7 +345,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
     def flag_visibility(self):
         """Włączenie lub wyłączenie warstwy z flagami."""
         value = True if self.p_flag.is_active() else False
-        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("flagi")[0].id()).setItemVisibilityChecked(value)
+        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("flagi_z_teren")[0].id()).setItemVisibilityChecked(value)
+        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].id()).setItemVisibilityChecked(value)
 
     def auto_visibility(self):
         """Włączenie lub wyłączenie warstw auto i marsz."""

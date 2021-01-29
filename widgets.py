@@ -5,6 +5,7 @@ import time
 from PyQt5.QtWidgets import QFrame, QToolButton, QComboBox, QLineEdit, QCheckBox, QLabel, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtGui import QIcon, QColor, QFont
+from qgis.utils import iface
 
 from .main import vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
@@ -421,6 +422,39 @@ class MoekButton(QToolButton):
         self.setIcon(icon)
 
 
+class MoekMenuFlag(QFrame):
+    """Widget menu przyborne dla flag."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setParent(iface.mapCanvas())
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setMinimumSize(112, 42)
+        self.setMaximumSize(112, 42)
+        self.setObjectName("main")
+        self.box = QFrame()
+        self.box.setObjectName("box")
+        self.box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(0,0,0,0.6); border: none}
+                    QFrame#box{background-color: transparent; border: 2px solid white}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(1, 1, 1, 1)
+        vlay.setSpacing(0)
+        vlay.addWidget(self.box)
+        self.setLayout(vlay)
+        self.flag_move = MoekButton(name="move", size=34)
+        self.flag_chg = MoekButton(name="flag_chg_nfchk", size=34)
+        self.trash = MoekButton(name="trash", size=34)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(1, 0, 0, 0)
+        hlay.setSpacing(1)
+        hlay.addWidget(self.flag_move)
+        hlay.addWidget(self.flag_chg)
+        hlay.addWidget(self.trash)
+        self.box.setLayout(hlay)
+
+
 class MoekComboBox(QComboBox):
     """Fabryka rozwijanych."""
     def __init__(self, name="", height=25, border=2, b_round="none"):
@@ -499,6 +533,7 @@ class MoekComboBox(QComboBox):
                             }
                            """)
         self.findChild(QFrame).setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.findChild(QFrame).setAttribute(Qt.WA_NoSystemBackground | Qt.WA_TranslucentBackground | Qt.WA_PaintOnScreen)
 
 
 class MoekLineEdit(QLineEdit):

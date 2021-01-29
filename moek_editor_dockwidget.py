@@ -33,10 +33,10 @@ from qgis.core import QgsProject, QgsFeature
 from qgis.utils import iface
 
 from .classes import PgConn
-from .maptools import MapToolManager
+from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekMenuFlag
 from .basemaps import MoekMapPanel
 from .sequences import prev_map, next_map, seq
 
@@ -177,7 +177,9 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.p_auto.active = True
         self.hk_vn_load()
         self.hk_seq_load()
-        self.mt = MapToolManager(dlg=self, canvas=self.iface.mapCanvas())
+        self.mt = MapToolManager(dlg=self, canvas=iface.mapCanvas())
+        self.obj = ObjectManager(dlg=self, canvas=iface.mapCanvas())
+        self.flag_menu = MoekMenuFlag()
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""

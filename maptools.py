@@ -260,6 +260,11 @@ class PolyDrawMapTool(QgsMapTool):
 
 # ========== Funkcje:
 
+def obj_sel(layer, feature):
+    """Przekazuje do menadżera obiektów dane nowowybranego obiektu (nazwa warstwy i atrybuty obiektu)."""
+    if layer:
+        dlg.obj.new_sel(layer.name(), feature.attributes(), feature.geometry().asPoint())
+
 def flag_add(point):
     """Utworzenie nowego obiektu flagi."""
     is_fldchk = dlg.mt.params["extra"][0]
@@ -390,3 +395,10 @@ def marsz_del(layer, feature):
         if res:
             print("Usunięto marszrutę")
     iface.actionDraw().trigger()
+
+def lyr_ref(lyr):
+    """Zwraca referencje warstw na podstawie ich nazw."""
+    layer = []
+    for l in lyr:
+        layer.append(QgsProject.instance().mapLayersByName(l)[0])
+    return layer

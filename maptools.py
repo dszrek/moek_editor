@@ -55,8 +55,11 @@ class MapToolManager():
         """Włączenie maptool'a."""
         self.params = self.dict_name(maptool)  # Wczytanie parametrów maptool'a
         if "lyr" in self.params:
-            lyr = self.lyr_ref(self.params["lyr"])
-        if self.params["class"] == IdentMapTool:
+            lyr = lyr_ref(self.params["lyr"])
+        if self.params["class"] == MultiMapTool:
+            self.maptool = self.params["class"](self.canvas, lyr)
+            self.maptool.identified.connect(self.params["fn"])
+        elif self.params["class"] == IdentMapTool:
             self.maptool = self.params["class"](self.canvas, lyr)
             self.maptool.identified.connect(self.params["fn"])
         else:
@@ -69,25 +72,49 @@ class MapToolManager():
         """Wyłączenie maptool'a."""
         if not self.maptool:  # Nie ma aktywnego maptool'a
             return
-        # self.params = self.dict_name(self.mt_name)  # Wczytanie parametrów maptool'a
-        self.params["button"].setChecked(False)
+        if "button" in self.params:
+            self.params["button"].setChecked(False)
         self.canvas.unsetMapTool(self.maptool)
-        self.maptool = None
-        self.mt_name = None
-        self.params = {}
-
-    def lyr_ref(self, lyr):
-        """Zwraca referencje warstw na podstawie ich nazw."""
-        layer = []
-        for l in lyr:
-            layer.append(QgsProject.instance().mapLayersByName(l)[0])
-        return layer
+        self.tool_on("multi_tool")
 
     def dict_name(self, maptool):
         """Wyszukuje na liście wybrany toolmap na podstawie nazwy i zwraca słownik z jego parametrami."""
         for tool in self.maptools:
             if tool["name"] == maptool:
                 return tool
+
+
+class MultiMapTool(QgsMapToolIdentify):
+    """Domyślny maptool łączący funkcje nawigacji po mapie i selekcji obiektów."""
+    identified = pyqtSignal(object, object)
+
+    def __init__(self, canvas, layer):
+        QgsMapToolIdentify.__init__(self, canvas)
+        self.canvas = canvas
+        self.layer = layer
+        self.dragging = False
+        self.setCursor(Qt.OpenHandCursor)
+
+    def canvasMoveEvent(self, event):
+        if event.buttons() == Qt.LeftButton:
+            dlg.flag_menu.hide()
+            self.dragging = True
+            self.setCursor(Qt.ClosedHandCursor)
+            self.canvas.panAction(event)
+        elif event.buttons() == Qt.NoButton and not self.dragging:
+            self.setCursor(Qt.OpenHandCursor)
+
+    def canvasReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.dragging:
+            self.canvas.panActionEnd(event.pos())
+            self.dragging = False
+            self.setCursor(Qt.OpenHandCursor)
+        elif event.button() == Qt.LeftButton and not self.dragging:
+            result = self.identify(event.x(), event.y(), self.TopDownStopAtFirst, self.layer, self.VectorLayer)
+            if len(result) > 0:
+                self.identified.emit(result[0].mLayer, result[0].mFeature)
+            else:
+                self.identified.emit(None, None)
 
 
 class IdentMapTool(QgsMapToolIdentify):

@@ -11,6 +11,7 @@ import tempfile
 import codecs
 import time
 
+from threading import Thread
 from PIL import Image
 from win32com.client import GetObject
 from qgis.PyQt.QtWidgets import QMessageBox
@@ -478,3 +479,23 @@ class GESync:
         iface.mainWindow().blockSignals(False)
         iface.actionDraw().trigger()
         iface.mapCanvas().refresh()
+
+def threading_func(f):
+    """Dekorator dla funkcji zwracającej wartość i działającej poza głównym wątkiem QGIS'a."""
+    def start(*args, **kwargs):
+        def run():
+            try:
+                th.ret = f(*args, **kwargs)
+            except:
+                th.exc = sys.exc_info()
+        def get(timeout=None):
+            th.join(timeout)
+            if th.exc:
+                raise th.exc[1]
+            return th.ret
+        th = Thread(None, run)
+        th.exc = None
+        th.get = get
+        th.start()
+        return th
+    return start

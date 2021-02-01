@@ -1,13 +1,12 @@
 #!/usr/bin/python
-
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
-from qgis.core import QgsProject, QgsGeometry, QgsFeature, QgsWkbTypes, QgsPointXY
+from qgis.core import QgsProject, QgsGeometry, QgsFeature, QgsWkbTypes, QgsPointXY, QgsExpressionContextUtils
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QKeySequence
 from qgis.utils import iface
 
-from .classes import PgConn
+from .classes import PgConn, threading_func
 from .viewnet import vn_change, vn_powsel, vn_polysel
 
 dlg = None
@@ -17,15 +16,73 @@ def dlg_maptools(_dlg):
     global dlg
     dlg = _dlg
 
-class MapToolManager():
+
+class ObjectManager:
+    """Menadżer obiektów."""
+    def __init__(self, dlg, canvas):
+        self.dlg = dlg  # Referencja do wtyczki
+        self.canvas = canvas  # Referencja do mapy
+        self.flag_menu = False
+        self.flag = None
+        self.flag_data = [None, None, None]
+        self.sel_id = None
+        self.layers = [
+            {"name" : "flagi_z_teren", "id_col" : 0},
+            {"name" : "flagi_bez_teren", "id_col" : 0}
+        ]
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "flag":
+            QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'flag_sel', val)
+            QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
+            QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
+        elif attr == "flag_data":
+            if self.flag_data[0] and self.flag != self.flag_data[1][0]:
+                self.flag = self.flag_data[1][0]
+
+    def obj_change(self, obj_data, click):
+        if click == "left":
+            self.flag_data = obj_data
+            self.menu_hide()
+        elif click == "right":
+            if self.flag == obj_data[1][0]:
+                self.menu_show()
+            else:
+                self.menu_hide()
+
+    def menu_hide(self):
+        if self.flag_menu:
+            dlg.flag_menu.hide()
+            self.flag_menu = False
+
+    def menu_show(self):
+        if self.flag_menu:
+            return
+        extent =iface.mapCanvas().extent()
+        geom = self.flag_data[2]
+        x_map = round(extent.xMaximum()) - round(extent.xMinimum())
+        y_map = round(extent.yMaximum()) - round(extent.yMinimum())
+        xp = round(geom.x()) - round(extent.xMinimum())
+        yp = round(extent.yMaximum()) - round(geom.y())
+        x_scr = round(xp * iface.mapCanvas().width() / x_map)
+        y_scr = round(yp * iface.mapCanvas().height() / y_map)
+        dlg.flag_menu.move(x_scr - 56, y_scr + 25)
+        dlg.flag_menu.show()
+        self.flag_menu = True
+
+
+class MapToolManager:
     """Menadżer maptool'ów."""
     def __init__(self, dlg, canvas):
         self.maptool = None  # Instancja klasy maptool'a
         self.mt_name = None  # Nazwa maptool'a
         self.params = {}  # Słownik z parametrami maptool'a
         self.dlg = dlg  # Referencja do wtyczki
-        self.canvas = canvas
+        self.canvas = canvas  # Referencja do mapy
         self.maptools = [
+            {"name" : "multi_tool", "class" : MultiMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_kopaliny_pne", "wyrobiska"], "fn" : obj_sel},
             {"name" : "vn_sel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_sel"], "lyr" : ["vn_user"], "fn" : vn_change},
             {"name" : "vn_powsel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_powsel"], "lyr" : ["powiaty"], "fn" : vn_powsel},
             {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel},
@@ -42,7 +99,6 @@ class MapToolManager():
 
     def init(self, maptool):
         """Zainicjowanie zmiany maptool'a."""
-        # print(f"mt: {self.mt_name}")
         if not self.mt_name:  # Nie ma obecnie uruchomionego maptool'a
             self.tool_on(maptool)  # Włączenie maptool'a
         else:
@@ -86,35 +142,74 @@ class MapToolManager():
 
 class MultiMapTool(QgsMapToolIdentify):
     """Domyślny maptool łączący funkcje nawigacji po mapie i selekcji obiektów."""
-    identified = pyqtSignal(object, object)
+    identified = pyqtSignal(object, object, str)
+    cursor_changed = pyqtSignal(str)
 
     def __init__(self, canvas, layer):
         QgsMapToolIdentify.__init__(self, canvas)
         self.canvas = canvas
         self.layer = layer
         self.dragging = False
-        self.setCursor(Qt.OpenHandCursor)
+        self.cursor_changed.connect(self.cursor_change)
+        self.cursor = "open_hand"
+
+    @threading_func
+    def ident_in_thread(self, x, y):
+        """Zwraca wynik identyfikacji przeprowadzonej poza wątkiem głównym QGIS'a."""
+        result = self.identify(x, y, self.TopDownStopAtFirst, self.layer, self.VectorLayer)
+        return result
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "cursor":
+            self.cursor_changed.emit(val)
+
+    def cursor_change(self, cur_name):
+        """Zmiana cursora maptool'a."""
+        cursors = [
+                    ["arrow", Qt.ArrowCursor],
+                    ["open_hand", Qt.OpenHandCursor],
+                    ["closed_hand", Qt.ClosedHandCursor]
+                ]
+        for cursor in cursors:
+            if cursor[0] == cur_name:
+                self.setCursor(cursor[1])
+                break
 
     def canvasMoveEvent(self, event):
         if event.buttons() == Qt.LeftButton:
             dlg.flag_menu.hide()
             self.dragging = True
-            self.setCursor(Qt.ClosedHandCursor)
+            self.cursor = "closed_hand"
             self.canvas.panAction(event)
         elif event.buttons() == Qt.NoButton and not self.dragging:
-            self.setCursor(Qt.OpenHandCursor)
+            self.cursor = "open_hand"
 
     def canvasReleaseEvent(self, event):
         if event.button() == Qt.LeftButton and self.dragging:
             self.canvas.panActionEnd(event.pos())
             self.dragging = False
-            self.setCursor(Qt.OpenHandCursor)
+            self.cursor = "open_hand"
         elif event.button() == Qt.LeftButton and not self.dragging:
-            result = self.identify(event.x(), event.y(), self.TopDownStopAtFirst, self.layer, self.VectorLayer)
+            th = self.ident_in_thread(event.x(), event.y())
+            result = th.get()
             if len(result) > 0:
-                self.identified.emit(result[0].mLayer, result[0].mFeature)
+                self.identified.emit(result[0].mLayer, result[0].mFeature, "left")
             else:
-                self.identified.emit(None, None)
+                self.identified.emit(None, None, "left")
+        elif event.button() == Qt.RightButton and not self.dragging:
+            th = self.ident_in_thread(event.x(), event.y())
+            result = th.get()
+            if len(result) > 0:
+                self.identified.emit(result[0].mLayer, result[0].mFeature, "right")
+            else:
+                self.identified.emit(None, None, "right")
+
+    def wheelEvent(self, event):
+        super().wheelEvent(event)
+        if dlg.obj.flag_menu:
+            dlg.obj.menu_hide()
 
 
 class IdentMapTool(QgsMapToolIdentify):
@@ -260,10 +355,12 @@ class PolyDrawMapTool(QgsMapTool):
 
 # ========== Funkcje:
 
-def obj_sel(layer, feature):
+def obj_sel(layer, feature, click):
     """Przekazuje do menadżera obiektów dane nowowybranego obiektu (nazwa warstwy i atrybuty obiektu)."""
     if layer:
-        dlg.obj.new_sel(layer.name(), feature.attributes(), feature.geometry().asPoint())
+        dlg.obj.obj_change([layer.name(), feature.attributes(), feature.geometry().asPoint()], click)
+    else:
+        dlg.obj.menu_hide()
 
 def flag_add(point):
     """Utworzenie nowego obiektu flagi."""
@@ -279,7 +376,8 @@ def flag_add(point):
         res = db.query_upd(sql)
         if res:
             print("Dodano flagę")
-    iface.actionDraw().trigger()
+    QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
+    QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
 
 def flag_del(layer, feature):
     """Skasowanie wybranego obiektu flagi."""
@@ -294,7 +392,8 @@ def flag_del(layer, feature):
         res = db.query_upd(sql)
         if res:
             print("Usunięto flagę")
-    iface.actionDraw().trigger()
+    QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
+    QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
 
 def fl_valid(point):
     """Sprawdzenie, czy flaga znajduje się wewnątrz wybranego powiatu/ów."""
@@ -321,7 +420,7 @@ def wyr_add(geom):
     layer.startEditing()
     layer.addFeature(feature)
     layer.commitChanges()
-    iface.actionDraw().trigger()
+    QgsProject.instance().mapLayersByName("wyrobiska")[0].triggerRepaint()
 
 def wyr_del(layer, feature):
     dlg.mt.tool_off()
@@ -335,7 +434,7 @@ def wyr_del(layer, feature):
         res = db.query_upd(sql)
         if res:
             print("Usunięto wyrobisko")
-    iface.actionDraw().trigger()
+    QgsProject.instance().mapLayersByName("wyrobiska")[0].triggerRepaint()
 
 def auto_add(geom):
     """Utworzenie nowego obiektu parkingu."""

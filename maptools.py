@@ -1,7 +1,7 @@
 #!/usr/bin/python
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
-from qgis.core import QgsProject, QgsGeometry, QgsFeature, QgsWkbTypes, QgsPointXY, QgsExpressionContextUtils
+from qgis.core import QgsProject, QgsGeometry, QgsFeature, QgsWkbTypes, QgsPointXY, QgsExpressionContextUtils, QgsFeatureRequest, QgsRectangle
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QKeySequence
 from qgis.utils import iface
@@ -150,14 +150,31 @@ class MultiMapTool(QgsMapToolIdentify):
         self.canvas = canvas
         self.layer = layer
         self.dragging = False
+        self.sel = False
         self.cursor_changed.connect(self.cursor_change)
         self.cursor = "open_hand"
 
     @threading_func
+    def findFeatureAt(self, pos):
+        pos = self.toLayerCoordinates(self.layer[0], pos)
+        scale = iface.mapCanvas().scale()
+        tolerance = scale / 250
+        search_rect = QgsRectangle(pos.x() - tolerance,
+                                  pos.y() - tolerance,
+                                  pos.x() + tolerance,
+                                  pos.y() + tolerance)
+        request = QgsFeatureRequest()
+        request.setFilterRect(search_rect)
+        request.setFlags(QgsFeatureRequest.ExactIntersect)
+        for lyr in self.layer:
+            for feat in lyr.getFeatures(request):
+                return feat
+        return None
+
+    @threading_func
     def ident_in_thread(self, x, y):
         """Zwraca wynik identyfikacji przeprowadzonej poza wątkiem głównym QGIS'a."""
-        result = self.identify(x, y, self.TopDownStopAtFirst, self.layer, self.VectorLayer)
-        return result
+        return self.identify(x, y, self.TopDownStopAtFirst, self.layer, self.VectorLayer)
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -184,7 +201,16 @@ class MultiMapTool(QgsMapToolIdentify):
             self.cursor = "closed_hand"
             self.canvas.panAction(event)
         elif event.buttons() == Qt.NoButton and not self.dragging:
-            self.cursor = "open_hand"
+            th = self.findFeatureAt(event.pos())
+            feat = th.get()
+            if feat == None:
+                if self.sel:
+                    self.cursor = "open_hand"
+                    self.sel = False
+            else:
+                if not self.sel:
+                    self.cursor = "arrow"
+                    self.sel = True
 
     def canvasReleaseEvent(self, event):
         if event.button() == Qt.LeftButton and self.dragging:

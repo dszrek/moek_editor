@@ -92,7 +92,7 @@ def vn_btn_enable(state):
 
 def vn_change(vn_layer, feature):
     """Zmiana wybranego vn'a przy użyciu maptool'a"""
-    dlg.mt.tool_off()  # Wyłączenie maptool'a
+    dlg.mt.init("multi_tool")  # Wyłączenie maptool'a
     # Zmiana wybranego vn'a, jeśli maptool przechwycił obiekt vn'a
     if vn_layer:
         t_l = feature.attributes()[vn_layer.fields().indexFromName('vn_id')]
@@ -105,14 +105,14 @@ def vn_change(vn_layer, feature):
 def vn_powsel(pow_layer, feature):
     """Zaznaczenie vn'ów, znajdujących się w obrębie wybranego powiatu."""
     global vn_ids
-    dlg.mt.tool_off()  # Wyłączenie maptool'a
+    dlg.mt.init("multi_tool")  # Wyłączenie maptool'a
     if pow_layer:  # Kliknięto na obiekt z właściwej warstwy
         sel_geom = feature.geometry()  # Geometria wybranego powiatu
         select_vn(sel_geom)
 
 def vn_polysel(geom):
     """Poligonalne zaznaczenie vn'ów."""
-    dlg.mt.tool_off()  # Wyłączenie maptool'a
+    dlg.mt.init("multi_tool")  # Wyłączenie maptool'a
     feature = QgsFeature()
     feature.setGeometry(geom)
     sel_geom = feature.geometry()  # Geometria zaznaczenia poligonalnego

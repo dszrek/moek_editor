@@ -81,21 +81,42 @@ class MapToolManager:
         self.params = {}  # Słownik z parametrami maptool'a
         self.dlg = dlg  # Referencja do wtyczki
         self.canvas = canvas  # Referencja do mapy
+        self.old_button = None
+        self.canvas.mapToolSet.connect(self.maptool_change)
+
+
         self.maptools = [
-            {"name" : "multi_tool", "class" : MultiMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_kopaliny_pne", "wyrobiska"], "fn" : obj_sel},
+            # {"name" : "edit_poly", "class" : EditPolyMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_kopaliny_pne", "wyrobiska"], "fn" : obj_sel},
+            {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"], "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_kopaliny_pne", "wyr_point"], "fn" : obj_sel},
             {"name" : "vn_sel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_sel"], "lyr" : ["vn_user"], "fn" : vn_change},
             {"name" : "vn_powsel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_powsel"], "lyr" : ["powiaty"], "fn" : vn_powsel},
             {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel},
-            {"name" : "flt_add", "class" : PointDrawMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_fchk"], "fn" : flag_add, "extra" : ['true']},
-            {"name" : "flf_add", "class" : PointDrawMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_nfchk"], "fn" : flag_add, "extra" : ['false']},
-            {"name" : "flag_del", "class" : IdentMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_del"], "lyr" : ["flagi_z_teren", "flagi_bez_teren"], "fn" : flag_del}
-            # {"name" : "wyr_add", "class" : PolyDrawMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_add"], "fn" : wyr_add},
-            # {"name" : "wyr_del", "class" : IdentMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_del"], "lyr" : ["wyrobiska"], "fn" : wyr_del},
+            {"name" : "flt_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"], "fn" : flag_add, "extra" : ['true']},
+            {"name" : "flf_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"], "fn" : flag_add, "extra" : ['false']},
+            # {"name" : "flag_del", "class" : IdentMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_del"], "lyr" : ["flagi_z_teren", "flagi_bez_teren"], "fn" : flag_del},
+            {"name" : "wyr_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add"], "fn" : wyr_add1}
+            # {"name" : "wyr_del", "class" : IdentMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_del"], "lyr" : ["wyrobiska"], "fn" : wyr_del}
             # {"name" : "auto_add", "class" : PointDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_add"], "fn" : auto_add},
             # {"name" : "auto_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_del"], "lyr" : ["parking"], "fn" : auto_del},
             # {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_add"], "fn" : marsz_add},
             # {"name" : "marsz_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_del"], "lyr" : ["marsz"], "fn" : marsz_del}
         ]
+        self.init("multi_tool")
+
+    def maptool_change(self, new_tool, old_tool):
+        if not new_tool and not old_tool:
+            # Jeśli wyłączany jest maptool o klasie QgsMapToolIdentify,
+            # event jest puszczany dwukrotnie (pierwszy raz z wartościami None, None)
+            return
+        try:
+            dlg.obj.menu_hide()
+        except:
+            pass
+        if not old_tool:
+            self.old_button.setChecked(False)
+            self.old_button = None
+        else:
+            self.old_button = new_tool
 
     def init(self, maptool):
         """Zainicjowanie zmiany maptool'a."""
@@ -103,9 +124,10 @@ class MapToolManager:
             self.tool_on(maptool)  # Włączenie maptool'a
         else:
             mt_old = self.mt_name
-            self.tool_off()  # Wyłączenie obecnie uruchomionego maptool'a
             if mt_old != maptool:  # Inny maptool był włączony
                 self.tool_on(maptool)  # Włączenie nowego maptool'a
+            else:
+                self.tool_on("multi_tool")
 
     def tool_on(self, maptool):
         """Włączenie maptool'a."""
@@ -113,25 +135,16 @@ class MapToolManager:
         if "lyr" in self.params:
             lyr = lyr_ref(self.params["lyr"])
         if self.params["class"] == MultiMapTool:
-            self.maptool = self.params["class"](self.canvas, lyr)
+            self.maptool = self.params["class"](self.canvas, lyr, self.params["button"])
             self.maptool.identified.connect(self.params["fn"])
         elif self.params["class"] == IdentMapTool:
-            self.maptool = self.params["class"](self.canvas, lyr)
+            self.maptool = self.params["class"](self.canvas, lyr, self.params["button"])
             self.maptool.identified.connect(self.params["fn"])
         else:
-            self.maptool = self.params["class"](self.canvas)
+            self.maptool = self.params["class"](self.canvas, self.params["button"])
             self.maptool.drawn.connect(self.params["fn"])
         self.canvas.setMapTool(self.maptool)
         self.mt_name = self.params["name"]
-
-    def tool_off(self):
-        """Wyłączenie maptool'a."""
-        if not self.maptool:  # Nie ma aktywnego maptool'a
-            return
-        if "button" in self.params:
-            self.params["button"].setChecked(False)
-        self.canvas.unsetMapTool(self.maptool)
-        self.tool_on("multi_tool")
 
     def dict_name(self, maptool):
         """Wyszukuje na liście wybrany toolmap na podstawie nazwy i zwraca słownik z jego parametrami."""
@@ -145,10 +158,13 @@ class MultiMapTool(QgsMapToolIdentify):
     identified = pyqtSignal(object, object, str)
     cursor_changed = pyqtSignal(str)
 
-    def __init__(self, canvas, layer):
+    def __init__(self, canvas, layer, button):
         QgsMapToolIdentify.__init__(self, canvas)
         self.canvas = canvas
         self.layer = layer
+        self.button = button
+        if not self.button.isChecked():
+            self.button.setChecked(True)
         self.dragging = False
         self.sel = False
         self.cursor_changed.connect(self.cursor_change)
@@ -237,19 +253,21 @@ class MultiMapTool(QgsMapToolIdentify):
         if dlg.obj.flag_menu:
             dlg.obj.menu_hide()
 
+    def deactivate(self):
+        self.button.setChecked(False)
+
 
 class IdentMapTool(QgsMapToolIdentify):
     """Maptool do zaznaczania obiektów z wybranej warstwy."""
     identified = pyqtSignal(object, object)
 
-    def __init__(self, canvas, layer):
+    def __init__(self, canvas, layer, button):
         QgsMapToolIdentify.__init__(self, canvas)
         self.canvas = canvas
-        # if type(layer) is list:
-        #     self.layer = layer
-        # else:
-        #     self.layer = [layer]
         self.layer = layer
+        self.button = button
+        if not self.button.isChecked():
+            self.button.setChecked(True)
         self.setCursor(Qt.CrossCursor)
 
     def canvasReleaseEvent(self, event):
@@ -259,19 +277,28 @@ class IdentMapTool(QgsMapToolIdentify):
         else:
             self.identified.emit(None, None)
 
+    def deactivate(self):
+        self.button.setChecked(False)
+
 
 class PointDrawMapTool(QgsMapTool):
     """Maptool do rysowania obiektów punktowych."""
     drawn = pyqtSignal(QgsPointXY)
 
-    def __init__(self, canvas):
+    def __init__(self, canvas, button):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
+        self.button = button
+        if not self.button.isChecked():
+            self.button.setChecked(True)
         self.setCursor(Qt.CrossCursor)
 
     def canvasReleaseEvent(self, event):
         point = self.toMapCoordinates(event.pos())
         self.drawn.emit(point)
+
+    def deactivate(self):
+        self.button.setChecked(False)
 
 
 class LineDrawMapTool(QgsMapTool):
@@ -320,7 +347,7 @@ class LineDrawMapTool(QgsMapTool):
         self.clearMapCanvas()
 
     def deactivate(self):
-        QgsMapTool.deactivate(self)
+        super().deactivate()
         self.clearMapCanvas()
 
     def clearMapCanvas(self):
@@ -373,7 +400,6 @@ class PolyDrawMapTool(QgsMapTool):
         self.clearMapCanvas()
 
     def deactivate(self):
-        QgsMapTool.deactivate(self)
         self.clearMapCanvas()
 
     def clearMapCanvas(self):
@@ -391,7 +417,7 @@ def obj_sel(layer, feature, click):
 def flag_add(point):
     """Utworzenie nowego obiektu flagi."""
     is_fldchk = dlg.mt.params["extra"][0]
-    dlg.mt.tool_off()
+    dlg.mt.init("multi_tool")
     fl_pow = fl_valid(point)
     if not fl_pow:
         QMessageBox.warning(None, "Tworzenie flagi", "Flagę można postawić wyłącznie na obszarze wybranego (aktywnego) powiatu/ów.")
@@ -407,7 +433,7 @@ def flag_add(point):
 
 def flag_del(layer, feature):
     """Skasowanie wybranego obiektu flagi."""
-    dlg.mt.tool_off()
+    dlg.mt.init("multi_tool")
     if layer:
         fid = feature.attributes()[layer.fields().indexFromName('id')]
     else:
@@ -435,7 +461,7 @@ def fl_valid(point):
 
 def wyr_add(geom):
     """Utworzenie nowego obiektu wyrobiska."""
-    dlg.mt.tool_off()
+    dlg.mt.init("multi_tool")
     layer = QgsProject.instance().mapLayersByName("wyrobiska")[0]
     fields = layer.fields()
     feature = QgsFeature()
@@ -449,7 +475,7 @@ def wyr_add(geom):
     QgsProject.instance().mapLayersByName("wyrobiska")[0].triggerRepaint()
 
 def wyr_del(layer, feature):
-    dlg.mt.tool_off()
+    dlg.mt.init("multi_tool")
     if layer:
         fid = feature.attributes()[layer.fields().indexFromName('wyr_id')]
     else:
@@ -464,7 +490,7 @@ def wyr_del(layer, feature):
 
 def auto_add(geom):
     """Utworzenie nowego obiektu parkingu."""
-    dlg.mt.tool_off()
+    dlg.mt.init("multi_tool")
     layer = QgsProject.instance().mapLayersByName("parking")[0]
     fields = layer.fields()
     feature = QgsFeature()
@@ -479,7 +505,7 @@ def auto_add(geom):
 
 def auto_del(layer, feature):
     """Usunięcie wybranego obiektu parkingu."""
-    dlg.mt.tool_off()
+    dlg.mt.init("multi_tool")
     if layer:
         fid = feature.attributes()[layer.fields().indexFromName('id')]
     else:
@@ -494,7 +520,7 @@ def auto_del(layer, feature):
 
 def marsz_add(geom):
     """Utworzenie nowego obiektu marszruty."""
-    dlg.mt.tool_off()
+    dlg.mt.init("multi_tool")
     layer = QgsProject.instance().mapLayersByName("marsz")[0]
     fields = layer.fields()
     feature = QgsFeature()
@@ -508,7 +534,7 @@ def marsz_add(geom):
 
 def marsz_del(layer, feature):
     """Usunięcie wybranego obiektu marszruty."""
-    dlg.mt.tool_off()
+    dlg.mt.init("multi_tool")
     if layer:
         fid = feature.attributes()[layer.fields().indexFromName('id')]
     else:

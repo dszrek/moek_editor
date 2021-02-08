@@ -203,7 +203,7 @@ def pow_layer_update():
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     ark_layer_update()  # Aktualizacja warstwy z arkuszami
     flag_layer_update()  # Aktualizacja warstwy z flagami
-    # wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
+    wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
     # auto_layer_update()  # Aktualizacja warstwy z parkingami
     # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
     # zloza_layer_update()  # Aktualizacja warstwy ze złożami
@@ -240,13 +240,16 @@ def flag_layer_update():
     pg_layer_change(uri_2, layer_2)
 
 def wyr_layer_update():
-    """Aktualizacja warstwy wyrobiska."""
+    """Aktualizacja warstw z wyrobiskami."""
     # print("[wyr_layer_update]")
     with CfgPars() as cfg:
         params = cfg.uri()
-    uri = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (geom)'
-    layer = QgsProject.instance().mapLayersByName("wyrobiska")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy wyrobiska
+    uri = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid)'
+    layer = QgsProject.instance().mapLayersByName("wyr_point")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy wyr_point
+    uri = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom)'
+    layer = QgsProject.instance().mapLayersByName("wyr_poly")[0]
+    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy wyr_poly
 
 def auto_layer_update():
     """Aktualizacja warstwy parking."""

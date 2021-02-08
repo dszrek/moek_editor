@@ -471,20 +471,33 @@ def fl_valid(point):
         if res:
             return res[0]
 
-def wyr_add(geom):
+def wyr_add_point(point):
+    """Utworzenie centroidu nowego obiektu wyrobiska."""
+    if isinstance(point, QgsGeometry):
+        point = point.asPoint()
+    db = PgConn()
+    sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyrobiska(wyr_id, user_id, wyr_sys, centroid) SELECT nextval, " + str(dlg.user_id) + ", concat('" + str(dlg.team_i) + "_', nextval), ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180) FROM (SELECT nextval(pg_get_serial_sequence('team_" + str(dlg.team_i) + ".wyrobiska', 'wyr_id')) nextval) q RETURNING wyr_id"
+    if db:
+        res = db.query_upd_ret(sql)
+        if res:
+            QgsProject.instance().mapLayersByName("wyr_point")[0].triggerRepaint()
+            print(res)
+            return res
+
+def wyr_add_poly(geom):
     """Utworzenie nowego obiektu wyrobiska."""
     dlg.mt.init("multi_tool")
-    layer = QgsProject.instance().mapLayersByName("wyrobiska")[0]
+    layer = QgsProject.instance().mapLayersByName("wyr_poly")[0]
     fields = layer.fields()
     feature = QgsFeature()
     feature.setFields(fields)
     feature.setGeometry(geom)
-    feature.setAttribute('user_id', dlg.user_id)
-    feature.setAttribute('b_fldchk', False)
+    wyr_id = wyr_add_point(geom.centroid())
+    feature.setAttribute('wyr_id', wyr_id)
     layer.startEditing()
     layer.addFeature(feature)
     layer.commitChanges()
-    QgsProject.instance().mapLayersByName("wyrobiska")[0].triggerRepaint()
+    QgsProject.instance().mapLayersByName("wyr_poly")[0].triggerRepaint()
 
 def wyr_del(layer, feature):
     dlg.mt.init("multi_tool")

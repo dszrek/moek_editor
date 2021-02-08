@@ -32,16 +32,13 @@ from PyQt5.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject, QgsFeature
 from qgis.utils import iface
 
-from .classes import IdentMapTool, PolySelMapTool, AddPointMapTool, LineDrawMapTool, addFlag, PgConn
+from .classes import PgConn
+from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
-from .viewnet import change_done, vn_change, vn_powsel, vn_polysel, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton
+from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekSideDock, MoekMenuFlag
 from .basemaps import MoekMapPanel
 from .sequences import prev_map, next_map, seq
-from .flags import flag_del
-from .wyrobiska import wyr_add, wyr_del
-from .komunikacja import auto_add, auto_del, marsz_del
-
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -105,10 +102,10 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "flag_del", "size": 50, "checkable": True, "tooltip": u'usuń flagę'}
                     ]
         p_wyr_widgets = [
-                    # {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "lineedit", "name": "wyr_id", "size": 50,  "height": 21, "border": 1},
-                    # {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_sel", "size": 50, "checkable": True, "tooltip": u"zaznacz wyrobisko"},
-                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_del", "size": 50, "checkable": True, "tooltip": u'usuń wyrobisko'}
+                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "lineedit", "name": "wyr_id", "size": 50,  "height": 21, "border": 1},
+                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_sel", "size": 50, "checkable": True, "tooltip": u"zaznacz wyrobisko"},
+                    {"page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"},
+                    {"page": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_del", "size": 50, "checkable": True, "tooltip": u'usuń wyrobisko'}
                     ]
         p_auto_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_add", "size": 50, "checkable": True, "tooltip": u"dodaj miejsce parkingowe"},
@@ -142,25 +139,26 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                             pages=5)
         self.p_flag = MoekBoxPanel(
                             title="Flagi",
-                            io_fn="flag_visibility()")
+                            io_fn="dlg.flag_visibility()")
         self.p_wyr = MoekBoxPanel(
                             title="Wyrobiska",
-                            io_fn="wyr_visibility()")
+                            io_fn="dlg.wyr_visibility()")
         self.p_auto = MoekBoxPanel(
                             title="Komunikacja",
-                            io_fn="auto_visibility()")
+                            io_fn="dlg.auto_visibility()")
 
-        self.panels = [self.p_team, self.p_pow, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_auto]
-        self.widgets = [p_team_widgets, p_pow_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_auto_widgets]
+        self.panels = [self.p_team, self.p_pow, self.p_map, self.p_ext, self.p_vn]#, self.p_flag, self.p_wyr] #, self.p_auto]
+        self.p_widgets = [p_team_widgets, p_pow_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets]#, p_flag_widgets, p_wyr_widgets] #, p_auto_widgets]
 
-        for (panel, widgets) in zip(self.panels, self.widgets):
+        # Wczytanie paneli i ich widgetów do dockwidget'a:
+        for (panel, widgets) in zip(self.panels, self.p_widgets):
             for widget in widgets:
                 if widget["item"] == "button":
                     panel.add_button(widget)
                 elif widget["item"] == "combobox":
                     panel.add_combobox(widget)
                 elif widget["item"] == "lineedit":
-                    panel.add_combobox(widget)
+                    panel.add_lineedit(widget)
                 elif widget["item"] == "seqbox":
                     panel.add_seqbox(widget)
                 elif widget["item"] == "seqaddbox":
@@ -171,15 +169,43 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)
 
+       # Utworzenie bocznego docker'a z toolbox'ami:
+        self.side_dock = MoekSideDock()
+
+        tb_multi_tool_widgets = [
+                    {"item": "button", "name": "multi_tool", "size": 50, "checkable": True, "tooltip": u"nawigacja i selekcja obiektów"},
+                    ]
+        tb_add_widgets = [
+                    {"item": "button", "name": "flag_fchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę do kontroli terenowej"},
+                    {"item": "button", "name": "flag_nfchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę bez kontroli terenowej"},
+                    {"item": "button", "name": "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"}
+                    ]
+
+
+        toolboxes = [
+                {"name": "multi_tool", "dock": "side", "background": "rgba(0, 0, 0, 0.4)", "widgets": tb_multi_tool_widgets},
+                {"name": "add_object", "dock": "side", "background": "rgba(0, 128, 0, 0.4)", "widgets": tb_add_widgets}
+                ]
+
+        for toolbox in toolboxes:
+            for key, val in toolbox.items():
+                if key == "dock" and val == "side":
+                    self.side_dock.add_toolbox(toolbox)
+        self.side_dock.move(1,0)
+        self.side_dock.show()
+
         self.resizeEvent = self.resize_panel
 
         self.__button_conn()
         self.ext_init()
-        self.p_flag.active = True
-        self.p_wyr.active = True
-        self.p_auto.active = True
+        # self.p_flag.active = True
+        # self.p_wyr.active = True
+        # self.p_auto.active = True
         self.hk_vn_load()
         self.hk_seq_load()
+        self.mt = MapToolManager(dlg=self, canvas=iface.mapCanvas())
+        self.obj = ObjectManager(dlg=self, canvas=iface.mapCanvas())
+        self.flag_menu = MoekMenuFlag()
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -189,7 +215,6 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         if attr == "hk_seq":
             self.hk_seq_changed.emit(val)
 
-
     def resize_panel(self, event):
         """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
         global b_scroll
@@ -197,7 +222,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         h_sum = 0
         p_count = len(self.panels)
         h_header = 25
-        h_margin = 6
+        h_margin = 8
         w_margin = 12
         w_scrollbar = 25
         # Ustalenie najszerszego panelu
@@ -302,28 +327,32 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
     def __button_conn(self):
         """Przyłączenia przycisków do funkcji."""
-        self.p_vn.widgets["btn_vn_sel"].clicked.connect(lambda: self.ident_mt_init(self.p_vn.widgets["btn_vn_sel"], "vn_user", vn_change))
+        self.p_vn.widgets["btn_vn_sel"].clicked.connect(lambda: self.mt.init("vn_sel"))
         self.p_vn.widgets["btn_vn_zoom"].pressed.connect(vn_zoom)
         self.p_vn.widgets["btn_vn_done"].pressed.connect(lambda: change_done(False))
         self.p_vn.widgets["btn_vn_doneF"].pressed.connect(lambda: change_done(True))
-        self.p_vn.widgets["btn_vn_powsel"].clicked.connect(lambda: self.ident_mt_init(btn=self.p_vn.widgets["btn_vn_powsel"], lyr="powiaty", fn=vn_powsel))
-        self.p_vn.widgets["btn_vn_polysel"].clicked.connect(lambda: self.poly_mt_init(btn=self.p_vn.widgets["btn_vn_polysel"], fn=vn_polysel))
+        self.p_vn.widgets["btn_vn_powsel"].clicked.connect(lambda: self.mt.init("vn_powsel"))
+        self.p_vn.widgets["btn_vn_polysel"].clicked.connect(lambda: self.mt.init("vn_polysel"))
         self.p_vn.widgets["btn_vn_unsel"].pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
-        self.p_flag.widgets["btn_flag_fchk"].clicked.connect(self.fltAddToolInit)
-        self.p_flag.widgets["btn_flag_nfchk"].clicked.connect(self.flfAddToolInit)
-        self.p_flag.widgets["btn_flag_del"].clicked.connect(lambda: self.ident_mt_init(self.p_flag.widgets["btn_flag_del"], ["flagi_z_teren", "flagi_bez_teren"], flag_del))
+        # self.p_flag.widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
+        # self.p_flag.widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
+        self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
+        self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
+        self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
+        # self.p_flag.widgets["btn_flag_del"].clicked.connect(lambda: self.mt.init("flag_del"))
         self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_wn"], grp=False, name="wn_kopaliny_pne"))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_midas"], grp=True, name="MIDAS"))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_mgsp"], grp=True, name="MGSP"))
         self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_smgp"], grp=False, name="smgp_wyrobiska"))
-        self.p_wyr.widgets["btn_wyr_add"].clicked.connect(lambda: self.poly_mt_init(btn=self.p_wyr.widgets["btn_wyr_add"], fn=wyr_add))
-        self.p_wyr.widgets["btn_wyr_del"].clicked.connect(lambda: self.ident_mt_init(self.p_wyr.widgets["btn_wyr_del"], "wyrobiska", wyr_del))
-        self.p_auto.widgets["btn_auto_add"].clicked.connect(lambda: self.point_mt_init(btn=self.p_auto.widgets["btn_auto_add"], fn=auto_add))
-        self.p_auto.widgets["btn_auto_del"].clicked.connect(lambda: self.ident_mt_init(btn=self.p_auto.widgets["btn_auto_del"], lyr="parking", fn=auto_del))
-        self.p_auto.widgets["btn_marsz_add"].clicked.connect(lambda: self.line_mt_init(btn=self.p_auto.widgets["btn_marsz_add"], fn=self.marsz_add))
-        self.p_auto.widgets["btn_marsz_del"].clicked.connect(lambda: self.ident_mt_init(btn=self.p_auto.widgets["btn_marsz_del"], lyr="marsz", fn=marsz_del))
+        self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add"].clicked.connect(lambda: self.mt.init("wyr_add"))
+        # self.p_wyr.widgets["btn_wyr_add"].clicked.connect(lambda: self.mt.init("wyr_add"))
+        # self.p_wyr.widgets["btn_wyr_del"].clicked.connect(lambda: self.mt.init("wyr_del"))
+        # self.p_auto.widgets["btn_auto_add"].clicked.connect(lambda: self.mt.init("auto_add"))
+        # self.p_auto.widgets["btn_auto_del"].clicked.connect(lambda: self.mt.init("auto_del"))
+        # self.p_auto.widgets["btn_marsz_add"].clicked.connect(lambda: self.mt.init("marsz_add"))
+        # self.p_auto.widgets["btn_marsz_del"].clicked.connect(lambda: self.mt.init("marsz_del"))
 
     def button_cfg(self, btn, icon_name, size=50, tooltip=""):
         """Konfiguracja przycisków."""
@@ -339,6 +368,23 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             icon.addFile(ICON_PATH + icon_name + "_1_act.png", size=QSize(size, size), mode=QIcon.Active, state=QIcon.On)
             icon.addFile(ICON_PATH + icon_name + "_1.png", size=QSize(size, size), mode=QIcon.Selected, state=QIcon.On)
         btn.setIcon(icon)
+
+    def wyr_visibility(self):
+        """Włączenie lub wyłączenie warstwy z wyrobiskami."""
+        value = True if self.p_wyr.is_active() else False
+        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("wyrobiska")[0].id()).setItemVisibilityChecked(value)
+
+    def flag_visibility(self):
+        """Włączenie lub wyłączenie warstwy z flagami."""
+        value = True if self.p_flag.is_active() else False
+        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("flagi_z_teren")[0].id()).setItemVisibilityChecked(value)
+        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].id()).setItemVisibilityChecked(value)
+
+    def auto_visibility(self):
+        """Włączenie lub wyłączenie warstw auto i marsz."""
+        value = True if self.p_auto.is_active() else False
+        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("parking")[0].id()).setItemVisibilityChecked(value)
+        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("marsz")[0].id()).setItemVisibilityChecked(value)
 
     def ext_visibility(self, btn, grp, name):
         """Włączenie / wyłaczenie warstw z danymi zewnętrznymi."""
@@ -357,142 +403,16 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.ext_visibility(btn=self.p_ext.box.widgets["btn_mgsp"], grp=True, name="MGSP")
         self.ext_visibility(btn=self.p_ext.box.widgets["btn_smgp"], grp=False, name="smgp_wyrobiska")
 
-    def fltAddToolInit(self):
-        canvas = self.iface.mapCanvas()
-        if self.p_flag.widgets["btn_flag_fchk"].isChecked() is False:
-            canvas.unsetMapTool(self.flAdd_mapTool)
-            return
-        self.flAdd_mapTool = addFlag(canvas)
-        canvas.setMapTool(self.flAdd_mapTool)
-        self.flAdd_mapTool.flagAdded.connect(self.fltAdd)
-
-    def fltAdd(self, point):
-        btn = "btn_flag_fchk"
-        canvas = self.iface.mapCanvas()
-        self.p_flag.widgets["btn_flag_fchk"].setChecked(False)
-        canvas.unsetMapTool(self.flAdd_mapTool)
-        fl_pow = self.fl_valid(point)
-        if not fl_pow:
-            QMessageBox.warning(None, "Tworzenie flagi", "Flagę można postawić wyłącznie na obszarze wybranego (aktywnego) powiatu/ów.")
-            return
-        db = PgConn()
-        sql = "INSERT INTO team_" + str(self.team_i) + ".flags(user_id, pow_grp, b_fieldcheck, geom) VALUES (" + str(self.user_id) + ", " + str(fl_pow) + ", true, ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180))"
-        if db:
-            res = db.query_upd(sql)
-            if res:
-                print("Dodano flagę")
-        iface.actionDraw().trigger()
-
-    def flfAddToolInit(self):
-        canvas = self.iface.mapCanvas()
-        if self.p_flag.widgets["btn_flag_nfchk"].isChecked() is False:
-            canvas.unsetMapTool(self.flAdd_mapTool)
-            return
-        self.flAdd_mapTool = addFlag(canvas)
-        canvas.setMapTool(self.flAdd_mapTool)
-        self.flAdd_mapTool.flagAdded.connect(self.flfAdd)
-
-    def flfAdd(self, point):
-        btn = "btn_flag_fchk"
-        canvas = self.iface.mapCanvas()
-        self.p_flag.widgets["btn_flag_nfchk"].setChecked(False)
-        canvas.unsetMapTool(self.flAdd_mapTool)
-        fl_pow = self.fl_valid(point)
-        if not fl_pow:
-            QMessageBox.warning(None, "Tworzenie flagi", "Flagę można postawić wyłącznie na obszarze wybranego (aktywnego) powiatu/ów.")
-            return
-        db = PgConn()
-        sql = "INSERT INTO team_" + str(self.team_i) + ".flags(user_id, pow_grp, b_fieldcheck, geom) VALUES (" + str(self.user_id) + ", " + str(fl_pow) + ", false, ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180))"
-        if db:
-            res = db.query_upd(sql)
-            if res:
-                print("Dodano flagę")
-        iface.actionDraw().trigger()
-
-    def fl_valid(self, point):
-        """Sprawdzenie, czy flaga znajduje się wewnątrz wybranego powiatu/ów."""
-        db = PgConn()
-        if self.p_pow.is_active():  # Tryb pojedynczego powiatu
-            sql = "SELECT p.pow_grp FROM team_" + str(self.team_i) + ".powiaty AS p WHERE ST_Intersects(ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180), p.geom) AND p.pow_grp = '" + str(self.powiat_i) + "';"
-        else:
-            sql = "SELECT p.pow_grp FROM team_" + str(self.team_i) + ".powiaty AS p WHERE ST_Intersects(ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180), p.geom);"
-        if db:
-            res = db.query_sel(sql, False)
-            if res:
-                print(f"powiat: {self.powiat_i}, res: {res}")
-                return res[0]
-
-    def marsz_add(self, geom):
-        """Poligonalne zaznaczenie vn'ów."""
-        self.unset_maptool(self.p_auto.widgets["btn_marsz_add"])  # Dezaktywacja maptool'a
-        layer = QgsProject.instance().mapLayersByName("marsz")[0]
-        fields = layer.fields()
-        feature = QgsFeature()
-        feature.setFields(fields)
-        feature.setGeometry(geom)
-        feature.setAttribute('user_id', self.user_id)
-        layer.startEditing()
-        layer.addFeature(feature)
-        layer.commitChanges()
-        iface.actionDraw().trigger()
-
-    def ident_mt_init(self, btn, lyr, fn):
-        """Initializacja maptool'a do identyfikacji obiektu na określonej warstwie."""
-        canvas = self.iface.mapCanvas()
-        if type(lyr) is list:
-            layer = []
-            for l in lyr:
-                layer.append(QgsProject.instance().mapLayersByName(l)[0])
-        else:
-            layer = QgsProject.instance().mapLayersByName(lyr)[0]
-        if btn.isChecked() is False:
-            canvas.unsetMapTool(self.maptool)
-            return
-        self.maptool = IdentMapTool(canvas, layer)
-        self.maptool.identified.connect(fn)
-        canvas.setMapTool(self.maptool)
-
-    def point_mt_init(self, btn, fn):
-        """Initializacja maptool'a do identyfikacji obiektu na określonej warstwie."""
-        canvas = self.iface.mapCanvas()
-        if btn.isChecked() is False:
-            canvas.unsetMapTool(self.maptool)
-            return
-        self.maptool = AddPointMapTool(canvas)
-        self.maptool.added.connect(fn)
-        canvas.setMapTool(self.maptool)
-
-
-    def poly_mt_init(self, btn, fn):
-        """Initializacja maptool'a do poligonalnego zaznaczania obiektów na określonej warstwie."""
-        canvas = self.iface.mapCanvas()
-        if btn.isChecked() is False:
-            canvas.unsetMapTool(self.maptool)
-            return
-        self.maptool = PolySelMapTool(canvas)
-        self.maptool.selected.connect(fn)
-        canvas.setMapTool(self.maptool)
-
-    def line_mt_init(self, btn, fn):
-        """Initializacja maptool'a do tworzenia obiektu liniowego na określonej warstwie."""
-        canvas = self.iface.mapCanvas()
-        if btn.isChecked() is False:
-            canvas.unsetMapTool(self.maptool)
-            return
-        self.maptool = LineDrawMapTool(canvas)
-        self.maptool.selected.connect(fn)
-        canvas.setMapTool(self.maptool)
-
-    def unset_maptool(self, btn):
-        """Dezaktywacja aktywnego maptoola."""
-        btn.setChecked(False)  # Odznaczenie przycisku
-        self.iface.mapCanvas().unsetMapTool(self.maptool)
-
     def closeEvent(self, event):
         # Deaktywacja skrótów klawiszowych:
         self.hk_vn = False
         self.hk_seq = False
         # Usunięcie połączenia z Google Earth Pro:
         self.ge = None
+        try:
+            iface.mapCanvas().children().remove(self.side_dock)
+            self.side_dock.deleteLater()
+        except:
+            pass
         self.closingPlugin.emit()
         event.accept()

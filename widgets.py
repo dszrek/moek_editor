@@ -2,15 +2,13 @@
 import os
 import time
 
-from PyQt5.QtWidgets import QFrame, QToolButton, QComboBox, QLineEdit, QCheckBox, QLabel, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QWidget, QFrame, QToolButton, QComboBox, QLineEdit, QCheckBox, QLabel, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
-from PyQt5.QtGui import QIcon, QColor, QFont
+from PyQt5.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath
+from qgis.utils import iface
 
 from .main import vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
-from .flags import flag_visibility
-from .wyrobiska import wyr_visibility
-from .komunikacja import auto_visibility
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 
@@ -20,6 +18,7 @@ def dlg_widgets(_dlg):
     """Przekazanie referencji interfejsu dockwigetu do zmiennej globalnej."""
     global dlg
     dlg = _dlg
+
 
 class MoekBoxPanel(QFrame):
     """Panel z belką i pojemnikiem ze stronami."""
@@ -154,6 +153,7 @@ class MoekBoxPanel(QFrame):
         scg_name = f'{dict["name"]}'
         self.widgets[scg_name] = _scg
 
+
 class MoekBarPanel(QFrame):
     """Panel z pojemnikiem w belce."""
     activated = pyqtSignal(bool)
@@ -261,6 +261,79 @@ class MoekBarPanel(QFrame):
         self.box.widgets[cmb_name] = _cmb
 
 
+class MoekSideDock(QFrame):
+    """Boczny panel zagnieżdżony w mapcanvas'ie, do którego ładowane są toolboxy."""
+    def __init__(self):
+        super().__init__()
+        self.setParent(iface.mapCanvas())
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setFixedWidth(51)
+        self.setFixedHeight(iface.mapCanvas().height())
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        self.box = MoekVBox()
+        self.box.setObjectName("box")
+        self.box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        self.toolboxes = {}
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(0, 0, 0, 0)
+        vlay.setSpacing(2)
+        vlay.addWidget(self.box)
+        vlay.setAlignment(self.box, Qt.AlignCenter)
+        self.setLayout(vlay)
+
+    def add_toolbox(self, dict):
+        """Dodanie toolbox'a do pojemnika dock'a."""
+        _tb = MoekVToolBox(background=dict["background"])
+        self.box.vlay.addWidget(_tb)
+        tb_name = f'tb_{dict["name"]}'
+        for widget in dict["widgets"]:
+            if widget["item"] == "button":
+                _tb.add_button(widget)
+        self.toolboxes[tb_name] = _tb
+
+
+class MoekVToolBox(QFrame):
+    """Boczny panel zagnieżdżony w mapcanvas'ie, do którego ładowane są toolboxy."""
+    def __init__(self, background):
+        super().__init__()
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Maximum)
+        self.setFixedWidth(51)
+        # self.setSizeHint(51, iface.mapCanvas().height())
+        # self.setCursor(Qt.ArrowCursor)
+        # self.setMouseTracking(True)
+        self.widgets = {}
+        self.box = MoekVBox()
+        self.box.setObjectName("box")
+        self.box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: """ + background + """; border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        self.widgets = {}
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(0, 1, 0, 1)
+        vlay.setSpacing(0)
+        vlay.addWidget(self.box)
+        self.setLayout(vlay)
+
+    def add_button(self, dict):
+        """Dodanie przycisku do toolbox'a."""
+        icon_name = dict["icon"] if "icon" in dict else dict["name"]
+        size = dict["size"] if "size" in dict else 0
+        hsize = dict["hsize"] if "hsize" in dict else 0
+        _btn = MoekButton(size=size, hsize=hsize, name=icon_name, checkable=dict["checkable"], tooltip=dict["tooltip"])
+        self.box.vlay.addWidget(_btn)
+        btn_name = f'btn_{dict["name"]}'
+        self.widgets[btn_name] = _btn
+
+
 class MoekCfgHSpinBox(QFrame):
     """Widget z centralnie umieszczonym labelem i przyciskami zmiany po jego obu stronach + przycisk konfiguracyjny."""
     def __init__(self):
@@ -364,6 +437,17 @@ class MoekHBox(QFrame):
         self.setLayout(self.hlay)
 
 
+class MoekVBox(QFrame):
+    """Zawartość toolbox'a w kompozycji QVBoxLayout."""
+    def __init__(self):
+        super().__init__()
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.vlay = QVBoxLayout()
+        self.vlay.setContentsMargins(0, 0, 0, 0)
+        self.vlay.setSpacing(1)
+        self.setLayout(self.vlay)
+
+
 class MoekStackedBox(QStackedWidget):
     """Widget dzielący zawartość panelu na strony."""
     def __init__(self, *args, resize=False):
@@ -422,6 +506,104 @@ class MoekButton(QToolButton):
             icon.addFile(ICON_PATH + name + "_1_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.On)
             icon.addFile(ICON_PATH + name + "_1.png", size=QSize(wsize, hsize), mode=QIcon.Selected, state=QIcon.On)
         self.setIcon(icon)
+        self.setMouseTracking(True)
+
+
+class MoekAddToolBox(QFrame):
+    """Widget przybornik z narzędziami do dodawania obiektów."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setParent(iface.mapCanvas())
+        self.setCursor(Qt.ArrowCursor)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(51, 154)
+        self.setObjectName("main")
+        self.box = QFrame()
+        self.box.setObjectName("box")
+        self.box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    QFrame#box{background-color: rgba(0,128,0,0.4); border: none}
+                    """)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(0)
+        hlay.addWidget(self.box)
+        self.setLayout(hlay)
+        self.flag_nfchk = MoekButton(name="flag_nfchk", size=50, checkable=True)
+        self.flag_fchk = MoekButton(name="flag_fchk", size=50, checkable=True)
+        self.wyr = MoekButton(name="wyr_add", size=50, checkable=True)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(0, 1, 0, 0)
+        vlay.setSpacing(1)
+        vlay.addWidget(self.flag_nfchk)
+        vlay.addWidget(self.flag_fchk)
+        vlay.addWidget(self.wyr)
+        self.box.setLayout(vlay)
+
+
+class MoekMenuFlag(QFrame):
+    """Widget menu przyborne dla flag."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setParent(iface.mapCanvas())
+        self.setCursor(Qt.ArrowCursor)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(112, 48)
+        self.setObjectName("main")
+        self.pointer = MoekPointer()
+        self.pointer.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.pointer.setFixedSize(12, 6)
+        self.pointer.setObjectName("pointer")
+        self.box = QFrame()
+        self.box.setObjectName("box")
+        self.box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    QFrame#box{background-color: rgba(0,0,0,0.6); border: none}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(0, 0, 0, 0)
+        vlay.setSpacing(0)
+        vlay.addWidget(self.pointer)
+        vlay.addWidget(self.box)
+        vlay.setAlignment(self.pointer, Qt.AlignCenter)
+        self.setLayout(vlay)
+        self.flag_move = MoekButton(name="move", size=34)
+        self.flag_chg = MoekButton(name="flag_chg_nfchk", size=34)
+        self.trash = MoekButton(name="trash", size=34)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(4, 4, 4, 4)
+        hlay.setSpacing(1)
+        hlay.addWidget(self.flag_move)
+        hlay.addWidget(self.flag_chg)
+        hlay.addWidget(self.trash)
+        self.box.setLayout(hlay)
+
+
+class MoekPointer(QWidget):
+    """Trójkątna strzałka wyświetlana w tle innego widget'a."""
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setFixedSize(12, 6)
+        self.pixmap = QPixmap()
+
+    def paintEvent(self, e):
+        """Funkcja rysująca."""
+        _pixmap = QPixmap(self.size())
+        _pixmap.fill(QColor(0,0,0,0))
+        painter = QPainter(_pixmap)
+        path = QPainterPath()
+        path.moveTo(0,6)
+        path.lineTo(12,6)
+        path.lineTo(6,0)
+        path.lineTo(5,0)
+        path.closeSubpath()
+        painter.fillPath(path, QColor(0, 0, 0, 153))
+        self.pixmap = _pixmap
+        qp = QPainter(self)
+        qp.drawPixmap(0, 0, self.pixmap)
 
 
 class MoekComboBox(QComboBox):
@@ -502,6 +684,7 @@ class MoekComboBox(QComboBox):
                             }
                            """)
         self.findChild(QFrame).setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.findChild(QFrame).setAttribute(Qt.WA_NoSystemBackground | Qt.WA_TranslucentBackground | Qt.WA_PaintOnScreen)
 
 
 class MoekLineEdit(QLineEdit):

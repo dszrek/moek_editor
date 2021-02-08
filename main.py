@@ -30,7 +30,7 @@ def db_login():
     user_login = os.getlogin().lower() if USER == "" else USER
     db = PgConn()
     # Wyszukanie aliasu systemowego w tabeli users:
-    sql = "SELECT user_id, t_user_name, i_active_team FROM users WHERE t_user_alias = '" + user_login + "';"
+    sql = "SELECT user_id, t_user_name, i_active_team FROM users WHERE t_user_alias = '" + user_login + "' AND b_active = true;"
     if db:
         res = db.query_sel(sql, False)
         if res: # Alias użytkownika znajduje się w tabeli users - logujemy
@@ -51,7 +51,7 @@ def teams_load():
     # print("[teams_load]")
     db = PgConn()
     # Wyszukanie nazw team'ów użytkownika:
-    sql = "SELECT t.team_id, t.t_team_name FROM teams AS t INNER JOIN team_users AS tu ON t.team_id = tu.team_id WHERE tu.user_id = " + str(dlg.user_id) + ";"
+    sql = "SELECT t.team_id, t.t_team_name FROM teams AS t INNER JOIN team_users AS tu ON t.team_id = tu.team_id WHERE tu.user_id = " + str(dlg.user_id) + " AND b_active = true;"
     if db:
         res = db.query_sel(sql, True)
         if res:  # Użytkownik jest przypisany do team'ów
@@ -203,10 +203,10 @@ def pow_layer_update():
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     ark_layer_update()  # Aktualizacja warstwy z arkuszami
     flag_layer_update()  # Aktualizacja warstwy z flagami
-    wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
-    auto_layer_update()  # Aktualizacja warstwy z parkingami
-    marsz_layer_update()  # Aktualizacja warstwy z marszrutami
-    zloza_layer_update()  # Aktualizacja warstwy ze złożami
+    # wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
+    # auto_layer_update()  # Aktualizacja warstwy z parkingami
+    # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
+    # zloza_layer_update()  # Aktualizacja warstwy ze złożami
     layer_zoom(layer)  # Przybliżenie widoku mapy do wybranego powiatu/powiatów
     stage_refresh()  # Odświeżenie sceny
 
@@ -228,11 +228,11 @@ def flag_layer_update():
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
-        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = True"
-        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = False"
+        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = True"
+        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "' AND b_fieldcheck = False"
     else:  # Tryb wielu powiatów
-        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=b_fieldcheck = True'
-        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flags" (geom) sql=b_fieldcheck = False'
+        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=b_fieldcheck = True'
+        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=b_fieldcheck = False'
     layer_1 = QgsProject.instance().mapLayersByName("flagi_z_teren")[0]
     layer_2 = QgsProject.instance().mapLayersByName("flagi_bez_teren")[0]
     # Zmiana zawartości warstwy flagi:
@@ -373,6 +373,7 @@ def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     # print("[vn_setup_mode:", b_flag, "]")
     global vn_setup
+    dlg.mt.tool_off()  # Wyłączenie maptool'a (mógł być uruchomiony)
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą

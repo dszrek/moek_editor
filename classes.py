@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import sys
 import psycopg2
 import psycopg2.extras
 import os.path
@@ -11,6 +12,7 @@ import tempfile
 import codecs
 import time
 
+from threading import Thread
 from PIL import Image
 from win32com.client import GetObject
 from qgis.PyQt.QtWidgets import QMessageBox
@@ -479,155 +481,22 @@ class GESync:
         iface.actionDraw().trigger()
         iface.mapCanvas().refresh()
 
-
-class IdentMapTool(QgsMapToolIdentify):
-    """Maptool do zaznaczania obiektów z wybranej warstwy."""
-    identified = pyqtSignal(object, object)
-
-    def __init__(self, canvas, layer):
-        QgsMapToolIdentify.__init__(self, canvas)
-        self.canvas = canvas
-        if type(layer) is list:
-            self.layer = layer
-        else:
-            self.layer = [layer]
-        self.setCursor(Qt.CrossCursor)
-
-    def canvasReleaseEvent(self, event):
-        result = self.identify(event.x(), event.y(), self.TopDownStopAtFirst, self.layer, self.VectorLayer)
-        if len(result) > 0:
-            self.identified.emit(result[0].mLayer, result[0].mFeature)
-        else:
-            self.identified.emit(None, None)
-
-
-class addFlag(QgsMapTool):
-    flagAdded = pyqtSignal(QgsPointXY)
-
-    def __init__(self, canvas):
-        self.canvas = canvas
-        QgsMapTool.__init__(self, canvas)
-        self.setCursor(Qt.CrossCursor)
-
-    def canvasReleaseEvent(self, event):
-        point = self.toMapCoordinates(event.pos())
-        self.flagAdded.emit(point)
-
-
-class AddPointMapTool(QgsMapTool):
-    """Maptool do dodawania geometrii punktowej."""
-    added = pyqtSignal(QgsPointXY)
-
-    def __init__(self, canvas):
-        QgsMapTool.__init__(self, canvas)
-        self.canvas = canvas
-        self.setCursor(Qt.CrossCursor)
-
-    def canvasReleaseEvent(self, event):
-        point = self.toMapCoordinates(event.pos())
-        self.added.emit(point)
-
-
-class PolySelMapTool(QgsMapTool):
-    """Maptool do poligonalnego zaznaczania obiektów."""
-    selected = pyqtSignal(QgsGeometry)
-    move = pyqtSignal
-
-    def __init__(self, canvas):
-        QgsMapTool.__init__(self, canvas)
-        self.canvas = canvas
-        self.begin = True
-        self.rb = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
-        self.rb.setColor(QColor(255, 0, 0, 128))
-        self.rb.setFillColor(QColor(255, 0, 0, 80))
-        self.rb.setWidth(1)
-
-    def keyPressEvent(self, e):
-        # Funkcja undo - kasowanie ostatnio dodanego vertex'a po naciśnięciu ctrl+z
-        if e.matches(QKeySequence.Undo) and self.rb.numberOfVertices() > 1:
-            self.rb.removeLastPoint()
-
-    def canvasPressEvent(self, e):
-        if e.button() == Qt.LeftButton:
-            if self.begin:
-                self.rb.reset(QgsWkbTypes.PolygonGeometry)
-                self.begin = False
-            self.rb.addPoint(self.toMapCoordinates(e.pos()))
-        else:
-            self.rb.removeLastPoint(0)
-            if self.rb.numberOfVertices() > 2:
-                self.begin = True
-                self.selected.emit(self.rb.asGeometry())
-                self.reset()
-            else:
-                self.reset()
-        return None
-
-    def canvasMoveEvent(self, e):
-        if self.rb.numberOfVertices() > 0 and not self.begin:
-            self.rb.removeLastPoint(0)
-            self.rb.addPoint(self.toMapCoordinates(e.pos()))
-        return None
-
-    def reset(self):
-        self.begin = True
-        self.clearMapCanvas()
-
-    def deactivate(self):
-        QgsMapTool.deactivate(self)
-        self.clearMapCanvas()
-
-    def clearMapCanvas(self):
-        self.rb.reset(QgsWkbTypes.PolygonGeometry)
-
-class LineDrawMapTool(QgsMapTool):
-    """Maptool do rysowania obiektów liniowych."""
-    selected = pyqtSignal(QgsGeometry)
-    move = pyqtSignal
-
-    def __init__(self, canvas):
-        QgsMapTool.__init__(self, canvas)
-        self.canvas = canvas
-        self.begin = True
-        self.rb = QgsRubberBand(canvas, QgsWkbTypes.LineGeometry)
-        self.rb.setColor(QColor(255, 0, 0, 128))
-        self.rb.setFillColor(QColor(255, 0, 0, 80))
-        self.rb.setWidth(1)
-
-    def keyPressEvent(self, e):
-        # Funkcja undo - kasowanie ostatnio dodanego vertex'a po naciśnięciu ctrl+z
-        if e.matches(QKeySequence.Undo) and self.rb.numberOfVertices() > 1:
-            self.rb.removeLastPoint()
-
-    def canvasPressEvent(self, e):
-        if e.button() == Qt.LeftButton:
-            if self.begin:
-                self.rb.reset(QgsWkbTypes.LineGeometry)
-                self.begin = False
-            self.rb.addPoint(self.toMapCoordinates(e.pos()))
-        else:
-            self.rb.removeLastPoint(0)
-            if self.rb.numberOfVertices() > 1:
-                self.begin = True
-                self.selected.emit(self.rb.asGeometry())
-                self.reset()
-            else:
-                self.reset()
-        return None
-
-    def canvasMoveEvent(self, e):
-        if self.rb.numberOfVertices() > 0 and not self.begin:
-            self.rb.removeLastPoint(0)
-            self.rb.addPoint(self.toMapCoordinates(e.pos()))
-        return None
-
-    def reset(self):
-        self.begin = True
-        self.clearMapCanvas()
-
-    def deactivate(self):
-        QgsMapTool.deactivate(self)
-        self.clearMapCanvas()
-
-    def clearMapCanvas(self):
-        self.rb.reset(QgsWkbTypes.LineGeometry)
+def threading_func(f):
+    """Dekorator dla funkcji zwracającej wartość i działającej poza głównym wątkiem QGIS'a."""
+    def start(*args, **kwargs):
+        def run():
+            try:
+                th.ret = f(*args, **kwargs)
+            except:
+                th.exc = sys.exc_info()
+        def get(timeout=None):
+            th.join(timeout)
+            if th.exc:
+                raise th.exc[1]
+            return th.ret
+        th = Thread(None, run)
+        th.exc = None
+        th.get = get
+        th.start()
+        return th
+    return start

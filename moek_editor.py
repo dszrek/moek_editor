@@ -31,13 +31,11 @@ from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from .resources import resources
 
 from .main import dlg_main, db_login, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
+from .maptools import dlg_maptools
 from .viewnet import dlg_viewnet
 from .widgets import dlg_widgets
 from .basemaps import dlg_basemaps, basemaps_load
 from .sequences import dlg_sequences, sequences_load
-from .flags import dlg_flags
-from .wyrobiska import dlg_wyr
-from .komunikacja import dlg_auto
 from .classes import GESync
 
 # Import the code for the DockWidget
@@ -257,13 +255,11 @@ class MoekEditor:
                 self.dockwidget.team_t = ""
 
                 dlg_main(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do main.py
+                dlg_maptools(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do maptools.py
                 dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
                 dlg_widgets(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do widgets.py
                 dlg_basemaps(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
                 dlg_sequences(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do sequences.py
-                dlg_flags(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do flags.py
-                dlg_wyr(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do wyrobiska.py
-                dlg_auto(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do komunikacja.py
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)

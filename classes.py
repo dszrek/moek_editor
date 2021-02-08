@@ -95,6 +95,24 @@ class PgConn:
         finally:
             self.close()
 
+    def query_upd_ret(self, query):
+        """Wykonanie kwerendy UPDATE ze zwracaniem wartości."""
+        try:
+            self.cursor.execute(query)
+            result = self.cursor.rowcount
+            if result > 0:
+                self.connection.commit()
+            else:
+                self.connection.rollback()
+        except Exception as error:
+            self.__error_msg("query", error, query)
+            self.connection.rollback()
+            return
+        else:
+            return self.cursor.fetchone()[0]
+        finally:
+            self.close()
+
     def query_exeval(self, query, values):
         """Wykonanie kwerendy EXECUTE_VALUES."""
         try:

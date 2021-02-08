@@ -41,11 +41,19 @@ class ObjectManager:
         elif attr == "flag_data":
             if self.flag_data[0] and self.flag != self.flag_data[1][0]:
                 self.flag = self.flag_data[1][0]
+        elif attr == "wyr":
+            QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'wyr_sel', val)
+            QgsProject.instance().mapLayersByName("wyr_point")[0].triggerRepaint()
+            QgsProject.instance().mapLayersByName("wyr_poly")[0].triggerRepaint()
 
     def obj_change(self, obj_data, click):
+        lyr_name = obj_data[0]
         if click == "left":
-            self.flag_data = obj_data
-            self.menu_hide()
+            if lyr_name == "wyr_point":
+                self.wyr = obj_data[1][0]
+            else:
+                self.flag_data = obj_data
+                self.menu_hide()
         elif click == "right":
             if self.flag == obj_data[1][0]:
                 self.menu_show()
@@ -94,7 +102,7 @@ class MapToolManager:
             {"name" : "flt_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"], "fn" : flag_add, "extra" : ['true']},
             {"name" : "flf_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"], "fn" : flag_add, "extra" : ['false']},
             # {"name" : "flag_del", "class" : IdentMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_del"], "lyr" : ["flagi_z_teren", "flagi_bez_teren"], "fn" : flag_del},
-            {"name" : "wyr_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add"], "fn" : wyr_add1}
+            {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly}
             # {"name" : "wyr_del", "class" : IdentMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_del"], "lyr" : ["wyrobiska"], "fn" : wyr_del}
             # {"name" : "auto_add", "class" : PointDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_add"], "fn" : auto_add},
             # {"name" : "auto_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_del"], "lyr" : ["parking"], "fn" : auto_del},
@@ -359,9 +367,12 @@ class PolyDrawMapTool(QgsMapTool):
     drawn = pyqtSignal(QgsGeometry)
     move = pyqtSignal()
 
-    def __init__(self, canvas):
+    def __init__(self, canvas, button):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
+        self.button = button
+        if not self.button.isChecked():
+            self.button.setChecked(True)
         self.begin = True
         self.rb = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
         self.rb.setColor(QColor(255, 0, 0, 128))
@@ -401,6 +412,7 @@ class PolyDrawMapTool(QgsMapTool):
 
     def deactivate(self):
         self.clearMapCanvas()
+        self.button.setChecked(False)
 
     def clearMapCanvas(self):
         self.rb.reset(QgsWkbTypes.PolygonGeometry)

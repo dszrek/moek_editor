@@ -120,11 +120,9 @@ class MapToolManager:
             dlg.obj.menu_hide()
         except:
             pass
-        if not old_tool:
+        if self.old_button:
             self.old_button.setChecked(False)
-            self.old_button = None
-        else:
-            self.old_button = new_tool
+        self.old_button = new_tool.button()
 
     def init(self, maptool):
         """Zainicjowanie zmiany maptool'a."""
@@ -170,13 +168,16 @@ class MultiMapTool(QgsMapToolIdentify):
         QgsMapToolIdentify.__init__(self, canvas)
         self.canvas = canvas
         self.layer = layer
-        self.button = button
-        if not self.button.isChecked():
-            self.button.setChecked(True)
+        self._button = button
+        if not self._button.isChecked():
+            self._button.setChecked(True)
         self.dragging = False
         self.sel = False
         self.cursor_changed.connect(self.cursor_change)
         self.cursor = "open_hand"
+
+    def button(self):
+        return self._button
 
     @threading_func
     def findFeatureAt(self, pos):
@@ -261,9 +262,6 @@ class MultiMapTool(QgsMapToolIdentify):
         if dlg.obj.flag_menu:
             dlg.obj.menu_hide()
 
-    def deactivate(self):
-        self.button.setChecked(False)
-
 
 class IdentMapTool(QgsMapToolIdentify):
     """Maptool do zaznaczania obiektów z wybranej warstwy."""
@@ -273,10 +271,13 @@ class IdentMapTool(QgsMapToolIdentify):
         QgsMapToolIdentify.__init__(self, canvas)
         self.canvas = canvas
         self.layer = layer
-        self.button = button
-        if not self.button.isChecked():
-            self.button.setChecked(True)
+        self._button = button
+        if not self._button.isChecked():
+            self._button.setChecked(True)
         self.setCursor(Qt.CrossCursor)
+
+    def button(self):
+        return self._button
 
     def canvasReleaseEvent(self, event):
         result = self.identify(event.x(), event.y(), self.TopDownStopAtFirst, self.layer, self.VectorLayer)
@@ -284,9 +285,6 @@ class IdentMapTool(QgsMapToolIdentify):
             self.identified.emit(result[0].mLayer, result[0].mFeature)
         else:
             self.identified.emit(None, None)
-
-    def deactivate(self):
-        self.button.setChecked(False)
 
 
 class PointDrawMapTool(QgsMapTool):
@@ -296,17 +294,17 @@ class PointDrawMapTool(QgsMapTool):
     def __init__(self, canvas, button):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
-        self.button = button
-        if not self.button.isChecked():
-            self.button.setChecked(True)
+        self._button = button
+        if not self._button.isChecked():
+            self._button.setChecked(True)
         self.setCursor(Qt.CrossCursor)
+
+    def button(self):
+        return self._button
 
     def canvasReleaseEvent(self, event):
         point = self.toMapCoordinates(event.pos())
         self.drawn.emit(point)
-
-    def deactivate(self):
-        self.button.setChecked(False)
 
 
 class LineDrawMapTool(QgsMapTool):
@@ -314,14 +312,20 @@ class LineDrawMapTool(QgsMapTool):
     drawn = pyqtSignal(QgsGeometry)
     move = pyqtSignal
 
-    def __init__(self, canvas):
+    def __init__(self, canvas, button):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
+        self._button = button
+        if not self._button.isChecked():
+            self._button.setChecked(True)
         self.begin = True
         self.rb = QgsRubberBand(canvas, QgsWkbTypes.LineGeometry)
         self.rb.setColor(QColor(255, 0, 0, 128))
         self.rb.setFillColor(QColor(255, 0, 0, 80))
         self.rb.setWidth(1)
+
+    def button(self):
+        return self._button
 
     def keyPressEvent(self, e):
         # Funkcja undo - kasowanie ostatnio dodanego vertex'a po naciśnięciu ctrl+z
@@ -370,14 +374,17 @@ class PolyDrawMapTool(QgsMapTool):
     def __init__(self, canvas, button):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
-        self.button = button
-        if not self.button.isChecked():
-            self.button.setChecked(True)
+        self._button = button
+        if not self._button.isChecked():
+            self._button.setChecked(True)
         self.begin = True
         self.rb = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
         self.rb.setColor(QColor(255, 0, 0, 128))
         self.rb.setFillColor(QColor(255, 0, 0, 80))
         self.rb.setWidth(1)
+
+    def button(self):
+        return self._button
 
     def keyPressEvent(self, e):
         # Funkcja undo - kasowanie ostatnio dodanego vertex'a po naciśnięciu ctrl+z
@@ -412,10 +419,10 @@ class PolyDrawMapTool(QgsMapTool):
 
     def deactivate(self):
         self.clearMapCanvas()
-        self.button.setChecked(False)
 
     def clearMapCanvas(self):
         self.rb.reset(QgsWkbTypes.PolygonGeometry)
+
 
 # ========== Funkcje:
 

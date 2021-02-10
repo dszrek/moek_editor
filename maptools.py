@@ -25,11 +25,7 @@ class ObjectManager:
         self.flag_menu = False
         self.flag = None
         self.flag_data = [None, None, None]
-        self.sel_id = None
-        self.layers = [
-            {"name" : "flagi_z_teren", "id_col" : 0},
-            {"name" : "flagi_bez_teren", "id_col" : 0}
-        ]
+        self.wyr = None
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -90,6 +86,7 @@ class MapToolManager:
         self.dlg = dlg  # Referencja do wtyczki
         self.canvas = canvas  # Referencja do mapy
         self.old_button = None
+        self.feat_backup = None
         self.canvas.mapToolSet.connect(self.maptool_change)
 
 
@@ -101,8 +98,9 @@ class MapToolManager:
             {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel},
             {"name" : "flt_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"], "fn" : flag_add, "extra" : ['true']},
             {"name" : "flf_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"], "fn" : flag_add, "extra" : ['false']},
-            # {"name" : "flag_del", "class" : IdentMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_del"], "lyr" : ["flagi_z_teren", "flagi_bez_teren"], "fn" : flag_del},
+            {"name" : "flag_del", "class" : IdentMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_del"], "lyr" : ["flagi_z_teren", "flagi_bez_teren"], "fn" : flag_del},
             {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly}
+            # {"name" : "wyr_edit", "class" : EditPolyMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"], "lyr" : ["wyr_poly"], "fn" : wyr_poly_change}
             # {"name" : "wyr_del", "class" : IdentMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_del"], "lyr" : ["wyrobiska"], "fn" : wyr_del}
             # {"name" : "auto_add", "class" : PointDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_add"], "fn" : auto_add},
             # {"name" : "auto_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_del"], "lyr" : ["parking"], "fn" : auto_del},
@@ -146,6 +144,17 @@ class MapToolManager:
         elif self.params["class"] == IdentMapTool:
             self.maptool = self.params["class"](self.canvas, lyr, self.params["button"])
             self.maptool.identified.connect(self.params["fn"])
+        elif self.params["class"] == EditPolyMapTool:
+            geom = self.get_feat_geom(lyr[0])
+            if not geom:
+                self.maptool = DummyMapTool(self.canvas, self.params["button"])
+                self.mt_name = "dummy"
+                self.canvas.setMapTool(self.maptool)
+                self.init("multi_tool")
+                return
+            else:
+                self.maptool = self.params["class"](self.canvas, lyr[0], geom, self.params["button"])
+                self.maptool.ending.connect(self.params["fn"])
         else:
             self.maptool = self.params["class"](self.canvas, self.params["button"])
             self.maptool.drawn.connect(self.params["fn"])
@@ -157,6 +166,105 @@ class MapToolManager:
         for tool in self.maptools:
             if tool["name"] == maptool:
                 return tool
+
+    def get_feat_geom(self, lyr):
+        feats = lyr.getFeatures(f'"wyr_id" = {dlg.obj.wyr}')
+        try:
+            feat = list(feats)[0]
+        except Exception as err:
+            print(f"{err}")
+            return None
+        if isinstance(feat, QgsFeature):
+            geom = self.feat_caching(lyr, feat)
+            if isinstance(geom, QgsGeometry):
+                return geom
+            else:
+                return None
+        else:
+            return None
+
+    def feat_caching(self, lyr, feat):
+        self.feat_backup = feat
+        geom = self.feat_backup.geometry()
+        with edit(lyr):
+            feat.clearGeometry()
+            try:
+                lyr.updateFeature(feat)
+            except Exception as err:
+                print(err)
+                self.feat_backup = None
+                return None
+        return geom
+
+
+class DummyMapTool(QgsMapTool):
+    """Pusty maptool przekazujący informacje o przycisku innego maptool'a."""
+    def __init__(self, canvas, button):
+        QgsMapTool.__init__(self, canvas)
+        self.canvas = canvas
+        self._button = button
+        if not self._button.isChecked():
+            self._button.setChecked(True)
+
+    def button(self):
+        return self._button
+
+
+class EditPolyMapTool(QgsMapToolIdentify):
+    """Maptool do edytowania poligonalnej geometrii wyrobiska."""
+    cursor_changed = pyqtSignal(str)
+    ending = pyqtSignal(QgsVectorLayer, QgsGeometry)
+
+    def __init__(self, canvas, layer, geom, button):
+        QgsMapTool.__init__(self, canvas)
+        self.canvas = canvas
+        self._button = button
+        if not self._button.isChecked():
+            self._button.setChecked(True)
+        self.layer = layer
+        self.geom = geom
+        self.dragging = False
+        # self.begin = True
+
+        self.feat_band = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.feat_band.setColor(QColor(0, 0, 255, 255))
+        self.feat_band.setFillColor(QColor(0, 0, 255, 80))
+        self.feat_band.setWidth(2)
+        self.feat_band.addGeometry(self.geom)
+
+        self.snap_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
+        self.snap_marker.setIcon(QgsRubberBand.ICON_CIRCLE)
+        self.snap_marker.setColor(QColor(0, 0, 255, 255))
+        self.snap_marker.setFillColor(QColor(0, 0, 255, 64))
+        self.snap_marker.setIconSize(12)
+
+        for part in self.geom.parts():
+            for p in part.vertices():
+                self.snap_marker.addPoint(QgsPointXY(p.x(), p.y()))
+
+        self.cursor_changed.connect(self.cursor_change)
+        self.cursor = "open_hand"
+
+    def button(self):
+        return self._button
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "cursor":
+            self.cursor_changed.emit(val)
+
+    def cursor_change(self, cur_name):
+        """Zmiana cursora maptool'a."""
+        cursors = [
+                    ["arrow", Qt.ArrowCursor],
+                    ["open_hand", Qt.OpenHandCursor],
+                    ["closed_hand", Qt.ClosedHandCursor]
+                ]
+        for cursor in cursors:
+            if cursor[0] == cur_name:
+                self.setCursor(cursor[1])
+                break
 
 
 class MultiMapTool(QgsMapToolIdentify):
@@ -585,3 +693,14 @@ def lyr_ref(lyr):
     for l in lyr:
         layer.append(QgsProject.instance().mapLayersByName(l)[0])
     return layer
+
+def wyr_poly_change(lyr, geom):
+    feats = lyr.getFeatures(f'"wyr_id" = {dlg.obj.wyr}')
+    feat = list(feats)[0]
+    with edit(lyr):
+        feat.setGeometry(geom)
+        try:
+            lyr.updateFeature(feat)
+        except Exception as err:
+            print(err)
+    dlg.mt.init("multi_tool")

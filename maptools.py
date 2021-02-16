@@ -231,6 +231,7 @@ class EditPolyMapTool(QgsMapTool):
     """Maptool do edytowania poligonalnej geometrii wyrobiska."""
     cursor_changed = pyqtSignal(str)
     node_selected = pyqtSignal(bool)
+    area_hover = pyqtSignal(int)
     ending = pyqtSignal(QgsVectorLayer, QgsGeometry)
 
     def __init__(self, canvas, layer, button):
@@ -242,6 +243,9 @@ class EditPolyMapTool(QgsMapTool):
         self.layer = layer
         self.dragging = False
         self.geom = None
+        self.a_temp = -1
+        self.area_idx = -1
+        self.part_idx = -1
         self.node_presel = []
         self.node_sel = False
         self.node_idx = (-1, -1)
@@ -264,6 +268,7 @@ class EditPolyMapTool(QgsMapTool):
         self.cursor_changed.connect(self.cursor_change)
         self.cursor = "open_hand"
         self.node_selected.connect(self.node_sel_change)
+        self.area_hover.connect(self.area_hover_change)
 
     def button(self):
         return self._button
@@ -273,6 +278,8 @@ class EditPolyMapTool(QgsMapTool):
         super().__setattr__(attr, val)
         if attr == "cursor":
             self.cursor_changed.emit(val)
+        if attr == "area_idx":
+            self.area_hover.emit(val)
         if attr == "node_sel":
             self.node_selected.emit(val)
 
@@ -299,6 +306,20 @@ class EditPolyMapTool(QgsMapTool):
             self.node_idx = (-1, -1)
             self.node_selector.setVisible(False)
 
+    def area_hover_change(self, part):
+        """Zmiana podświetlenia poligonów."""
+        if part < 0:
+            self.area_marker.setVisible(False)
+        else:
+            self.area_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.area_marker.addGeometry(self.area_rbs[part].asGeometry())
+            self.area_marker.setVisible(True)
+        for i in range(len(self.vertex_rbs)):
+            if i == part:
+                self.vertex_rbs[i].setVisible(True)
+            else:
+                self.vertex_rbs[i].setVisible(False)
+
     def rbs_create(self):
         """Stworzenie rubberband'ów."""
         for i in range(self.edit_layer.featureCount()):
@@ -313,11 +334,11 @@ class EditPolyMapTool(QgsMapTool):
             _vrb.setColor(QColor(255, 255, 0, 255))
             _vrb.setFillColor(QColor(255, 255, 0, 0))
             _vrb.setIconSize(8)
-            _vrb.setVisible(True)
+            _vrb.setVisible(False)
             self.vertex_rbs.append(_vrb)
 
         self.area_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.area_marker.setWidth(3)
+        self.area_marker.setWidth(2)
         self.area_marker.setColor(QColor(255, 255, 0, 255))
         self.area_marker.setFillColor(QColor(255, 255, 0, 0))
         self.area_marker.setVisible(False)
@@ -354,6 +375,7 @@ class EditPolyMapTool(QgsMapTool):
             for j in range(len(poly) - 1):
                 self.area_rbs[i].addPoint(poly[j])
                 self.vertex_rbs[i].addPoint(poly[j])
+            self.vertex_rbs[i].setVisible(False)
 
     def snap_to_layer(self, event):
         self.canvas.snappingUtils().setCurrentLayer(self.edit_layer)
@@ -371,35 +393,53 @@ class EditPolyMapTool(QgsMapTool):
             map_point = self.toMapCoordinates(event.pos())
             v, e, a = self.snap_to_layer(event)
             snap_type = v.type() + e.type() + a.type()
+            if self.a_temp != a.featureId():
+                self.a_temp = a.featureId()
+                self.part_idx = self.get_part_from_id(a.featureId())
             if snap_type == 0:  # Kursor poza poligonami, brak obiektów do przyciągnięcia
+                if self.cursor != "open_hand":
+                    self.cursor = "open_hand"
                 if self.node_presel:
                     self.node_presel = []
                 self.vertex_marker.setVisible(False)
                 self.edge_marker.setVisible(False)
-                self.area_marker.setVisible(False)
-                self.cursor = "open_hand"
+                if self.area_idx != -1:
+                    self.area_idx = -1
             elif snap_type == 4:  # Kursor w obrębie poligonu
+                if self.cursor != "open_hand":
+                    self.cursor = "open_hand"
                 if self.node_presel:
                     self.node_presel = []
                 self.vertex_marker.setVisible(False)
                 self.edge_marker.setVisible(False)
-                self.area_marker.setVisible(True)
-                self.cursor = "open_hand"
+                if self.area_idx != self.part_idx:
+                    self.area_idx = self.part_idx
             elif snap_type == 5 or snap_type == 7:  # Wierzchołek do przyciągnięcia
+                if self.cursor != "arrow":
+                    self.cursor = "arrow"
                 self.node_presel = [v, e.featureId()]
                 self.vertex_marker.movePoint(v.point(), 0)
                 self.vertex_marker.setVisible(True)
                 self.edge_marker.setVisible(False)
-                self.area_marker.setVisible(True)
-                self.cursor = "arrow"
+                if self.area_idx != self.part_idx:
+                    self.area_idx = self.part_idx
             elif snap_type == 6:  # Krawędź do przyciągnięcia
+                if self.cursor != "cross":
+                    self.cursor = "cross"
                 if self.node_presel:
                     self.node_presel = []
                 self.edge_marker.movePoint(e.point(), 0)
                 self.edge_marker.setVisible(True)
                 self.vertex_marker.setVisible(False)
-                self.area_marker.setVisible(True)
-                self.cursor = "cross"
+                if self.area_idx != self.part_idx:
+                    self.area_idx = self.part_idx
+
+    def get_part_from_id(self, id):
+        """Zwraca atrybut 'part' poligonu o numerze id."""
+        for feat in self.edit_layer.getFeatures():
+            if feat.id() == id:
+                return feat.attribute("part")
+        return None
 
     def get_geom_from_id(self, id):
         """Zwraca geometrię poligonu o numerze id."""

@@ -120,7 +120,10 @@ class MapToolManager:
             pass
         if self.old_button:
             self.old_button.setChecked(False)
-        self.old_button = new_tool.button()
+        try:  # Maptool może nie mieć atrybutu '.button()'
+            self.old_button = new_tool.button()
+        except:
+            self.old_button = None
 
     def init(self, maptool):
         """Zainicjowanie zmiany maptool'a."""
@@ -227,6 +230,7 @@ class DummyMapTool(QgsMapTool):
 class EditPolyMapTool(QgsMapTool):
     """Maptool do edytowania poligonalnej geometrii wyrobiska."""
     cursor_changed = pyqtSignal(str)
+    node_selected = pyqtSignal(bool)
     ending = pyqtSignal(QgsVectorLayer, QgsGeometry)
 
     def __init__(self, canvas, layer, button):
@@ -238,8 +242,9 @@ class EditPolyMapTool(QgsMapTool):
         self.layer = layer
         self.dragging = False
         self.geom = None
-        self.vertex_presel = []
-        self.vertex_sel = []
+        self.node_presel = []
+        self.node_sel = False
+        self.node_idx = (-1, -1)
         self.area_rbs = []
         self.vertex_rbs = []
         self.edit_layer = QgsProject.instance().mapLayersByName("edit_poly")[0]
@@ -258,6 +263,7 @@ class EditPolyMapTool(QgsMapTool):
         self.rbs_populate()
         self.cursor_changed.connect(self.cursor_change)
         self.cursor = "open_hand"
+        self.node_selected.connect(self.node_sel_change)
 
     def button(self):
         return self._button
@@ -267,6 +273,8 @@ class EditPolyMapTool(QgsMapTool):
         super().__setattr__(attr, val)
         if attr == "cursor":
             self.cursor_changed.emit(val)
+        if attr == "node_sel":
+            self.node_selected.emit(val)
 
     def cursor_change(self, cur_name):
         """Zmiana cursora maptool'a."""
@@ -281,9 +289,18 @@ class EditPolyMapTool(QgsMapTool):
                 self.setCursor(cursor[1])
                 break
 
+    def node_sel_change(self, _bool):
+        """Zmiana zaznaczonego node'a."""
+        if _bool:
+            self.node_idx = self.get_node_index()
+            self.node_selector.movePoint(self.node_presel[0].point(), 0)
+            self.node_selector.setVisible(True)
+        else:
+            self.node_idx = (-1, -1)
+            self.node_selector.setVisible(False)
+
     def rbs_create(self):
         """Stworzenie rubberband'ów."""
-        print(f"featureCount: {self.edit_layer.featureCount()}")
         for i in range(self.edit_layer.featureCount()):
             _arb = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
             _arb.setWidth(1)
@@ -295,7 +312,7 @@ class EditPolyMapTool(QgsMapTool):
             _vrb.setIcon(QgsRubberBand.ICON_CIRCLE)
             _vrb.setColor(QColor(255, 255, 0, 255))
             _vrb.setFillColor(QColor(255, 255, 0, 0))
-            _vrb.setIconSize(10)
+            _vrb.setIconSize(8)
             _vrb.setVisible(True)
             self.vertex_rbs.append(_vrb)
 
@@ -309,7 +326,7 @@ class EditPolyMapTool(QgsMapTool):
         self.edge_marker.setIcon(QgsRubberBand.ICON_CIRCLE)
         self.edge_marker.setColor(QColor(0, 0, 0, 255))
         self.edge_marker.setFillColor(QColor(255, 255, 0, 255))
-        self.edge_marker.setIconSize(8)
+        self.edge_marker.setIconSize(6)
         self.edge_marker.addPoint(QgsPointXY(0, 0), False)
         self.edge_marker.setVisible(False)
 
@@ -317,23 +334,22 @@ class EditPolyMapTool(QgsMapTool):
         self.vertex_marker.setIcon(QgsRubberBand.ICON_CIRCLE)
         self.vertex_marker.setColor(QColor(255, 255, 0, 255))
         self.vertex_marker.setFillColor(QColor(255, 255, 0, 255))
-        self.vertex_marker.setIconSize(10)
+        self.vertex_marker.setIconSize(8)
         self.vertex_marker.addPoint(QgsPointXY(0, 0), False)
         self.vertex_marker.setVisible(False)
 
-        self.vertex_selector = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
-        self.vertex_selector.setIcon(QgsRubberBand.ICON_CIRCLE)
-        self.vertex_selector.setColor(QColor(0, 0, 0, 255))
-        self.vertex_selector.setFillColor(QColor(255, 255, 0, 255))
-        self.vertex_selector.setIconSize(14)
-        self.vertex_selector.addPoint(QgsPointXY(0, 0), False)
-        self.vertex_selector.setVisible(False)
+        self.node_selector = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
+        self.node_selector.setIcon(QgsRubberBand.ICON_CIRCLE)
+        self.node_selector.setColor(QColor(0, 0, 0, 255))
+        self.node_selector.setFillColor(QColor(255, 255, 0, 255))
+        self.node_selector.setIconSize(14)
+        self.node_selector.addPoint(QgsPointXY(0, 0), False)
+        self.node_selector.setVisible(False)
 
     def rbs_populate(self):
         """Załadowanie poligonów i punktów do rubberband'ów."""
         for i in range(len(self.area_rbs)):
             geom = self.get_geom_from_part(i)
-            self.area_marker.addGeometry(geom)  #TODO
             poly = geom.asPolygon()[0]
             for j in range(len(poly) - 1):
                 self.area_rbs[i].addPoint(poly[j])
@@ -356,29 +372,29 @@ class EditPolyMapTool(QgsMapTool):
             v, e, a = self.snap_to_layer(event)
             snap_type = v.type() + e.type() + a.type()
             if snap_type == 0:  # Kursor poza poligonami, brak obiektów do przyciągnięcia
-                if self.vertex_presel:
-                    self.vertex_presel = []
+                if self.node_presel:
+                    self.node_presel = []
                 self.vertex_marker.setVisible(False)
                 self.edge_marker.setVisible(False)
                 self.area_marker.setVisible(False)
                 self.cursor = "open_hand"
             elif snap_type == 4:  # Kursor w obrębie poligonu
-                if self.vertex_presel:
-                    self.vertex_presel = []
+                if self.node_presel:
+                    self.node_presel = []
                 self.vertex_marker.setVisible(False)
                 self.edge_marker.setVisible(False)
                 self.area_marker.setVisible(True)
                 self.cursor = "open_hand"
             elif snap_type == 5 or snap_type == 7:  # Wierzchołek do przyciągnięcia
-                self.vertex_presel = [v, e.featureId()]
+                self.node_presel = [v, e.featureId()]
                 self.vertex_marker.movePoint(v.point(), 0)
                 self.vertex_marker.setVisible(True)
                 self.edge_marker.setVisible(False)
                 self.area_marker.setVisible(True)
                 self.cursor = "arrow"
             elif snap_type == 6:  # Krawędź do przyciągnięcia
-                if self.vertex_presel:
-                    self.vertex_presel = []
+                if self.node_presel:
+                    self.node_presel = []
                 self.edge_marker.movePoint(e.point(), 0)
                 self.edge_marker.setVisible(True)
                 self.vertex_marker.setVisible(False)
@@ -401,35 +417,43 @@ class EditPolyMapTool(QgsMapTool):
             return None
         return feat.geometry()
 
-    def get_geom_from_point(self, point):
-        """Zwraca geometrię i index poligonu, którego wierzchołek jest tożsamy z podanym punktem."""
+    def get_node_index(self):
+        """Zwraca index punktu i poligonu, znajdującego się pod vertex_selector'em."""
         i = 0
-        for a in self.area_rbs:
-            rb_geom = a.asGeometry()
-            poly = rb_geom.asPolygon()[0]
-            for j in range(len(poly)):
-                if poly[j] == point:
-                    return rb_geom, i
+        point = self.node_presel[0].point()
+        for rb in self.vertex_rbs:
+            j = 0
+            rb_geom = rb.asGeometry()
+            for part in rb_geom.constParts():
+                p_geom = QgsPointXY(part.x(), part.y())
+                if point == p_geom:
+                    return i, j
+                j += 1
             i += 1
-        return None, None
+        return -1, -1
+
+    def get_geom_from_vertex_rb(self, rb):
+        """Zwraca geometrię zbudowaną z punktów rubberband'u."""
+        pts = []
+        for part in rb.constParts():
+            pts.append((part.x(), part.y()))
+        poly = QgsGeometry.fromPolygonXY([[QgsPointXY(pair[0], pair[1]) for pair in pts]])
+        return poly
 
     def vertex_delete(self):
         """Usuwa zaznaczony wierzchołek poligonu."""
-        rb_geom, i = self.get_geom_from_point(self.vertex_sel[0].point())
-        if not rb_geom:
+        if self.node_idx[0] < 0:
+            print("brak zaznaczonego wierzchołka")
             return
-        vertex_idx = rb_geom.closestVertexWithContext(self.vertex_sel[0].point())
-        self.area_rbs[i].removePoint(vertex_idx[1], True)
+        self.vertex_rbs[self.node_idx[0]].removePoint(self.node_idx[1], True)
+        self.node_sel = False
 
     def canvasReleaseEvent(self, event):
         if event.button() == Qt.LeftButton and not self.dragging:
-            if self.vertex_presel:
-                self.vertex_selector.movePoint(self.vertex_presel[0].point(), 0)
-                self.vertex_sel = self.vertex_presel
-                self.vertex_selector.setVisible(True)
+            if self.node_presel:
+                self.node_sel = True
             else:
-                self.vertex_selector.setVisible(False)
-                self.vertex_sel = []
+                self.node_sel = False
         elif event.button() == Qt.LeftButton and self.dragging:
             self.canvas.panActionEnd(event.pos())
             self.dragging = False
@@ -440,7 +464,7 @@ class EditPolyMapTool(QgsMapTool):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Delete:
             event.ignore()  # Przerwanie domyślnego działania skrótu klawiszowego
-            if self.vertex_sel:
+            if self.node_sel:
                 self.vertex_delete()  # Skasowanie wierzchołka
                 self.geom_update()  # Aktualizacja geometrii na warstwie
                 self.rbs_clear()  # Skasowanie rubberband'ów
@@ -456,22 +480,25 @@ class EditPolyMapTool(QgsMapTool):
         # Załadowanie aktualnej geometrii do warstwy edit_poly:
         geom_list = []
         with edit(self.edit_layer):
-            for i in range(len(self.area_rbs)):
-                geom = self.area_rbs[i].asGeometry()
+            for i in range(len(self.vertex_rbs)):
+                geom = self.get_geom_from_vertex_rb(self.vertex_rbs[i].asGeometry())
                 feat = QgsFeature(self.edit_layer.fields())
                 feat.setAttribute("part", i)
                 feat.setGeometry(geom)
                 self.edit_layer.addFeature(feat)
                 geom_list.append(geom)
-        if len(geom_list) == 1:
+        if len(geom_list) > 1:
+            self.geom = QgsGeometry.collectGeometry(geom_list)
+        else:
             self.geom = geom_list[0]
-            return self.geom
+        return self.geom
 
     def reset(self):
         if not self.geom:
             self.geom = self.geom_update()
         self.rbs_clear()
-
+        self.edit_layer.dataProvider().truncate()
+        self.edit_layer.triggerRepaint()
         self.ending.emit(self.layer, self.geom)
 
     def rbs_clear(self):
@@ -482,11 +509,11 @@ class EditPolyMapTool(QgsMapTool):
         self.area_rbs = []
         self.vertex_rbs = []
         self.vertex_marker.reset(QgsWkbTypes.PointGeometry)
-        self.vertex_selector.reset(QgsWkbTypes.PointGeometry)
+        self.node_selector.reset(QgsWkbTypes.PointGeometry)
         self.edge_marker.reset(QgsWkbTypes.PointGeometry)
         self.area_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.vertex_marker = None
-        self.vertex_selector = None
+        self.node_selector = None
         self.edge_marker = None
         self.area_marker = None
 

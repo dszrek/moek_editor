@@ -242,6 +242,7 @@ class EditPolyMapTool(QgsMapTool):
             self._button.setChecked(True)
         self.layer = layer
         self.dragging = False
+        self.moving = False
         self.geom = None
         self.a_temp = -1
         self.area_idx = -1
@@ -289,7 +290,8 @@ class EditPolyMapTool(QgsMapTool):
                     ["arrow", Qt.ArrowCursor],
                     ["open_hand", Qt.OpenHandCursor],
                     ["closed_hand", Qt.ClosedHandCursor],
-                    ["cross", Qt.CrossCursor]
+                    ["cross", Qt.CrossCursor],
+                    ["move", Qt.SizeAllCursor]
                 ]
         for cursor in cursors:
             if cursor[0] == cur_name:
@@ -305,6 +307,17 @@ class EditPolyMapTool(QgsMapTool):
         else:
             self.node_idx = (-1, -1)
             self.node_selector.setVisible(False)
+        # print(f"node: {self.node_idx[0]}, {self.node_idx[1]}")
+
+    def after_move(self):
+        if self.node_idx[0] < 0:
+            return
+        geom = self.vertex_rbs[self.node_idx[0]].asGeometry()
+        node = list(geom.vertices())[self.node_idx[1]]
+        self.node_selector.movePoint(QgsPointXY(node.x(), node.y()))
+        if not self.node_selector.isVisible():
+            self.node_selector.setVisible(True)
+        self.area_idx = self.node_idx[0]
 
     def area_hover_change(self, part):
         """Zmiana podświetlenia poligonów."""
@@ -337,6 +350,12 @@ class EditPolyMapTool(QgsMapTool):
             _vrb.setVisible(False)
             self.vertex_rbs.append(_vrb)
 
+        self.line_helper = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
+        self.line_helper.setWidth(2)
+        self.line_helper.setColor(QColor(255, 255, 0, 255))
+        self.line_helper.setLineStyle(Qt.DotLine)
+        self.line_helper.setVisible(False)
+
         self.area_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.area_marker.setWidth(2)
         self.area_marker.setColor(QColor(255, 255, 0, 255))
@@ -363,7 +382,7 @@ class EditPolyMapTool(QgsMapTool):
         self.node_selector.setIcon(QgsRubberBand.ICON_CIRCLE)
         self.node_selector.setColor(QColor(0, 0, 0, 255))
         self.node_selector.setFillColor(QColor(255, 255, 0, 255))
-        self.node_selector.setIconSize(14)
+        self.node_selector.setIconSize(12)
         self.node_selector.addPoint(QgsPointXY(0, 0), False)
         self.node_selector.setVisible(False)
 
@@ -378,6 +397,7 @@ class EditPolyMapTool(QgsMapTool):
             self.vertex_rbs[i].setVisible(False)
 
     def snap_to_layer(self, event):
+        """Zwraca wyniki przyciągania do wierzchołków, krawędzi i powierzchni."""
         self.canvas.snappingUtils().setCurrentLayer(self.edit_layer)
         v = self.canvas.snappingUtils().snapToCurrentLayer(event.pos(), QgsPointLocator.Vertex)
         e = self.canvas.snappingUtils().snapToCurrentLayer(event.pos(), QgsPointLocator.Edge)
@@ -387,8 +407,26 @@ class EditPolyMapTool(QgsMapTool):
     def canvasMoveEvent(self, event):
         if event.buttons() == Qt.LeftButton:
             self.dragging = True
-            self.cursor = "closed_hand"
-            self.canvas.panAction(event)
+            if self.node_presel:
+                if not self.moving:
+                    self.node_sel = True
+                    if self.node_idx[0] < 0:
+                        if self.node_sel:
+                            self.node_sel = False
+                        return
+                    self.moving = True
+                    self.cursor = "move"
+                    self.line_create()
+                p = self.toMapCoordinates(event.pos())
+                self.node_selector.movePoint(QgsPointXY(p.x(), p.y()))
+                self.line_helper.movePoint(1, QgsPointXY(p.x(), p.y()))
+            else:
+                if self.moving:
+                    self.geom_refresh()
+                    self.after_move()
+                    self.moving = False
+                self.cursor = "closed_hand"
+                self.canvas.panAction(event)
         elif event.button() == Qt.NoButton and not self.dragging:
             map_point = self.toMapCoordinates(event.pos())
             v, e, a = self.snap_to_layer(event)
@@ -433,6 +471,61 @@ class EditPolyMapTool(QgsMapTool):
                 self.vertex_marker.setVisible(False)
                 if self.area_idx != self.part_idx:
                     self.area_idx = self.part_idx
+
+    def canvasReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and not self.dragging:
+            if self.node_presel:
+                self.node_sel = True
+            else:
+                self.node_sel = False
+        elif event.button() == Qt.LeftButton and self.dragging:
+            if self.moving:
+                map_point = self.toMapCoordinates(event.pos())
+                self.vertex_rbs[self.node_idx[0]].movePoint(self.node_idx[1], map_point)
+                self.geom_refresh()
+                self.after_move()
+                self.moving = False
+
+            else:
+                self.canvas.panActionEnd(event.pos())
+            self.dragging = False
+            self.cursor = "open_hand"
+        elif event.button() == Qt.RightButton and not self.dragging:
+            self.reset()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Delete:
+            event.ignore()  # Przerwanie domyślnego działania skrótu klawiszowego
+            if self.node_sel:
+                self.vertex_delete()  # Skasowanie wierzchołka
+                self.geom_refresh()
+        elif event.key() == Qt.Key_Escape:
+            if self.dragging:
+                self.stop_dragging()
+
+    def line_create(self):
+        """Utworzenie i wyświetlenie linii pomocniczej przy przesuwaniu wierzchołka."""
+        part = self.node_idx[0]
+        node = self.node_idx[1]
+        node_cnt = self.vertex_rbs[part].numberOfVertices() - 1
+        if node == 0:  # Zaznaczony jest pierwszy wierzchołek
+            picked_nodes = [node_cnt, node, node + 1]
+        elif node == node_cnt:  # Zaznaczony jest ostatni wierzchołek
+            picked_nodes = [node - 1, node, 0]
+        else:
+            picked_nodes = [node -1, node, node + 1]
+        line_points = self.get_points_from_indexes(part, picked_nodes)
+        self.line_helper.reset(QgsWkbTypes.LineGeometry)
+        for p in line_points:
+            self.line_helper.addPoint(p)
+        self.line_helper.setVisible(True)
+
+    def geom_refresh(self):
+        """Aktualizacja warstwy i rubberband'ów po zmianie geometrii."""
+        self.geom_update()  # Aktualizacja geometrii na warstwie
+        self.rbs_clear()  # Skasowanie rubberband'ów
+        self.rbs_create()  # Utworzenie nowych rubberband'ów
+        self.rbs_populate()  # Załadowanie geometrii do rubberband'ów
 
     def get_part_from_id(self, id):
         """Zwraca atrybut 'part' poligonu o numerze id."""
@@ -480,6 +573,17 @@ class EditPolyMapTool(QgsMapTool):
         poly = QgsGeometry.fromPolygonXY([[QgsPointXY(pair[0], pair[1]) for pair in pts]])
         return poly
 
+    def get_points_from_indexes(self, part, nodes):
+        """Zwraca punkty wybranego poligonu na podstawie ich indeksów."""
+        pts = []
+        geom = self.vertex_rbs[part].asGeometry()
+        geom = self.vertex_rbs[self.node_idx[0]].asGeometry()
+        p_list = list(geom.vertices())
+        for node in nodes:
+            pt = p_list[node]
+            pts.append(QgsPointXY(pt.x(), pt.y()))
+        return pts
+
     def vertex_delete(self):
         """Usuwa zaznaczony wierzchołek poligonu."""
         if self.node_idx[0] < 0:
@@ -487,32 +591,6 @@ class EditPolyMapTool(QgsMapTool):
             return
         self.vertex_rbs[self.node_idx[0]].removePoint(self.node_idx[1], True)
         self.node_sel = False
-
-    def canvasReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton and not self.dragging:
-            if self.node_presel:
-                self.node_sel = True
-            else:
-                self.node_sel = False
-        elif event.button() == Qt.LeftButton and self.dragging:
-            self.canvas.panActionEnd(event.pos())
-            self.dragging = False
-            self.cursor = "open_hand"
-        elif event.button() == Qt.RightButton and not self.dragging:
-            self.reset()
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Delete:
-            event.ignore()  # Przerwanie domyślnego działania skrótu klawiszowego
-            if self.node_sel:
-                self.vertex_delete()  # Skasowanie wierzchołka
-                self.geom_update()  # Aktualizacja geometrii na warstwie
-                self.rbs_clear()  # Skasowanie rubberband'ów
-                self.rbs_create()  # Utworzenie nowych rubberband'ów
-                self.rbs_populate()  # Załadowanie geometrii do rubberband'ów
-        elif event.key() == Qt.Key_Escape:
-            if self.dragging:
-                self.stop_dragging()
 
     def geom_update(self):
         """Aktualizacja geometrii poligonów, po jej zmianie."""
@@ -548,10 +626,12 @@ class EditPolyMapTool(QgsMapTool):
             v.reset(QgsWkbTypes.PointGeometry)
         self.area_rbs = []
         self.vertex_rbs = []
+        self.line_helper.reset(QgsWkbTypes.LineGeometry)
         self.vertex_marker.reset(QgsWkbTypes.PointGeometry)
         self.node_selector.reset(QgsWkbTypes.PointGeometry)
         self.edge_marker.reset(QgsWkbTypes.PointGeometry)
         self.area_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.line_helper = None
         self.vertex_marker = None
         self.node_selector = None
         self.edge_marker = None

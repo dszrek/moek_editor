@@ -249,14 +249,14 @@ class MoekBarPanel(QFrame):
         size = dict["size"] if "size" in dict else 0
         hsize = dict["hsize"] if "hsize" in dict else 0
         _btn = MoekButton(size=size, hsize=hsize, name=icon_name, checkable=dict["checkable"], tooltip=dict["tooltip"])
-        self.box.hlay.addWidget(_btn)
+        self.box.lay.addWidget(_btn)
         btn_name = f'btn_{dict["name"]}'
         self.box.widgets[btn_name] = _btn
 
     def add_combobox(self, dict):
         """Dodanie combobox'a do belki panelu."""
         _cmb = MoekComboBox(name=dict["name"], height=dict["height"], border=dict["border"], b_round=dict["b_round"])
-        self.box.hlay.addWidget(_cmb)
+        self.box.lay.addWidget(_cmb)
         cmb_name = f'cmb_{dict["name"]}'
         self.box.widgets[cmb_name] = _cmb
 
@@ -289,39 +289,84 @@ class MoekSideDock(QFrame):
 
     def add_toolbox(self, dict):
         """Dodanie toolbox'a do pojemnika dock'a."""
-        _tb = MoekVToolBox(background=dict["background"])
-        self.box.vlay.addWidget(_tb)
+        _tb = MoekToolBox(background=dict["background"], direction="vertical")
+        self.box.lay.addWidget(_tb)
         tb_name = f'tb_{dict["name"]}'
         for widget in dict["widgets"]:
             if widget["item"] == "button":
                 _tb.add_button(widget)
+            if widget["item"] == "dummy":
+                _tb.add_dummy(widget)
         self.toolboxes[tb_name] = _tb
 
 
-class MoekVToolBox(QFrame):
-    """Boczny panel zagnieżdżony w mapcanvas'ie, do którego ładowane są toolboxy."""
-    def __init__(self, background):
+class MoekBottomDock(QFrame):
+    """Dolny panel zagnieżdżony w mapcanvas'ie, do którego ładowane są toolboxy."""
+    def __init__(self):
         super().__init__()
+        self.setParent(iface.mapCanvas())
         self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Maximum)
-        self.setFixedWidth(51)
-        # self.setSizeHint(51, iface.mapCanvas().height())
-        # self.setCursor(Qt.ArrowCursor)
-        # self.setMouseTracking(True)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setFixedHeight(51)
+        self.setFixedWidth(iface.mapCanvas().width())
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        self.box = MoekHBox()
+        self.box.setObjectName("box")
+        self.box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        self.toolboxes = {}
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(2)
+        hlay.addWidget(self.box)
+        hlay.setAlignment(self.box, Qt.AlignCenter)
+        self.setLayout(hlay)
+
+    def add_toolbox(self, dict):
+        """Dodanie toolbox'a do pojemnika dock'a."""
+        _tb = MoekToolBox(background=dict["background"], direction="horizontal")
+        self.box.lay.addWidget(_tb)
+        tb_name = f'tb_{dict["name"]}'
+        for widget in dict["widgets"]:
+            if widget["item"] == "button":
+                _tb.add_button(widget)
+            if widget["item"] == "dummy":
+                _tb.add_dummy(widget)
+        self.toolboxes[tb_name] = _tb
+
+
+class MoekToolBox(QFrame):
+    """Toolbox, do którego button'y ładowane są w wybranej orientacji."""
+    def __init__(self, background, direction):
+        super().__init__()
+        self.direction = direction
         self.widgets = {}
-        self.box = MoekVBox()
+        self.setObjectName("main")
+        if self.direction == "horizontal":
+            self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+            self.setFixedHeight(51)
+            self.box = MoekHBox()
+            lay = QHBoxLayout()
+            lay.setContentsMargins(1, 1, 1, 1)
+        else:
+            self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Maximum)
+            self.setFixedWidth(51)
+            self.box = MoekVBox()
+            lay = QVBoxLayout()
+            lay.setContentsMargins(1, 1, 1, 1)
         self.box.setObjectName("box")
         self.box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.setStyleSheet("""
                     QFrame#main{background-color: """ + background + """; border: none}
                     QFrame#box{background-color: transparent; border: none}
                     """)
-        self.widgets = {}
-        vlay = QVBoxLayout()
-        vlay.setContentsMargins(0, 1, 0, 1)
-        vlay.setSpacing(0)
-        vlay.addWidget(self.box)
-        self.setLayout(vlay)
+        lay.setSpacing(0)
+        lay.addWidget(self.box)
+        self.setLayout(lay)
 
     def add_button(self, dict):
         """Dodanie przycisku do toolbox'a."""
@@ -329,9 +374,20 @@ class MoekVToolBox(QFrame):
         size = dict["size"] if "size" in dict else 0
         hsize = dict["hsize"] if "hsize" in dict else 0
         _btn = MoekButton(size=size, hsize=hsize, name=icon_name, checkable=dict["checkable"], tooltip=dict["tooltip"])
-        self.box.vlay.addWidget(_btn)
+        self.box.lay.addWidget(_btn)
         btn_name = f'btn_{dict["name"]}'
         self.widgets[btn_name] = _btn
+
+    def add_dummy(self, dict):
+        """Dodanie pustego obiektu do toolbox'a."""
+        size = dict["size"] if "size" in dict else 0
+        if self.direction == "horizontal":
+            _dmm = MoekDummy(width=size, height=50)
+        else:
+            _dmm = MoekDummy(width=50, height=size)
+        self.box.lay.addWidget(_dmm)
+        dmm_name = f'dmm_{dict["name"]}'
+        self.widgets[dmm_name] = _dmm
 
 
 class MoekCfgHSpinBox(QFrame):
@@ -431,10 +487,10 @@ class MoekHBox(QFrame):
     def __init__(self):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-        self.hlay = QHBoxLayout()
-        self.hlay.setContentsMargins(0, 0, 0, 0)
-        self.hlay.setSpacing(0)
-        self.setLayout(self.hlay)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(0)
+        self.setLayout(self.lay)
 
 
 class MoekVBox(QFrame):
@@ -442,10 +498,10 @@ class MoekVBox(QFrame):
     def __init__(self):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.vlay = QVBoxLayout()
-        self.vlay.setContentsMargins(0, 0, 0, 0)
-        self.vlay.setSpacing(1)
-        self.setLayout(self.vlay)
+        self.lay = QVBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(1)
+        self.setLayout(self.lay)
 
 
 class MoekStackedBox(QStackedWidget):
@@ -579,6 +635,19 @@ class MoekMenuFlag(QFrame):
         hlay.addWidget(self.flag_chg)
         hlay.addWidget(self.trash)
         self.box.setLayout(hlay)
+
+
+class MoekDummy(QFrame):
+    """Pusty obiekt zajmujący określoną przestrzeń."""
+    def __init__(self, width, height):
+        super().__init__()
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(width, height)
+        self.box = MoekHBox()
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
 
 
 class MoekPointer(QWidget):

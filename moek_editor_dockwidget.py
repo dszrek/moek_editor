@@ -36,7 +36,7 @@ from .classes import PgConn
 from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekSideDock, MoekMenuFlag
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekSideDock, MoekBottomDock, MoekMenuFlag
 from .basemaps import MoekMapPanel
 from .sequences import prev_map, next_map, seq
 
@@ -169,8 +169,10 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)
 
-       # Utworzenie bocznego docker'a z toolbox'ami:
+        # Utworzenie bocznego docker'a z toolbox'ami:
         self.side_dock = MoekSideDock()
+        # Utworzenie dolnego docker'a z toolbox'ami:
+        self.bottom_dock = MoekBottomDock()
 
         tb_multi_tool_widgets = [
                     {"item": "button", "name": "multi_tool", "size": 50, "checkable": True, "tooltip": u"nawigacja i selekcja obiektów"},
@@ -181,19 +183,40 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"item": "button", "name": "flag_nfchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę bez kontroli terenowej"},
                     {"item": "button", "name": "wyr_add_poly", "icon" : "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"}
                     ]
+        tb_edit_tools_widgets = [
+                    {"item": "button", "name": "edit_tool", "size": 50, "checkable": True, "tooltip": u"edycja geometrii wyrobiska"},
+                    {"item": "button", "name": "edit_tool_add", "size": 50, "checkable": True, "tooltip": u"powiększ powierzchnię wyrobiska"},
+                    {"item": "button", "name": "edit_tool_sub", "size": 50, "checkable": True, "tooltip": u"zmniejsz powierzchnię wyrobiska"}
+                    ]
 
+        tb_edit_separator_widgets = [
+                    {"item": "dummy", "name": "presep", "size": 25}
+                    ]
+
+        tb_edit_exit_widgets = [
+                    {"item": "button", "name": "cancel", "size": 50, "checkable": False, "tooltip": u"zatwierdź zmiany geometrii wyrobiska"},
+                    {"item": "button", "name": "accept", "size": 50, "checkable": False, "tooltip": u"zrezygnuj ze zmian geometrii wyrobiska"}
+                    ]
 
         toolboxes = [
                 {"name": "multi_tool", "dock": "side", "background": "rgba(0, 0, 0, 0.4)", "widgets": tb_multi_tool_widgets},
-                {"name": "add_object", "dock": "side", "background": "rgba(0, 128, 0, 0.4)", "widgets": tb_add_widgets}
+                {"name": "add_object", "dock": "side", "background": "rgba(0, 128, 0, 0.4)", "widgets": tb_add_widgets},
+                {"name": "edit_tools", "dock": "bottom", "background": "rgba(0, 0, 0, 0.4)", "widgets": tb_edit_tools_widgets},
+                {"name": "edit_separator", "dock": "bottom", "background": "rgba(0, 0, 0, 0.0)", "widgets": tb_edit_separator_widgets},
+                {"name": "edit_exit", "dock": "bottom", "background": "rgba(0, 0, 0, 0.4)", "widgets": tb_edit_exit_widgets}
                 ]
 
         for toolbox in toolboxes:
             for key, val in toolbox.items():
                 if key == "dock" and val == "side":
                     self.side_dock.add_toolbox(toolbox)
+                if key == "dock" and val == "bottom":
+                    self.bottom_dock.add_toolbox(toolbox)
+
         self.side_dock.move(1,0)
         self.side_dock.show()
+        bottom_y = iface.mapCanvas().height() - 52
+        self.bottom_dock.move(0, bottom_y)
 
         self.resizeEvent = self.resize_panel
 
@@ -414,6 +437,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         try:
             iface.mapCanvas().children().remove(self.side_dock)
             self.side_dock.deleteLater()
+            iface.mapCanvas().children().remove(self.bottom_dock)
+            self.bottom_dock.deleteLater()
         except:
             pass
         self.closingPlugin.emit()

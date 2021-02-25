@@ -351,13 +351,13 @@ class MoekToolBox(QFrame):
             self.setFixedHeight(51)
             self.box = MoekHBox()
             lay = QHBoxLayout()
-            lay.setContentsMargins(1, 1, 1, 1)
+            lay.setContentsMargins(1, 1, 1, 0)
         else:
             self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Maximum)
             self.setFixedWidth(51)
             self.box = MoekVBox()
             lay = QVBoxLayout()
-            lay.setContentsMargins(1, 1, 1, 1)
+            lay.setContentsMargins(0, 1, 1, 1)
         self.box.setObjectName("box")
         self.box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.setStyleSheet("""

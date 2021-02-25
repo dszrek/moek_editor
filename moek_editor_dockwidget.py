@@ -176,7 +176,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
         tb_multi_tool_widgets = [
                     {"item": "button", "name": "multi_tool", "size": 50, "checkable": True, "tooltip": u"nawigacja i selekcja obiektów"},
-                    {"item": "button", "name": "wyr_edit", "size": 50, "checkable": True, "tooltip": u"edycja granic wyrobiska"}
+                    {"item": "button", "name": "wyr_edit", "size": 50, "checkable": False, "tooltip": u"edycja granic wyrobiska"}
                     ]
         tb_add_widgets = [
                     {"item": "button", "name": "flag_fchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę do kontroli terenowej"},
@@ -188,22 +188,19 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"item": "button", "name": "edit_tool_add", "size": 50, "checkable": True, "tooltip": u"powiększ powierzchnię wyrobiska"},
                     {"item": "button", "name": "edit_tool_sub", "size": 50, "checkable": True, "tooltip": u"zmniejsz powierzchnię wyrobiska"}
                     ]
-
         tb_edit_separator_widgets = [
                     {"item": "dummy", "name": "presep", "size": 25}
                     ]
-
         tb_edit_exit_widgets = [
                     {"item": "button", "name": "cancel", "size": 50, "checkable": False, "tooltip": u"zatwierdź zmiany geometrii wyrobiska"},
                     {"item": "button", "name": "accept", "size": 50, "checkable": False, "tooltip": u"zrezygnuj ze zmian geometrii wyrobiska"}
                     ]
-
         toolboxes = [
-                {"name": "multi_tool", "dock": "side", "background": "rgba(0, 0, 0, 0.4)", "widgets": tb_multi_tool_widgets},
-                {"name": "add_object", "dock": "side", "background": "rgba(0, 128, 0, 0.4)", "widgets": tb_add_widgets},
-                {"name": "edit_tools", "dock": "bottom", "background": "rgba(0, 0, 0, 0.4)", "widgets": tb_edit_tools_widgets},
+                {"name": "multi_tool", "dock": "side", "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_multi_tool_widgets},
+                {"name": "add_object", "dock": "side", "background": "rgba(0, 128, 0, 0.6)", "widgets": tb_add_widgets},
+                {"name": "edit_tools", "dock": "bottom", "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_edit_tools_widgets},
                 {"name": "edit_separator", "dock": "bottom", "background": "rgba(0, 0, 0, 0.0)", "widgets": tb_edit_separator_widgets},
-                {"name": "edit_exit", "dock": "bottom", "background": "rgba(0, 0, 0, 0.4)", "widgets": tb_edit_exit_widgets}
+                {"name": "edit_exit", "dock": "bottom", "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_edit_exit_widgets}
                 ]
 
         for toolbox in toolboxes:
@@ -371,7 +368,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_mgsp"], grp=True, name="MGSP"))
         self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_smgp"], grp=False, name="smgp_wyrobiska"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
-        self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"].clicked.connect(lambda: self.mt.init("wyr_edit"))
+        self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"].pressed.connect(lambda: self.mt.init("wyr_edit"))
         # self.p_wyr.widgets["btn_wyr_add"].clicked.connect(lambda: self.mt.init("wyr_add"))
         # self.p_wyr.widgets["btn_wyr_del"].clicked.connect(lambda: self.mt.init("wyr_del"))
         # self.p_auto.widgets["btn_auto_add"].clicked.connect(lambda: self.mt.init("auto_add"))

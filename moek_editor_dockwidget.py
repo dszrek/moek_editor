@@ -217,6 +217,9 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
         self.resizeEvent = self.resize_panel
 
+        # Wyłączenie messagebar'u:
+        iface.messageBar().widgetAdded.connect(self.msgbar_blocker)
+
         self.__button_conn()
         self.ext_init()
         # self.p_flag.active = True
@@ -235,6 +238,10 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             self.hk_vn_changed.emit(val)
         if attr == "hk_seq":
             self.hk_seq_changed.emit(val)
+
+    def msgbar_blocker(self, item):
+        """Blokuje pojawianie się QGIS'owego messagebar'u."""
+        iface.messageBar().clearWidgets()
 
     def resize_panel(self, event):
         """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
@@ -431,9 +438,14 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.hk_seq = False
         # Usunięcie połączenia z Google Earth Pro:
         self.ge = None
+        # Odblokowanie messagebar'u:
+        iface.messageBar().widgetAdded.disconnect(self.msgbar_blocker)
         try:
             iface.mapCanvas().children().remove(self.side_dock)
             self.side_dock.deleteLater()
+        except:
+            pass
+        try:
             iface.mapCanvas().children().remove(self.bottom_dock)
             self.bottom_dock.deleteLater()
         except:

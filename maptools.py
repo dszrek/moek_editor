@@ -261,6 +261,7 @@ class EditPolyMapTool(QgsMapTool):
         self.moving = False
         self.refreshing = False
         self.drawing = False
+        self.interrupted = False
         self.move_void = False
         self.snap_void = False
         self.geom = None
@@ -546,25 +547,31 @@ class EditPolyMapTool(QgsMapTool):
         return v, e, a
 
     def canvasMoveEvent(self, event):
-        if self.move_void:
+        if self.move_void:  # Blokada pojedynczego sygnału poruszania myszką
             self.move_void = False
+            return
+        if self.interrupted:  # Blokada do momentu zwolnienia przycisku myszy
             return
         v, e, a = self.snap_to_layer(event)
         snap_type = v.type() + e.type() + a.type()
         map_point = self.toMapCoordinates(event.pos())
         if event.buttons() == Qt.LeftButton and not self.refreshing:
-            if self.mode == "edit":
-                self.dragging = True
-            else:
+            if self.drawing:
                 # Umożliwienie panningu mapy podczas rysowania area_painter'a:
                 dist = QgsGeometry().fromPointXY(self.start_point).distance(QgsGeometry().fromPointXY(map_point))
                 dist_scale = dist / self.canvas.scale() * 1000
-                self.dragging = True if dist_scale > 6.0 else False
-            if self.node_presel and self.mode == "edit":  # Przesunięcie wierzchołka
+                if dist_scale > 6.0:
+                    self.dragging = True
+                    self.cursor = "closed_hand"
+                    self.canvas.panAction(event)
+            elif self.node_presel and self.mode == "edit":
+                # Przesunięcie wierzchołka:
                 if not self.moving:
+                    # Wejście do trybu przesuwania wierzchołka:
                     self.change_is_valid = True
                     self.node_sel = True
                     self.moving = True
+                    self.dragging = False
                     self.cursor = "move"
                     self.valid_checker_create()
                     self.line_create()
@@ -573,12 +580,13 @@ class EditPolyMapTool(QgsMapTool):
                 self.valid_check(map_point)
             elif self.edge_marker.isVisible() and not self.moving and self.mode == "edit":
                 # Szybkie dodanie wierzchołka:
-                self.node_add(map_point)
+                self.node_add(e.point())
                 self.geom_refresh(True)
-                self.node_presel = [map_point, self.part_idx]
-                self.node_sel = True
-                self.move_void = True
-            elif self.dragging:  # Panning mapy
+                self.node_presel = [e.point(), self.node_idx[1]]
+                self.selector_update()
+            elif not self.drawing and not self.moving:
+                # Panning mapy:
+                self.dragging = True
                 self.cursor = "closed_hand"
                 self.canvas.panAction(event)
         elif (event.button() == Qt.NoButton and not self.dragging) or self.refreshing:
@@ -586,15 +594,17 @@ class EditPolyMapTool(QgsMapTool):
             if self.refreshing:
                 self.mouse_move_emit(True)
                 self.refreshing = False
-            # Rysowanie area_painter:
             if self.drawing and not self.dragging and self.area_painter.numberOfVertices() > 0:
+                # Odświeżenie area_painter:
                 if self.snap_void:  # Zapobiega usunięciu punktu utworzonego z przyciąganiem
                     self.snap_void = False
                 else:
                     self.area_painter.removeLastPoint(0)
                 self.area_painter.addPoint(map_point)
+                # Sprawdzenie, czy aktualna geometria area_painter'a i topologia z innymi poligonami są poprawne:
                 if self.area_painter.numberOfVertices() > 2:
-                    self.valid_check(map_point, area_rb=self.area_painter, poly_check=False, node_check=True)
+                    self.valid_check(None, area_rb=self.area_painter, poly_check=False, node_check=True)
+            # Aktualizacja hoveringu myszy względem poligonów:
             if self.a_temp != a.featureId():
                 self.a_temp = a.featureId()
                 self.part_idx = self.get_part_from_id(a.featureId())
@@ -643,40 +653,42 @@ class EditPolyMapTool(QgsMapTool):
                 self.cursor = "cross"
 
     def canvasPressEvent(self, event):
-        if self.mode != "edit" and event.button() == Qt.LeftButton and not self.dragging:
-            self.start_point = self.toMapCoordinates(event.pos())
-            if not self.drawing:
-                self.drawing = True
-                self.change_is_valid = True
-            if self.node_presel:
-                self.area_painter.removeLastPoint(0)
-                snapped_point = self.node_presel[0]
-                self.area_painter.addPoint(snapped_point)
-                self.snap_void = True
-            else:
-                self.area_painter.addPoint(self.toMapCoordinates(event.pos()))
-        elif self.mode != "edit" and event.button() == Qt.RightButton and not self.dragging:
+        if event.button() == Qt.LeftButton:
+            if self.mode != "edit":
+                self.start_point = self.toMapCoordinates(event.pos())
+                if not self.drawing:
+                    self.drawing = True
+                    self.change_is_valid = True
+                if self.node_presel:
+                    self.area_painter.removeLastPoint(0)
+                    snapped_point = self.node_presel[0]
+                    self.area_painter.addPoint(snapped_point)
+                    self.snap_void = True
+                else:
+                    self.area_painter.addPoint(self.toMapCoordinates(event.pos()))
+        elif event.button() == Qt.RightButton:
             if self.drawing:
                 if not self.snap_void:
                     self.area_painter.removeLastPoint(0)
                 if self.area_painter.numberOfVertices() > 2:
+                    self.valid_check(None, area_rb=self.area_painter, poly_check=True, node_check=True)
                     self.area_drawn()
-            self.geom_refresh()
-            self.drawing = False
-            self.mode = "edit"
-        elif self.mode == "edit" and event.button() == Qt.RightButton and not self.dragging:
-            self.reset()
+                self.geom_refresh()
+                self.drawing = False
+                self.mode = "edit"
 
     def canvasReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton and not self.dragging:
-            if self.mode == "edit":
+        if self.interrupted:  # Zdjęcie blokady po zwolnieniu przycisku myszy
+            self.interrupted = False
+            return
+        if event.button() == Qt.LeftButton:
+            if not self.moving and not self.dragging and not self.drawing:
                 if self.node_presel:
                     self.node_sel = True  # Zaznaczenie wierzchołka
                 else:
                     self.node_sel = False  # Odzaznaczenie wierzchołka
-        elif event.button() == Qt.LeftButton and self.dragging:
             # Przemieszczenie wierzchołka:
-            if self.moving:
+            elif self.moving:
                 map_point = self.toMapCoordinates(event.pos())
                 if self.change_is_valid:
                     self.vertex_rbs[self.node_idx[0]].movePoint(self.node_idx[1], map_point)
@@ -685,17 +697,19 @@ class EditPolyMapTool(QgsMapTool):
                 self.geom_refresh()
                 self.selector_update()
                 self.moving = False
-            # Panning mapy:
-            else:
+            # Zakończenie panningu mapy:
+            elif self.dragging:
                 # Panning podczas rysowania area_painter'a:
                 if self.drawing and self.area_painter.numberOfVertices() > 0:
                     self.area_painter.removeLastPoint(0)
+                    self.cursor = "cross"
+                else:
+                    self.cursor = "open_hand"
                 self.canvas.panActionEnd(event.pos())
-            self.dragging = False
-            self.cursor = "open_hand"
-        # elif event.button() == Qt.RightButton and not self.dragging:
-        #     if self.mode == "edit":
-        #         self.reset()
+                self.dragging = False
+        elif event.button() == Qt.RightButton:
+            if not self.moving and not self.dragging and not self.drawing:
+                self.reset()
 
     def canvasDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton and not self.dragging and self.mode == "edit":
@@ -707,17 +721,26 @@ class EditPolyMapTool(QgsMapTool):
                 self.node_add(p_list[p_last])
                 self.geom_refresh()
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Delete:
-            event.ignore()  # Przerwanie domyślnego działania skrótu klawiszowego
-            if self.node_sel and self.mode == "edit":
-                self.vertex_delete()  # Skasowanie wierzchołka
-        elif event.key() == Qt.Key_Escape:
-            if self.dragging:
-                pass  # TODO
-                # self.stop_dragging()
-        elif self.mode != "edit" and event.matches(QKeySequence.Undo) and self.area_painter.numberOfVertices() > 1:
+    def keyReleaseEvent(self, event):
+        if self.node_sel and not self.moving and event.key() == Qt.Key_Delete:
+            # Skasowanie wierzchołka:
+            self.vertex_delete()
+        elif self.moving and event.key() == Qt.Key_Escape:
+            # Przerwanie przemieszczenia wierzchołka:
+            self.interrupted = True
+            self.moving = False
+            self.geom_refresh(True)
+            self.selector_update()
+            self.mouse_move_emit()
+        elif self.drawing and not self.dragging and self.area_painter.numberOfVertices() > 1 and (event.matches(QKeySequence.Undo) or event.key() == Qt.Key_Delete or event.key() == Qt.Key_Backspace):
+            # Usunięcie ostatnio narysowanego wierzchołka area_painter'a:
             self.area_painter.removeLastPoint()
+            self.mouse_move_emit()
+        elif self.mode != "edit" and not self.dragging and event.key() == Qt.Key_Escape:
+            # Wyjście z trybu rysowania do trybu edycji:
+            self.geom_refresh()
+            self.drawing = False
+            self.mode = "edit"
 
     def mouse_move_emit(self, after=False):
         """Sposób na odpalenie canvasMoveEvent."""
@@ -890,13 +913,12 @@ class EditPolyMapTool(QgsMapTool):
         geom = rb.asGeometry()
         p_list = list(geom.vertices())
         rb.reset(QgsWkbTypes.PointGeometry)
-        s = -1
         for i in range(len(p_list)):
             node = QgsPointXY(p_list[i].x(), p_list[i].y())
             if node == self.prev_node:
-                s = s + i
                 rb.addPoint(node)
                 rb.addPoint(new_node)
+                self.node_idx = (self.area_idx, i + 1)
             else:
                 rb.addPoint(node)
 
@@ -1117,8 +1139,6 @@ class EditPolyMapTool(QgsMapTool):
         self.node_selector = None
         self.edge_marker = None
         self.area_marker = None
-        # self.area_painter = None
-        # self.area_painter.deleteLater()
 
 
 class MultiMapTool(QgsMapToolIdentify):

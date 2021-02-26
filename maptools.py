@@ -671,9 +671,9 @@ class EditPolyMapTool(QgsMapTool):
                 if not self.snap_void:
                     self.area_painter.removeLastPoint(0)
                 if self.area_painter.numberOfVertices() > 2:
-                    self.valid_check(None, area_rb=self.area_painter, poly_check=True, node_check=True)
+                    self.valid_check(None, area_rb=self.area_painter, poly_check=False, node_check=True)
                     self.area_drawn()
-                self.geom_refresh()
+                self.geom_refresh(True)
                 self.drawing = False
                 self.mode = "edit"
 
@@ -761,7 +761,7 @@ class EditPolyMapTool(QgsMapTool):
         if not self.change_is_valid:
             return
         new_poly = self.area_painter.asGeometry()
-        overlaps = self.overlap_check(new_poly)
+        overlaps = self.area_overlap_check(new_poly)
         if self.mode == "add":
             if len(overlaps[0]) == 0:  # Geometria area_painter nie przecina się z żadnym poligonem
                 if len(overlaps[1]) > 0:
@@ -776,6 +776,10 @@ class EditPolyMapTool(QgsMapTool):
                 # Geometria area_painter łączy się z przynajmniej jednym poligonem -
                 # łączenie poligonów z listy overlaps i area_painter w jeden poligon:
                 self.parts_combine(new_poly, overlaps[0])
+        elif self.mode == "sub" and len(overlaps[0]) > 0:
+            # Geometria area_painter nakłada się na przynajmniej jeden poligon -
+            # wyłączenie z poligonów z listy overlaps powierzchni area_painter:
+            self.parts_difference(new_poly, overlaps[0])
 
     def part_add(self, new_poly):
         """Dodanie nowego poligonu do geometrii."""
@@ -792,14 +796,41 @@ class EditPolyMapTool(QgsMapTool):
         if not combined_poly:
             print("Wystąpił błąd przy złączaniu geometrii!")
             return
-        # Usunięcie zbędnych rubberband'ów z listy vertex_rbs:
+        # Usunięcie rubberband'ów z listy 'overlaps':
+        self.remove_overlapped_rbs(overlaps)
+        # Utworzenie rubberband'a ze złączonej geometrii:
+        self.part_add(combined_poly)
+
+    def parts_difference(self, sub_poly, overlaps):
+        """Utworzenie nowej geometrii z wycięcia powierzchni area_painter'a z wybranych poligonów i aktualizacja listy vertex_rbs."""
+        changed = []
+        for i in range(len(self.area_rbs)):
+            if i in overlaps:  # Poligon znajduje się na liście
+                poly = self.area_rbs[i].asGeometry()
+                try:
+                    new_poly = poly.difference(sub_poly)
+                except Exception as err:
+                    print(err)
+                    return
+                changed.append(new_poly)
+        # Usunięcie rubberband'ów z listy 'overlaps':
+        self.remove_overlapped_rbs(overlaps)
+        # Utworzenie nowych rubberband'ów z przyciętych poligonów:
+        for geom in changed:
+            if not geom:
+                continue
+            new_geom = geom.asGeometryCollection()
+            for poly in new_geom:
+                if poly.type() == QgsWkbTypes.PolygonGeometry:
+                    self.part_add(poly)
+
+    def remove_overlapped_rbs(self, overlaps):
+        """Usuwa area- i vertex_rbs z listy 'overlaps'."""
         for i in sorted(overlaps, reverse=True):
             self.area_rbs[i].reset(QgsWkbTypes.PolygonGeometry)
             del self.area_rbs[i]  # Usunięcie area rubberband'a z listy
             self.vertex_rbs[i].reset(QgsWkbTypes.PointGeometry)
             del self.vertex_rbs[i]  # Usunięcie vertex rubberband'a z listy
-        # Utworzenie rubberband'a ze złączonej geometrii:
-        self.part_add(combined_poly)
 
     def polygon_from_parts(self, new_poly, overlaps):
         """Złączenie geometrii area_painter i poligonów o id podanych na liście 'overlaps'."""
@@ -822,6 +853,12 @@ class EditPolyMapTool(QgsMapTool):
             line = QgsGeometry().fromPolylineXY([poly[i], poly[i + 1]])
             segments.append(line)
         return segments
+
+    def line_from_polygon(self, poly):
+        """Zwraca linię z poligonu."""
+        poly = poly.asPolygon()[0]
+        line = QgsGeometry().fromPolylineXY(poly)
+        return line
 
     def valid_check(self, map_point, remove=False, area_rb=None, poly_check=True, node_check=False):
         """Sprawdza, czy geometria po przemieszczeniu wierzchołka jest prawidłowa lub nachodzi na inny poligon."""
@@ -860,10 +897,14 @@ class EditPolyMapTool(QgsMapTool):
                         # Pokazanie błędnych przecięć:
                         self.node_valider.addPoint(intersect_geom.asPoint())
             is_valid = False
+            # print("1")
             rb_geom = rb_geom.makeValid()  # Inaczej nie będzie można spawdzić przecięcia z innymi poligonami
         # Sprawdzenie, czy nowa geometria styka się z innymi poligonami tylko na wierzchołkach:
         if node_check:
-            overlaps = self.overlap_check(rb_geom)
+            if self.mode != "sub":
+                overlaps = self.area_overlap_check(rb_geom)
+            else:
+                overlaps = self.line_overlap_check(rb_geom)
             # Area_painter styka się z innymi poligonami wyłącznie na wierzchołkach:
             if len(overlaps[1]) > 0:
                 # Pokazanie nałożonych wierzchołków:
@@ -882,14 +923,15 @@ class EditPolyMapTool(QgsMapTool):
                         # Pokazanie błędnych powierzchni:
                         self.area_valider.addGeometry(geom)
                         is_valid = False
+                        # print("3")
         self.change_is_valid = is_valid
 
     def rubberband_check(self, geom):
         """Zwraca geometrię, jesli jest poprawna."""
         return geom if geom.isGeosValid() else None
 
-    def overlap_check(self, new_poly):
-        """Zwraca id poligonów, które przecinają się z geometrią area_painter'a i listę wierzchołków, jeśli są jedynymi połączeniami z danym poligonem."""
+    def area_overlap_check(self, new_poly):
+        """Zwraca id poligonów, które przecinają się ich powierzchniami z geometrią area_painter'a i listę wierzchołków, jeśli są jedynymi połączeniami z danym poligonem."""
         overlaps = []
         touches = []
         for i in range(len(self.area_rbs)):
@@ -898,6 +940,25 @@ class EditPolyMapTool(QgsMapTool):
             appended = False
             for geom in overlap_geom:
                 if geom.type() == QgsWkbTypes.PolygonGeometry or geom.type() == QgsWkbTypes.LineGeometry:
+                    if geom and not appended:
+                        appended = True
+                        overlaps.append(i)
+                elif geom.type() == QgsWkbTypes.PointGeometry:
+                    if geom:
+                        touches.append(geom)
+        return overlaps, touches
+
+    def line_overlap_check(self, new_poly):
+        """Zwraca id poligonów, które przecinają się ich liniami z geometrią area_painter'a i listę wierzchołków, jeśli są jedynymi połączeniami z danym poligonem."""
+        overlaps = []
+        touches = []
+        for i in range(len(self.area_rbs)):
+            poly = self.area_rbs[i].asGeometry()
+            polyline = self.line_from_polygon(poly)
+            overlap_geom = new_poly.intersection(polyline).asGeometryCollection()
+            appended = False
+            for geom in overlap_geom:
+                if geom.type() == QgsWkbTypes.LineGeometry:
                     if geom and not appended:
                         appended = True
                         overlaps.append(i)

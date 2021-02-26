@@ -439,7 +439,10 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         # Usunięcie połączenia z Google Earth Pro:
         self.ge = None
         # Odblokowanie messagebar'u:
-        iface.messageBar().widgetAdded.disconnect(self.msgbar_blocker)
+        try:
+            iface.messageBar().widgetAdded.disconnect(self.msgbar_blocker)
+        except:
+            pass
         try:
             iface.mapCanvas().children().remove(self.side_dock)
             self.side_dock.deleteLater()

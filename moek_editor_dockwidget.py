@@ -229,9 +229,10 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         # self.p_auto.active = True
         self.hk_vn_load()
         self.hk_seq_load()
+
+        self.flag_menu = MoekMenuFlag()
         self.mt = MapToolManager(dlg=self, canvas=iface.mapCanvas())
         self.obj = ObjectManager(dlg=self, canvas=iface.mapCanvas())
-        self.flag_menu = MoekMenuFlag()
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""

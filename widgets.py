@@ -2,13 +2,15 @@
 import os
 import time
 
+from qgis.core import QgsProject
 from PyQt5.QtWidgets import QWidget, QFrame, QToolButton, QComboBox, QLineEdit, QCheckBox, QLabel, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath
 from qgis.utils import iface
 
-from .main import vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
+from .classes import PgConn
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 
@@ -546,14 +548,19 @@ class MoekButton(QToolButton):
         self.setCheckable(checkable)
         self.setToolTip(tooltip)
         self.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        self.setAutoRaise(True)
+        self.setStyleSheet("QToolButton {border: none}")
+        self.set_icon(name, size, hsize)
+        self.setMouseTracking(True)
+
+    def set_icon(self, name, size=25, hsize=0):
+        """Ładowanie ikon do guzika."""
         if hsize == 0:
             wsize, hsize = size, size
         else:
             wsize = size
         self.setFixedSize(wsize, hsize)
         self.setIconSize(QSize(wsize, hsize))
-        self.setAutoRaise(True)
-        self.setStyleSheet("QToolButton {border: none}")
         icon = QIcon()
         icon.addFile(ICON_PATH + name + "_0.png", size=QSize(wsize, hsize), mode=QIcon.Normal, state=QIcon.Off)
         icon.addFile(ICON_PATH + name + "_0_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.Off)
@@ -564,7 +571,6 @@ class MoekButton(QToolButton):
             icon.addFile(ICON_PATH + name + "_1_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.On)
             icon.addFile(ICON_PATH + name + "_1.png", size=QSize(wsize, hsize), mode=QIcon.Selected, state=QIcon.On)
         self.setIcon(icon)
-        self.setMouseTracking(True)
 
 
 class MoekAddToolBox(QFrame):
@@ -601,7 +607,7 @@ class MoekAddToolBox(QFrame):
 
 
 class MoekMenuFlag(QFrame):
-    """Widget menu przyborne dla flag."""
+    """Menu przyborne dla flag."""
     def __init__(self, *args):
         super().__init__(*args)
         self.setParent(iface.mapCanvas())
@@ -627,16 +633,50 @@ class MoekMenuFlag(QFrame):
         vlay.addWidget(self.box)
         vlay.setAlignment(self.pointer, Qt.AlignCenter)
         self.setLayout(vlay)
-        self.flag_move = MoekButton(name="move", size=34)
+        self.flag_move = MoekButton(name="move", size=34, checkable=True)
         self.flag_chg = MoekButton(name="flag_chg_nfchk", size=34)
-        self.trash = MoekButton(name="trash", size=34)
+        self.flag_del = MoekButton(name="trash", size=34)
         hlay = QHBoxLayout()
         hlay.setContentsMargins(4, 4, 4, 4)
         hlay.setSpacing(1)
         hlay.addWidget(self.flag_move)
         hlay.addWidget(self.flag_chg)
-        hlay.addWidget(self.trash)
+        hlay.addWidget(self.flag_del)
         self.box.setLayout(hlay)
+        self.fchk = False
+        self.flag_move.clicked.connect(self.init_move)
+        self.flag_chg.clicked.connect(self.flag_fchk_change)
+        self.flag_del.clicked.connect(self.flag_delete)
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "fchk":
+            self.flag_chg.set_icon(name="flag_chg_nfchk", size=34) if val else self.flag_chg.set_icon(name="flag_chg_fchk", size=34)
+
+    def init_move(self):
+        """Zmiana lokalizacji flagi."""
+        dlg.obj.flag_hide(True)
+        dlg.obj.menu_hide()
+        dlg.mt.init("flag_move")
+
+    def flag_fchk_change(self):
+        """Zmiana rodzaju flagi."""
+        table = f"team_{str(dlg.team_i)}.flagi"
+        bns = f" WHERE id = {dlg.obj.flag}"
+        db_attr_change(tbl=table, attr="b_fieldcheck", val=not self.fchk, sql_bns=bns, user=False)
+        dlg.obj.flag = None
+        dlg.obj.menu_hide()
+
+    def flag_delete(self):
+        """Usunięcie flagi z bazy danych."""
+        db = PgConn()
+        sql = "DELETE FROM team_" + str(dlg.team_i) + ".flagi WHERE id = " + str(dlg.obj.flag) + ";"
+        if db:
+            res = db.query_upd(sql)
+            if res:
+                dlg.obj.flag = None
+        dlg.obj.menu_hide()
 
 
 class MoekDummy(QFrame):

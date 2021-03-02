@@ -624,12 +624,15 @@ def db_attr_check(attr):
         if res:
             return res[0]
 
-def db_attr_change(tbl, attr, val, sql_bns):
+def db_attr_change(tbl, attr, val, sql_bns, user=True):
     """Zmiana atrybutu w db."""
     # print("[db_attr_change(", tbl, ",", attr, "):", val, "]")
     db = PgConn()
     # Aktualizacja atrybutu (attr) w tabeli (tbl) na wartość (val):
-    sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + SQL_1 + str(dlg.user_id) + sql_bns + ";"
+    if user:
+        sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + SQL_1 + str(dlg.user_id) + sql_bns + ";"
+    else:
+        sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + sql_bns + ";"
     if db:
         res = db.query_upd(sql)
         if res:

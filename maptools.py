@@ -1,5 +1,4 @@
 #!/usr/bin/python
-import time as tm
 
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
@@ -11,7 +10,7 @@ from itertools import combinations
 
 from .classes import PgConn, CfgPars, threading_func
 from .viewnet import vn_change, vn_powsel, vn_polysel
-from .main import wyr_powiaty_change, wyr_layer_update
+from .main import wyr_powiaty_change, wyr_layer_update, db_attr_change
 
 dlg = None
 
@@ -29,6 +28,7 @@ class ObjectManager:
         self.flag_menu = False
         self.flag = None
         self.flag_data = [None, None, None]
+        self.flag_hidden = None
         self.wyr = None
         self.wyr_ids = []
         self.p_vn = False
@@ -38,6 +38,9 @@ class ObjectManager:
         super().__setattr__(attr, val)
         if attr == "flag":
             QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'flag_sel', val)
+            self.flag_hidden = None
+        if attr == "flag_hidden":
+            QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'flag_hidden', val)
             QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
             QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
         elif attr == "flag_data":
@@ -49,26 +52,41 @@ class ObjectManager:
             QgsProject.instance().mapLayersByName("wyr_point")[0].triggerRepaint()
             QgsProject.instance().mapLayersByName("wyr_poly")[0].triggerRepaint()
 
+    def flag_hide(self, _bool):
+        """Ukrywa lub pokazuje zaznaczoną flagę."""
+        if _bool:
+            self.flag_hidden = self.flag
+        else:
+            self.flag = None
+
+
     def obj_change(self, obj_data, click):
+        """Zmiana zaznaczenia obiektu."""
         lyr_name = obj_data[0]
         if click == "left":
+            # Naciśnięto lewy przycisk na obiekcie:
             if lyr_name == "wyr_point":
                 self.wyr = obj_data[1][0]
             else:
                 self.flag_data = obj_data
                 self.menu_hide()
         elif click == "right":
+            # Naciśnięto prawy przycisk na obiekcie:
             if self.flag == obj_data[1][0]:
+                # Kliknięto na zaznaczoną flagę - pokazanie menu podręcznego:
+                self.dlg.flag_menu.fchk = obj_data[1][2]  # Aktualizacja przycisku fchg
                 self.menu_show()
             else:
                 self.menu_hide()
 
     def menu_hide(self):
+        """Ukrycie menu podręcznego flag."""
         if self.flag_menu:
             dlg.flag_menu.hide()
             self.flag_menu = False
 
     def menu_show(self):
+        """Pokazanie menu podręcznego flag."""
         if self.flag_menu:
             return
         extent =iface.mapCanvas().extent()
@@ -124,7 +142,7 @@ class MapToolManager:
             {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel},
             {"name" : "flt_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"], "fn" : flag_add, "extra" : ['true']},
             {"name" : "flf_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"], "fn" : flag_add, "extra" : ['false']},
-            # {"name" : "flag_del", "class" : IdentMapTool, "button" : self.dlg.p_flag.widgets["btn_flag_del"], "lyr" : ["flagi_z_teren", "flagi_bez_teren"], "fn" : flag_del},
+            {"name" : "flag_move", "class" : PointDrawMapTool, "button" : self.dlg.flag_menu.flag_move, "fn" : flag_move},
             {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly},
             {"name" : "wyr_edit", "class" : EditPolyMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"], "lyr" : ["wyr_poly"], "fn" : wyr_poly_change}
             # {"name" : "wyr_del", "class" : IdentMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_del"], "lyr" : ["wyrobiska"], "fn" : wyr_del}
@@ -944,7 +962,6 @@ class EditPolyMapTool(QgsMapTool):
                         # Pokazanie błędnych przecięć:
                         self.node_valider.addPoint(intersect_geom.asPoint())
             is_valid = False
-            # print("1")
             rb_geom = rb_geom.makeValid()  # Inaczej nie będzie można spawdzić przecięcia z innymi poligonami
         # Sprawdzenie, czy nowa geometria styka się z innymi poligonami tylko na wierzchołkach:
         if node_check:
@@ -970,7 +987,6 @@ class EditPolyMapTool(QgsMapTool):
                         # Pokazanie błędnych powierzchni:
                         self.area_valider.addGeometry(geom)
                         is_valid = False
-                        # print("3")
         self.change_is_valid = is_valid
 
     def rubberband_check(self, geom):
@@ -1426,7 +1442,7 @@ class IdentMapTool(QgsMapToolIdentify):
 
 class PointDrawMapTool(QgsMapTool):
     """Maptool do rysowania obiektów punktowych."""
-    drawn = pyqtSignal(QgsPointXY)
+    drawn = pyqtSignal(object)
 
     def __init__(self, canvas, button):
         QgsMapTool.__init__(self, canvas)
@@ -1440,8 +1456,15 @@ class PointDrawMapTool(QgsMapTool):
         return self._button
 
     def canvasReleaseEvent(self, event):
-        point = self.toMapCoordinates(event.pos())
-        self.drawn.emit(point)
+        if event.button() == Qt.LeftButton:
+            point = self.toMapCoordinates(event.pos())
+            self.drawn.emit(point)
+        else:
+            self.drawn.emit(None)
+
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.drawn.emit(None)
 
 
 class LineDrawMapTool(QgsMapTool):
@@ -1572,8 +1595,10 @@ def obj_sel(layer, feature, click):
 
 def flag_add(point):
     """Utworzenie nowego obiektu flagi."""
-    is_fldchk = dlg.mt.params["extra"][0]
     dlg.mt.init("multi_tool")
+    if not point:
+        return
+    is_fldchk = dlg.mt.params["extra"][0]
     fl_pow = fl_valid(point)
     if not fl_pow:
         QMessageBox.warning(None, "Tworzenie flagi", "Flagę można postawić wyłącznie na obszarze wybranego (aktywnego) powiatu/ów.")
@@ -1587,21 +1612,24 @@ def flag_add(point):
     QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
     QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
 
-def flag_del(layer, feature):
-    """Skasowanie wybranego obiektu flagi."""
+def flag_move(point):
+    """Zmiana lokalizacji flagi."""
     dlg.mt.init("multi_tool")
-    if layer:
-        fid = feature.attributes()[layer.fields().indexFromName('id')]
-    else:
+    if not point:
+        dlg.obj.flag_hide(False)
         return
-    db = PgConn()
-    sql = "DELETE FROM team_" + str(dlg.team_i) + ".flagi WHERE id = " + str(fid) + ";"
-    if db:
-        res = db.query_upd(sql)
-        if res:
-            print("Usunięto flagę")
-    QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
-    QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
+    fl_pow = fl_valid(point)
+    if not fl_pow:
+        QMessageBox.warning(None, "Zmiana lokalizacji flagi", "Flagę można postawić wyłącznie na obszarze wybranego (aktywnego) powiatu/ów.")
+        dlg.obj.flag_hide(False)
+        return
+    table = f"team_{str(dlg.team_i)}.flagi"
+    bns = f" WHERE id = {dlg.obj.flag}"
+    geom = f"ST_SetSRID(ST_MakePoint({str(point.x())}, {str(point.y())}), 2180)"
+    attr_chg = db_attr_change(tbl=table, attr="geom", val=geom, sql_bns=bns, user=False)
+    if not attr_chg:
+        print("Nie zmieniono lokalizacji flagi")
+    dlg.obj.flag_hide(False)
 
 def fl_valid(point):
     """Sprawdzenie, czy flaga znajduje się wewnątrz wybranego powiatu/ów."""
@@ -1709,8 +1737,8 @@ def wyr_del(layer, feature):
     sql = "DELETE FROM team_" + str(dlg.team_i) + ".wyrobiska WHERE wyr_id = " + str(fid) + ";"
     if db:
         res = db.query_upd(sql)
-        if res:
-            print("Usunięto wyrobisko")
+        if not res:
+            print("Nie udało się usunąć wyrobiska")
     QgsProject.instance().mapLayersByName("wyrobiska")[0].triggerRepaint()
 
 def auto_add(geom):
@@ -1780,7 +1808,6 @@ def lyr_ref(lyr):
     return layer
 
 def wyr_poly_change(lyr, geom):
-    t1 = tm.perf_counter()
     dlg.mt.init("multi_tool")
     if not geom:
         return
@@ -1802,5 +1829,3 @@ def wyr_poly_change(lyr, geom):
             return
     wyr_powiaty_change(wyr_id, geom)
     wyr_point_update(wyr_id, geom)
-    t2 = tm.perf_counter()
-    print(f"wyr update time: {round(t2-t1, 2)}")

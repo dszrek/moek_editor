@@ -70,6 +70,7 @@ class MoekBoxPanel(QFrame):
                 dlg.setUpdatesEnabled(True)
             except TypeError:
                 print("io_fn exception:", self.io_fn)
+                dlg.setUpdatesEnabled(True)
 
     def is_active(self):
         """Zwraca, czy panel jest w trybie active."""
@@ -201,6 +202,7 @@ class MoekBarPanel(QFrame):
                 dlg.setUpdatesEnabled(True)
             except TypeError:
                 print("io_fn exception:", self.io_fn)
+                dlg.setUpdatesEnabled(True)
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""

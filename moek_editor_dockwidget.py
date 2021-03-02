@@ -27,7 +27,7 @@ import os
 from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.PyQt.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QShortcut, QMessageBox
-from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtCore import pyqtSignal, QEvent
 from PyQt5.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject, QgsFeature
 from qgis.utils import iface
@@ -192,8 +192,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"item": "dummy", "name": "presep", "size": 25}
                     ]
         tb_edit_exit_widgets = [
-                    {"item": "button", "name": "cancel", "size": 50, "checkable": False, "tooltip": u"zatwierdź zmiany geometrii wyrobiska"},
-                    {"item": "button", "name": "accept", "size": 50, "checkable": False, "tooltip": u"zrezygnuj ze zmian geometrii wyrobiska"}
+                    {"item": "button", "name": "cancel", "size": 50, "checkable": False, "tooltip": u"zrezygnuj ze zmian geometrii wyrobiska"},
+                    {"item": "button", "name": "accept", "size": 50, "checkable": False, "tooltip": u"zatwierdź zmiany geometrii wyrobiska"}
                     ]
         toolboxes = [
                 {"name": "multi_tool", "dock": "side", "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_multi_tool_widgets},
@@ -216,6 +216,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.bottom_dock.move(0, bottom_y)
 
         self.resizeEvent = self.resize_panel
+        self.canvas = iface.mapCanvas()
+        iface.mapCanvas().installEventFilter(self)
 
         # Wyłączenie messagebar'u:
         iface.messageBar().widgetAdded.connect(self.msgbar_blocker)
@@ -242,6 +244,19 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
     def msgbar_blocker(self, item):
         """Blokuje pojawianie się QGIS'owego messagebar'u."""
         iface.messageBar().clearWidgets()
+
+    def eventFilter(self, obj, event):
+        if obj is iface.mapCanvas() and event.type() == QEvent.Resize:
+            self.resize_canvas()
+        return super().eventFilter(obj, event)
+
+    def resize_canvas(self):
+        """Ustalenie pozycji dockerów po zmianie rozmiaru mapcanvas'u."""
+        canvas = iface.mapCanvas()
+        self.side_dock.setFixedHeight(canvas.height())
+        self.side_dock.move(1,0)
+        self.bottom_dock.setFixedWidth(canvas.width())
+        self.bottom_dock.move(0, canvas.height() - 52)
 
     def resize_panel(self, event):
         """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
@@ -453,5 +468,9 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             self.bottom_dock.deleteLater()
         except:
             pass
+        try:
+            iface.mapCanvas().removeEventFilter(self)
+        except Exception as err:
+            print(err)
         self.closingPlugin.emit()
         event.accept()

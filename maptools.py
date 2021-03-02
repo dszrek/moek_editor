@@ -1,14 +1,17 @@
 #!/usr/bin/python
+import time as tm
+
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
-from qgis.core import QgsApplication, QgsProject, QgsSettings, QgsGeometry, QgsVectorLayer, QgsFeature, QgsWkbTypes, QgsPointXY, QgsPoint, QgsExpressionContextUtils, QgsFeatureRequest, QgsRectangle, QgsTolerance, QgsPointLocator, edit
+from qgis.core import QgsApplication, QgsProject, QgsSettings, QgsLayerTreeLayer, QgsGeometry, QgsVectorLayer, QgsFeature, QgsWkbTypes, QgsPointXY, QgsPoint, QgsExpressionContextUtils, QgsFeatureRequest, QgsRectangle, QgsTolerance, QgsPointLocator, edit
 from qgis.PyQt.QtCore import Qt, pyqtSignal, QPoint, QTimer
 from PyQt5.QtGui import QColor, QKeySequence, QCursor
 from qgis.utils import iface
 from itertools import combinations
 
-from .classes import PgConn, threading_func
+from .classes import PgConn, CfgPars, threading_func
 from .viewnet import vn_change, vn_powsel, vn_polysel
+from .main import wyr_powiaty_change, wyr_layer_update
 
 dlg = None
 
@@ -27,6 +30,8 @@ class ObjectManager:
         self.flag = None
         self.flag_data = [None, None, None]
         self.wyr = None
+        self.wyr_ids = []
+        self.p_vn = False
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -39,6 +44,7 @@ class ObjectManager:
             if self.flag_data[0] and self.flag != self.flag_data[1][0]:
                 self.flag = self.flag_data[1][0]
         elif attr == "wyr":
+            self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"].setEnabled(False) if not val else self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"].setEnabled(True)
             QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'wyr_sel', val)
             QgsProject.instance().mapLayersByName("wyr_point")[0].triggerRepaint()
             QgsProject.instance().mapLayersByName("wyr_poly")[0].triggerRepaint()
@@ -81,6 +87,21 @@ class ObjectManager:
         """Zmiana ui pod wpływem włączenia/wyłączenia EditPolyMapTool."""
         dlg.side_dock.hide() if enabled else dlg.side_dock.show()
         dlg.bottom_dock.show() if enabled else dlg.bottom_dock.hide()
+        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("wyr_point")[0].id()).setItemVisibilityChecked(not enabled)
+        QgsProject.instance().layerTreeRoot().findGroup("vn").setItemVisibilityChecked(not enabled)
+        dlg.p_team.setEnabled(not enabled)
+        dlg.p_pow.setEnabled(not enabled)
+        dlg.p_vn.setEnabled(not enabled)
+        if enabled:
+            if dlg.p_vn.is_active():
+                # Wyłączenie skrótów klawiszowych viewnet:
+                self.p_vn = True
+                dlg.hk_vn = False
+        else:
+            if self.p_vn:
+                # Ponowne włączenie skrótów klawiszowych viewnet:
+                self.p_vn = False
+                dlg.hk_vn = True
 
 
 class MapToolManager:
@@ -160,16 +181,9 @@ class MapToolManager:
             self.maptool.identified.connect(self.params["fn"])
         elif self.params["class"] == EditPolyMapTool:
             geom = self.get_feat_geom(lyr[0])
-            if not geom:
-                self.maptool = DummyMapTool(self.canvas, self.params["button"])
-                self.mt_name = "dummy"
-                self.canvas.setMapTool(self.maptool)
-                self.init("multi_tool")
-                return
-            else:
-                self.geom_to_layers(geom)
-                self.maptool = self.params["class"](self.canvas, lyr[0], self.params["button"])
-                self.maptool.ending.connect(self.params["fn"])
+            self.geom_to_layers(geom)
+            self.maptool = self.params["class"](self.canvas, lyr[0], self.params["button"])
+            self.maptool.ending.connect(self.params["fn"])
         else:
             self.maptool = self.params["class"](self.canvas, self.params["button"])
             self.maptool.drawn.connect(self.params["fn"])
@@ -213,18 +227,23 @@ class MapToolManager:
 
     def geom_to_layers(self, geom):
         """Rozkłada geometrię poligonalną na części pierwsze i przenosi je do warstw tymczasowych."""
-        lyr = QgsProject.instance().mapLayersByName("edit_poly")[0]
-        dp = lyr.dataProvider()
-        dp.truncate()
-        pg = 0  # Numer poligonu
-        with edit(lyr):  # Ekstrakcja poligonów
-            for poly in geom.asMultiPolygon():
-                feat = QgsFeature(lyr.fields())
-                feat.setAttribute("part", pg)
-                feat.setGeometry(QgsGeometry.fromPolygonXY(poly))
-                dp.addFeature(feat)
-                lyr.updateExtents()
-                pg += 1
+        edit_lyr = QgsProject.instance().mapLayersByName("edit_poly")[0]
+        back_lyr = QgsProject.instance().mapLayersByName("backup_poly")[0]
+        lyrs = [edit_lyr, back_lyr]
+        for lyr in lyrs:
+            dp = lyr.dataProvider()
+            dp.truncate()
+            if not geom:
+                return
+            pg = 0  # Numer poligonu
+            with edit(lyr):  # Ekstrakcja poligonów
+                for poly in geom.asMultiPolygon():
+                    feat = QgsFeature(lyr.fields())
+                    feat.setAttribute("part", pg)
+                    feat.setGeometry(QgsGeometry.fromPolygonXY(poly))
+                    dp.addFeature(feat)
+                    # lyr.updateExtents()
+                    pg += 1
 
 
 class DummyMapTool(QgsMapTool):
@@ -247,7 +266,7 @@ class EditPolyMapTool(QgsMapTool):
     node_selected = pyqtSignal(bool)
     area_hover = pyqtSignal(int)
     valid_changed = pyqtSignal(bool)
-    ending = pyqtSignal(QgsVectorLayer, QgsGeometry)
+    ending = pyqtSignal(QgsVectorLayer, object)
 
     def __init__(self, canvas, layer, button):
         QgsMapTool.__init__(self, canvas)
@@ -266,6 +285,7 @@ class EditPolyMapTool(QgsMapTool):
         self.snap_void = False
         self.geom = None
         self.init_extent = self.canvas.extent()
+        self.area_painter = None
         self.a_temp = -1
         self.area_idx = -1
         self.part_idx = -1
@@ -279,6 +299,7 @@ class EditPolyMapTool(QgsMapTool):
         self.valid_changed.connect(self.valid_change)
         self.flash = 0
         self.edit_layer = QgsProject.instance().mapLayersByName("edit_poly")[0]
+        self.backup_layer = QgsProject.instance().mapLayersByName("backup_poly")[0]
         self.snap_settings()
         self.rbs_create()
         self.rbs_populate()
@@ -291,11 +312,28 @@ class EditPolyMapTool(QgsMapTool):
         dlg.bottom_dock.toolboxes["tb_edit_tools"].widgets["btn_edit_tool"].clicked.connect(self.edit_clicked)
         dlg.bottom_dock.toolboxes["tb_edit_tools"].widgets["btn_edit_tool_add"].clicked.connect(self.add_clicked)
         dlg.bottom_dock.toolboxes["tb_edit_tools"].widgets["btn_edit_tool_sub"].clicked.connect(self.sub_clicked)
+        dlg.bottom_dock.toolboxes["tb_edit_exit"].widgets["btn_accept"].clicked.connect(self.accept_changes)
+        dlg.bottom_dock.toolboxes["tb_edit_exit"].widgets["btn_cancel"].clicked.connect(lambda: self.accept_changes(True))
         dlg.obj.edit_mode(True)  # Zmiana ui przy wejściu do trybu edycji geometrii wyrobiska
         self.zoom_to_geom()  # Przybliżenie widoku mapy do geometrii wyrobiska
 
     def zoom_to_geom(self):
         """Przybliżenie widoku mapy do granic wyrobiska."""
+        # Sprawdzenie, czy na warstwie 'edit_poly' są poligony:
+        feat_cnt = self.edit_layer.featureCount()
+        if feat_cnt == 0:
+            # Panning mapy do centroidu wyrobiska:
+            point_lyr = QgsProject.instance().mapLayersByName("wyr_point")[0]
+            feats = point_lyr.getFeatures(f'"wyr_id" = {dlg.obj.wyr}')
+            try:
+                feat = list(feats)[0]
+            except Exception as err:
+                print(err)
+                return
+            point = feat.geometry()
+            self.canvas.zoomToFeatureExtent(point.boundingBox())
+            dlg.bottom_dock.toolboxes["tb_edit_exit"].widgets["btn_accept"].setEnabled(False)
+            return
         # Określenie zasięgu warstwy:
         box = None
         for feat in self.edit_layer.getFeatures():
@@ -304,7 +342,6 @@ class EditPolyMapTool(QgsMapTool):
             else:
                 box.combineExtentWith(feat.geometry().boundingBox())
         # Określenie nowego zasięgu widoku mapy:
-
         w_off = box.width() * 0.4
         h_off = box.height() * 0.4
         ext = QgsRectangle(box.xMinimum() - w_off,
@@ -345,8 +382,16 @@ class EditPolyMapTool(QgsMapTool):
                 ["add", dlg.bottom_dock.toolboxes["tb_edit_tools"].widgets["btn_edit_tool_add"]],
                 ["sub", dlg.bottom_dock.toolboxes["tb_edit_tools"].widgets["btn_edit_tool_sub"]]
                 ]
+        accept_btn = dlg.bottom_dock.toolboxes["tb_edit_exit"].widgets["btn_accept"]
+        cancel_btn = dlg.bottom_dock.toolboxes["tb_edit_exit"].widgets["btn_cancel"]
         if self.area_painter:
             self.area_painter.reset(QgsWkbTypes.PolygonGeometry)
+        else:
+            self.area_painter = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+            self.area_painter.setColor(QColor(0, 255, 0, 128))
+            self.area_painter.setFillColor(QColor(0, 255, 0, 80))
+            self.area_painter.setWidth(1)
+            self.area_painter.setVisible(False)
         self.node_idx = (-1, -1)
         self.node_sel = False
         self.start_point = None
@@ -358,9 +403,13 @@ class EditPolyMapTool(QgsMapTool):
             if mode_name == "add":
                 self.area_painter.setColor(QColor(0, 255, 0, 128))
                 self.area_painter.setFillColor(QColor(0, 255, 0, 80))
+                accept_btn.setEnabled(False)
             elif mode_name == "sub":
                 self.area_painter.setColor(QColor(255, 0, 0, 128))
                 self.area_painter.setFillColor(QColor(255, 0, 0, 80))
+                accept_btn.setEnabled(False)
+            elif mode_name == "edit" and self.vertex_rbs:
+                accept_btn.setEnabled(True)
 
     def cursor_change(self, cur_name):
         """Zmiana cursora maptool'a."""
@@ -509,11 +558,12 @@ class EditPolyMapTool(QgsMapTool):
         self.node_selector.addPoint(QgsPointXY(0, 0), False)
         self.node_selector.setVisible(False)
 
-        self.area_painter = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.area_painter.setColor(QColor(0, 255, 0, 128))
-        self.area_painter.setFillColor(QColor(0, 255, 0, 80))
-        self.area_painter.setWidth(1)
-        self.area_painter.setVisible(False)
+        if not self.area_painter:
+            self.area_painter = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+            self.area_painter.setColor(QColor(0, 255, 0, 128))
+            self.area_painter.setFillColor(QColor(0, 255, 0, 80))
+            self.area_painter.setWidth(1)
+            self.area_painter.setVisible(False)
 
         self.node_valider = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
         self.node_valider.setIcon(QgsRubberBand.ICON_FULL_DIAMOND)
@@ -707,9 +757,6 @@ class EditPolyMapTool(QgsMapTool):
                     self.cursor = "open_hand"
                 self.canvas.panActionEnd(event.pos())
                 self.dragging = False
-        elif event.button() == Qt.RightButton:
-            if not self.moving and not self.dragging and not self.drawing:
-                self.reset()
 
     def canvasDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton and not self.dragging and self.mode == "edit":
@@ -1150,6 +1197,8 @@ class EditPolyMapTool(QgsMapTool):
     def geom_update(self):
         """Aktualizacja geometrii poligonów po jej zmianie."""
         self.edit_layer.dataProvider().truncate()
+        if not self.vertex_rbs:  # Nie ma poligonów
+            return None
         # Załadowanie aktualnej geometrii do warstwy edit_poly:
         geom_list = []
         with edit(self.edit_layer):
@@ -1160,46 +1209,91 @@ class EditPolyMapTool(QgsMapTool):
                 feat.setGeometry(geom)
                 self.edit_layer.addFeature(feat)
                 geom_list.append(geom)
+        if not geom_list:
+            self.geom = None
         if len(geom_list) > 1:
             self.geom = QgsGeometry.collectGeometry(geom_list)
         else:
             self.geom = geom_list[0]
         return self.geom
 
-    def reset(self):
-        if not self.geom:
+    def geom_from_backup(self):
+        """Zwraca geometrię z warstwy 'edit_poly_backup'."""
+        feat_cnt = self.backup_layer.featureCount()
+        if feat_cnt == 0:
+            self.geom = None
+        else:
+            geom_list = []
+            feats = self.backup_layer.getFeatures()
+            for feat in feats:
+                geom = feat.geometry()
+                geom_list.append(geom)
+            if len(geom_list) > 1:
+                self.geom = QgsGeometry.collectGeometry(geom_list)
+            else:
+                self.geom = geom_list[0]
+        return self.geom
+
+    def accept_changes(self, cancel=False):
+        """Zakończenie edycji geometrii wyrobiska i zaakceptowanie wprowadzonych zmian, albo przywrócenie stanu pierwotnego (cancel=True)."""
+        self.interrupted = True
+        if cancel:
+            self.geom = self.geom_from_backup()
+        elif not cancel and not self.geom:
             self.geom = self.geom_update()
         self.rbs_clear()
         self.edit_layer.dataProvider().truncate()
         self.edit_layer.triggerRepaint()
+        self.backup_layer.dataProvider().truncate()
+        self.backup_layer.triggerRepaint()
+        self.buttons_disconnect()
         self.canvas.setExtent(self.init_extent)
         dlg.obj.edit_mode(False)
         self.ending.emit(self.layer, self.geom)
 
+    def buttons_disconnect(self):
+        """Odłączenie przycisków."""
+        dlg.bottom_dock.toolboxes["tb_edit_tools"].widgets["btn_edit_tool"].clicked.disconnect()
+        dlg.bottom_dock.toolboxes["tb_edit_tools"].widgets["btn_edit_tool_add"].clicked.disconnect()
+        dlg.bottom_dock.toolboxes["tb_edit_tools"].widgets["btn_edit_tool_sub"].clicked.disconnect()
+        dlg.bottom_dock.toolboxes["tb_edit_exit"].widgets["btn_accept"].clicked.disconnect()
+        dlg.bottom_dock.toolboxes["tb_edit_exit"].widgets["btn_cancel"].clicked.disconnect()
+
     def rbs_clear(self):
+        """Wyczyszczenie zawartości i usunięcie rubberband'ów."""
         for a in self.area_rbs:
             a.reset(QgsWkbTypes.PolygonGeometry)
         for v in self.vertex_rbs:
             v.reset(QgsWkbTypes.PointGeometry)
         self.area_rbs = []
         self.vertex_rbs = []
-        self.valid_checker.reset(QgsWkbTypes.PointGeometry)
-        self.node_valider.reset(QgsWkbTypes.PointGeometry)
-        self.area_valider.reset(QgsWkbTypes.PolygonGeometry)
-        self.line_helper.reset(QgsWkbTypes.LineGeometry)
-        self.node_hover.reset(QgsWkbTypes.PointGeometry)
-        self.node_selector.reset(QgsWkbTypes.PointGeometry)
-        self.edge_marker.reset(QgsWkbTypes.PointGeometry)
-        self.area_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.area_painter.reset(QgsWkbTypes.PolygonGeometry)
-        self.valid_checker = None
-        self.node_valider = None
-        self.area_valider = None
-        self.line_helper = None
-        self.node_hover = None
-        self.node_selector = None
-        self.edge_marker = None
-        self.area_marker = None
+        if self.valid_checker:
+            self.valid_checker.reset(QgsWkbTypes.PointGeometry)
+            self.valid_checker = None
+        if self.node_valider:
+            self.node_valider.reset(QgsWkbTypes.PointGeometry)
+            self.node_valider = None
+        if self.area_valider:
+            self.area_valider.reset(QgsWkbTypes.PolygonGeometry)
+            self.area_valider = None
+        if self.line_helper:
+            self.line_helper.reset(QgsWkbTypes.LineGeometry)
+            self.line_helper = None
+        if self.node_hover:
+            self.node_hover.reset(QgsWkbTypes.PointGeometry)
+            self.node_hover = None
+        if self.node_selector:
+            self.node_selector.reset(QgsWkbTypes.PointGeometry)
+            self.node_selector = None
+        if self.edge_marker:
+            self.edge_marker.reset(QgsWkbTypes.PointGeometry)
+            self.edge_marker = None
+        if self.area_marker:
+            self.area_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.area_marker = None
+        if self.area_painter:
+            self.area_painter.reset(QgsWkbTypes.PolygonGeometry)
+            self.area_painter = None
 
 
 class MultiMapTool(QgsMapToolIdentify):
@@ -1422,8 +1516,8 @@ class PolyDrawMapTool(QgsMapTool):
             self._button.setChecked(True)
         self.begin = True
         self.rb = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
-        self.rb.setColor(QColor(255, 0, 0, 128))
-        self.rb.setFillColor(QColor(255, 0, 0, 80))
+        self.rb.setColor(QColor(0, 255, 0, 128))
+        self.rb.setFillColor(QColor(0, 255, 0, 80))
         self.rb.setWidth(1)
 
     def button(self):
@@ -1521,7 +1615,17 @@ def fl_valid(point):
         if res:
             return res[0]
 
-def wyr_add_point(point):
+def area_measure(geom):
+    """Zwraca zaokrągloną wartość powierzchni wyrobiska w metrach kwadratowych."""
+    try:
+        area = geom.area()
+    except Exception as err:
+        print(err)
+        return 0
+    area_rounded = int(area / 10) * 10 if area <= 1000 else int(area / 100) * 100
+    return area_rounded
+
+def wyr_point_add(point):
     """Utworzenie centroidu nowego obiektu wyrobiska."""
     if isinstance(point, QgsGeometry):
         point = point.asPoint()
@@ -1529,25 +1633,71 @@ def wyr_add_point(point):
     sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyrobiska(wyr_id, user_id, wyr_sys, centroid) SELECT nextval, " + str(dlg.user_id) + ", concat('" + str(dlg.team_i) + "_', nextval), ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180) FROM (SELECT nextval(pg_get_serial_sequence('team_" + str(dlg.team_i) + ".wyrobiska', 'wyr_id')) nextval) q RETURNING wyr_id"
     if db:
         res = db.query_upd_ret(sql)
-        if res:
-            QgsProject.instance().mapLayersByName("wyr_point")[0].triggerRepaint()
-            print(res)
-            return res
+        return res if res else None
 
-def wyr_add_poly(geom):
+def wyr_add_poly(geom, wyr_id=None):
     """Utworzenie nowego obiektu wyrobiska."""
     dlg.mt.init("multi_tool")
-    layer = QgsProject.instance().mapLayersByName("wyr_poly")[0]
-    fields = layer.fields()
+    lyr_poly = QgsProject.instance().mapLayersByName("wyr_poly")[0]
+    fields = lyr_poly.fields()
     feature = QgsFeature()
     feature.setFields(fields)
     feature.setGeometry(geom)
-    wyr_id = wyr_add_point(geom.centroid())
+    if not wyr_id:
+        wyr_id = wyr_point_add(geom.centroid())
+        if not wyr_id:
+            return
     feature.setAttribute('wyr_id', wyr_id)
-    layer.startEditing()
-    layer.addFeature(feature)
-    layer.commitChanges()
-    QgsProject.instance().mapLayersByName("wyr_poly")[0].triggerRepaint()
+    with edit(lyr_poly):
+        try:
+            lyr_poly.addFeature(feature)
+        except Exception as err:
+            print(err)
+            return
+    lyr_poly.triggerRepaint()
+    wyr_powiaty_change(wyr_id, geom)
+    wyr_point_update(wyr_id, geom)
+
+def wyr_point_update(wyr_id, geom):
+    """Aktualizacja punktowego obiektu wyrobiska."""
+    # Aktualizacja warstw z wyrobiskami:
+    wyr_layer_update(False)
+    # Aktualizacja bieżącego punktu wyrobiska:
+    temp_lyr = False
+    lyr_point = QgsProject.instance().mapLayersByName("wyr_point")[0]
+    area = area_measure(geom)
+    feats = lyr_point.getFeatures(f'"wyr_id" = {wyr_id}')
+    try:
+        feat = list(feats)[0]
+    except Exception as err:
+        print(err)
+        print("Geometria wyrobiska leży poza aktywnymi powiatami?")
+        dlg.obj.wyr = None
+        # Stworzenie tymczasowej warstwy ze wszystkimi punktami wyrobisk zespołu:
+        temp_lyr = True
+        with CfgPars() as cfg:
+            params = cfg.uri()
+        table = '"team_' + str(dlg.team_i) + '"."wyrobiska"'
+        uri = f'{params} table={table} (centroid) sql='
+        lyr_point = QgsVectorLayer(uri, "temp_wyr_point", "postgres")
+        feats = lyr_point.getFeatures(f'"wyr_id" = {wyr_id}')
+        try:
+            feat = list(feats)[0]
+        except Exception as err:
+            print(err)
+            print(f"Nieudana próba aktualizacji wyrobiska {wyr_id}")
+            del lyr_point
+            return
+    with edit(lyr_point):
+        feat.setAttribute('i_area_m2', area)
+        feat.setGeometry(geom.centroid())
+        try:
+            lyr_point.updateFeature(feat)
+        except Exception as err:
+            print(err)
+    lyr_point.triggerRepaint()
+    if temp_lyr:
+        del lyr_point
 
 def wyr_del(layer, feature):
     dlg.mt.init("multi_tool")
@@ -1630,12 +1780,27 @@ def lyr_ref(lyr):
     return layer
 
 def wyr_poly_change(lyr, geom):
-    feats = lyr.getFeatures(f'"wyr_id" = {dlg.obj.wyr}')
-    feat = list(feats)[0]
+    t1 = tm.perf_counter()
+    dlg.mt.init("multi_tool")
+    if not geom:
+        return
+    wyr_id = dlg.obj.wyr
+    feats = lyr.getFeatures(f'"wyr_id" = {wyr_id}')
+    try:
+        feat = list(feats)[0]
+    except Exception as err:
+        print(err)
+        print(f"Tworzenie wpisu w 'pow_geom' dla wyrobiska {wyr_id}")
+        wyr_add_poly(geom, wyr_id)
+        return
     with edit(lyr):
         feat.setGeometry(geom)
         try:
             lyr.updateFeature(feat)
         except Exception as err:
             print(err)
-    dlg.mt.init("multi_tool")
+            return
+    wyr_powiaty_change(wyr_id, geom)
+    wyr_point_update(wyr_id, geom)
+    t2 = tm.perf_counter()
+    print(f"wyr update time: {round(t2-t1, 2)}")

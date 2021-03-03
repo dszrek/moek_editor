@@ -133,19 +133,18 @@ class MapToolManager:
         self.old_button = None
         self.feat_backup = None
         self.canvas.mapToolSet.connect(self.maptool_change)
-
+        self.tool_kinds = (MultiMapTool, IdentMapTool, PolyDrawMapTool, PointDrawMapTool, EditPolyMapTool)
         self.maptools = [
             # {"name" : "edit_poly", "class" : EditPolyMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_kopaliny_pne", "wyrobiska"], "fn" : obj_sel},
             {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"], "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_kopaliny_pne", "wyr_point"], "fn" : obj_sel},
             {"name" : "vn_sel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_sel"], "lyr" : ["vn_user"], "fn" : vn_change},
             {"name" : "vn_powsel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_powsel"], "lyr" : ["powiaty"], "fn" : vn_powsel},
-            {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel},
+            {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel, "extra" : [(0, 0, 255, 128), (0, 0, 255, 80)]},
             {"name" : "flt_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"], "fn" : flag_add, "extra" : ['true']},
             {"name" : "flf_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"], "fn" : flag_add, "extra" : ['false']},
-            {"name" : "flag_move", "class" : PointDrawMapTool, "button" : self.dlg.flag_menu.flag_move, "fn" : flag_move},
-            {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly},
+            {"name" : "flag_move", "class" : PointDrawMapTool, "button" : self.dlg.flag_menu.flag_move, "fn" : flag_move, "extra" : []},
+            {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly, "extra" : [(0, 255, 0, 128), (0, 255, 0, 80)]},
             {"name" : "wyr_edit", "class" : EditPolyMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"], "lyr" : ["wyr_poly"], "fn" : wyr_poly_change}
-            # {"name" : "wyr_del", "class" : IdentMapTool, "button" : self.dlg.p_wyr.widgets["btn_wyr_del"], "lyr" : ["wyrobiska"], "fn" : wyr_del}
             # {"name" : "auto_add", "class" : PointDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_add"], "fn" : auto_add},
             # {"name" : "auto_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_del"], "lyr" : ["parking"], "fn" : auto_del},
             # {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_add"], "fn" : marsz_add},
@@ -162,6 +161,11 @@ class MapToolManager:
             dlg.obj.menu_hide()
         except:
             pass
+        if not isinstance(new_tool, (self.tool_kinds)) and self.mt_name:
+            # Reset ustawień MapToolManager'a, jeśli został wybrany maptool spoza wtyczki
+            self.maptool = None
+            self.mt_name = None
+            self.params = {}
         if self.old_button:
             try:
                 self.old_button.setChecked(False)
@@ -202,8 +206,11 @@ class MapToolManager:
             self.geom_to_layers(geom)
             self.maptool = self.params["class"](self.canvas, lyr[0], self.params["button"])
             self.maptool.ending.connect(self.params["fn"])
-        else:
-            self.maptool = self.params["class"](self.canvas, self.params["button"])
+        elif self.params["class"] == PointDrawMapTool:
+            self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"])
+            self.maptool.drawn.connect(self.params["fn"])
+        elif self.params["class"] == PolyDrawMapTool:
+            self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"])
             self.maptool.drawn.connect(self.params["fn"])
         self.canvas.setMapTool(self.maptool)
         self.mt_name = self.params["name"]
@@ -303,6 +310,16 @@ class EditPolyMapTool(QgsMapTool):
         self.snap_void = False
         self.geom = None
         self.init_extent = self.canvas.extent()
+        self.area_rbs = []
+        self.vertex_rbs = []
+        self.valid_checker = None
+        self.node_valider = None
+        self.area_valider = None
+        self.line_helper = None
+        self.node_hover = None
+        self.node_selector = None
+        self.edge_marker = None
+        self.area_marker = None
         self.area_painter = None
         self.a_temp = -1
         self.area_idx = -1
@@ -311,8 +328,6 @@ class EditPolyMapTool(QgsMapTool):
         self.node_sel = False
         self.node_idx = (-1, -1)
         self.prev_node = None
-        self.area_rbs = []
-        self.vertex_rbs = []
         self.change_is_valid = True
         self.valid_changed.connect(self.valid_change)
         self.flash = 0
@@ -1442,12 +1457,13 @@ class IdentMapTool(QgsMapToolIdentify):
 
 class PointDrawMapTool(QgsMapTool):
     """Maptool do rysowania obiektów punktowych."""
-    drawn = pyqtSignal(object)
+    drawn = pyqtSignal(object, object)
 
-    def __init__(self, canvas, button):
+    def __init__(self, canvas, button, extra):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
         self._button = button
+        self.extra = extra
         if not self._button.isChecked():
             self._button.setChecked(True)
         self.setCursor(Qt.CrossCursor)
@@ -1458,13 +1474,13 @@ class PointDrawMapTool(QgsMapTool):
     def canvasReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
             point = self.toMapCoordinates(event.pos())
-            self.drawn.emit(point)
+            self.drawn.emit(point, self.extra)
         else:
-            self.drawn.emit(None)
+            self.drawn.emit(None, None)
 
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key_Escape:
-            self.drawn.emit(None)
+            self.drawn.emit(None, None)
 
 
 class LineDrawMapTool(QgsMapTool):
@@ -1528,60 +1544,212 @@ class LineDrawMapTool(QgsMapTool):
 
 class PolyDrawMapTool(QgsMapTool):
     """Maptool do rysowania obiektów poligonalnych."""
-    drawn = pyqtSignal(QgsGeometry)
-    move = pyqtSignal()
+    cursor_changed = pyqtSignal(str)
+    valid_changed = pyqtSignal(bool)
+    drawn = pyqtSignal(object)
 
-    def __init__(self, canvas, button):
+    def __init__(self, canvas, button, extra):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
         self._button = button
+        self.color = QColor(extra[0][0], extra[0][1], extra[0][2], extra[0][3])
+        self.fillcolor = QColor(extra[1][0], extra[1][1], extra[1][2], extra[1][3])
         if not self._button.isChecked():
             self._button.setChecked(True)
-        self.begin = True
-        self.rb = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
-        self.rb.setColor(QColor(0, 255, 0, 128))
-        self.rb.setFillColor(QColor(0, 255, 0, 80))
-        self.rb.setWidth(1)
+        self.area_painter = None
+        self.node_valider = None
+        self.drawing = False
+        self.dragging = False
+        self.refreshing = False
+        self.start_point = None
+        self.change_is_valid = True
+        self.valid_changed.connect(self.valid_change)
+        self.cursor_changed.connect(self.cursor_change)
+        self.cursor = "cross"
+        self.rbs_create()
 
     def button(self):
         return self._button
 
-    def keyPressEvent(self, e):
-        # Funkcja undo - kasowanie ostatnio dodanego vertex'a po naciśnięciu ctrl+z
-        if e.matches(QKeySequence.Undo) and self.rb.numberOfVertices() > 1:
-            self.rb.removeLastPoint()
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "cursor":
+            self.cursor_changed.emit(val)
+        if attr == "change_is_valid":
+            self.valid_changed.emit(val)
 
-    def canvasPressEvent(self, e):
-        if e.button() == Qt.LeftButton:
-            if self.begin:
-                self.rb.reset(QgsWkbTypes.PolygonGeometry)
-                self.begin = False
-            self.rb.addPoint(self.toMapCoordinates(e.pos()))
-        else:
-            self.rb.removeLastPoint(0)
-            if self.rb.numberOfVertices() > 2:
-                self.begin = True
-                self.drawn.emit(self.rb.asGeometry())
+    def rbs_create(self):
+        """Stworzenie rubberband'ów."""
+        self.area_painter = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.area_painter.setColor(self.color)
+        self.area_painter.setFillColor(self.fillcolor)
+        self.area_painter.setWidth(1)
+        self.area_painter.setVisible(False)
+
+        self.node_valider = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
+        self.node_valider.setIcon(QgsRubberBand.ICON_FULL_DIAMOND)
+        self.node_valider.setColor(QColor(255, 0, 0, 255))
+        self.node_valider.setFillColor(QColor(0, 0, 0, 255))
+        self.node_valider.setIconSize(12)
+        self.node_valider.setVisible(False)
+
+    def cursor_change(self, cur_name):
+        """Zmiana cursora maptool'a."""
+        cursors = [
+                    ["open_hand", Qt.OpenHandCursor],
+                    ["closed_hand", Qt.ClosedHandCursor],
+                    ["cross", Qt.CrossCursor]
+                ]
+        for cursor in cursors:
+            if cursor[0] == cur_name:
+                self.setCursor(cursor[1])
+                break
+
+    def valid_change(self, _bool):
+        """Zmiana poprawności geometrii rubberband'a w trakcie rysowania area_painter'a."""
+        self.area_painter.setFillColor(self.fillcolor) if _bool else self.area_painter.setFillColor(QColor(0, 0, 0, 80))
+
+    def canvasMoveEvent(self, event):
+        map_point = self.toMapCoordinates(event.pos())
+        if event.buttons() == Qt.LeftButton and not self.refreshing:
+            if self.drawing:
+                # Umożliwienie panningu mapy podczas rysowania area_painter'a:
+                dist = QgsGeometry().fromPointXY(self.start_point).distance(QgsGeometry().fromPointXY(map_point))
+                dist_scale = dist / self.canvas.scale() * 1000
+                if dist_scale > 6.0:
+                    self.dragging = True
+                    self.cursor = "closed_hand"
+                    self.canvas.panAction(event)
+            elif not self.drawing:
+                # Panning mapy:
+                self.dragging = True
+                self.cursor = "closed_hand"
+                self.canvas.panAction(event)
+        elif event.button() == Qt.NoButton or self.refreshing:
+            if self.refreshing:
+                self.mouse_move_emit(True)
+                self.refreshing = False
+            if self.drawing and not self.dragging and self.area_painter.numberOfVertices() > 0:
+                # Odświeżenie area_painter:
+                self.area_painter.removeLastPoint(0)
+                self.area_painter.addPoint(map_point)
+                # Sprawdzenie, czy aktualna geometria area_painter'a i topologia z innymi poligonami są poprawne:
+                if self.area_painter.numberOfVertices() > 2:
+                    self.valid_check()
+
+    def canvasPressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.start_point = self.toMapCoordinates(event.pos())
+            if not self.drawing:
+                self.drawing = True
+                self.change_is_valid = True
+            self.area_painter.addPoint(self.toMapCoordinates(event.pos()))
+
+    def canvasReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.dragging:
+            # Zakończenie panningu mapy:
+            if self.drawing and self.area_painter.numberOfVertices() > 0:
+                self.area_painter.removeLastPoint(0)
+                self.cursor = "cross"
+            self.canvas.panActionEnd(event.pos())
+            self.dragging = False
+        elif event.button() == Qt.RightButton:
+            self.area_painter.removeLastPoint(0)
+            if self.area_painter.numberOfVertices() > 2:
+                self.valid_check()
                 self.reset()
+                self.drawn.emit(self.area_painter.asGeometry()) if self.change_is_valid else self.drawn.emit(None)
             else:
                 self.reset()
-        return None
+                self.drawn.emit(None)
 
-    def canvasMoveEvent(self, e):
-        if self.rb.numberOfVertices() > 0 and not self.begin:
-            self.rb.removeLastPoint(0)
-            self.rb.addPoint(self.toMapCoordinates(e.pos()))
-        return None
+    def keyReleaseEvent(self, event):
+        if self.drawing and not self.dragging and self.area_painter.numberOfVertices() > 1 and (event.matches(QKeySequence.Undo) or event.key() == Qt.Key_Delete or event.key() == Qt.Key_Backspace):
+            # Usunięcie ostatnio narysowanego wierzchołka area_painter'a:
+            self.area_painter.removeLastPoint()
+            self.mouse_move_emit()
+        if event.key() == Qt.Key_Escape:
+            # Przerwanie rysowania i wyłączenie maptool'a
+            self.reset()
+            self.drawn.emit(None)
+
+    def mouse_move_emit(self, after=False):
+        """Sposób na odpalenie canvasMoveEvent."""
+        cursor = QCursor()
+        pos = self.canvas.mouseLastXY()
+        global_pos = self.canvas.mapToGlobal(pos)
+        if after:
+            # Przywrócenie pierwotnej pozycji kursora:
+            cursor.setPos(global_pos.x() + 2, global_pos.y() + 2)
+        else:
+            # Nieznaczne przesunięcie kursora, żeby odpalić canvasMoveEvent:
+            self.refreshing = True
+            cursor.setPos(global_pos.x(), global_pos.y())
+
+    def valid_check(self):
+        """Sprawdza, czy geometria area_painter'a jest prawidłowa."""
+        is_valid = True  # Wstępne założenie, że geometria jest poprawna
+        # Kasowanie poprzedniego stanu node_valider'a:
+        self.node_valider.reset(QgsWkbTypes.PointGeometry)
+        # Przygotowanie geometrii valid_checker'a:
+        rb_geom = self.area_painter.asGeometry()
+        nodes = self.get_nodes_from_area_rb(rb_geom)
+        # Sprawdzenie, czy nowa geometria jest poprawna:
+        rb_check = self.rubberband_check(rb_geom)
+        if not rb_check:  # Nowa geometria nie jest poprawna - pokazanie błędnych punktów
+            # Stworzenie listy z wierzchołkami valid_checker'a:
+            rb_nodes = []
+            for node in nodes:
+                rb_nodes.append(QgsPointXY(node.x(), node.y()))
+            # Stworzenie listy z liniami boków valid_checker'a:
+            segments = self.segments_from_polygon(rb_geom)
+            # Sprawdzenie, czy któreś linie się przecinają -
+            # wykluczone są przecięcia na wierzchołkach:
+            pairs = list(combinations(segments, 2))
+            for p in pairs:
+                intersect_geom = p[0].intersection(p[1])
+                if intersect_geom and intersect_geom.type() == QgsWkbTypes.PointGeometry:
+                    if not intersect_geom.asPoint() in rb_nodes:
+                        # Pokazanie błędnych przecięć:
+                        self.node_valider.addPoint(intersect_geom.asPoint())
+            is_valid = False
+        self.change_is_valid = is_valid
+
+    def rubberband_check(self, geom):
+        """Zwraca geometrię, jesli jest poprawna."""
+        return geom if geom.isGeosValid() else None
+
+    def get_nodes_from_area_rb(self, rb):
+        """Zwraca punkty z poligonalnego rubberband'u."""
+        pts = []
+        for vertex in rb.vertices():
+            pts.append(vertex)
+        return pts
+
+    def segments_from_polygon(self, poly):
+        """Zwraca listę boków poligonu."""
+        segments = []
+        poly = poly.asPolygon()[0]
+        for i in range(len(poly) - 1):
+            line = QgsGeometry().fromPolylineXY([poly[i], poly[i + 1]])
+            segments.append(line)
+        return segments
 
     def reset(self):
-        self.begin = True
-        self.clearMapCanvas()
+        self.rbs_clear()
 
     def deactivate(self):
-        self.clearMapCanvas()
+        self.rbs_clear()
 
-    def clearMapCanvas(self):
-        self.rb.reset(QgsWkbTypes.PolygonGeometry)
+    def rbs_clear(self):
+        """Wyczyszczenie zawartości i usunięcie rubberband'ów."""
+        if self.node_valider:
+            self.node_valider.reset(QgsWkbTypes.PointGeometry)
+            self.node_valider = None
+        if self.area_painter:
+            self.area_painter.reset(QgsWkbTypes.PolygonGeometry)
+            self.area_painter = None
 
 
 # ========== Funkcje:
@@ -1593,12 +1761,12 @@ def obj_sel(layer, feature, click):
     else:
         dlg.obj.menu_hide()
 
-def flag_add(point):
+def flag_add(point, extra):
     """Utworzenie nowego obiektu flagi."""
     dlg.mt.init("multi_tool")
     if not point:
         return
-    is_fldchk = dlg.mt.params["extra"][0]
+    is_fldchk = extra[0]
     fl_pow = fl_valid(point)
     if not fl_pow:
         QMessageBox.warning(None, "Tworzenie flagi", "Flagę można postawić wyłącznie na obszarze wybranego (aktywnego) powiatu/ów.")
@@ -1612,7 +1780,7 @@ def flag_add(point):
     QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
     QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
 
-def flag_move(point):
+def flag_move(point, extra):
     """Zmiana lokalizacji flagi."""
     dlg.mt.init("multi_tool")
     if not point:
@@ -1666,6 +1834,8 @@ def wyr_point_add(point):
 def wyr_add_poly(geom, wyr_id=None):
     """Utworzenie nowego obiektu wyrobiska."""
     dlg.mt.init("multi_tool")
+    if not geom:
+        return
     lyr_poly = QgsProject.instance().mapLayersByName("wyr_poly")[0]
     fields = lyr_poly.fields()
     feature = QgsFeature()

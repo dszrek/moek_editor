@@ -470,6 +470,18 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         except:
             pass
         try:
+            self.mt = None
+        except Exception as err:
+            print(err)
+        try:
+            self.obj = None
+        except Exception as err:
+            print(err)
+        try:
+            self.flag_menu = None
+        except Exception as err:
+            print(err)
+        try:
             iface.mapCanvas().removeEventFilter(self)
         except Exception as err:
             print(err)

@@ -101,30 +101,33 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "flag_nfchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę bez kontroli terenowej"},
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "flag_del", "size": 50, "checkable": True, "tooltip": u'usuń flagę'}
                     ]
-        p_wyr_widgets = [
-                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "lineedit", "name": "wyr_id", "size": 50,  "height": 21, "border": 1},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_sel", "size": 50, "checkable": True, "tooltip": u"zaznacz wyrobisko"},
-                    {"page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"},
-                    {"page": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_del", "size": 50, "checkable": True, "tooltip": u'usuń wyrobisko'}
-                    ]
-        p_auto_widgets = [
-                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_add", "size": 50, "checkable": True, "tooltip": u"dodaj miejsce parkingowe"},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_del", "size": 50, "checkable": True, "tooltip": u"usuń miejsce parkingowe"},
-                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_add", "size": 50, "checkable": True, "tooltip": u'dodaj marszrutę'},
-                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_del", "size": 50, "checkable": True, "tooltip": u'usuń marszrutę'}
-                    ]
+        # p_wyr_widgets = [
+        #             {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "lineedit", "name": "wyr_id", "size": 50,  "height": 21, "border": 1},
+        #             {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_sel", "size": 50, "checkable": True, "tooltip": u"zaznacz wyrobisko"},
+        #             {"page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"},
+        #             {"page": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_del", "size": 50, "checkable": True, "tooltip": u'usuń wyrobisko'}
+        #             ]
+        # p_auto_widgets = [
+        #             {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_add", "size": 50, "checkable": True, "tooltip": u"dodaj miejsce parkingowe"},
+        #             {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_del", "size": 50, "checkable": True, "tooltip": u"usuń miejsce parkingowe"},
+        #             {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_add", "size": 50, "checkable": True, "tooltip": u'dodaj marszrutę'},
+        #             {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_del", "size": 50, "checkable": True, "tooltip": u'usuń marszrutę'}
+        #             ]
 
         self.p_team = MoekBarPanel(
+                            self,
                             title="Zespół:",
                             switch=False
                             )
         self.p_pow = MoekBarPanel(
+                            self,
                             title="Powiat:",
                             title_off="Wszystkie powiaty",
                             io_fn="powiaty_mode_changed(clicked=True)"
                             )
-        self.p_map = MoekMapPanel()
+        self.p_map = MoekMapPanel(self)
         self.p_ext = MoekBarPanel(
+                            self,
                             title="",
                             switch=None,
                             spacing=8,
@@ -135,23 +138,26 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                             io_fn="vn_mode_changed(clicked=True)",
                             config=True,
                             cfg_fn="vn_cfg()",
-                            resize=True,
                             pages=5)
-        self.p_flag = MoekBoxPanel(
-                            title="Flagi",
-                            io_fn="dlg.flag_visibility()")
-        self.p_wyr = MoekBoxPanel(
-                            title="Wyrobiska",
-                            io_fn="dlg.wyr_visibility()")
-        self.p_auto = MoekBoxPanel(
-                            title="Komunikacja",
-                            io_fn="dlg.auto_visibility()")
+        # self.p_flag = MoekBoxPanel(
+        #                     self,
+        #                     title="Flagi",
+        #                     io_fn="dlg.flag_visibility()")
+        # self.p_wyr = MoekBoxPanel(
+        #                     self,
+        #                     title="Wyrobiska",
+        #                     io_fn="dlg.wyr_visibility()")
+        # self.p_auto = MoekBoxPanel(
+        #                     self,
+        #                     title="Komunikacja",
+        #                     io_fn="dlg.auto_visibility()")
 
         self.panels = [self.p_team, self.p_pow, self.p_map, self.p_ext, self.p_vn]#, self.p_flag, self.p_wyr] #, self.p_auto]
         self.p_widgets = [p_team_widgets, p_pow_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets]#, p_flag_widgets, p_wyr_widgets] #, p_auto_widgets]
 
         # Wczytanie paneli i ich widgetów do dockwidget'a:
         for (panel, widgets) in zip(self.panels, self.p_widgets):
+            self.vl_main.addWidget(panel)
             for widget in widgets:
                 if widget["item"] == "button":
                     panel.add_button(widget)

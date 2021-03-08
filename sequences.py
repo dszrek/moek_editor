@@ -119,16 +119,16 @@ class MoekSeqBox(QFrame):
     i_changed = pyqtSignal()
     num_changed = pyqtSignal(int)
 
-    def __init__(self):
-        super().__init__()
-        self.seq_ctrl = MoekSeqCtrlButton()
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.seq_ctrl = MoekSeqCtrlButton(self)
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(0, 0, 0, 0)
         self.hlay.setSpacing(0)
         self.hlay.addWidget(self.seq_ctrl)
         self.sqb_btns = {}
         for r in range(1, 4):
-            _sqb = MoekSeqButton(num=r)
+            _sqb = MoekSeqButton(self, num=r)
             exec('self.hlay.addWidget(_sqb)')
             sqb_name = f'sqb_{r}'
             self.sqb_btns[sqb_name] = _sqb
@@ -283,8 +283,8 @@ class MoekSeqBox(QFrame):
 
 class MoekSeqCtrlButton(QFrame):
     """Przycisk-kontrolka sterujący sekwencją podkładów mapowych."""
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setFixedSize(50, 50)
         self.seq_dial = MoekSeqDial(self)
         self.seq_prev = MoekButton(self, hsize=50, name="seq_prev")
@@ -518,12 +518,12 @@ class MoekSeqProgressBar(QWidget):
 
 class MoekSeqAddBox(QFrame):
     """Pojemnik na wiget'y używane do dodawania podkładów mapowych do sekwencji."""
-    def __init__(self, id):
-        super().__init__()
+    def __init__(self, *args, id):
+        super().__init__(*args)
         self.id = id
         self.setFixedHeight(32)
         self.combobox = MoekComboBox(height=24, border=1)
-        self.add_btn = MoekButton(name="add")
+        self.add_btn = MoekButton(self, name="add")
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(8, 4, 2, 4)
         self.hlay.setSpacing(6)
@@ -567,8 +567,8 @@ class MoekSeqCfgBox(QFrame):
     """Pojemnik na wybrane podkłady mapowe w trybie ustawień sekwencji."""
     cnt_changed = pyqtSignal(int)
 
-    def __init__(self, _id):
-        super().__init__()
+    def __init__(self, *args, _id):
+        super().__init__(*args)
         self.id = _id
         self.height = int()
         self.vlay = QVBoxLayout()
@@ -626,8 +626,8 @@ class MoekSeqCfg(QFrame):
     map_changed = pyqtSignal()
     last_changed = pyqtSignal()
 
-    def __init__(self, _id):
-        super().__init__()
+    def __init__(self, *args, _id):
+        super().__init__(*args)
         self.id = _id
         self.setObjectName("box")
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
@@ -635,11 +635,11 @@ class MoekSeqCfg(QFrame):
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(3, 0, 2, 0)
         self.hlay.setSpacing(4)
-        self.order = MoekOrder()
+        self.order = MoekOrder(self)
         self.label = MoekSeqLabel(self)
         self.label.setObjectName("lbl")
         self.spinbox = MoekSeqSpinBox(self)
-        self.del_btn = MoekButton(name="del", size=24)
+        self.del_btn = MoekButton(self, name="del", size=24)
         self.hlay.addWidget(self.order)
         self.hlay.addWidget(self.label)
         self.hlay.addWidget(self.spinbox)
@@ -809,8 +809,8 @@ class MoekSpinner(QFrame):
     def __init__(self, *args, size="S"):
         super().__init__(*args)
         self.setFixedSize(12, 24)
-        self.up_btn = MoekButton(name="up" + size, size=12)
-        self.down_btn = MoekButton(name="down" + size, size=12)
+        self.up_btn = MoekButton(self, name="up" + size, size=12)
+        self.down_btn = MoekButton(self, name="down" + size, size=12)
         self.vlay = QVBoxLayout()
         self.vlay.setContentsMargins(0, 0, 0, 0)
         self.vlay.setSpacing(0)
@@ -877,18 +877,6 @@ class MoekSeqLabel(QLabel):
             if f_size == 6:  # Ograniczenie zmniejszenia czcionki
                 return
 
-
-class MoekHBox(QFrame):
-    """Zawartość panelu w kompozycji QHBoxLayout."""
-    def __init__(self):
-        super().__init__()
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-        self.hlay = QHBoxLayout()
-        self.hlay.setContentsMargins(0, 0, 0, 0)
-        self.hlay.setSpacing(0)
-        self.setLayout(self.hlay)
-
-
 class MoekButton(QToolButton):
     """Fabryka guzików."""
     def __init__(self, *args, size=25, hsize=0, name="", icon="", visible=True, enabled=True, checkable=False, tooltip=""):
@@ -922,8 +910,8 @@ class MoekButton(QToolButton):
 
 class MoekHLine(QFrame):
     """Linia pozioma."""
-    def __init__(self, px=1):
-        super().__init__()
+    def __init__(self, *args, px=1):
+        super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setFixedHeight(px)
         self.setStyleSheet("QFrame {background-color: rgba(52, 132, 240, 77)}")
@@ -1009,4 +997,4 @@ class MoekComboBox(QComboBox):
                             }
                            """)
 
-        self.findChild(QFrame).setWindowFlags(Qt.Popup | Qt.NoDropShadowWindowHint | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Popup | Qt.NoDropShadowWindowHint | Qt.FramelessWindowHint)

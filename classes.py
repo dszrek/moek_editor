@@ -213,7 +213,7 @@ class GESync:
             self.loaded = False
         # print(f"loaded: {self.loaded}")
         # Wyłączenie warstwy z maską powiatu (QGIS zawiesza się przy częstym zoomowaniu z tą włączoną warstwą):
-        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("powiaty_mask")[0].id()).setItemVisibilityChecked(False)
+        # QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("powiaty_mask")[0].id()).setItemVisibilityChecked(False)
         self.timer = QTimer()
         self.timer.setInterval(200)
         self.timer.timeout.connect(self.check_extent)
@@ -232,7 +232,7 @@ class GESync:
             # self.loaded = True
             # print(f"loaded: {self.loaded}")
             # Włączenie warstwy z maską powiatu:
-            QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("powiaty_mask")[0].id()).setItemVisibilityChecked(True)
+            # QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("powiaty_mask")[0].id()).setItemVisibilityChecked(True)
             if self.is_on:
                 self.ge_sync()
 

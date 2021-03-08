@@ -33,7 +33,7 @@ from .resources import resources
 from .main import dlg_main, db_login, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
 from .maptools import dlg_maptools
 from .viewnet import dlg_viewnet
-from .widgets import dlg_widgets
+from .widgets import dlg_widgets, MoekStackedBox
 from .basemaps import dlg_basemaps, basemaps_load
 from .sequences import dlg_sequences, sequences_load
 from .classes import GESync
@@ -254,10 +254,10 @@ class MoekEditor:
                 self.dockwidget.team_i = team_i
                 self.dockwidget.team_t = ""
 
+                dlg_widgets(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do widgets.py
                 dlg_main(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do main.py
                 dlg_maptools(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do maptools.py
                 dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
-                dlg_widgets(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do widgets.py
                 dlg_basemaps(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
                 dlg_sequences(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do sequences.py
 
@@ -268,15 +268,15 @@ class MoekEditor:
             if not teams_load():  # Nie udało się załadować team'ów użytkownika, przerwanie ładowania pluginu
                 self.iface.removeDockWidget(self.dockwidget)
                 return
+            self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
             teams_cb_changed()  # Załadowanie powiatów
             basemaps_load()  # Załadowanie podkładów mapowych
             sequences_load()
-
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
-            self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
-            self.dockwidget.setUpdatesEnabled(True)
-            # self.dockwidget.show()
+
             finish = time.perf_counter()
             print(f"Proces ładowania pluginu trwał {round(finish - start, 2)} sek.")
+            self.dockwidget.setUpdatesEnabled(True)
+            self.dockwidget.show()

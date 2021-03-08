@@ -79,6 +79,7 @@ def teams_load():
 def teams_cb_changed():
     """Zmiana w cb aktywnego team'u."""
     # print("[teams_cb_changed]")
+    dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
     t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Zapamiętanie aktualnego dlg.team_t
     list_srch = [t for t in dlg.teams if t_team_t in t]
     t_team_i = list_srch[0][0]  # Tymczasowy team_i
@@ -167,6 +168,7 @@ def powiaty_load():
 def powiaty_mode_changed(clicked):
     """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
     # print("[powiaty_mode_changed:", clicked, "]")
+    dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
     if clicked:  # Zmiana trybu wyświetlania powiatów spowodowana kliknięciem w io_btn
         db_attr_change(tbl="team_users", attr="b_pow_mode", val=dlg.p_pow.is_active(), sql_bns=" AND team_id = " + str(dlg.team_i))  # Aktualizacja b_pow_mode w db
     else:  # Zmiana trybu wyświetlania powiatów spowodowana zmianą aktywnego team'u
@@ -239,6 +241,8 @@ def flag_layer_update():
     # Zmiana zawartości warstwy flagi:
     pg_layer_change(uri_1, lyr_1)
     pg_layer_change(uri_2, lyr_2)
+    # Aktualizacja listy flag w ObjectManager:
+    dlg.obj.flag_ids = get_flag_ids()
 
 def wyr_layer_update(check=True):
     """Aktualizacja warstw z wyrobiskami."""
@@ -268,23 +272,23 @@ def wyr_powiaty_check():
     Jeśli nie, to przypisuje je na podstawie geometrii poligonalnej lub punktowej."""
     wyr_ids = get_wyr_ids("wyrobiska")
     wyr_pow_ids = get_wyr_ids("wyr_pow")
-    wyr_id_diff = list_diff(wyr_ids, wyr_pow_ids)
-    if not wyr_id_diff:
+    wyr_pow_to_add = list_diff(wyr_ids, wyr_pow_ids)
+    # TODO: wyr_pow_to_remove = list_diff(wyr_pow_ids, wyr_ids)
+    if not wyr_pow_to_add:
         return
+    print(wyr_pow_to_add)
     # Uzupełnienie brakujących rekordów w tabeli 'wyr_pow':
     wyr_poly_ids = []
     wyr_point_ids = []
-    for wyr in wyr_id_diff:
+    for wyr in wyr_pow_to_add:
         wyr_poly_ids.append(wyr) if wyr_poly_exist(wyr) else wyr_point_ids.append(wyr)
-    print(f"wyr_poly_ids: {wyr_poly_ids}")
-    print(f"wyr_point_ids: {wyr_point_ids}")
-    # Pozyskanie informacji o powiatach z geometrii poligonalnej:
     if wyr_poly_ids:
+    # Pozyskanie informacji o powiatach z geometrii poligonalnej:
         wyr_polys = get_poly_from_ids(wyr_poly_ids)
         for wyr_poly in wyr_polys:
             wyr_powiaty_change(wyr_poly[0], wyr_poly[1])
-    # Pozyskanie informacji o powiatach z geometrii punktowej:
     if wyr_point_ids:
+        # Pozyskanie informacji o powiatach z geometrii punktowej:
         wyr_pts = get_point_from_ids(wyr_point_ids)
         for wyr_pt in wyr_pts:
             wyr_powiaty_change(wyr_pt[0], wyr_pt[1])
@@ -345,8 +349,26 @@ def get_wyr_ids(table, col_name=None, vals=None):
         else:
             return None
 
+def get_flag_ids():
+    """Zwraca listę id flag."""
+    db = PgConn()
+    if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
+        sql = "SELECT id FROM team_" + str(dlg.team_i) + ".flagi WHERE pow_grp = '" + str(dlg.powiat_i) + "' ORDER BY id;"
+    else:  # Tryb wielu powiatów
+        sql = "SELECT id FROM team_" + str(dlg.team_i) + ".flagi ORDER BY id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return None
+
 def list_diff(l1, l2):
-    return (list(list(set(l1)-set(l2)) + list(set(l2)-set(l1))))
+    """Zwraca listę elementów l1, które nie występują w l2."""
+    return (list(set(l1)-set(l2)))
 
 def active_pow_listed():
     """Zwraca listę z numerami aktywnych powiatów."""
@@ -529,10 +551,16 @@ def vn_cfg(seq=0):
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     # print("[vn_setup_mode:", b_flag, "]")
+
+    # Włączenie/Wyłączenie warstw flag i wyrobisk:
+    QgsProject.instance().layerTreeRoot().findGroup("wyrobiska").setItemVisibilityChecked(not b_flag)
+    QgsProject.instance().layerTreeRoot().findGroup("flagi").setItemVisibilityChecked(not b_flag)
     global vn_setup
-    dlg.mt.tool_off()  # Wyłączenie maptool'a (mógł być uruchomiony)
+    dlg.mt.init("multi_tool")  # Przełączenie na multi_tool'a
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
+        dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
+        dlg.side_dock.hide()  # Schowanie bocznego dock'u
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą
         dlg.p_pow.active = False  # Wyłączenie trybu wybranego powiatu
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
@@ -545,6 +573,8 @@ def vn_setup_mode(b_flag):
         dlg.p_vn.box.setCurrentIndex(4)  # zmiana strony p_vn
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
+        QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection()
+        dlg.side_dock.show()
         dlg.p_pow.active = dlg.p_pow.t_active  # Ewentualne przywrócenie trybu powiatu sprzed zmiany
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
         try:

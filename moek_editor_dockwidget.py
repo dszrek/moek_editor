@@ -36,7 +36,7 @@ from .classes import PgConn
 from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekSideDock, MoekBottomDock, MoekMenuFlag
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekSideDock, MoekBottomDock, FlagCanvasPanel, WyrCanvasPanel
 from .basemaps import MoekMapPanel
 from .sequences import prev_map, next_map, seq
 
@@ -171,7 +171,6 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     panel.add_seqaddbox(widget)
                 elif widget["item"] == "seqcfgbox":
                     panel.add_seqcfgbox(widget)
-            self.vl_main.addWidget(panel)
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)
 
@@ -181,8 +180,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.bottom_dock = MoekBottomDock()
 
         tb_multi_tool_widgets = [
-                    {"item": "button", "name": "multi_tool", "size": 50, "checkable": True, "tooltip": u"nawigacja i selekcja obiektów"},
-                    {"item": "button", "name": "wyr_edit", "size": 50, "checkable": False, "tooltip": u"edycja granic wyrobiska"}
+                    {"item": "button", "name": "multi_tool", "size": 50, "checkable": True, "tooltip": u"nawigacja i selekcja obiektów"}
                     ]
         tb_add_widgets = [
                     {"item": "button", "name": "flag_fchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę do kontroli terenowej"},
@@ -216,10 +214,18 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                 if key == "dock" and val == "bottom":
                     self.bottom_dock.add_toolbox(toolbox)
 
+        self.flag_panel = FlagCanvasPanel()
+        self.wyr_panel = WyrCanvasPanel()
+        self.mt = MapToolManager(dlg=self, canvas=iface.mapCanvas())
+        self.obj = ObjectManager(dlg=self, canvas=iface.mapCanvas())
+
         self.side_dock.move(1,0)
         self.side_dock.show()
         bottom_y = iface.mapCanvas().height() - 52
         self.bottom_dock.move(0, bottom_y)
+        self.flag_panel.move(60, 60)
+        wyr_x = iface.mapCanvas().width() - self.wyr_panel.width() - 60
+        self.wyr_panel.move(wyr_x, 60)
 
         self.resizeEvent = self.resize_panel
         self.canvas = iface.mapCanvas()
@@ -235,10 +241,6 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         # self.p_auto.active = True
         self.hk_vn_load()
         self.hk_seq_load()
-
-        self.flag_menu = MoekMenuFlag()
-        self.mt = MapToolManager(dlg=self, canvas=iface.mapCanvas())
-        self.obj = ObjectManager(dlg=self, canvas=iface.mapCanvas())
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -264,6 +266,9 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.side_dock.move(1,0)
         self.bottom_dock.setFixedWidth(canvas.width())
         self.bottom_dock.move(0, canvas.height() - 52)
+        self.flag_panel.move(60, 60)
+        wyr_x = iface.mapCanvas().width() - self.wyr_panel.width() - 60
+        self.wyr_panel.move(wyr_x, 60)
 
     def resize_panel(self, event):
         """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
@@ -386,20 +391,14 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_unsel"].pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
-        # self.p_flag.widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
-        # self.p_flag.widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
         self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
-        # self.p_flag.widgets["btn_flag_del"].clicked.connect(lambda: self.mt.init("flag_del"))
         self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_wn"], grp=False, name="wn_kopaliny_pne"))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_midas"], grp=True, name="MIDAS"))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_mgsp"], grp=True, name="MGSP"))
         self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_smgp"], grp=False, name="smgp_wyrobiska"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
-        self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"].pressed.connect(lambda: self.mt.init("wyr_edit"))
-        # self.p_wyr.widgets["btn_wyr_add"].clicked.connect(lambda: self.mt.init("wyr_add"))
-        # self.p_wyr.widgets["btn_wyr_del"].clicked.connect(lambda: self.mt.init("wyr_del"))
         # self.p_auto.widgets["btn_auto_add"].clicked.connect(lambda: self.mt.init("auto_add"))
         # self.p_auto.widgets["btn_auto_del"].clicked.connect(lambda: self.mt.init("auto_del"))
         # self.p_auto.widgets["btn_marsz_add"].clicked.connect(lambda: self.mt.init("marsz_add"))
@@ -476,15 +475,21 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         except:
             pass
         try:
+            iface.mapCanvas().children().remove(self.flag_panel)
+            self.flag_panel.deleteLater()
+        except:
+            pass
+        try:
+            iface.mapCanvas().children().remove(self.wyr_panel)
+            self.wyr_panel.deleteLater()
+        except:
+            pass
+        try:
             self.mt = None
         except Exception as err:
             print(err)
         try:
             self.obj = None
-        except Exception as err:
-            print(err)
-        try:
-            self.flag_menu = None
         except Exception as err:
             print(err)
         try:

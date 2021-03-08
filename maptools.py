@@ -10,7 +10,7 @@ from itertools import combinations
 
 from .classes import PgConn, CfgPars, threading_func
 from .viewnet import vn_change, vn_powsel, vn_polysel
-from .main import wyr_powiaty_change, wyr_layer_update, db_attr_change
+from .main import wyr_powiaty_change, wyr_layer_update, db_attr_change, get_wyr_ids, get_flag_ids
 
 dlg = None
 
@@ -25,12 +25,15 @@ class ObjectManager:
     def __init__(self, dlg, canvas):
         self.dlg = dlg  # Referencja do wtyczki
         self.canvas = canvas  # Referencja do mapy
-        self.flag_menu = False
+        self.flag_clicked = False
+        self.wyr_clicked = False
+        self.flag_ids = []
         self.flag = None
-        self.flag_data = [None, None, None]
+        self.flag_data = []
         self.flag_hidden = None
-        self.wyr = None
         self.wyr_ids = []
+        self.wyr = None
+        self.wyr_data = []
         self.p_vn = False
 
     def __setattr__(self, attr, val):
@@ -39,16 +42,29 @@ class ObjectManager:
         if attr == "flag":
             QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'flag_sel', val)
             self.flag_hidden = None
+            if val:
+                self.flag_data = self.flag_update()
+                self.list_position_check("flag")
+                self.dlg.flag_panel.flag_tools.fchk = self.flag_data[1]  # Aktualizacja przycisku fchg
+                self.dlg.flag_panel.notepad_box.set_text(self.flag_data[2])  # Aktualizacja tekstu notatki
+            if self.dlg.mt.mt_name == "flag_move":
+                self.dlg.mt.init("multi_tool")
+            self.dlg.flag_panel.id_box.id = val if val else None
+            self.dlg.flag_panel.show() if val else self.dlg.flag_panel.hide()
         if attr == "flag_hidden":
             QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'flag_hidden', val)
             QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
             QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
-        elif attr == "flag_data":
-            if self.flag_data[0] and self.flag != self.flag_data[1][0]:
-                self.flag = self.flag_data[1][0]
         elif attr == "wyr":
-            self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"].setEnabled(False) if not val else self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"].setEnabled(True)
             QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'wyr_sel', val)
+            if val:
+                self.wyr_data = self.wyr_update()
+                self.list_position_check("wyr")
+                area_txt = f"  {self.wyr_data[1]} m\u00b2  "
+                self.dlg.wyr_panel.area_label.setText(area_txt)
+                self.dlg.wyr_panel.notepad_box.set_text(self.wyr_data[2])  # Aktualizacja tekstu notatki
+            self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
+            self.dlg.wyr_panel.id_box.id = val if val else None
             QgsProject.instance().mapLayersByName("wyr_point")[0].triggerRepaint()
             QgsProject.instance().mapLayersByName("wyr_poly")[0].triggerRepaint()
 
@@ -57,8 +73,7 @@ class ObjectManager:
         if _bool:
             self.flag_hidden = self.flag
         else:
-            self.flag = None
-
+            self.flag_hidden = None
 
     def obj_change(self, obj_data, click):
         """Zmiana zaznaczenia obiektu."""
@@ -67,42 +82,20 @@ class ObjectManager:
             # Naciśnięto lewy przycisk na obiekcie:
             if lyr_name == "wyr_point":
                 self.wyr = obj_data[1][0]
-            else:
-                self.flag_data = obj_data
-                self.menu_hide()
-        elif click == "right":
-            # Naciśnięto prawy przycisk na obiekcie:
-            if self.flag == obj_data[1][0]:
-                # Kliknięto na zaznaczoną flagę - pokazanie menu podręcznego:
-                self.dlg.flag_menu.fchk = obj_data[1][2]  # Aktualizacja przycisku fchg
-                self.menu_show()
-            else:
-                self.menu_hide()
+            elif lyr_name == "flagi_z_teren" or lyr_name == "flagi_bez_teren":
+                if self.flag != obj_data[1][0]:
+                    self.flag = obj_data[1][0]
 
-    def menu_hide(self):
-        """Ukrycie menu podręcznego flag."""
-        if self.flag_menu:
-            dlg.flag_menu.hide()
-            self.flag_menu = False
-
-    def menu_show(self):
-        """Pokazanie menu podręcznego flag."""
-        if self.flag_menu:
-            return
-        extent =iface.mapCanvas().extent()
-        geom = self.flag_data[2]
-        x_map = round(extent.xMaximum()) - round(extent.xMinimum())
-        y_map = round(extent.yMaximum()) - round(extent.yMinimum())
-        xp = round(geom.x()) - round(extent.xMinimum())
-        yp = round(extent.yMaximum()) - round(geom.y())
-        x_scr = round(xp * iface.mapCanvas().width() / x_map)
-        y_scr = round(yp * iface.mapCanvas().height() / y_map)
-        dlg.flag_menu.move(x_scr - 56, y_scr + 25)
-        dlg.flag_menu.show()
-        self.flag_menu = True
+    def clear_sel(self):
+        """Odznaczenie wybranych flag i wyrobisk."""
+        if self.flag:
+            self.flag = None
+        if self.wyr:
+            self.wyr = None
 
     def edit_mode(self, enabled):
         """Zmiana ui pod wpływem włączenia/wyłączenia EditPolyMapTool."""
+        dlg.wyr_panel.hide() if enabled else dlg.wyr_panel.show()
         dlg.side_dock.hide() if enabled else dlg.side_dock.show()
         dlg.bottom_dock.show() if enabled else dlg.bottom_dock.hide()
         QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("wyr_point")[0].id()).setItemVisibilityChecked(not enabled)
@@ -111,15 +104,156 @@ class ObjectManager:
         dlg.p_pow.setEnabled(not enabled)
         dlg.p_vn.setEnabled(not enabled)
         if enabled:
+            if self.flag:
+                # Schowanie flag_panel:
+                dlg.flag_panel.hide()
             if dlg.p_vn.is_active():
                 # Wyłączenie skrótów klawiszowych viewnet:
                 self.p_vn = True
                 dlg.hk_vn = False
         else:
+            if self.flag:
+                # Ponowne pokazanie flag_panel:
+                dlg.flag_panel.show()
             if self.p_vn:
                 # Ponowne włączenie skrótów klawiszowych viewnet:
                 self.p_vn = False
                 dlg.hk_vn = True
+
+    def object_prevnext(self, _obj, next):
+        """Aktywuje kolejną flagę z listy."""
+        if _obj == "flag":
+            obj = "self.flag"
+            ids = self.flag_ids
+            val = self.flag
+        elif _obj == "wyr":
+            obj = "self.wyr"
+            ids = self.wyr_ids
+            val = self.wyr
+        else:
+            return
+        cur_id_idx = ids.index(val)  # Pozycja na liście aktualnego obiektu
+        if next:
+            exec( obj + " = " + str(ids[cur_id_idx + 1]))
+        else:
+            exec( obj + " = " + str(ids[cur_id_idx - 1]))
+        self.pan_to_object(_obj)
+
+    def flag_update(self):
+        """Zwraca dane flagi."""
+        db = PgConn()
+        sql = "SELECT id, b_fieldcheck, t_notatki FROM team_" + str(dlg.team_i) + ".flagi WHERE id = " + str(self.flag) + ";"
+        if db:
+            res = db.query_sel(sql, False)
+            if res:
+                print(f"res: {res}")
+                return res
+            else:
+                return None
+
+    def wyr_update(self):
+        """Zwraca dane wyrobiska."""
+        db = PgConn()
+        sql = "SELECT wyr_id, i_area_m2, t_notatki FROM team_" + str(dlg.team_i) + ".wyrobiska WHERE wyr_id = " + str(self.wyr) + ";"
+        if db:
+            res = db.query_sel(sql, False)
+            if res:
+                print(f"res: {res}")
+                return res
+            else:
+                return None
+
+    def set_object_from_input(self, _id, _obj):
+        """Próba zmiany aktualnej flagi lub wyrobiska po wpisaniu go w idbox'ie."""
+        if _obj == "flag":
+            obj = "self.flag"
+            ids = self.flag_ids
+            id_box = "dlg.flag_panel.id_box.id"
+        elif _obj == "wyr":
+            obj = "self.wyr"
+            ids = self.wyr_ids
+            id_box = "dlg.wyr_panel.id_box.id"
+        else:
+            return
+        if _id in ids:
+            exec(obj + ' = ' + str(_id))
+            self.pan_to_object(_obj)
+        else:
+            exec(id_box + ' = ' + obj)
+
+    def set_object_text(self, _obj):
+        if _obj == "flag":
+            panel = self.dlg.flag_panel
+            table = f"team_{str(dlg.team_i)}.flagi"
+            bns = f" WHERE id = {self.flag}"
+            upd = "self.flag = self.flag"
+        elif _obj == "wyr":
+            panel = self.dlg.wyr_panel
+            table = f"team_{str(dlg.team_i)}.wyrobiska"
+            bns = f" WHERE wyr_id = {self.wyr}"
+            upd = "self.wyr = self.wyr"
+        raw_text = panel.notepad_box.get_text()
+        if not raw_text:
+            text = "NULL"
+        else:
+            raw_text = raw_text.replace("'", "''")
+            text = f"'{raw_text}'"
+        attr_chg = db_attr_change(tbl=table, attr="t_notatki", val=text, sql_bns=bns, user=False)
+        if not attr_chg:
+            print("Nie zmieniono tekstu notatki obiektu")
+            return False
+        else:
+            exec(upd)  # Aktualizacja danych obiektu
+            return True
+
+    def list_position_check(self, _obj):
+        """Sprawdza pozycję flagi lub wyrobiska na liście."""
+        if _obj == "flag":
+            obj = "self.flag"
+            val = self.flag
+            ids = self.flag_ids
+            id_box = dlg.flag_panel.id_box
+        elif _obj == "wyr":
+            obj = "self.wyr"
+            val = self.wyr
+            ids = self.wyr_ids
+            id_box = dlg.wyr_panel.id_box
+        else:
+            return
+        if not ids:
+            return
+        obj_cnt = len(ids)
+        try:
+            cur_id_idx = ids.index(val)  # Pozycja na liście aktualnej flagi
+        except Exception as err:
+            print(err)
+            return
+        if cur_id_idx == 0:  # Pierwsza pozycja na liście
+            id_box.prev_btn.setEnabled(False)
+        else:
+            id_box.prev_btn.setEnabled(True)
+        if cur_id_idx == obj_cnt - 1:  # Ostatnia pozycja na liście
+            id_box.next_btn.setEnabled(False)
+        else:
+            id_box.next_btn.setEnabled(True)
+
+    def pan_to_object(self, _obj):
+        if _obj == "flag":
+            if self.flag_data[1]:
+                point_lyr = QgsProject.instance().mapLayersByName("flagi_z_teren")[0]
+            else:
+                point_lyr = QgsProject.instance().mapLayersByName("flagi_bez_teren")[0]
+            feats = point_lyr.getFeatures(f'"id" = {self.flag}')
+        elif _obj == "wyr":
+            point_lyr = QgsProject.instance().mapLayersByName("wyr_point")[0]
+            feats = point_lyr.getFeatures(f'"wyr_id" = {self.wyr}')
+        try:
+            feat = list(feats)[0]
+        except Exception as err:
+            print(f"pan: {err}")
+            return
+        point = feat.geometry()
+        self.canvas.zoomToFeatureExtent(point.boundingBox())
 
 
 class MapToolManager:
@@ -142,9 +276,9 @@ class MapToolManager:
             {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel, "extra" : [(0, 0, 255, 128), (0, 0, 255, 80)]},
             {"name" : "flt_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"], "fn" : flag_add, "extra" : ['true']},
             {"name" : "flf_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"], "fn" : flag_add, "extra" : ['false']},
-            {"name" : "flag_move", "class" : PointDrawMapTool, "button" : self.dlg.flag_menu.flag_move, "fn" : flag_move, "extra" : []},
+            {"name" : "flag_move", "class" : PointDrawMapTool, "button" : self.dlg.flag_panel.flag_tools.flag_move, "fn" : flag_move, "extra" : []},
             {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly, "extra" : [(0, 255, 0, 128), (0, 255, 0, 80)]},
-            {"name" : "wyr_edit", "class" : EditPolyMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_wyr_edit"], "lyr" : ["wyr_poly"], "fn" : wyr_poly_change}
+            {"name" : "wyr_edit", "class" : EditPolyMapTool, "button" : self.dlg.wyr_panel.wyr_edit, "lyr" : ["wyr_poly"], "fn" : wyr_poly_change}
             # {"name" : "auto_add", "class" : PointDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_add"], "fn" : auto_add},
             # {"name" : "auto_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_del"], "lyr" : ["parking"], "fn" : auto_del},
             # {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_add"], "fn" : marsz_add},
@@ -1389,7 +1523,6 @@ class MultiMapTool(QgsMapToolIdentify):
 
     def canvasMoveEvent(self, event):
         if event.buttons() == Qt.LeftButton:
-            dlg.flag_menu.hide()
             self.dragging = True
             self.cursor = "closed_hand"
             self.canvas.panAction(event)
@@ -1424,11 +1557,6 @@ class MultiMapTool(QgsMapToolIdentify):
                 self.identified.emit(result[0].mLayer, result[0].mFeature, "right")
             else:
                 self.identified.emit(None, None, "right")
-
-    def wheelEvent(self, event):
-        super().wheelEvent(event)
-        if dlg.obj.flag_menu:
-            dlg.obj.menu_hide()
 
 
 class IdentMapTool(QgsMapToolIdentify):
@@ -1658,8 +1786,8 @@ class PolyDrawMapTool(QgsMapTool):
             self.area_painter.removeLastPoint(0)
             if self.area_painter.numberOfVertices() > 2:
                 self.valid_check()
-                self.reset()
                 self.drawn.emit(self.area_painter.asGeometry()) if self.change_is_valid else self.drawn.emit(None)
+                self.reset()
             else:
                 self.reset()
                 self.drawn.emit(None)
@@ -1758,8 +1886,6 @@ def obj_sel(layer, feature, click):
     """Przekazuje do menadżera obiektów dane nowowybranego obiektu (nazwa warstwy i atrybuty obiektu)."""
     if layer:
         dlg.obj.obj_change([layer.name(), feature.attributes(), feature.geometry().asPoint()], click)
-    else:
-        dlg.obj.menu_hide()
 
 def flag_add(point, extra):
     """Utworzenie nowego obiektu flagi."""
@@ -1775,10 +1901,12 @@ def flag_add(point, extra):
     sql = "INSERT INTO team_" + str(dlg.team_i) + ".flagi(user_id, pow_grp, b_fieldcheck, geom) VALUES (" + str(dlg.user_id) + ", " + str(fl_pow) + ", " + is_fldchk + ", ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180))"
     if db:
         res = db.query_upd(sql)
-        if res:
-            print("Dodano flagę")
+        if not res:
+            print("Nie udało się dodać flagi.")
     QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
     QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
+    dlg.obj.flag_ids = get_flag_ids()  # Aktualizacja listy flag w ObjectManager
+    dlg.obj.list_position_check("flag")  # Aktualizacja pozycji na liście obecnie wybranej flagi
 
 def flag_move(point, extra):
     """Zmiana lokalizacji flagi."""
@@ -1855,6 +1983,8 @@ def wyr_add_poly(geom, wyr_id=None):
     lyr_poly.triggerRepaint()
     wyr_powiaty_change(wyr_id, geom)
     wyr_point_update(wyr_id, geom)
+    dlg.obj.wyr_ids = get_wyr_ids("wyrobiska")  # Aktualizacja listy wyrobisk w ObjectManager
+    dlg.obj.list_position_check("wyr")  # Aktualizacja pozycji na liście obecnie wybranego wyrobiska
 
 def wyr_point_update(wyr_id, geom):
     """Aktualizacja punktowego obiektu wyrobiska."""

@@ -919,10 +919,8 @@ class MoekHLine(QFrame):
 
 class MoekComboBox(QComboBox):
     """Fabryka rozwijanych."""
-    def __init__(self, name="", height=25, border=2, b_round="none"):
-        super().__init__()
-        self.setSizeAdjustPolicy(QComboBox.AdjustToContentsOnFirstShow)
-        self.setAutoFillBackground(False)
+    def __init__(self, *args, name="", height=25, border=2, b_round="none"):
+        super().__init__(*args)
         if b_round == "right":
             B_CSS = "border-top-right-radius: 3px; border-bottom-right-radius: 3px;"
         elif b_round == "all":
@@ -986,15 +984,14 @@ class MoekComboBox(QComboBox):
                             }
                             QComboBox QAbstractItemView {
                                 border: """ + str(border) + """px solid rgb(52, 132, 240);
-                                background-color: transparent;
+                                background-color: white;
                             }
                             QComboBox QAbstractItemView::item {
                                 padding-top: 3px;
                                 padding-left: 4px;
                                 border: """ + str(border) + """px solid rgb(52, 132, 240);
-                                background-color: transparent;
-                                font-size: 9pt;
+                                background-color: white;
                             }
                            """)
-
-        self.setWindowFlags(Qt.Popup | Qt.NoDropShadowWindowHint | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.setAttribute(Qt.WA_NoSystemBackground | Qt.WA_TranslucentBackground | Qt.WA_PaintOnScreen)

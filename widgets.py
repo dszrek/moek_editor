@@ -3,12 +3,12 @@ import os
 import time
 
 from qgis.core import QgsProject
-from PyQt5.QtWidgets import QWidget, QFrame, QToolButton, QComboBox, QLineEdit, QCheckBox, QLabel, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
-from PyQt5.QtCore import Qt, QSize, pyqtSignal
-from PyQt5.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath
+from PyQt5.QtWidgets import QWidget, QMessageBox, QFrame, QToolButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
+from PyQt5.QtCore import Qt, QSize, pyqtSignal, QRegExp
+from PyQt5.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
 from .classes import PgConn
 
@@ -252,17 +252,414 @@ class MoekBarPanel(QFrame):
         icon_name = dict["icon"] if "icon" in dict else dict["name"]
         size = dict["size"] if "size" in dict else 0
         hsize = dict["hsize"] if "hsize" in dict else 0
-        _btn = MoekButton(size=size, hsize=hsize, name=icon_name, checkable=dict["checkable"], tooltip=dict["tooltip"])
+        _btn = MoekButton(self, size=size, hsize=hsize, name=icon_name, checkable=dict["checkable"], tooltip=dict["tooltip"])
         self.box.lay.addWidget(_btn)
         btn_name = f'btn_{dict["name"]}'
         self.box.widgets[btn_name] = _btn
 
     def add_combobox(self, dict):
         """Dodanie combobox'a do belki panelu."""
-        _cmb = MoekComboBox(name=dict["name"], height=dict["height"], border=dict["border"], b_round=dict["b_round"])
+        _cmb = MoekComboBox(self, name=dict["name"], height=dict["height"], border=dict["border"], b_round=dict["b_round"])
         self.box.lay.addWidget(_cmb)
         cmb_name = f'cmb_{dict["name"]}'
         self.box.widgets[cmb_name] = _cmb
+
+
+class WyrCanvasPanel(QFrame):
+    """Zagnieżdżony w mapcanvas'ie panel do obsługi wyrobisk."""
+    def __init__(self):
+        super().__init__()
+        self.setParent(iface.mapCanvas())
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
+        self.setFixedWidth(350)
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
+        self.box = MoekVBox(self)
+        self.box.setObjectName("box")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(3, 3, 3, 3)
+        vlay.setSpacing(1)
+        vlay.addWidget(self.bar)
+        vlay.addWidget(self.box)
+        self.setLayout(vlay)
+        self.sp_main = CanvasHSubPanel(self, height=34)
+        self.box.lay.addWidget(self.sp_main)
+        self.id_box = IdSpinBox(self, _obj="wyr")
+        self.id_label = PanelLabel(text="  Id:", size=12)
+        self.sp_main.box.lay.addWidget(self.id_label)
+        self.sp_main.box.lay.addWidget(self.id_box)
+        spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.sp_main.box.lay.addItem(spacer)
+        # self.sp_area = CanvasHSubPanel(self, height=34)
+        # self.box.lay.addWidget(self.sp_area)
+        self.area_label = PanelLabel(text="", size=12)
+        self.sp_main.box.lay.addWidget(self.area_label)
+        # spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        # self.sp_area.box.lay.addItem(spacer)
+        self.wyr_edit = MoekButton(self, name="wyr_edit", size=34, checkable=False)
+        self.wyr_edit.clicked.connect(lambda: dlg.mt.init("wyr_edit"))
+        self.sp_main.box.lay.addWidget(self.wyr_edit)
+        self.wyr_del = MoekButton(self, name="trash", size=34, checkable=False)
+        self.wyr_del.clicked.connect(self.wyr_delete)
+        self.sp_main.box.lay.addWidget(self.wyr_del)
+        self.sp_notepad = CanvasHSubPanel(self, height=110)
+        self.box.lay.addWidget(self.sp_notepad)
+        self.notepad_box = TextPadBox(self, height=110, obj="wyr")
+        self.sp_notepad.box.lay.addWidget(self.notepad_box)
+
+    def exit_clicked(self):
+        """Zmiana trybu active po kliknięciu na przycisk io."""
+        dlg.obj.wyr = None
+
+    def wyr_delete(self):
+        """Usunięcie wyrobiska z bazy danych."""
+        m_text = "Wyrobisko wraz ze wszystkimi informacjami o nim zostanie trwale usunięte z bazy danych. Czy chcesz kontynuować?"
+        reply = QMessageBox.question(iface.mainWindow(), "Kasowanie wyrobiska", m_text, QMessageBox.Yes, QMessageBox.No)
+        if reply == QMessageBox.No:
+            return
+        db = PgConn()
+        sql = "DELETE FROM team_" + str(dlg.team_i) + ".wyrobiska WHERE wyr_id = " + str(dlg.obj.wyr) + ";"
+        if db:
+            res = db.query_upd(sql)
+            if res:
+                dlg.obj.wyr = None
+        # Aktualizacja listy wyrobisk w ObjectManager:
+        dlg.obj.wyr_ids = get_wyr_ids("wyrobiska")
+
+
+class FlagCanvasPanel(QFrame):
+    """Zagnieżdżony w mapcanvas'ie panel do obsługi flag."""
+    def __init__(self):
+        super().__init__()
+        self.setParent(iface.mapCanvas())
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
+        self.setFixedWidth(350)
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        self.bar = CanvasPanelTitleBar(self, title="Flagi", width=self.width())
+        self.box = MoekVBox(self)
+        self.box.setObjectName("box")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(3, 3, 3, 3)
+        vlay.setSpacing(1)
+        vlay.addWidget(self.bar)
+        vlay.addWidget(self.box)
+        self.setLayout(vlay)
+        self.sp_tools = CanvasHSubPanel(self, height=34)
+        self.box.lay.addWidget(self.sp_tools)
+        self.id_label = PanelLabel(text="  Id:", size=12)
+        self.sp_tools.box.lay.addWidget(self.id_label)
+        self.id_box = IdSpinBox(self, _obj="flag")
+        self.sp_tools.box.lay.addWidget(self.id_box)
+        spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.sp_tools.box.lay.addItem(spacer)
+        self.flag_tools = FlagTools(self)
+        self.sp_tools.box.lay.addWidget(self.flag_tools)
+        self.sp_notepad = CanvasHSubPanel(self, height=110)
+        self.box.lay.addWidget(self.sp_notepad)
+        self.notepad_box = TextPadBox(self, height=110, obj="flag")
+        self.sp_notepad.box.lay.addWidget(self.notepad_box)
+
+
+    def exit_clicked(self):
+        """Zmiana trybu active po kliknięciu na przycisk io."""
+        dlg.obj.flag = None
+
+
+class CanvasPanelTitleBar(QFrame):
+    """Belka panelu z box'em."""
+    def __init__(self, *args, width, title=""):
+        super().__init__(*args)
+        self.setObjectName("bar")
+        self.setFixedHeight(34)
+        self.exit_btn = MoekButton(self, name="cp_exit", size=34, enabled=True, checkable=False)
+        self.exit_btn.clicked.connect(self.exit_clicked)
+        if len(title) > 0:
+            self.l_title = PanelLabel(text=title, size=12)
+            self.l_title.setFixedWidth(width - 34)
+        self.setStyleSheet("""
+                    QFrame#bar{background-color: rgba(0, 0, 0, 1.0); border: none}
+                    QFrame#title {color: rgb(255, 255, 255); font-size: 12pt; qproperty-alignment: AlignCenter}
+                    """)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(0)
+        if len(title) > 0:
+            hlay.addWidget(self.l_title)
+        hlay.addWidget(self.exit_btn)
+        self.setLayout(hlay)
+
+    def exit_clicked(self):
+        self.parent().exit_clicked()
+
+
+class CanvasHSubPanel(QFrame):
+    """Belka panelu z box'em."""
+    def __init__(self, *args, height):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setFixedHeight(height)
+        self.box = MoekHBox(self)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.8); border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(0)
+        hlay.addWidget(self.box)
+        self.setLayout(hlay)
+
+
+class FlagTools(QFrame):
+    """Menu przyborne dla flag."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setCursor(Qt.ArrowCursor)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(104, 34)
+        self.setObjectName("main")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
+        self.flag_move = MoekButton(self, name="move", size=34, checkable=True)
+        self.flag_chg = MoekButton(self, name="flag_chg_nfchk", size=34)
+        self.flag_del = MoekButton(self, name="trash", size=34)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(1)
+        hlay.addWidget(self.flag_move)
+        hlay.addWidget(self.flag_chg)
+        hlay.addWidget(self.flag_del)
+        self.setLayout(hlay)
+        self.fchk = False
+        self.flag_move.clicked.connect(self.init_move)
+        self.flag_chg.clicked.connect(self.flag_fchk_change)
+        self.flag_del.clicked.connect(self.flag_delete)
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "fchk":
+            self.flag_chg.set_icon(name="flag_chg_nfchk", size=34) if val else self.flag_chg.set_icon(name="flag_chg_fchk", size=34)
+
+    def init_move(self):
+        """Zmiana lokalizacji flagi."""
+        dlg.obj.flag_hide(True)
+        dlg.mt.init("flag_move")
+
+    def flag_fchk_change(self):
+        """Zmiana rodzaju flagi."""
+        table = f"team_{str(dlg.team_i)}.flagi"
+        bns = f" WHERE id = {dlg.obj.flag}"
+        db_attr_change(tbl=table, attr="b_fieldcheck", val=not self.fchk, sql_bns=bns, user=False)
+        self.fchk = not self.fchk
+        QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
+        QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
+
+    def flag_delete(self):
+        """Usunięcie flagi z bazy danych."""
+        db = PgConn()
+        sql = "DELETE FROM team_" + str(dlg.team_i) + ".flagi WHERE id = " + str(dlg.obj.flag) + ";"
+        if db:
+            res = db.query_upd(sql)
+            if res:
+                dlg.obj.flag = None
+        # Aktualizacja listy flag w ObjectManager:
+        dlg.obj.flag_ids = get_flag_ids()
+
+
+class IdSpinBox(QFrame):
+    """Widget z centralnie umieszczonym labelem i przyciskami zmiany po jego obu stronach."""
+    def __init__(self, *args, _obj):
+        super().__init__(*args)
+        self.obj = _obj
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(90, 34)
+        self.prev_btn = MoekButton(self, name="id_prev", size=22, hsize=34, checkable=False)
+        self.prev_btn.clicked.connect(self.prev_clicked)
+        self.next_btn = MoekButton(self, name="id_next", size=22, hsize=34, checkable=False)
+        self.next_btn.clicked.connect(self.next_clicked)
+        self.idbox = IdLineEdit(self, width=self.width() - 44, height=30)
+        self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
+        self.hlay = QHBoxLayout()
+        self.hlay.setContentsMargins(0, 0, 0, 0)
+        self.hlay.setSpacing(0)
+        self.hlay.addWidget(self.prev_btn)
+        self.hlay.addWidget(self.idbox)
+        self.hlay.addWidget(self.next_btn)
+        self.setLayout(self.hlay)
+        self.id = None
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "id":
+            self.idbox.setText(str(val)) if val else self.idbox.setText("")
+
+    def prev_clicked(self):
+        """Uruchomienie funkcji po kliknięciu na przycisk prev_btn."""
+        dlg.obj.object_prevnext(self.obj, False)
+
+    def next_clicked(self):
+        """Uruchomienie funkcji po kliknięciu na przycisk next_bnt."""
+        dlg.obj.object_prevnext(self.obj, True)
+
+
+class IdLineEdit(QLineEdit):
+    """Lineedit dla zarządzania id."""
+    def __init__(self, *args, height, width):
+        super().__init__(*args)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(width, height)
+        self.setFrame(False)
+        self.setMaxLength(4)
+        self.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]*") ))
+        self.hover_on(False)
+        self.focused = False
+
+    def hover_on(self, value):
+        """Modyfikacja stylesheet przy hoveringu."""
+        if value:
+            self.setStyleSheet("QLineEdit {background-color: rgba(255, 255, 255, 0.2); color: white; font-size: 12pt; padding: 0px 0px 0px 2px; qproperty-alignment: AlignCenter}")
+        else:
+            self.setStyleSheet("QLineEdit {background-color: rgba(255, 255, 255, 0.1); color: white; font-size: 12pt; padding: 0px 0px 0px 2px; qproperty-alignment: AlignCenter}")
+
+    def enterEvent(self, event):
+        self.hover_on(True)
+
+    def leaveEvent(self, event):
+        self.hover_on(False)
+
+    def focusInEvent(self, event):
+        if not self.focused:
+            self.focused = True
+        else:
+            super().focusInEvent(event)
+
+    def mousePressEvent(self, event):
+        if not self.focused:
+            super().mousePressEvent(event)
+            return
+        else:
+            self.selectAll()
+            self.focused = False
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
+            dlg.obj.set_object_from_input(int(self.text()), self.parent().obj)
+            self.clearFocus()
+        else:
+            super().keyPressEvent(event)
+
+
+class TextPadBox(QFrame):
+    """Belka panelu z box'em."""
+    def __init__(self, *args, height, obj):
+        super().__init__(*args)
+        self.obj = obj
+        self.setObjectName("main")
+        self.setFixedHeight(height)
+        self.setFixedWidth(self.parent().width())
+        self.button_box = MoekHBox(self, margins=[5,0,15,0], spacing=2)
+        self.button_box.setFixedWidth(self.parent().width())
+        self.button_box.setObjectName("box")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.clear_btn = MoekButton(self, name="textpad_clear", size=34, checkable=False)
+        self.revert_btn = MoekButton(self, name="textpad_revert", size=34, checkable=False)
+        self.accept_btn = MoekButton(self, name="textpad_accept", size=34, checkable=False)
+        self.button_box.lay.addWidget(self.clear_btn)
+        self.button_box.lay.addItem(spacer)
+        self.button_box.lay.addWidget(self.revert_btn)
+        self.button_box.lay.addWidget(self.accept_btn)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(0, 0, 0, 0)
+        vlay.setSpacing(0)
+        self.textpad = TextPad(self, width=self.width(), height=self.height() - 34)
+        vlay.addWidget(self.textpad)
+        vlay.addWidget(self.button_box)
+        vlay.setAlignment(self.button_box, Qt.AlignCenter)
+        self.setLayout(vlay)
+        self.backup_text = ""
+        self.clear_btn.clicked.connect(self.text_clear)
+        self.revert_btn.clicked.connect(self.text_revert)
+        self.accept_btn.clicked.connect(self.text_change)
+
+    def set_text(self, text):
+        """Aktualizacja textpadbox'u po zmianie tekstu."""
+        self.backup_text = text
+        self.textpad.setPlainText(text) if text else self.textpad.clear()
+        if self.textpad.doc.isModified():
+            self.textpad.doc.setModified(False)
+        else:
+            self.textpad.modified(False)
+
+    def get_text(self):
+        """Zwraca aktualny tekst z textpad'u."""
+        text = self.textpad.toPlainText()
+        return None if text == "" else self.textpad.toPlainText()
+
+    def text_change(self):
+        """Aktywuje zmianę tekstu."""
+        dlg.obj.set_object_text(self.obj)
+
+    def text_clear(self):
+        """Czyści textpad z tekstu (bez zmian w bazie danych)."""
+        self.textpad.clear()
+        if not self.backup_text and not self.textpad.doc.isModified():
+            self.textpad.modified(False)
+
+    def text_revert(self):
+        """Przywraca pierwotny tekst do textpad'u (bez zmian w bazie danych)."""
+        self.textpad.setPlainText(self.backup_text)
+        if not self.backup_text and not self.textpad.doc.isModified():
+            self.textpad.modified(False)
+
+
+class TextPad(QPlainTextEdit):
+    """Edytor tekstu do wprowadzania notatek."""
+    def __init__(self, *args, width, height):
+        super().__init__(*args)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(width, height)
+        self.setBackgroundVisible(False)
+        self.hover_on(False)
+        self.doc = self.document()
+        self.doc.modificationChanged.connect(self.modified)
+        self.doc.contentsChanged.connect(self.changed)
+
+    def modified(self, changed):
+        """Odpala się po zmianie self.doc.setModified()."""
+        print(f"modified: {changed}")
+        self.parent().accept_btn.setEnabled(changed)
+        self.parent().revert_btn.setEnabled(changed)
+
+    def changed(self):
+        """Odpala się po zmianie zawartości textpad'u."""
+        self.parent().clear_btn.setEnabled(False) if self.doc.isEmpty() else self.parent().clear_btn.setEnabled(True)
+
+    def hover_on(self, value):
+        """Modyfikacja stylesheet przy hoveringu."""
+        if value:
+            self.setStyleSheet("QPlainTextEdit {background-color: rgba(255, 255, 255, 0.6); color: white; font-size: 10pt; padding: 0px 0px 0px 0px}")
+        else:
+            self.setStyleSheet("QPlainTextEdit {background-color: rgba(255, 255, 255, 0.1); color: white; font-size: 10pt; padding: 0px 0px 0px 0px}")
 
 
 class MoekSideDock(QFrame):
@@ -729,6 +1126,15 @@ class MoekCheckBox(QCheckBox):
                                 image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_1_act.png');
                             }
                            """)
+
+
+class PanelLabel(QLabel):
+    """Fabryka napisów do canvpaneli."""
+    def __init__(self, *args, text="", size=10):
+        super().__init__(*args)
+        self.setWordWrap(False)
+        self.setStyleSheet("QLabel {color: rgb(255, 255, 255); font-size: " + str(size) + "pt; qproperty-alignment: AlignCenter}")
+        self.setText(text)
 
 
 class MoekSpinLabel(QLabel):

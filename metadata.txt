@@ -6,7 +6,7 @@
 name=MOEK Editor
 qgisMinimumVersion=3.0
 description=Wtyczka do obsługi systemu MOEK (PIG-PIB).
-version=0.1
+version=0.2.1
 author=Dominik Szrek / PIG-PIB
 email=dszr@pgi.gov.pl
 

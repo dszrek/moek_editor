@@ -1,8 +1,9 @@
 #!/usr/bin/python
 import os
+import time as tm
 
 from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.core import QgsReadWriteContext, QgsProject, QgsDataSourceUri, QgsVectorLayer
+from qgis.core import QgsReadWriteContext, QgsProject, QgsDataSourceUri, QgsVectorLayer, QgsWkbTypes
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
@@ -78,6 +79,7 @@ def teams_load():
 def teams_cb_changed():
     """Zmiana w cb aktywnego team'u."""
     # print("[teams_cb_changed]")
+    dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
     t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Zapamiętanie aktualnego dlg.team_t
     list_srch = [t for t in dlg.teams if t_team_t in t]
     t_team_i = list_srch[0][0]  # Tymczasowy team_i
@@ -166,6 +168,7 @@ def powiaty_load():
 def powiaty_mode_changed(clicked):
     """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
     # print("[powiaty_mode_changed:", clicked, "]")
+    dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
     if clicked:  # Zmiana trybu wyświetlania powiatów spowodowana kliknięciem w io_btn
         db_attr_change(tbl="team_users", attr="b_pow_mode", val=dlg.p_pow.is_active(), sql_bns=" AND team_id = " + str(dlg.team_i))  # Aktualizacja b_pow_mode w db
     else:  # Zmiana trybu wyświetlania powiatów spowodowana zmianą aktywnego team'u
@@ -203,7 +206,7 @@ def pow_layer_update():
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     ark_layer_update()  # Aktualizacja warstwy z arkuszami
     flag_layer_update()  # Aktualizacja warstwy z flagami
-    # wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
+    wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
     # auto_layer_update()  # Aktualizacja warstwy z parkingami
     # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
     # zloza_layer_update()  # Aktualizacja warstwy ze złożami
@@ -233,20 +236,200 @@ def flag_layer_update():
     else:  # Tryb wielu powiatów
         uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=b_fieldcheck = True'
         uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=b_fieldcheck = False'
-    layer_1 = QgsProject.instance().mapLayersByName("flagi_z_teren")[0]
-    layer_2 = QgsProject.instance().mapLayersByName("flagi_bez_teren")[0]
+    lyr_1 = QgsProject.instance().mapLayersByName("flagi_z_teren")[0]
+    lyr_2 = QgsProject.instance().mapLayersByName("flagi_bez_teren")[0]
     # Zmiana zawartości warstwy flagi:
-    pg_layer_change(uri_1, layer_1)
-    pg_layer_change(uri_2, layer_2)
+    pg_layer_change(uri_1, lyr_1)
+    pg_layer_change(uri_2, lyr_2)
+    # Aktualizacja listy flag w ObjectManager:
+    dlg.obj.flag_ids = get_flag_ids()
 
-def wyr_layer_update():
-    """Aktualizacja warstwy wyrobiska."""
-    # print("[wyr_layer_update]")
+def wyr_layer_update(check=True):
+    """Aktualizacja warstw z wyrobiskami."""
+    if check:
+    # Sprawdzenie, czy wszystkie wyrobiska mają przypisane powiaty
+    # i dokonanie aktualizacji, jeśli występują braki:
+        wyr_powiaty_check()
+    # Stworzenie listy wyrobisk z aktywnych powiatów:
+    pows = active_pow_listed()
+    dlg.obj.wyr_ids = get_wyr_ids("wyr_pow", "pow_id", pows)
     with CfgPars() as cfg:
         params = cfg.uri()
-    uri = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (geom)'
-    layer = QgsProject.instance().mapLayersByName("wyrobiska")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy wyrobiska
+    if dlg.obj.wyr_ids:
+        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
+        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
+    else:
+        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
+        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id = 0'
+    lyr_1 = QgsProject.instance().mapLayersByName("wyr_point")[0]
+    lyr_2 = QgsProject.instance().mapLayersByName("wyr_poly")[0]
+    # Zmiana zawartości warstw z wyrobiskami:
+    pg_layer_change(uri_1, lyr_1)
+    pg_layer_change(uri_2, lyr_2)
+
+def wyr_powiaty_check():
+    """Sprawdza, czy wszystkie wyrobiska zespołu mają wpisy w tabeli 'wyr_pow'.
+    Jeśli nie, to przypisuje je na podstawie geometrii poligonalnej lub punktowej."""
+    wyr_ids = get_wyr_ids("wyrobiska")
+    wyr_pow_ids = get_wyr_ids("wyr_pow")
+    wyr_pow_to_add = list_diff(wyr_ids, wyr_pow_ids)
+    # TODO: wyr_pow_to_remove = list_diff(wyr_pow_ids, wyr_ids)
+    if not wyr_pow_to_add:
+        return
+    print(wyr_pow_to_add)
+    # Uzupełnienie brakujących rekordów w tabeli 'wyr_pow':
+    wyr_poly_ids = []
+    wyr_point_ids = []
+    for wyr in wyr_pow_to_add:
+        wyr_poly_ids.append(wyr) if wyr_poly_exist(wyr) else wyr_point_ids.append(wyr)
+    if wyr_poly_ids:
+    # Pozyskanie informacji o powiatach z geometrii poligonalnej:
+        wyr_polys = get_poly_from_ids(wyr_poly_ids)
+        for wyr_poly in wyr_polys:
+            wyr_powiaty_change(wyr_poly[0], wyr_poly[1])
+    if wyr_point_ids:
+        # Pozyskanie informacji o powiatach z geometrii punktowej:
+        wyr_pts = get_point_from_ids(wyr_point_ids)
+        for wyr_pt in wyr_pts:
+            wyr_powiaty_change(wyr_pt[0], wyr_pt[1])
+
+def get_poly_from_ids(wyr_ids):
+    """Zwraca listę z geometriami poligonalnymi wyrobisk na podstawie ich id."""
+    wyr_polys = []
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    table = '"team_' + str(dlg.team_i) + '"."wyr_geom"'
+    sql = "wyr_id IN (" + str(wyr_ids)[1:-1] + ")"
+    uri = f'{params} table={table} (geom) sql={sql}'
+    lyr_poly = QgsVectorLayer(uri, "temp_wyr_poly", "postgres")
+    feats = lyr_poly.getFeatures()
+    for feat in feats:
+        wyr_polys.append((feat.attribute("wyr_id"), feat.geometry()))
+    del lyr_poly
+    return wyr_polys
+
+def get_point_from_ids(wyr_ids):
+    """Zwraca listę z geometriami punktowymi wyrobisk na podstawie ich id."""
+    wyr_pts = []
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    table = '"team_' + str(dlg.team_i) + '"."wyrobiska"'
+    sql = "wyr_id IN (" + str(wyr_ids)[1:-1] + ")"
+    uri = f'{params} table={table} (centroid) sql={sql}'
+    lyr_pt = QgsVectorLayer(uri, "temp_wyr_pt", "postgres")
+    feats = lyr_pt.getFeatures()
+    for feat in feats:
+        wyr_pts.append((feat.attribute("wyr_id"), feat.geometry()))
+    del lyr_pt
+    return wyr_pts
+
+def wyr_poly_exist(wyr_id):
+    """Zwraca geometrię poligonalną wyrobiska."""
+    db = PgConn()
+    sql = "SELECT geom FROM team_" + str(dlg.team_i) + ".wyr_geom WHERE wyr_id = " + str(wyr_id) + ";"
+    if db:
+        res = db.query_sel(sql, False)
+        if res:
+            return res[0]
+        else:
+            return None
+
+def get_wyr_ids(table, col_name=None, vals=None):
+    """Zwraca listę unkalnych wyr_id z podanej tabeli."""
+    db = PgConn()
+    extras = f" WHERE {col_name} IN ({str(vals)[1:-1]})" if col_name else ""
+    sql = "SELECT DISTINCT wyr_id FROM team_" + str(dlg.team_i) + "." + table + extras + " ORDER BY wyr_id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return None
+
+def get_flag_ids():
+    """Zwraca listę id flag."""
+    db = PgConn()
+    if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
+        sql = "SELECT id FROM team_" + str(dlg.team_i) + ".flagi WHERE pow_grp = '" + str(dlg.powiat_i) + "' ORDER BY id;"
+    else:  # Tryb wielu powiatów
+        sql = "SELECT id FROM team_" + str(dlg.team_i) + ".flagi ORDER BY id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return None
+
+def list_diff(l1, l2):
+    """Zwraca listę elementów l1, które nie występują w l2."""
+    if not l1 and not l2:
+        return None
+    else:
+        return (list(set(l1)-set(l2)))
+
+def active_pow_listed():
+    """Zwraca listę z numerami aktywnych powiatów."""
+    pows = []
+    lyr_pow = QgsProject.instance().mapLayersByName("powiaty")[0]
+    feats = lyr_pow.getFeatures()
+    for feat in feats:
+        pows.append(feat.attribute("pow_id"))
+    return pows
+
+def wyr_powiaty_change(wyr_id, geom, new=False):
+    """Aktualizuje tabelę 'wyr_pow' po zmianie geometrii wyrobiska."""
+    if not new:
+        # Usunięcie poprzednich wpisów z tabeli 'wyr_pow':
+        wyr_powiaty_delete(wyr_id)
+    # Stworzenie listy z aktualnymi powiatami dla wyrobiska:
+    p_list = wyr_powiaty_listed(wyr_id, geom)
+    if not p_list:  # Brak powiatów
+        print(f"Nie udało się stworzyć listy powiatów dla wyrobiska {wyr_id}")
+        return
+    # Wstawienie nowych rekordów do tabeli 'wyr_pow':
+    wyr_powiaty_update(p_list)
+
+def wyr_powiaty_delete(wyr_id):
+    """Usunięcie z tabeli 'wyr_pow' rekordów odnoszących się do wyr_id."""
+    db = PgConn()
+    sql = "DELETE FROM team_" + str(dlg.team_i) + ".wyr_pow WHERE wyr_id = " + str(wyr_id) + ";"
+    if db:
+        res = db.query_upd(sql)
+        if not res:
+            print(f"Brak rekordów dla wyrobiska {wyr_id}.")
+
+def wyr_powiaty_update(p_list):
+    """Wstawienie do tabeli 'wyr_pow' aktualnych numerów powiatów dla wyrobiska."""
+    db = PgConn()
+    sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyr_pow(wyr_id, pow_id) VALUES %s"
+    if db:
+        db.query_exeval(sql, p_list)
+
+def wyr_powiaty_listed(wyr_id, geom):
+    """Zwraca listę powiatów, w obrębie których leży geometria wyrobiska."""
+    p_list = []
+    if geom.type() == QgsWkbTypes.PointGeometry:
+        geom = geom.buffer(1., 1)
+    bbox = geom.makeValid().boundingBox().asWktPolygon()
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    table = '"(SELECT pow_id, geom FROM public.powiaty)"'
+    key = '"pow_id"'
+    sql = "ST_Intersects(ST_SetSRID(ST_GeomFromText('" + str(bbox) + "'), 2180), geom)"
+    uri = f'{params} key={key} table={table} (geom) sql={sql}'
+    lyr_pow = QgsVectorLayer(uri, "powiaty_bbox", "postgres")
+    feats = lyr_pow.getFeatures()
+    for feat in feats:
+        if geom.makeValid().intersects(feat.geometry()):
+            p_list.append((wyr_id, feat.attribute("pow_id")))
+    del lyr_pow
+    return p_list
 
 def auto_layer_update():
     """Aktualizacja warstwy parking."""
@@ -359,7 +542,6 @@ def vn_cfg(seq=0):
             vn_setup_mode(True)
         else:  # Włączenie ustawień którejś z sekwencji
             dlg.p_vn.widgets["sqb_seq"].enter_setup(seq)
-            # dlg.p_vn.box.setCurrentIndex(seq)
     else:  # Przycisk konfiguracyjny został wyciśnięty
         if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
             dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
@@ -372,10 +554,15 @@ def vn_cfg(seq=0):
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     # print("[vn_setup_mode:", b_flag, "]")
+    # Włączenie/Wyłączenie warstw flag i wyrobisk:
+    QgsProject.instance().layerTreeRoot().findGroup("wyrobiska").setItemVisibilityChecked(not b_flag)
+    QgsProject.instance().layerTreeRoot().findGroup("flagi").setItemVisibilityChecked(not b_flag)
     global vn_setup
-    dlg.mt.tool_off()  # Wyłączenie maptool'a (mógł być uruchomiony)
+    dlg.mt.init("multi_tool")  # Przełączenie na multi_tool'a
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
+        dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
+        dlg.side_dock.hide()  # Schowanie bocznego dock'u
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą
         dlg.p_pow.active = False  # Wyłączenie trybu wybranego powiatu
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
@@ -388,6 +575,8 @@ def vn_setup_mode(b_flag):
         dlg.p_vn.box.setCurrentIndex(4)  # zmiana strony p_vn
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
+        QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection()
+        dlg.side_dock.show()
         dlg.p_pow.active = dlg.p_pow.t_active  # Ewentualne przywrócenie trybu powiatu sprzed zmiany
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
         try:
@@ -467,12 +656,15 @@ def db_attr_check(attr):
         if res:
             return res[0]
 
-def db_attr_change(tbl, attr, val, sql_bns):
+def db_attr_change(tbl, attr, val, sql_bns, user=True):
     """Zmiana atrybutu w db."""
     # print("[db_attr_change(", tbl, ",", attr, "):", val, "]")
     db = PgConn()
     # Aktualizacja atrybutu (attr) w tabeli (tbl) na wartość (val):
-    sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + SQL_1 + str(dlg.user_id) + sql_bns + ";"
+    if user:
+        sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + SQL_1 + str(dlg.user_id) + sql_bns + ";"
+    else:
+        sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + sql_bns + ";"
     if db:
         res = db.query_upd(sql)
         if res:
@@ -483,7 +675,7 @@ def db_attr_change(tbl, attr, val, sql_bns):
         return False
 
 def pg_layer_change(uri, layer):
-    """Zmiana zawartości warstwy postgis na podstawie Uri"""
+    """Zmiana zawartości warstwy postgres na podstawie uri"""
     # print("[pg_layer_change:", uri, layer, "]")
     xml_document = QDomDocument("style")
     xml_maplayers = xml_document.createElement("maplayers")

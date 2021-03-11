@@ -31,9 +31,10 @@ from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from .resources import resources
 
 from .main import dlg_main, db_login, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
+from .widgets import dlg_widgets
+from .layers import dlg_layers, create_qgis_project
 from .maptools import dlg_maptools
 from .viewnet import dlg_viewnet
-from .widgets import dlg_widgets
 from .basemaps import dlg_basemaps, basemaps_load
 from .sequences import dlg_sequences, sequences_load
 from .classes import GESync
@@ -218,7 +219,7 @@ class MoekEditor:
 
     def run(self):
         """Run method that loads and starts the plugin"""
-        start = time.perf_counter()
+        self.start = time.perf_counter()
         if self.plugin_is_active: # Sprawdzenie, czy plugin jest już uruchomiony
             QMessageBox.information(None, "Informacja", "Wtyczka jest już uruchomiona")
             return  # Uniemożliwienie uruchomienia drugiej instancji pluginu
@@ -239,7 +240,6 @@ class MoekEditor:
             if self.dockwidget == None:
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = MoekEditorDockWidget()
-                self.dockwidget.setUpdatesEnabled(False)
 
                 # Zmienne globalne:
                 self.dockwidget.user_id = user_id
@@ -254,10 +254,11 @@ class MoekEditor:
                 self.dockwidget.team_i = team_i
                 self.dockwidget.team_t = ""
 
+                dlg_widgets(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do widgets.py
                 dlg_main(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do main.py
+                dlg_layers(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do layers.py
                 dlg_maptools(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do maptools.py
                 dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
-                dlg_widgets(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do widgets.py
                 dlg_basemaps(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
                 dlg_sequences(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do sequences.py
 
@@ -268,15 +269,21 @@ class MoekEditor:
             if not teams_load():  # Nie udało się załadować team'ów użytkownika, przerwanie ładowania pluginu
                 self.iface.removeDockWidget(self.dockwidget)
                 return
-            teams_cb_changed()  # Załadowanie powiatów
-            basemaps_load()  # Załadowanie podkładów mapowych
-            sequences_load()
-
-            # show the dockwidget
-            # TODO: fix to allow choice of dock location
-            self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
-            self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
-            self.dockwidget.setUpdatesEnabled(True)
-            # self.dockwidget.show()
-            finish = time.perf_counter()
-            print(f"Proces ładowania pluginu trwał {round(finish - start, 2)} sek.")
+        create_qgis_project()  # Utworzenie nowego projektu QGIS i załadowanie do niego warstw
+        self.dockwidget.splash_screen.p_bar.setMaximum(0)
+        self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
+        teams_cb_changed()  # Załadowanie powiatów
+        basemaps_load()  # Załadowanie podkładów mapowych
+        sequences_load()
+        # show the dockwidget
+        # TODO: fix to allow choice of dock location
+        self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
+        self.dockwidget.obj.init_void = False  # Odblokowanie ObjectManager'a
+        self.dockwidget.ext_init()  # Podłączenie funkcji zmiany widoczności warstw z danymi zewnętrznymi
+        self.dockwidget.button_conn()  # Podłączenie akcji przycisków
+        self.dockwidget.mt.init("multi_tool")  # Aktywacja multi_tool'a
+        self.dockwidget.splash_screen.hide()
+        self.dockwidget.show()
+        self.dockwidget.side_dock.show()
+        finish = time.perf_counter()
+        print(f"Proces ładowania pluginu trwał {round(finish - self.start, 2)} sek.")

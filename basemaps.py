@@ -89,8 +89,8 @@ class MoekMapPanel(QFrame):
     """Panel zarządzający wyświetalniem podkładów mapowych."""
     map_changed = pyqtSignal(int)
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("mappnl")
         shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow)
@@ -100,12 +100,12 @@ class MoekMapPanel(QFrame):
                     QFrame#box {background-color: transparent; border: none}
                     """)
         self.widgets = {}
-        self.btns = MoekMapButtons()
-        self.box = MoekStackedBox(resize=False)
+        self.btns = MoekMapButtons(self)
+        self.box = MoekStackedBox(self)
         self.box.setObjectName("box")
         self.box.pages = {}
         for p in range(3):
-            _page = MoekMapsBox() if p > 0 else MoekCfgHSpinBox()
+            _page = MoekMapsBox(self) if p > 0 else MoekCfgHSpinBox(self)
             page_id = f'page_{p}'
             self.box.pages[page_id] = _page
             self.box.addWidget(_page)
@@ -115,10 +115,10 @@ class MoekMapPanel(QFrame):
         vlay.addWidget(self.btns)
         vlay.addWidget(self.box)
         self.setLayout(vlay)
-        exit_btn_1 = MoekButton(name="exit")
+        exit_btn_1 = MoekButton(self, name="exit")
         exit_btn_1.clicked.connect(self.exit_clicked)
         self.box.pages["page_1"].glay.addWidget(exit_btn_1, 0, 1, 1, 1)
-        exit_btn_2 = MoekButton(name="exit")
+        exit_btn_2 = MoekButton(self, name="exit")
         exit_btn_2.clicked.connect(self.exit_clicked)
         self.box.pages["page_2"].glay.addWidget(exit_btn_2, 0, 1, 1, 1)
         self.cat = ""
@@ -147,13 +147,13 @@ class MoekMapPanel(QFrame):
                 # iface.mapCanvas().extentsChanged.connect(dlg.ge.extent_changed)
                 dlg.ge.visible_changed(True)
                 self.ge = True
-                print("warstwa GEP włączona")
+                # print("warstwa GEP włączona")
         else:
             if self.ge:
                 # iface.mapCanvas().extentsChanged.disconnect(dlg.ge.extent_changed)
                 dlg.ge.visible_changed(False)
                 self.ge = False
-                print("warstwa GEP wyłączona")
+                # print("warstwa GEP wyłączona")
         # Ustawienie widoczności warstw z podkładami mapowymi:
         for layer in self.layers:
             if layer == self.map_attr(self.map)["lyr_1"] or layer == self.map_attr(self.map)["lyr_2"]:
@@ -234,7 +234,7 @@ class MoekMapPanel(QFrame):
 
     def add_checkbox(self, cat, name, enabled):
         """Dodanie checkbox'a do odpowiedniego pojemnika wyboru map."""
-        _chk = MoekCheckBox(name=name, checked=enabled)
+        _chk = MoekCheckBox(self, name=name, checked=enabled)
         if cat == "sat":
             page = 1
             self.sat_cnt += 1
@@ -315,13 +315,12 @@ class MoekMapPanel(QFrame):
             self.first_map(self.cat)
             self.spb_update()  # Wymuszenie odświeżenia spinbox'a
             self.box.setCurrentIndex(0)  # Powrót do spinbox'a
-            dlg.p_vn.box.currentChange()
 
 
 class MoekMapButtons(QFrame):
     """Pojemnik z przyciskami panelu mapowego."""
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setFixedHeight(50)
         self.sat_btn = MoekMapButton(self, name="sat", icon="map_sat", tooltip="fotomapy")
@@ -357,7 +356,7 @@ class MoekMapButtons(QFrame):
         if dlg.p_map.ge:  # Warstwa z Google Earth Pro jest włączona
             dlg.ge.ge_sync()  # Synchronizacja widoków
         else:
-            print(f"4. q2ge")
+            # print(f"4. q2ge")
             dlg.ge.q2ge(False)  # Pokazanie widoku QGIS'a w Google Earth Pro
 
 
@@ -402,8 +401,8 @@ class MoekMapButton(QFrame):
 
 class MoekMapsBox(QFrame):
     """Pojemnik na checkbox'y z basemap'ami."""
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("frm")
         self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         self.setStyleSheet("QFrame#frm {border: 2px solid rgb(52, 132, 240); border-radius: 14px}")

@@ -27,7 +27,7 @@ import os
 from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.PyQt.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QShortcut, QMessageBox
-from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtCore import pyqtSignal, QEvent
 from PyQt5.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject, QgsFeature
 from qgis.utils import iface
@@ -36,7 +36,7 @@ from .classes import PgConn
 from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekSideDock, MoekMenuFlag
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekSideDock, MoekBottomDock, FlagCanvasPanel, WyrCanvasPanel, SplashScreen
 from .basemaps import MoekMapPanel
 from .sequences import prev_map, next_map, seq
 
@@ -101,30 +101,33 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "flag_nfchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę bez kontroli terenowej"},
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "flag_del", "size": 50, "checkable": True, "tooltip": u'usuń flagę'}
                     ]
-        p_wyr_widgets = [
-                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "lineedit", "name": "wyr_id", "size": 50,  "height": 21, "border": 1},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_sel", "size": 50, "checkable": True, "tooltip": u"zaznacz wyrobisko"},
-                    {"page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"},
-                    {"page": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_del", "size": 50, "checkable": True, "tooltip": u'usuń wyrobisko'}
-                    ]
-        p_auto_widgets = [
-                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_add", "size": 50, "checkable": True, "tooltip": u"dodaj miejsce parkingowe"},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_del", "size": 50, "checkable": True, "tooltip": u"usuń miejsce parkingowe"},
-                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_add", "size": 50, "checkable": True, "tooltip": u'dodaj marszrutę'},
-                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_del", "size": 50, "checkable": True, "tooltip": u'usuń marszrutę'}
-                    ]
+        # p_wyr_widgets = [
+        #             {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "lineedit", "name": "wyr_id", "size": 50,  "height": 21, "border": 1},
+        #             {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_sel", "size": 50, "checkable": True, "tooltip": u"zaznacz wyrobisko"},
+        #             {"page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"},
+        #             {"page": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_del", "size": 50, "checkable": True, "tooltip": u'usuń wyrobisko'}
+        #             ]
+        # p_auto_widgets = [
+        #             {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_add", "size": 50, "checkable": True, "tooltip": u"dodaj miejsce parkingowe"},
+        #             {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_del", "size": 50, "checkable": True, "tooltip": u"usuń miejsce parkingowe"},
+        #             {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_add", "size": 50, "checkable": True, "tooltip": u'dodaj marszrutę'},
+        #             {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_del", "size": 50, "checkable": True, "tooltip": u'usuń marszrutę'}
+        #             ]
 
         self.p_team = MoekBarPanel(
+                            self,
                             title="Zespół:",
                             switch=False
                             )
         self.p_pow = MoekBarPanel(
+                            self,
                             title="Powiat:",
                             title_off="Wszystkie powiaty",
                             io_fn="powiaty_mode_changed(clicked=True)"
                             )
-        self.p_map = MoekMapPanel()
+        self.p_map = MoekMapPanel(self)
         self.p_ext = MoekBarPanel(
+                            self,
                             title="",
                             switch=None,
                             spacing=8,
@@ -135,23 +138,26 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                             io_fn="vn_mode_changed(clicked=True)",
                             config=True,
                             cfg_fn="vn_cfg()",
-                            resize=True,
                             pages=5)
-        self.p_flag = MoekBoxPanel(
-                            title="Flagi",
-                            io_fn="dlg.flag_visibility()")
-        self.p_wyr = MoekBoxPanel(
-                            title="Wyrobiska",
-                            io_fn="dlg.wyr_visibility()")
-        self.p_auto = MoekBoxPanel(
-                            title="Komunikacja",
-                            io_fn="dlg.auto_visibility()")
+        # self.p_flag = MoekBoxPanel(
+        #                     self,
+        #                     title="Flagi",
+        #                     io_fn="dlg.flag_visibility()")
+        # self.p_wyr = MoekBoxPanel(
+        #                     self,
+        #                     title="Wyrobiska",
+        #                     io_fn="dlg.wyr_visibility()")
+        # self.p_auto = MoekBoxPanel(
+        #                     self,
+        #                     title="Komunikacja",
+        #                     io_fn="dlg.auto_visibility()")
 
         self.panels = [self.p_team, self.p_pow, self.p_map, self.p_ext, self.p_vn]#, self.p_flag, self.p_wyr] #, self.p_auto]
         self.p_widgets = [p_team_widgets, p_pow_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets]#, p_flag_widgets, p_wyr_widgets] #, p_auto_widgets]
 
         # Wczytanie paneli i ich widgetów do dockwidget'a:
         for (panel, widgets) in zip(self.panels, self.p_widgets):
+            self.vl_main.addWidget(panel)
             for widget in widgets:
                 if widget["item"] == "button":
                     panel.add_button(widget)
@@ -165,47 +171,80 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     panel.add_seqaddbox(widget)
                 elif widget["item"] == "seqcfgbox":
                     panel.add_seqcfgbox(widget)
-            self.vl_main.addWidget(panel)
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)
 
-       # Utworzenie bocznego docker'a z toolbox'ami:
+        # Utworzenie bocznego docker'a z toolbox'ami:
         self.side_dock = MoekSideDock()
+        self.side_dock.hide()
+        # Utworzenie dolnego docker'a z toolbox'ami:
+        self.bottom_dock = MoekBottomDock()
+        self.bottom_dock.hide()
+
+        self.splash_screen = SplashScreen()
+        self.splash_screen.show()
 
         tb_multi_tool_widgets = [
-                    {"item": "button", "name": "multi_tool", "size": 50, "checkable": True, "tooltip": u"nawigacja i selekcja obiektów"},
+                    {"item": "button", "name": "multi_tool", "size": 50, "checkable": True, "tooltip": u"nawigacja i selekcja obiektów"}
                     ]
         tb_add_widgets = [
                     {"item": "button", "name": "flag_fchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę do kontroli terenowej"},
                     {"item": "button", "name": "flag_nfchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę bez kontroli terenowej"},
-                    {"item": "button", "name": "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"}
+                    {"item": "button", "name": "wyr_add_poly", "icon" : "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"}
                     ]
-
-
+        tb_edit_tools_widgets = [
+                    {"item": "button", "name": "edit_tool", "size": 50, "checkable": True, "tooltip": u"edycja geometrii wyrobiska"},
+                    {"item": "button", "name": "edit_tool_add", "size": 50, "checkable": True, "tooltip": u"powiększ powierzchnię wyrobiska"},
+                    {"item": "button", "name": "edit_tool_sub", "size": 50, "checkable": True, "tooltip": u"zmniejsz powierzchnię wyrobiska"}
+                    ]
+        tb_edit_separator_widgets = [
+                    {"item": "dummy", "name": "presep", "size": 25}
+                    ]
+        tb_edit_exit_widgets = [
+                    {"item": "button", "name": "cancel", "size": 50, "checkable": False, "tooltip": u"zrezygnuj ze zmian geometrii wyrobiska"},
+                    {"item": "button", "name": "accept", "size": 50, "checkable": False, "tooltip": u"zatwierdź zmiany geometrii wyrobiska"}
+                    ]
         toolboxes = [
-                {"name": "multi_tool", "dock": "side", "background": "rgba(0, 0, 0, 0.4)", "widgets": tb_multi_tool_widgets},
-                {"name": "add_object", "dock": "side", "background": "rgba(0, 128, 0, 0.4)", "widgets": tb_add_widgets}
+                {"name": "multi_tool", "dock": "side", "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_multi_tool_widgets},
+                {"name": "add_object", "dock": "side", "background": "rgba(0, 128, 0, 0.6)", "widgets": tb_add_widgets},
+                {"name": "edit_tools", "dock": "bottom", "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_edit_tools_widgets},
+                {"name": "edit_separator", "dock": "bottom", "background": "rgba(0, 0, 0, 0.0)", "widgets": tb_edit_separator_widgets},
+                {"name": "edit_exit", "dock": "bottom", "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_edit_exit_widgets}
                 ]
 
         for toolbox in toolboxes:
             for key, val in toolbox.items():
                 if key == "dock" and val == "side":
                     self.side_dock.add_toolbox(toolbox)
-        self.side_dock.move(1,0)
-        self.side_dock.show()
+                if key == "dock" and val == "bottom":
+                    self.bottom_dock.add_toolbox(toolbox)
 
-        self.resizeEvent = self.resize_panel
-
-        self.__button_conn()
-        self.ext_init()
-        # self.p_flag.active = True
-        # self.p_wyr.active = True
-        # self.p_auto.active = True
-        self.hk_vn_load()
-        self.hk_seq_load()
+        self.flag_panel = FlagCanvasPanel()
+        self.flag_panel.hide()
+        self.wyr_panel = WyrCanvasPanel()
+        self.wyr_panel.hide()
         self.mt = MapToolManager(dlg=self, canvas=iface.mapCanvas())
         self.obj = ObjectManager(dlg=self, canvas=iface.mapCanvas())
-        self.flag_menu = MoekMenuFlag()
+
+        self.side_dock.move(1,0)
+        bottom_y = iface.mapCanvas().height() - 52
+        self.bottom_dock.move(0, bottom_y)
+        self.flag_panel.move(60, 60)
+        wyr_x = iface.mapCanvas().width() - self.wyr_panel.width() - 60
+        self.wyr_panel.move(wyr_x, 60)
+        splash_x = (iface.mapCanvas().width() / 2) - (self.splash_screen.width() / 2)
+        splash_y = (iface.mapCanvas().height() / 2) - (self.splash_screen.height() / 2)
+        self.splash_screen.move(splash_x, splash_y)
+
+        self.resizeEvent = self.resize_panel
+        self.canvas = iface.mapCanvas()
+        iface.mapCanvas().installEventFilter(self)
+
+        # Wyłączenie messagebar'u:
+        iface.messageBar().widgetAdded.connect(self.msgbar_blocker)
+
+        self.hk_vn_load()  # Włączenie skrótów klawiszowych vn
+        self.hk_seq_load()  # Włączenie skrótów klawiszowych sekwencji mapowych
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -214,6 +253,29 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             self.hk_vn_changed.emit(val)
         if attr == "hk_seq":
             self.hk_seq_changed.emit(val)
+
+    def msgbar_blocker(self, item):
+        """Blokuje pojawianie się QGIS'owego messagebar'u."""
+        iface.messageBar().clearWidgets()
+
+    def eventFilter(self, obj, event):
+        if obj is iface.mapCanvas() and event.type() == QEvent.Resize:
+            self.resize_canvas()
+        return super().eventFilter(obj, event)
+
+    def resize_canvas(self):
+        """Ustalenie pozycji dockerów po zmianie rozmiaru mapcanvas'u."""
+        canvas = iface.mapCanvas()
+        self.side_dock.setFixedHeight(canvas.height())
+        self.side_dock.move(1,0)
+        self.bottom_dock.setFixedWidth(canvas.width())
+        self.bottom_dock.move(0, canvas.height() - 52)
+        self.flag_panel.move(60, 60)
+        wyr_x = iface.mapCanvas().width() - self.wyr_panel.width() - 60
+        self.wyr_panel.move(wyr_x, 60)
+        splash_x = (iface.mapCanvas().width() / 2) - (self.splash_screen.width() / 2)
+        splash_y = (iface.mapCanvas().height() / 2) - (self.splash_screen.height() / 2)
+        self.splash_screen.move(splash_x, splash_y)
 
     def resize_panel(self, event):
         """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
@@ -325,7 +387,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         finally:
             self.hk_seq_active = self.hk_seq  # Zapamiętanie stanu hk_seq
 
-    def __button_conn(self):
+    def button_conn(self):
         """Przyłączenia przycisków do funkcji."""
         self.p_vn.widgets["btn_vn_sel"].clicked.connect(lambda: self.mt.init("vn_sel"))
         self.p_vn.widgets["btn_vn_zoom"].pressed.connect(vn_zoom)
@@ -336,19 +398,14 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_unsel"].pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
-        # self.p_flag.widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
-        # self.p_flag.widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
         self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
-        # self.p_flag.widgets["btn_flag_del"].clicked.connect(lambda: self.mt.init("flag_del"))
         self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_wn"], grp=False, name="wn_kopaliny_pne"))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_midas"], grp=True, name="MIDAS"))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_mgsp"], grp=True, name="MGSP"))
         self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_smgp"], grp=False, name="smgp_wyrobiska"))
-        self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add"].clicked.connect(lambda: self.mt.init("wyr_add"))
-        # self.p_wyr.widgets["btn_wyr_add"].clicked.connect(lambda: self.mt.init("wyr_add"))
-        # self.p_wyr.widgets["btn_wyr_del"].clicked.connect(lambda: self.mt.init("wyr_del"))
+        self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
         # self.p_auto.widgets["btn_auto_add"].clicked.connect(lambda: self.mt.init("auto_add"))
         # self.p_auto.widgets["btn_auto_del"].clicked.connect(lambda: self.mt.init("auto_del"))
         # self.p_auto.widgets["btn_marsz_add"].clicked.connect(lambda: self.mt.init("marsz_add"))
@@ -409,10 +466,47 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.hk_seq = False
         # Usunięcie połączenia z Google Earth Pro:
         self.ge = None
+        # Odblokowanie messagebar'u:
+        try:
+            iface.messageBar().widgetAdded.disconnect(self.msgbar_blocker)
+        except:
+            pass
         try:
             iface.mapCanvas().children().remove(self.side_dock)
             self.side_dock.deleteLater()
         except:
             pass
+        try:
+            iface.mapCanvas().children().remove(self.bottom_dock)
+            self.bottom_dock.deleteLater()
+        except:
+            pass
+        try:
+            iface.mapCanvas().children().remove(self.flag_panel)
+            self.flag_panel.deleteLater()
+        except:
+            pass
+        try:
+            iface.mapCanvas().children().remove(self.wyr_panel)
+            self.wyr_panel.deleteLater()
+        except:
+            pass
+        try:
+            iface.mapCanvas().children().remove(self.splash_screen)
+            self.splash_screen.deleteLater()
+        except:
+            pass
+        try:
+            self.mt = None
+        except Exception as err:
+            print(err)
+        try:
+            self.obj = None
+        except Exception as err:
+            print(err)
+        try:
+            iface.mapCanvas().removeEventFilter(self)
+        except Exception as err:
+            print(err)
         self.closingPlugin.emit()
         event.accept()

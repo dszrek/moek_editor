@@ -368,7 +368,7 @@ def get_flag_ids():
 
 def list_diff(l1, l2):
     """Zwraca listę elementów l1, które nie występują w l2."""
-    if not l1 and not l2:
+    if not l1 or not l2:
         return None
     else:
         return (list(set(l1)-set(l2)))

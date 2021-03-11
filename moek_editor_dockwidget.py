@@ -36,7 +36,7 @@ from .classes import PgConn
 from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekSideDock, MoekBottomDock, FlagCanvasPanel, WyrCanvasPanel
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekSideDock, MoekBottomDock, FlagCanvasPanel, WyrCanvasPanel, SplashScreen
 from .basemaps import MoekMapPanel
 from .sequences import prev_map, next_map, seq
 
@@ -176,8 +176,13 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
         # Utworzenie bocznego docker'a z toolbox'ami:
         self.side_dock = MoekSideDock()
+        self.side_dock.hide()
         # Utworzenie dolnego docker'a z toolbox'ami:
         self.bottom_dock = MoekBottomDock()
+        self.bottom_dock.hide()
+
+        self.splash_screen = SplashScreen()
+        self.splash_screen.show()
 
         tb_multi_tool_widgets = [
                     {"item": "button", "name": "multi_tool", "size": 50, "checkable": True, "tooltip": u"nawigacja i selekcja obiektów"}
@@ -215,17 +220,21 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     self.bottom_dock.add_toolbox(toolbox)
 
         self.flag_panel = FlagCanvasPanel()
+        self.flag_panel.hide()
         self.wyr_panel = WyrCanvasPanel()
+        self.wyr_panel.hide()
         self.mt = MapToolManager(dlg=self, canvas=iface.mapCanvas())
         self.obj = ObjectManager(dlg=self, canvas=iface.mapCanvas())
 
         self.side_dock.move(1,0)
-        self.side_dock.show()
         bottom_y = iface.mapCanvas().height() - 52
         self.bottom_dock.move(0, bottom_y)
         self.flag_panel.move(60, 60)
         wyr_x = iface.mapCanvas().width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
+        splash_x = (iface.mapCanvas().width() / 2) - (self.splash_screen.width() / 2)
+        splash_y = (iface.mapCanvas().height() / 2) - (self.splash_screen.height() / 2)
+        self.splash_screen.move(splash_x, splash_y)
 
         self.resizeEvent = self.resize_panel
         self.canvas = iface.mapCanvas()
@@ -235,7 +244,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         iface.messageBar().widgetAdded.connect(self.msgbar_blocker)
 
         self.__button_conn()
-        self.ext_init()
+        # self.ext_init()
         # self.p_flag.active = True
         # self.p_wyr.active = True
         # self.p_auto.active = True
@@ -269,6 +278,9 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.flag_panel.move(60, 60)
         wyr_x = iface.mapCanvas().width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
+        splash_x = (iface.mapCanvas().width() / 2) - (self.splash_screen.width() / 2)
+        splash_y = (iface.mapCanvas().height() / 2) - (self.splash_screen.height() / 2)
+        self.splash_screen.move(splash_x, splash_y)
 
     def resize_panel(self, event):
         """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
@@ -482,6 +494,11 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         try:
             iface.mapCanvas().children().remove(self.wyr_panel)
             self.wyr_panel.deleteLater()
+        except:
+            pass
+        try:
+            iface.mapCanvas().children().remove(self.splash_screen)
+            self.splash_screen.deleteLater()
         except:
             pass
         try:

@@ -19,7 +19,7 @@ from qgis.PyQt.QtWidgets import QMessageBox
 from configparser import ConfigParser
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
 from qgis.core import QgsProject, QgsGeometry, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsPointXY
-from qgis.PyQt.QtCore import Qt, pyqtSignal
+from qgis.PyQt.QtCore import Qt, pyqtSignal, QObject
 from PyQt5.QtGui import QColor, QKeySequence
 from PyQt5.QtCore import QTimer
 from qgis.utils import iface

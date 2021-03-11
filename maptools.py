@@ -23,6 +23,7 @@ def dlg_maptools(_dlg):
 class ObjectManager:
     """Menadżer obiektów."""
     def __init__(self, dlg, canvas):
+        self.init_void = True
         self.dlg = dlg  # Referencja do wtyczki
         self.canvas = canvas  # Referencja do mapy
         self.flag_clicked = False
@@ -39,6 +40,8 @@ class ObjectManager:
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
+        if self.init_void:  # Blokada przed odpalaniem podczas ładowania wtyczki
+            return
         if attr == "flag":
             QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'flag_sel', val)
             self.flag_hidden = None
@@ -61,7 +64,7 @@ class ObjectManager:
                 self.wyr_data = self.wyr_update()
                 self.list_position_check("wyr")
                 area_txt = f"  {self.wyr_data[1]} m\u00b2  "
-                self.dlg.wyr_panel.area_label.setText(area_txt)
+                self.dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
                 self.dlg.wyr_panel.notepad_box.set_text(self.wyr_data[2])  # Aktualizacja tekstu notatki
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
@@ -220,11 +223,11 @@ class ObjectManager:
             id_box = dlg.wyr_panel.id_box
         else:
             return
-        if not ids:
+        if not ids or not val:
             return
         obj_cnt = len(ids)
         try:
-            cur_id_idx = ids.index(val)  # Pozycja na liście aktualnej flagi
+            cur_id_idx = ids.index(val)  # Pozycja na liście aktualnego obiektu
         except Exception as err:
             print(err)
             return
@@ -284,7 +287,6 @@ class MapToolManager:
             # {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_add"], "fn" : marsz_add},
             # {"name" : "marsz_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_del"], "lyr" : ["marsz"], "fn" : marsz_del}
         ]
-        self.init("multi_tool")
 
     def maptool_change(self, new_tool, old_tool):
         if not new_tool and not old_tool:
@@ -1981,7 +1983,7 @@ def wyr_add_poly(geom, wyr_id=None):
             print(err)
             return
     lyr_poly.triggerRepaint()
-    wyr_powiaty_change(wyr_id, geom)
+    wyr_powiaty_change(wyr_id, geom, new=True)
     wyr_point_update(wyr_id, geom)
     dlg.obj.wyr_ids = get_wyr_ids("wyrobiska")  # Aktualizacja listy wyrobisk w ObjectManager
     dlg.obj.list_position_check("wyr")  # Aktualizacja pozycji na liście obecnie wybranego wyrobiska
@@ -2026,6 +2028,7 @@ def wyr_point_update(wyr_id, geom):
     lyr_point.triggerRepaint()
     if temp_lyr:
         del lyr_point
+    dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych wyrobiska
 
 def wyr_del(layer, feature):
     dlg.mt.init("multi_tool")

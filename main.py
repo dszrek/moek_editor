@@ -368,7 +368,10 @@ def get_flag_ids():
 
 def list_diff(l1, l2):
     """Zwraca listę elementów l1, które nie występują w l2."""
-    return (list(set(l1)-set(l2)))
+    if not l1 and not l2:
+        return None
+    else:
+        return (list(set(l1)-set(l2)))
 
 def active_pow_listed():
     """Zwraca listę z numerami aktywnych powiatów."""
@@ -379,10 +382,11 @@ def active_pow_listed():
         pows.append(feat.attribute("pow_id"))
     return pows
 
-def wyr_powiaty_change(wyr_id, geom):
+def wyr_powiaty_change(wyr_id, geom, new=False):
     """Aktualizuje tabelę 'wyr_pow' po zmianie geometrii wyrobiska."""
-    # Usunięcie poprzednich wpisów z tabeli 'wyr_pow':
-    wyr_powiaty_delete(wyr_id)
+    if not new:
+        # Usunięcie poprzednich wpisów z tabeli 'wyr_pow':
+        wyr_powiaty_delete(wyr_id)
     # Stworzenie listy z aktualnymi powiatami dla wyrobiska:
     p_list = wyr_powiaty_listed(wyr_id, geom)
     if not p_list:  # Brak powiatów
@@ -398,7 +402,7 @@ def wyr_powiaty_delete(wyr_id):
     if db:
         res = db.query_upd(sql)
         if not res:
-            print("Brak rekordów dla tego wyrobiska.")
+            print(f"Brak rekordów dla wyrobiska {wyr_id}.")
 
 def wyr_powiaty_update(p_list):
     """Wstawienie do tabeli 'wyr_pow' aktualnych numerów powiatów dla wyrobiska."""
@@ -538,7 +542,6 @@ def vn_cfg(seq=0):
             vn_setup_mode(True)
         else:  # Włączenie ustawień którejś z sekwencji
             dlg.p_vn.widgets["sqb_seq"].enter_setup(seq)
-            # dlg.p_vn.box.setCurrentIndex(seq)
     else:  # Przycisk konfiguracyjny został wyciśnięty
         if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
             dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
@@ -551,7 +554,6 @@ def vn_cfg(seq=0):
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     # print("[vn_setup_mode:", b_flag, "]")
-
     # Włączenie/Wyłączenie warstw flag i wyrobisk:
     QgsProject.instance().layerTreeRoot().findGroup("wyrobiska").setItemVisibilityChecked(not b_flag)
     QgsProject.instance().layerTreeRoot().findGroup("flagi").setItemVisibilityChecked(not b_flag)
@@ -673,7 +675,7 @@ def db_attr_change(tbl, attr, val, sql_bns, user=True):
         return False
 
 def pg_layer_change(uri, layer):
-    """Zmiana zawartości warstwy postgis na podstawie Uri"""
+    """Zmiana zawartości warstwy postgres na podstawie uri"""
     # print("[pg_layer_change:", uri, layer, "]")
     xml_document = QDomDocument("style")
     xml_maplayers = xml_document.createElement("maplayers")

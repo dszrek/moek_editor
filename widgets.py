@@ -3,7 +3,7 @@ import os
 import time
 
 from qgis.core import QgsProject
-from PyQt5.QtWidgets import QWidget, QMessageBox, QFrame, QToolButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QWidget, QMessageBox, QFrame, QToolButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
 from PyQt5.QtCore import Qt, QSize, pyqtSignal, QRegExp
 from PyQt5.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator
 from qgis.utils import iface
@@ -263,6 +263,38 @@ class MoekBarPanel(QFrame):
         self.box.lay.addWidget(_cmb)
         cmb_name = f'cmb_{dict["name"]}'
         self.box.widgets[cmb_name] = _cmb
+
+
+class SplashScreen(QFrame):
+    """Ekran ładowania wtyczki."""
+    def __init__(self):
+        super().__init__()
+        self.setParent(iface.mapCanvas())
+        self.setObjectName("main")
+        shadow_1 = QGraphicsDropShadowEffect(blurRadius=24, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
+        shadow_2 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(300, 240)
+        self.logo = MoekButton(name="splash_logo", size=120, checkable=False, enabled=False)
+        self.logo.setGraphicsEffect(shadow_1)
+        self.p_bar = QProgressBar()
+        self.p_bar.setGraphicsEffect(shadow_2)
+        self.p_bar.setFixedWidth(100)
+        self.p_bar.setRange(0, 100)
+        self.p_bar.setTextVisible(False)
+        self.box = MoekVBox(self, spacing=0, margins=[0, 30, 0, 30])
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
+        hlay = QVBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(0)
+        hlay.addWidget(self.box)
+        self.setLayout(hlay)
+        self.box.lay.addWidget(self.logo)
+        self.box.lay.addWidget(self.p_bar)
+        self.box.lay.setAlignment(self.logo, Qt.AlignCenter)
+        self.box.lay.setAlignment(self.p_bar, Qt.AlignCenter)
 
 
 class WyrCanvasPanel(QFrame):
@@ -646,7 +678,6 @@ class TextPad(QPlainTextEdit):
 
     def modified(self, changed):
         """Odpala się po zmianie self.doc.setModified()."""
-        print(f"modified: {changed}")
         self.parent().accept_btn.setEnabled(changed)
         self.parent().revert_btn.setEnabled(changed)
 
@@ -896,12 +927,12 @@ class MoekHBox(QFrame):
 
 class MoekVBox(QFrame):
     """Zawartość toolbox'a w kompozycji QVBoxLayout."""
-    def __init__(self, *args):
+    def __init__(self, *args, margins=[0, 0, 0, 0], spacing=0):
         super().__init__(*args)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.lay = QVBoxLayout()
-        self.lay.setContentsMargins(0, 0, 0, 0)
-        self.lay.setSpacing(1)
+        self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
+        self.lay.setSpacing(spacing)
         self.setLayout(self.lay)
 
 

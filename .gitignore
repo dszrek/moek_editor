@@ -1,4 +1,6 @@
 __pycache__/
 .mypy_cache/
 .vscode/
+test/
 pyqgis.cmd
+bin.py

@@ -147,13 +147,13 @@ class MoekMapPanel(QFrame):
                 # iface.mapCanvas().extentsChanged.connect(dlg.ge.extent_changed)
                 dlg.ge.visible_changed(True)
                 self.ge = True
-                print("warstwa GEP włączona")
+                # print("warstwa GEP włączona")
         else:
             if self.ge:
                 # iface.mapCanvas().extentsChanged.disconnect(dlg.ge.extent_changed)
                 dlg.ge.visible_changed(False)
                 self.ge = False
-                print("warstwa GEP wyłączona")
+                # print("warstwa GEP wyłączona")
         # Ustawienie widoczności warstw z podkładami mapowymi:
         for layer in self.layers:
             if layer == self.map_attr(self.map)["lyr_1"] or layer == self.map_attr(self.map)["lyr_2"]:
@@ -315,7 +315,6 @@ class MoekMapPanel(QFrame):
             self.first_map(self.cat)
             self.spb_update()  # Wymuszenie odświeżenia spinbox'a
             self.box.setCurrentIndex(0)  # Powrót do spinbox'a
-            dlg.p_vn.box.currentChange()
 
 
 class MoekMapButtons(QFrame):
@@ -357,7 +356,7 @@ class MoekMapButtons(QFrame):
         if dlg.p_map.ge:  # Warstwa z Google Earth Pro jest włączona
             dlg.ge.ge_sync()  # Synchronizacja widoków
         else:
-            print(f"4. q2ge")
+            # print(f"4. q2ge")
             dlg.ge.q2ge(False)  # Pokazanie widoku QGIS'a w Google Earth Pro
 
 

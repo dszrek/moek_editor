@@ -279,8 +279,9 @@ class MoekEditor:
         # TODO: fix to allow choice of dock location
         self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
         self.dockwidget.obj.init_void = False  # Odblokowanie ObjectManager'a
-        self.dockwidget.ext_init()
-        self.dockwidget.mt.init("multi_tool")
+        self.dockwidget.ext_init()  # Podłączenie funkcji zmiany widoczności warstw z danymi zewnętrznymi
+        self.dockwidget.button_conn()  # Podłączenie akcji przycisków
+        self.dockwidget.mt.init("multi_tool")  # Aktywacja multi_tool'a
         self.dockwidget.splash_screen.hide()
         self.dockwidget.show()
         self.dockwidget.side_dock.show()

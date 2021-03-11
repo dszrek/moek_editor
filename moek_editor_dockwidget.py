@@ -243,13 +243,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         # Wyłączenie messagebar'u:
         iface.messageBar().widgetAdded.connect(self.msgbar_blocker)
 
-        self.__button_conn()
-        # self.ext_init()
-        # self.p_flag.active = True
-        # self.p_wyr.active = True
-        # self.p_auto.active = True
-        self.hk_vn_load()
-        self.hk_seq_load()
+        self.hk_vn_load()  # Włączenie skrótów klawiszowych vn
+        self.hk_seq_load()  # Włączenie skrótów klawiszowych sekwencji mapowych
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -392,7 +387,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         finally:
             self.hk_seq_active = self.hk_seq  # Zapamiętanie stanu hk_seq
 
-    def __button_conn(self):
+    def button_conn(self):
         """Przyłączenia przycisków do funkcji."""
         self.p_vn.widgets["btn_vn_sel"].clicked.connect(lambda: self.mt.init("vn_sel"))
         self.p_vn.widgets["btn_vn_zoom"].pressed.connect(vn_zoom)

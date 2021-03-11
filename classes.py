@@ -238,17 +238,14 @@ class GESync:
 
     def visible_changed(self, value):
         """Włączenie / wyłączenie warstwy 'Google Earth Pro'."""
-        print(f"[visible_changed]")
+        # print(f"[visible_changed]")
         if value:  # Włączono warstwę
             self.is_on = True
-            print(f"{self.extent} - {iface.mapCanvas().extent()}")
             if self.extent != iface.mapCanvas().extent():
                 self.extent = iface.mapCanvas().extent()
                 self.ge_sync()
-                print(f"ge_sync")
             if self.player or not self.loaded:
                 self.ge_grabber()
-                print(f"ge_grabber")
         else:  # Wyłączono warstwę
             self.is_on = False
 
@@ -261,12 +258,12 @@ class GESync:
         for p in process_list:
             if p[1] == "qgis-bin-g7.exe" or p[1] == "qgis-bin.exe" or p[1] == "qgis-ltr-bin.exe" or p[1] == "qgis-ltr-bin-g7.exe":
                 self.q_id = p[0]
-                print(f"qgis: {p[1]}")
+                # print(f"qgis: {p[1]}")
             elif p[1] == "googleearth.exe":
                 ge_flag = True
                 self.is_ge = True
                 self.ge_id = p[0]
-                print(f"is_ge: {self.is_ge}, ge_id: {self.ge_id}")
+                # print(f"is_ge: {self.is_ge}, ge_id: {self.ge_id}")
         if not ge_flag:  # Google Earth Pro nie jest uruchomiony
             self.ge_id = None
             self.is_ge = False
@@ -281,11 +278,11 @@ class GESync:
         # print(f"w_title: {w_title}")
         if w_title.find("*MOEK_editor") != -1:  # W nazwie otwartego pliku .qgz musi być fraza "*MOEK_editor"
             self.q_hwnd = hwnd
-            print(f"self.q_hwnd: {self.q_hwnd}")
+            # print(f"self.q_hwnd: {self.q_hwnd}")
         # Wyszukanie handlera Google Earth Pro:
         if self.is_ge and w_title == "Google Earth Pro":
             self.ge_hwnd = hwnd
-            print(f"self.ge_hwnd: {self.ge_hwnd}")
+            # print(f"self.ge_hwnd: {self.ge_hwnd}")
             # Wyszukanie handlera subokna Google Earth Pro z obrazem mapy:
             self.child = 0
             try:
@@ -295,18 +292,18 @@ class GESync:
 
     def _enum_children(self, hwnd, extras):
         """Ustalenie handlera subokna Google Earth Pro z obrazem mapy."""
-        print(f"child: {self.child}")
+        # print(f"child: {self.child}")
         self.child += 1
         rect = win32gui.GetWindowRect(hwnd)
-        print(f"ge_width: {rect[2] - rect[0]}, ge_height: {rect[3] - rect[1]}")
+        # print(f"ge_width: {rect[2] - rect[0]}, ge_height: {rect[3] - rect[1]}")
         if self.child == 12:
             self.bmp_hwnd = hwnd
 
     def ge_sync(self):
         """Wyświetlenie w Google Earth Pro obszaru mapy z QGIS'a."""
-        print("[ge_sync]")
+        # print("[ge_sync]")
         if not self.is_ge:
-            print(f"2. q2ge")
+            # print(f"2. q2ge")
             self.q2ge()
             self.get_handlers()
             return
@@ -316,13 +313,13 @@ class GESync:
         except:
             self.is_ge = False
             return
-        print(f"3. q2ge")
+        # print(f"3. q2ge")
         self.q2ge()
         self.ge_grabber()
 
     def q2ge(self, back=True, player=False):
         """Przejście w Google Earth Pro do widoku mapy z QGIS'a."""
-        print(f"[q2ge]")
+        # print(f"[q2ge]")
         if not self.is_ge:
             self.get_handlers()
         canvas = iface.mapCanvas()
@@ -330,7 +327,7 @@ class GESync:
         crs_dest = QgsCoordinateReferenceSystem(4326)  # WGS84
         xform = QgsCoordinateTransform(crs_src, crs_dest, QgsProject.instance())  # Transformacja między układami
         if not self.extent or not back or player:
-            print("extent changed")
+            # print("extent changed")
             self.loaded = False
             self.extent = iface.mapCanvas().extent()
         # Współrzędne rogów widoku mapy:
@@ -375,7 +372,7 @@ class GESync:
         kml.close()
         # Włączenie dla QGIS'a funkcji always on top:
         if back and self.is_ge:
-            print(f"qgis on top: True")
+            # print(f"qgis on top: True")
             try:
                 win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
             except:
@@ -392,7 +389,7 @@ class GESync:
         try:
             win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
             win32gui.SetForegroundWindow(self.q_hwnd)
-            print(f"qgis on top: False")
+            # print(f"qgis on top: False")
         except:
             print(f"q_hwnd ({self.q_hwnd}) exception!")
             self.get_handlers()
@@ -400,7 +397,7 @@ class GESync:
     def ge_grabber(self):
         """Główna funkcja przechwytywania obrazu z Google Earth Pro."""
         # Ekranowe wymiary obrazka do przechwycenia:
-        print("[ge_grabber]")
+        # print("[ge_grabber]")
         try:
             l,t,r,b = win32gui.GetClientRect(self.bmp_hwnd)
         except:
@@ -410,7 +407,7 @@ class GESync:
             return
         self.bmp_w = int((r - l) / self.screen_scale)
         self.bmp_h = int((b - t)  / self.screen_scale)
-        print(f"bmp_w: {self.bmp_w}, bmp_h: {self.bmp_h}")
+        # print(f"bmp_w: {self.bmp_w}, bmp_h: {self.bmp_h}")
         self.tmp_num = 0
         self.bytes = 0
         # Przechwycenie obrazu i określenie ile waży zapisany jpg:
@@ -427,13 +424,13 @@ class GESync:
         self.wld_creator()  # Utworzenie pliku z georeferencjami
         self.layer_update()  # Wczytanie jpg'a do warstwy
         self.loaded = True
-        print(f"loaded: {self.loaded}")
+        # print(f"loaded: {self.loaded}")
         # Wyłączenie dla QGIS'a funkcji always on top:
         self.on_top_off()
 
     def create_jpg(self):
         """Przechwycenie obrazu z Google Earth Pro i zapisanie go do .jpg."""
-        print(f"[create_jpg]")
+        # print(f"[create_jpg]")
         dc = win32gui.GetDC(self.bmp_hwnd)
         hdc = win32ui.CreateDCFromHandle(dc)
         new_dc = hdc.CreateCompatibleDC()

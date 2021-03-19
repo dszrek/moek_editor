@@ -276,7 +276,7 @@ class GESync:
         # if win32process.GetWindowThreadProcessId(hwnd)[1] == self.q_id:
         w_title = win32gui.GetWindowText(hwnd)
         # print(f"w_title: {w_title}")
-        if w_title.find("*MOEK_editor") != -1:  # W nazwie otwartego pliku .qgz musi być fraza "*MOEK_editor"
+        if w_title.find("| MOEK_Editor") != -1:  # W nazwie otwartego pliku .qgz musi być fraza "*MOEK_editor"
             self.q_hwnd = hwnd
             # print(f"self.q_hwnd: {self.q_hwnd}")
         # Wyszukanie handlera Google Earth Pro:

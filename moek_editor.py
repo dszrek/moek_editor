@@ -189,23 +189,24 @@ class MoekEditor:
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
 
-        #print "** CLOSING MoekEditor"
+        print("** CLOSING MoekEditor")
 
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
 
         # remove this statement if dockwidget is to remain
         # for reuse if plugin is reopened
-        # Commented next statement since it causes QGIS crashe
+        # Commented next statement since it causes QGIS crashes
         # when closing the docked window:
-        # self.dockwidget = None
-
+        self.dockwidget = None
         self.plugin_is_active = False
+        # Przywrócenie domyślnego tytułu okna QGIS:
+        self.title_change(closing=True)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
 
-        #print "** UNLOAD MoekEditor"
+        print("** UNLOAD MoekEditor")
 
         for action in self.actions:
             self.iface.removePluginMenu(
@@ -214,6 +215,12 @@ class MoekEditor:
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
         del self.toolbar
+
+    def title_change(self, closing=False):
+        """Zmiana tytułu okna QGIS."""
+        title = iface.mainWindow().windowTitle()
+        new_title = title.replace('| MOEK_Editor', '- QGIS') if closing else title.replace('- QGIS', '| MOEK_Editor')
+        iface.mainWindow().setWindowTitle(new_title)
 
     #--------------------------------------------------------------------------
 
@@ -269,8 +276,16 @@ class MoekEditor:
             if not teams_load():  # Nie udało się załadować team'ów użytkownika, przerwanie ładowania pluginu
                 self.iface.removeDockWidget(self.dockwidget)
                 return
-        create_qgis_project()  # Utworzenie nowego projektu QGIS i załadowanie do niego warstw
+        project_check = self.dockwidget.lyr.project_check()  # Utworzenie nowego projektu QGIS i załadowanie do niego warstw
+        if not project_check:
+            try:
+                self.dockwidget.close()
+            except Exception as err:
+                print(err)
+            return
+        self.title_change()
         self.dockwidget.splash_screen.p_bar.setMaximum(0)
+        QgsApplication.processEvents()
         self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
         teams_cb_changed()  # Załadowanie powiatów
         basemaps_load()  # Załadowanie podkładów mapowych
@@ -285,5 +300,6 @@ class MoekEditor:
         self.dockwidget.splash_screen.hide()
         self.dockwidget.show()
         self.dockwidget.side_dock.show()
+
         finish = time.perf_counter()
         print(f"Proces ładowania pluginu trwał {round(finish - self.start, 2)} sek.")

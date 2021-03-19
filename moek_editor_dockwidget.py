@@ -64,6 +64,15 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.iface = iface
         self.setupUi(self)
 
+        self.closing = False
+        self.proj = QgsProject.instance()  # Referencja do instancji projektu
+        self.proj.layersWillBeRemoved.connect(self.layers_removing)
+        self.proj.legendLayersAdded.connect(self.layers_adding)
+        self.app = iface.mainWindow()  # Referencja do aplikacji QGIS
+        iface.mainWindow().installEventFilter(self)  # Nasłuchiwanie zmiany tytułu okna QGIS
+        self.canvas = iface.mapCanvas()  # Referencja do okna mapowego
+        iface.mapCanvas().installEventFilter(self)  # Nasłuchiwanie zmiany rozmiaru okna mapowego
+
         p_team_widgets = [
                     {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
                     ]
@@ -237,8 +246,6 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.splash_screen.move(splash_x, splash_y)
 
         self.resizeEvent = self.resize_panel
-        self.canvas = iface.mapCanvas()
-        iface.mapCanvas().installEventFilter(self)
 
         # Wyłączenie messagebar'u:
         iface.messageBar().widgetAdded.connect(self.msgbar_blocker)
@@ -261,6 +268,16 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
     def eventFilter(self, obj, event):
         if obj is iface.mapCanvas() and event.type() == QEvent.Resize:
             self.resize_canvas()
+        if obj is iface.mainWindow() and event.type() == QEvent.WindowTitleChange:
+            # Zmiana tytułu okna QGIS:
+            title = self.app.windowTitle()
+            new_title = title.replace('- QGIS', '| MOEK_Editor')
+            self.app.setWindowTitle(new_title)
+        if obj is iface.mainWindow() and event.type() == QEvent.Close:
+            # Zamknięcie QGIS'a:
+            self.closing = True
+            self.proj.clear()
+            self.close()
         return super().eventFilter(obj, event)
 
     def resize_canvas(self):
@@ -317,6 +334,31 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             self.setMinimumWidth(p_width)
             self.resize(p_width, self.height())
         iface.actionDraw().trigger()
+
+    def layers_removing(self, lyr_list):
+        """Emitowany, jeśli warstwy mają być usunięte."""
+        lyrs_required = []
+        for lyr_id in lyr_list:
+            lyr = self.proj.mapLayer(lyr_id)
+            if lyr.name() in self.lyr.lyrs_names:
+                # Zostanie usunięta warstwa niezbędna dla działania wtyczki:
+                lyrs_required.append(lyr)
+        if len(lyrs_required) > 0:
+            m_text = "Została usunięta warstwa niezbędna do prawidłowego funkcjonowania wtyczki. Moek_Editor musi zostać wyłączony."
+            self.project_corrupted(m_text)
+
+    def layers_adding(self, lyr_list):
+        """Emitowany, jeśli warstwy zostały dodane do legendy."""
+        for lyr in lyr_list:
+            if lyr.name() in self.lyr.lyrs_names:
+                # Zmiana w nowej warstwie nazwy zarezerwowanej:
+                lyr.setName(f"{lyr.name()}_0")
+
+    def project_corrupted(self, m_text):
+        """Wyświetla komunikat o awaryjnym wyłączeniu wtyczki. Wyłącza wtyczkę po jego zatwierdzeniu."""
+        if not self.closing:
+            QMessageBox.critical(self.app, "Moek_Editor", m_text)
+            self.close()
 
     def hk_vn_load(self):
         """Załadowanie skrótów klawiszowych do obsługi vn."""
@@ -472,6 +514,12 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         except:
             pass
         try:
+            self.proj.layersWillBeRemoved.disconnect(self.layers_removing)
+            self.proj.legendLayersAdded.disconnect(self.layer_adding)
+        except Exception as err:
+            print(err)
+        self.proj = None
+        try:
             iface.mapCanvas().children().remove(self.side_dock)
             self.side_dock.deleteLater()
         except:
@@ -501,7 +549,20 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         except Exception as err:
             print(err)
         try:
+            self.lyr = None
+        except Exception as err:
+            print(err)
+        # Przełączenie na QGIS'owy maptool:
+        canvas = iface.mapCanvas()
+        map_tool_pan = QgsMapToolPan(canvas)
+        canvas.setMapTool(map_tool_pan)
+        iface.actionPan().trigger()
+        try:
             self.obj = None
+        except Exception as err:
+            print(err)
+        try:
+            iface.mainWindow().removeEventFilter(self)
         except Exception as err:
             print(err)
         try:

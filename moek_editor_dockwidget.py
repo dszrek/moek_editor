@@ -27,12 +27,14 @@ import os
 from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.PyQt.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QShortcut, QMessageBox
-from qgis.PyQt.QtCore import pyqtSignal, QEvent
+from qgis.PyQt.QtCore import pyqtSignal, QEvent, QObject
 from PyQt5.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject, QgsFeature
+from qgis.gui import QgsMapToolPan
 from qgis.utils import iface
 
 from .classes import PgConn
+from .layers import LayerManager
 from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
@@ -234,6 +236,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.wyr_panel.hide()
         self.mt = MapToolManager(dlg=self, canvas=iface.mapCanvas())
         self.obj = ObjectManager(dlg=self, canvas=iface.mapCanvas())
+        self.lyr = LayerManager(dlg=self)
 
         self.side_dock.move(1,0)
         bottom_y = iface.mapCanvas().height() - 52

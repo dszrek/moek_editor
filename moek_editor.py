@@ -24,15 +24,17 @@
 import os.path
 import time
 
+from qgis.core import QgsApplication
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
+from qgis.utils import iface
 
 from .resources import resources
 
 from .main import dlg_main, db_login, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
 from .widgets import dlg_widgets
-from .layers import dlg_layers, create_qgis_project
+from .layers import dlg_layers
 from .maptools import dlg_maptools
 from .viewnet import dlg_viewnet
 from .basemaps import dlg_basemaps, basemaps_load

@@ -21,127 +21,258 @@ def dlg_layers(_dlg):
     global dlg
     dlg = _dlg
 
-def create_qgis_project():
-    """Utworzenie nowego projektu QGIS."""
-    iface.newProject(False)
-    qprj = QgsProject.instance()
-    qprj.setTitle("MOEK_editor")
-    qprj.setCrs(CRS_1992)
-    QgsApplication.processEvents()
-    create_project_groups()
-    QgsApplication.processEvents()
-    create_layers()
+class LayerManager:
+    """Menedżer warstw projektu."""
+    def __init__(self, dlg):
+        self.root = dlg.proj.layerTreeRoot()
+        self.groups_tree = [
+            {'level': 0, 'layers': ['wn_kopaliny_pne', 'powiaty', 'arkusze', 'powiaty_mask']},
+            {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_point', 'wyr_poly']},
+            {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
+            {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
+            {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wybilansowane', 'midas_obszary', 'midas_tereny']},
+            {'name': 'MGSP', 'level': 1, 'layers': ['mgsp_pkt_kop', 'mgsp_zloza_p', 'mgsp_zloza_a', 'mgsp_zloza_wb_p', 'mgsp_zloza_wb_a']},
+            {'name': 'basemaps', 'level': 1, 'layers': ['ISOK'], 'subgroups': ['sat', 'topo']},
+            {'name': 'sat', 'level': 2, 'parent': 'basemaps', 'layers': ['Google Satellite', 'Google Hybrid', 'Geoportal', 'Geoportal HD', 'Google Earth Pro']},
+            {'name': 'topo', 'level': 2, 'parent': 'basemaps', 'layers': ['Google Map', 'OpenStreetMap', 'Topograficzna', 'BDOT', 'BDOO']},
+            {'name': 'temp', 'level': 1, 'layers': ['edit_poly', 'backup_poly']}
+            ]
+        self.lyrs = [
+            {"source": "postgres", "name": "wyr_point", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
+            {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
+            {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
+            {"source": "postgres", "name": "wn_kopaliny_pne", "root": True, "pos": 2, "visible": True, "uri": '{PARAMS} table="external"."wn_kopaliny_pne" (geom) srid=4326 sql=', "crs": 4326},
+            {"source": "postgres", "name": "powiaty", "root": True, "pos": 3, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
+            {"source": "postgres", "name": "arkusze", "root": True, "pos": 4, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
+            {"source": "postgres", "name": "vn_sel", "root": False, "parent": "vn", "visible": True, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
+            {"source": "postgres", "name": "vn_user", "root": False, "parent": "vn", "visible": True, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
+            {"source": "postgres", "name": "vn_other", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
+            {"source": "postgres", "name": "vn_null", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
+            {"source": "postgres", "name": "vn_all", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
+            {"source": "virtual", "name": "powiaty_mask", "root": True, "pos": 6, "visible": True, "uri": '?query=Select%20st_union(geometry)%20from%20powiaty'},
+            {"source": "postgres", "name": "midas_zloza", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_zloza" (geom) sql='},
+            {"source": "postgres", "name": "midas_wybilansowane", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_wybilansowane" (geom) sql='},
+            {"source": "postgres", "name": "midas_obszary", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_obszary" (geom) sql='},
+            {"source": "postgres", "name": "midas_tereny", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_tereny" (geom) sql='},
+            {"source": "postgres", "name": "mgsp_pkt_kop", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_pkt_kop" (geom) sql='},
+            {"source": "postgres", "name": "mgsp_zloza_p", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_p" (geom) sql='},
+            {"source": "postgres", "name": "mgsp_zloza_a", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_a" (geom) sql='},
+            {"source": "postgres", "name": "mgsp_zloza_wb_p", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_wb_p" (geom) sql='},
+            {"source": "postgres", "name": "mgsp_zloza_wb_a", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_wb_a" (geom) sql='},
+            {"source": "postgres", "name": "smgp_wyrobiska", "root": True, "pos": 9, "visible": True, "uri": '{PARAMS} table="external"."smgp_wyrobiska" (geom) sql='},
+            {"source": "wms", "name": "Google Satellite", "root": False, "parent": "sat", "visible": True, "uri": 'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=18&zmin=0'},
+            {"source": "wms", "name": "Google Hybrid", "root": False, "parent": "sat", "visible": False, "uri": 'crs=EPSG:3857&format&tilePixelRatio=2&type=xyz&url=http://mt0.google.com/vt/lyrs%3Dy%26hl%3Den%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=18&zmin=0'},
+            {"source": "wms", "name": "Geoportal", "root": False, "parent": "sat", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ORTOFOTOMAPA&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMTS/StandardResolution?service%3DWMTS%26request%3DgetCapabilities'},
+            {"source": "wms", "name": "Geoportal HD", "root": False, "parent": "sat", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ORTOFOTOMAPA&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMTS/HighResolution?service%3DWMTS%26request%3DgetCapabilities'},
+            {"source": "gdal", "name": "Google Earth Pro", "root": False, "parent": "sat", "visible": False, "uri": '{UI_PATH}ge.jpg', "crs": -1},
+            {"source": "wms", "name": "Google Map", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Dm%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=18&zmin=0'},
+            {"source": "wms", "name": "OpenStreetMap", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:3857&format&type=xyz&url=https://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0'},
+            {"source": "wms", "name": "Topograficzna", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=MAPA TOPOGRAFICZNA&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/TOPO?service%3DWMTS%26request%3DgetCapabilities'},
+            {"source": "wms", "name": "BDOT", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/png&layers=BDOT10k&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOT10k?service%3DWMTS%26request%3DgetCapabilities'},
+            {"source": "wms", "name": "BDOO", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/png&layers=BDOO&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOO?service%3DWMTS%26request%3DgetCapabilities'},
+            {"source": "wms", "name": "ISOK", "root": False, "parent": "basemaps", "pos": 0, "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ISOK_Cien&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WMTS/ShadedRelief?service%3DWMTS%26request%3DgetCapabilities'},
+            {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
+            {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]}
+            ]
+        self.lyr_cnt = len(self.lyrs)
+        self.lyrs_names = [i for s in [[v for k, v in d.items() if k == "name"] for d in self.lyrs] for i in s]
 
-def create_project_groups():
-    """Utworzenie grup warstw w projekcie."""
-    grp_lvl_1 = ["wyrobiska", "flagi", "vn", "MIDAS", "MGSP", "basemaps", "temp"]
-    grp_lvl_2 = [
-                {"name": "sat", "parent": "basemaps"},
-                {"name": "topo", "parent": "basemaps"}
-                ]
-    proj = QgsProject.instance()
-    root = proj.layerTreeRoot()
-    # Utworzenie grup głównych:
-    for grp in grp_lvl_1:
-        _grp = QgsLayerTreeGroup(name=grp)
-        node = root.addGroup(grp)
-        node.setExpanded(False)
-    # Utworzenie podgrup i przypisanie ich do grup głównych:
-    for grp in grp_lvl_2:
-        for key, val in grp.items():
-            if key == "name":
-                name = val
-            elif key == "parent":
-                parent = val
-        parent_grp = root.findGroup(parent)
-        node = parent_grp.addGroup(name)
-        node.setExpanded(False)
-    # Ukrycie grupy 'temp':
-    root.findGroup("temp").setItemVisibilityChecked(False)
-    # Rozwinięcie grup 'wyrobiska' i 'flagi':
-    root.findGroup("wyrobiska").setExpanded(True)
-    root.findGroup("flagi").setExpanded(True)
-
-def create_layers():
-    """Utworzenie warstw w projekcie."""
-    proj = QgsProject.instance()
-    root = proj.layerTreeRoot()
-    uri_pt = "Point?crs=epsg:2180&field=id:integer"
-    uri_ln = "LineString?crs=epsg:2180&field=id:integer"
-    uri_pg = "Polygon?crs=epsg:2180&field=id:integer"
-    lyrs = [
-        {"source": "postgres", "name": "wyr_point", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
-        {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
-        {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
-        {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
-        {"source": "postgres", "name": "wn_kopaliny_pne", "root": True, "pos": 2, "visible": True, "uri": '{PARAMS} table="external"."wn_kopaliny_pne" (geom) srid=4326 sql=', "crs": 4326},
-        {"source": "postgres", "name": "powiaty", "root": True, "pos": 3, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
-        {"source": "postgres", "name": "arkusze", "root": True, "pos": 4, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
-        {"source": "postgres", "name": "vn_sel", "root": False, "parent": "vn", "visible": True, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
-        {"source": "postgres", "name": "vn_user", "root": False, "parent": "vn", "visible": True, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
-        {"source": "postgres", "name": "vn_other", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
-        {"source": "postgres", "name": "vn_null", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
-        {"source": "postgres", "name": "vn_all", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
-        {"source": "virtual", "name": "powiaty_mask", "root": True, "pos": 6, "visible": True, "uri": '?query=Select%20st_union(geometry)%20from%20powiaty'},
-        {"source": "postgres", "name": "midas_zloza", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_zloza" (geom) sql='},
-        {"source": "postgres", "name": "midas_wybilansowane", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_wybilansowane" (geom) sql='},
-        {"source": "postgres", "name": "midas_obszary", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_obszary" (geom) sql='},
-        {"source": "postgres", "name": "midas_tereny", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_tereny" (geom) sql='},
-        {"source": "postgres", "name": "mgsp_pkt_kop", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_pkt_kop" (geom) sql='},
-        {"source": "postgres", "name": "mgsp_zloza_p", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_p" (geom) sql='},
-        {"source": "postgres", "name": "mgsp_zloza_a", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_a" (geom) sql='},
-        {"source": "postgres", "name": "mgsp_zloza_wb_p", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_wb_p" (geom) sql='},
-        {"source": "postgres", "name": "mgsp_zloza_wb_a", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_wb_a" (geom) sql='},
-        {"source": "postgres", "name": "smgp_wyrobiska", "root": True, "pos": 9, "visible": True, "uri": '{PARAMS} table="external"."smgp_wyrobiska" (geom) sql='},
-        {"source": "wms", "name": "Google Satellite", "root": False, "parent": "sat", "visible": True, "uri": 'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=18&zmin=0'},
-        {"source": "wms", "name": "Google Hybrid", "root": False, "parent": "sat", "visible": False, "uri": 'crs=EPSG:3857&format&tilePixelRatio=2&type=xyz&url=http://mt0.google.com/vt/lyrs%3Dy%26hl%3Den%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=18&zmin=0'},
-        {"source": "wms", "name": "Geoportal", "root": False, "parent": "sat", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ORTOFOTOMAPA&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/ORTO?service%3DWMTS%26request%3DgetCapabilities'},
-        {"source": "wms", "name": "Geoportal HD", "root": False, "parent": "sat", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ORTOFOTOMAPA&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMTS/HighResolution?service%3DWMTS%26request%3DgetCapabilities'},
-        {"source": "gdal", "name": "Google Earth Pro", "root": False, "parent": "sat", "visible": False, "uri": '{UI_PATH}ge.jpg', "crs": -1},
-        {"source": "wms", "name": "Google Map", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Dm%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=18&zmin=0'},
-        {"source": "wms", "name": "OpenStreetMap", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:3857&format&type=xyz&url=https://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0'},
-        {"source": "wms", "name": "Topograficzna", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=MAPA TOPOGRAFICZNA&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/TOPO?service%3DWMTS%26request%3DgetCapabilities'},
-        {"source": "wms", "name": "BDOT", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/png&layers=BDOT10k&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOT10k?service%3DWMTS%26request%3DgetCapabilities'},
-        {"source": "wms", "name": "BDOO", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/png&layers=BDOO&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOO?service%3DWMTS%26request%3DgetCapabilities'},
-        {"source": "wms", "name": "ISOK", "root": False, "parent": "basemaps", "pos": 0, "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ISOK_Cien&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WMTS/ShadedRelief?service%3DWMTS%26request%3DgetCapabilities'},
-        {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
-        {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]}
-        ]
-
-    i = 0
-    i_max = len(lyrs)
-    for l_dict in lyrs:
-        QgsApplication.processEvents()
-        i += 1
-        dlg.splash_screen.p_bar.setValue(i * 100 / i_max)
-        QgsApplication.processEvents()
-        raw_uri = l_dict["uri"]
-        uri = eval("f'{}'".format(raw_uri))
-        if l_dict["source"] == "wms" or l_dict["source"] == "gdal":
-            lyr = QgsRasterLayer(uri, l_dict["name"], l_dict["source"])
+    def project_check(self):
+        """Sprawdzenie struktury warstw projektu."""
+        if len(dlg.proj.mapLayers()) == 0:
+            # QGIS nie ma otwartego projektu, tworzy nowy:
+            self.project_create()
+            return True
         else:
-            lyr = QgsVectorLayer(uri, l_dict["name"], l_dict["source"])
-        if not lyr.isValid():
-            print(f'Nie udało się załadować warstwy {l_dict["name"]}')
-        if l_dict["source"] == "memory":
-            lyr.setCustomProperty("skipMemoryLayersCheck", 1)
-            pr = lyr.dataProvider()
-            pr.addAttributes(l_dict["attrib"])
-            lyr.updateFields()
-        if "crs" in l_dict:
-            lyr.setCrs(CRS_1992)
-        proj.addMapLayer(lyr, False)
-        if l_dict["root"]:
-            parent_grp = root
-            parent_grp.insertChildNode(l_dict["pos"], QgsLayerTreeLayer(lyr))
-            parent_grp.findLayer(lyr).setItemVisibilityChecked(l_dict["visible"])
-        else:
-            if "pos" in l_dict:
-                parent_grp = root.findGroup(l_dict["parent"])
-                parent_grp.insertChildNode(l_dict["pos"], QgsLayerTreeLayer(lyr))
-                parent_grp.findLayer(lyr).setItemVisibilityChecked(False)
+            QgsApplication.processEvents()
+            # QGIS ma otwarty projekt - sprawdzanie jego struktury:
+            valid = self.structure_check()
+            QgsApplication.processEvents()
+            if valid:
+                return True
             else:
-                parent_grp = root.findGroup(l_dict["parent"])
-                node = parent_grp.addLayer(lyr)
-                node.setItemVisibilityChecked(l_dict["visible"])
-        lyr.loadNamedStyle(f'{STYLE_PATH}{l_dict["name"].lower()}.qml')
+                m_text = f"Brak wymaganych warstw lub grup warstw w otwartym projekcie. Naciśnięcie Tak spowoduje przebudowanie struktury projektu, naciśnięcie Nie przerwie proces uruchamiania wtyczki."
+                reply = QMessageBox.question(dlg.app, "Moek_Editor", m_text, QMessageBox.Yes, QMessageBox.No)
+                if reply == QMessageBox.No:
+                    return False
+                else:
+                    lyr_missing = self.structure_check(rebuild=True)
+                    if len(lyr_missing) > 0:
+                        result = self.layers_create(lyr_missing)
+                        return result
+                    else:
+                        return True
+
+    def project_create(self):
+        """Utworzenie nowego projektu QGIS."""
+        iface.newProject(promptToSaveFlag=False)
+        # Zmiana tytułu okna QGIS'a:
+        dlg.proj.setCrs(CRS_1992)
+        # iface.mainWindow().setWindowTitle(new_title)
+        QgsApplication.processEvents()
+        self.groups_create()
+        QgsApplication.processEvents()
+        self.layers_create()
+        return True
+
+    def groups_create(self):
+        """Utworzenie grup warstw w projekcie."""
+        for grp in self.groups_tree:
+            if grp["level"] == 1:
+                # Utworzenie grup głównych:
+                grp_node = self.root.addGroup(grp["name"])
+                grp_node.setExpanded(False)
+                if "subgroups" in grp:
+                    # Utworzenie podgrup:
+                    for sgrp in grp["subgroups"]:
+                        sgrp_node = grp_node.addGroup(sgrp)
+                        sgrp_node.setExpanded(False)
+        # Ukrycie grupy 'temp':
+        self.root.findGroup("temp").setItemVisibilityChecked(False)
+        # Rozwinięcie grup 'wyrobiska' i 'flagi':
+        self.root.findGroup("wyrobiska").setExpanded(True)
+        self.root.findGroup("flagi").setExpanded(True)
+
+    def layers_create(self, missing=None):
+        """Utworzenie warstw w projekcie. Podanie atrybutu 'missing' spowoduje, że tylko wybrane warstwy będą dodane."""
+        # Ustalenie ilości dodawanych warstw:
+        i_max = len(missing) if missing else self.lyr_cnt
+        # Utworzenie listy ze słownikami warstw do dodania:
+        lyrs = []
+        if missing:
+            for l_dict in self.lyrs:
+                if l_dict["name"] in missing:
+                    lyrs.append(l_dict)
+        else:
+            lyrs = self.lyrs
+        i = 0
+        # Dodanie warstw:
+        for l_dict in lyrs:
+            QgsApplication.processEvents()
+            i += 1
+            dlg.splash_screen.p_bar.setValue(i * 100 / self.lyr_cnt)
+            QgsApplication.processEvents()
+            raw_uri = l_dict["uri"]
+            uri = eval("f'{}'".format(raw_uri))
+            if l_dict["source"] == "wms" or l_dict["source"] == "gdal":
+                lyr = QgsRasterLayer(uri, l_dict["name"], l_dict["source"])
+                lyr_required = False
+            else:
+                lyr = QgsVectorLayer(uri, l_dict["name"], l_dict["source"])
+                lyr_required = True
+            if not lyr.isValid() and not lyr_required:
+                m_text = f'Nie udało się poprawnie wczytać podkładu mapowego: {l_dict["name"]}. Naciśnięcie Tak spowoduje kontynuowanie uruchamiania wtyczki (podkład mapowy nie będzie wyświetlany), naciśnięcie Nie przerwie proces uruchamiania wtyczki. Jeśli problem będzie się powtarzał, zaleca się powiadomienie administratora systemu.'
+                reply = QMessageBox.question(dlg.app, "Moek_Editor", m_text, QMessageBox.Yes, QMessageBox.No)
+                if reply == QMessageBox.No:
+                    return False
+            elif not lyr.isValid() and lyr_required:
+                m_text = f'Nie udało się poprawnie wczytać warstwy: {l_dict["name"]}. Jeśli problem będzie się powtarzał, proszę o powiadomienie administratora systemu.'
+                QMessageBox.critical(dlg.app, "Moek_Editor", m_text)
+                return False
+            if l_dict["source"] == "memory":
+                lyr.setCustomProperty("skipMemoryLayersCheck", 1)
+                pr = lyr.dataProvider()
+                pr.addAttributes(l_dict["attrib"])
+                lyr.updateFields()
+            if "crs" in l_dict:
+                lyr.setCrs(CRS_1992)
+            dlg.proj.addMapLayer(lyr, False)
+            if l_dict["root"]:
+                parent_grp = self.root
+                parent_grp.insertChildNode(l_dict["pos"], QgsLayerTreeLayer(lyr))
+                parent_grp.findLayer(lyr).setItemVisibilityChecked(l_dict["visible"])
+            else:
+                if "pos" in l_dict:
+                    parent_grp = self.root.findGroup(l_dict["parent"])
+                    parent_grp.insertChildNode(l_dict["pos"], QgsLayerTreeLayer(lyr))
+                    parent_grp.findLayer(lyr).setItemVisibilityChecked(False)
+                else:
+                    parent_grp = self.root.findGroup(l_dict["parent"])
+                    node = parent_grp.addLayer(lyr)
+                    node.setItemVisibilityChecked(l_dict["visible"])
+            lyr.loadNamedStyle(f'{STYLE_PATH}{l_dict["name"].lower()}.qml')
+        return True
+
+    def layers_check(self):
+        """Zwraca, czy wszystkie niezbędne warstwy są obecne w projekcie."""
+        lyrs = []
+        missing = []
+        # Utworzenie listy warstw, które znajdują się w projekcie:
+        for lyr in dlg.proj.mapLayers().values():
+            lyrs.append(lyr.name())
+        # Sprawdzenie, czy wszystkie niezbędne warstwy istnieją w projekcie:
+        for lyr in self.lyrs_names:
+            if lyr not in lyrs:
+                print(f"Brakuje warstwy: {lyr}")
+                missing.append(lyr)
+        return missing
+
+    def structure_check(self, rebuild=False):
+        """Zwraca, czy wszystkie niezbędne grupy i warstwy są obecne w projekcie (rebuild=False),
+        albo przebudowuje strukturę projektu (przenosi lub tworzy grupy i przenosi warstwy do odpowiednich grup)
+        i zwraca listę brakujących warstw (rebuild=True)."""
+        missing = []
+        for grp in self.groups_tree:
+            parent_node = self.root
+            grp_node = parent_node.findGroup(grp["name"]) if "name" in grp else parent_node
+            if grp["level"] == 2:
+                parent_node = self.root.findGroup(grp["parent"])
+                grp_node = parent_node.findGroup(grp["name"])
+            if not grp_node and not rebuild:
+                return False
+            elif not grp_node and rebuild:
+                moved = self.group_move(parent_node, grp["name"])
+                if not moved:
+                    parent_node.addGroup(grp["name"])
+                grp_node = parent_node.findGroup(grp["name"])
+            for lyr_name in grp["layers"]:
+                if not self.layer_in_group_found(grp_node, lyr_name) and not rebuild:
+                    return False
+                elif not self.layer_in_group_found(grp_node, lyr_name) and rebuild:
+                    moved = self.layer_to_group_move(grp_node, lyr_name)
+                    if not moved:
+                        missing.append(lyr_name)
+                        continue
+                lyr = dlg.proj.mapLayersByName(lyr_name)[0]
+                if not lyr.isValid():
+                    dlg.proj.removeMapLayer(lyr)
+                    missing.append(lyr_name)
+        print(missing)
+        return missing if rebuild else True
+
+    def group_move(self, parent_node, grp_name):
+        """Przenoszenie grupy (jeśli istnieje) na właściwą pozycję w projekcie."""
+        grp_node = self.root.findGroup(grp_name)
+        if grp_node:
+            # Grupa o podanej nazwie jest w projekcie, ale w innym miejscu i należy ją przenieść:
+            parent = grp_node.parent()
+            new_grp = grp_node.clone()
+            parent_node.insertChildNode(0, new_grp)
+            parent.removeChildNode(grp_node)
+            return True
+        else:
+            return False
+
+    def layer_in_group_found(self, grp_node, lyr_name):
+        """Zwraca, czy warstwa o podanej nazwie znajduje się w podanej grupie."""
+        # print(f"grp_node: {grp_node}, lyr: {lyr_name}")
+        for child in grp_node.children():
+            if child.name() == lyr_name:
+                return True
+        return False
+
+    def layer_to_group_move(self, grp_node, lyr_name):
+        """Przenoszenie warstwy (jeśli istnieje) do właściwej grupy."""
+        print(f"grp_node: {grp_node}, lyr: {lyr_name}")
+        try:
+            lyr = self.root.findLayer(dlg.proj.mapLayersByName(lyr_name)[0].id())
+        except Exception as err:
+            print(err)
+            return False
+        # Warstwa o podanej warstwie jest w projekcie, ale w innej grupie i należy ją przenieść:
+        parent = lyr.parent()
+        new_lyr = lyr.clone()
+        grp_node.insertChildNode(0, new_lyr)
+        parent.removeChildNode(lyr)
+        return True

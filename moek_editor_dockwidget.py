@@ -395,7 +395,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_doneF"].pressed.connect(lambda: change_done(True))
         self.p_vn.widgets["btn_vn_powsel"].clicked.connect(lambda: self.mt.init("vn_powsel"))
         self.p_vn.widgets["btn_vn_polysel"].clicked.connect(lambda: self.mt.init("vn_polysel"))
-        self.p_vn.widgets["btn_vn_unsel"].pressed.connect(lambda: QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection())
+        self.p_vn.widgets["btn_vn_unsel"].pressed.connect(lambda: self.proj.mapLayersByName("vn_all")[0].removeSelection())
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
         self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
@@ -429,26 +429,26 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
     def wyr_visibility(self):
         """Włączenie lub wyłączenie warstwy z wyrobiskami."""
         value = True if self.p_wyr.is_active() else False
-        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("wyrobiska")[0].id()).setItemVisibilityChecked(value)
+        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("wyrobiska")[0].id()).setItemVisibilityChecked(value)
 
     def flag_visibility(self):
         """Włączenie lub wyłączenie warstwy z flagami."""
         value = True if self.p_flag.is_active() else False
-        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("flagi_z_teren")[0].id()).setItemVisibilityChecked(value)
-        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].id()).setItemVisibilityChecked(value)
+        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("flagi_z_teren")[0].id()).setItemVisibilityChecked(value)
+        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("flagi_bez_teren")[0].id()).setItemVisibilityChecked(value)
 
     def auto_visibility(self):
         """Włączenie lub wyłączenie warstw auto i marsz."""
         value = True if self.p_auto.is_active() else False
-        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("parking")[0].id()).setItemVisibilityChecked(value)
-        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("marsz")[0].id()).setItemVisibilityChecked(value)
+        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking")[0].id()).setItemVisibilityChecked(value)
+        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("marsz")[0].id()).setItemVisibilityChecked(value)
 
     def ext_visibility(self, btn, grp, name):
         """Włączenie / wyłaczenie warstw z danymi zewnętrznymi."""
         if grp:
-            QgsProject.instance().layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(btn.isChecked())
+            self.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(btn.isChecked())
         else:
-            QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName(name)[0].id()).setItemVisibilityChecked(btn.isChecked())
+            self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName(name)[0].id()).setItemVisibilityChecked(btn.isChecked())
 
     def ext_init(self):
         """Początkowe ustawienia widoczności warstw danych zewnętrznych."""

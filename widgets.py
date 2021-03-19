@@ -497,8 +497,8 @@ class FlagTools(QFrame):
         bns = f" WHERE id = {dlg.obj.flag}"
         db_attr_change(tbl=table, attr="b_fieldcheck", val=not self.fchk, sql_bns=bns, user=False)
         self.fchk = not self.fchk
-        QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
-        QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
+        dlg.proj.mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
+        dlg.proj.mapLayersByName("flagi_z_teren")[0].triggerRepaint()
 
     def flag_delete(self):
         """Usunięcie flagi z bazy danych."""

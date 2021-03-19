@@ -124,7 +124,7 @@ def teamusers_load():
             dlg.p_vn.widgets["cmb_teamusers"].setCurrentText(dlg.t_user_name)
             # Podłączenie eventu zmiany cb:
             dlg.p_vn.widgets["cmb_teamusers"].currentIndexChanged.connect(teamusers_cb_changed)
-            QgsProject.instance().mapLayersByName("vn_all")[0].selectionChanged.connect(vn_sel_changed)
+            dlg.proj.mapLayersByName("vn_all")[0].selectionChanged.connect(vn_sel_changed)
             vn_sel_changed()
 
         else:
@@ -202,7 +202,7 @@ def pow_layer_update():
         uri = params + 'table="team_' + str(dlg.team_i) + '"."powiaty" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
     else:  # Tryb wielu powiatów
         uri = params + 'table="team_' + str(dlg.team_i) + '"."powiaty" (geom)'
-    layer = QgsProject.instance().mapLayersByName("powiaty")[0]
+    layer = dlg.proj.mapLayersByName("powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     ark_layer_update()  # Aktualizacja warstwy z arkuszami
     flag_layer_update()  # Aktualizacja warstwy z flagami
@@ -222,7 +222,7 @@ def ark_layer_update():
         uri = params + 'table="team_' + str(dlg.team_i) + '"."arkusze" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
     else:  # Tryb wielu powiatów
         uri = params + 'table="team_' + str(dlg.team_i) + '"."arkusze" (geom)'
-    layer = QgsProject.instance().mapLayersByName("arkusze")[0]
+    layer = dlg.proj.mapLayersByName("arkusze")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
 
 def flag_layer_update():
@@ -236,8 +236,8 @@ def flag_layer_update():
     else:  # Tryb wielu powiatów
         uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=b_fieldcheck = True'
         uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."flagi" (geom) sql=b_fieldcheck = False'
-    lyr_1 = QgsProject.instance().mapLayersByName("flagi_z_teren")[0]
-    lyr_2 = QgsProject.instance().mapLayersByName("flagi_bez_teren")[0]
+    lyr_1 = dlg.proj.mapLayersByName("flagi_z_teren")[0]
+    lyr_2 = dlg.proj.mapLayersByName("flagi_bez_teren")[0]
     # Zmiana zawartości warstwy flagi:
     pg_layer_change(uri_1, lyr_1)
     pg_layer_change(uri_2, lyr_2)
@@ -261,8 +261,8 @@ def wyr_layer_update(check=True):
     else:
         uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
         uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id = 0'
-    lyr_1 = QgsProject.instance().mapLayersByName("wyr_point")[0]
-    lyr_2 = QgsProject.instance().mapLayersByName("wyr_poly")[0]
+    lyr_1 = dlg.proj.mapLayersByName("wyr_point")[0]
+    lyr_2 = dlg.proj.mapLayersByName("wyr_poly")[0]
     # Zmiana zawartości warstw z wyrobiskami:
     pg_layer_change(uri_1, lyr_1)
     pg_layer_change(uri_2, lyr_2)
@@ -377,7 +377,7 @@ def list_diff(l1, l2):
 def active_pow_listed():
     """Zwraca listę z numerami aktywnych powiatów."""
     pows = []
-    lyr_pow = QgsProject.instance().mapLayersByName("powiaty")[0]
+    lyr_pow = dlg.proj.mapLayersByName("powiaty")[0]
     feats = lyr_pow.getFeatures()
     for feat in feats:
         pows.append(feat.attribute("pow_id"))
@@ -438,7 +438,7 @@ def auto_layer_update():
     with CfgPars() as cfg:
         params = cfg.uri()
     uri = params + 'table="team_' + str(dlg.team_i) + '"."auto" (geom)'
-    layer = QgsProject.instance().mapLayersByName("parking")[0]
+    layer = dlg.proj.mapLayersByName("parking")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy parking
 
 def marsz_layer_update():
@@ -447,7 +447,7 @@ def marsz_layer_update():
     with CfgPars() as cfg:
         params = cfg.uri()
     uri = params + 'table="team_' + str(dlg.team_i) + '"."marsz" (geom)'
-    layer = QgsProject.instance().mapLayersByName("marsz")[0]
+    layer = dlg.proj.mapLayersByName("marsz")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy mnarsz
 
 def zloza_layer_update():
@@ -459,7 +459,7 @@ def zloza_layer_update():
         uri = params + 'key="zv_id" table="team_' + str(dlg.team_i) + '"."zloza" (geom) sql=pow_grp = ' + "'" + str(dlg.powiat_i) + "'"
     else:  # Tryb wielu powiatów
         uri = params + ' key="zv_id" table="team_' + str(dlg.team_i) + '"."zloza" (geom)'
-    layer = QgsProject.instance().mapLayersByName("zloza")[0]
+    layer = dlg.proj.mapLayersByName("zloza")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy zloza
 
 def vn_mode_changed(clicked):
@@ -556,8 +556,8 @@ def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     # print("[vn_setup_mode:", b_flag, "]")
     # Włączenie/Wyłączenie warstw flag i wyrobisk:
-    QgsProject.instance().layerTreeRoot().findGroup("wyrobiska").setItemVisibilityChecked(not b_flag)
-    QgsProject.instance().layerTreeRoot().findGroup("flagi").setItemVisibilityChecked(not b_flag)
+    dlg.proj.layerTreeRoot().findGroup("wyrobiska").setItemVisibilityChecked(not b_flag)
+    dlg.proj.layerTreeRoot().findGroup("flagi").setItemVisibilityChecked(not b_flag)
     global vn_setup
     dlg.mt.init("multi_tool")  # Przełączenie na multi_tool'a
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
@@ -569,20 +569,20 @@ def vn_setup_mode(b_flag):
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
         try:
             dlg.p_vn.widgets["cmb_teamusers"].currentIndexChanged.disconnect(teamusers_cb_changed)
-            QgsProject.instance().mapLayersByName("vn_all")[0].selectionChanged.disconnect(vn_sel_changed)
+            dlg.proj.mapLayersByName("vn_all")[0].selectionChanged.disconnect(vn_sel_changed)
         except TypeError:
             print("Obiekt nie jest jeszcze podłączony.")
         teamusers_load()  # Wczytanie użytkowników do cmb_teamusers
         dlg.p_vn.box.setCurrentIndex(4)  # zmiana strony p_vn
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
-        QgsProject.instance().mapLayersByName("vn_all")[0].removeSelection()
+        dlg.proj.mapLayersByName("vn_all")[0].removeSelection()
         dlg.side_dock.show()
         dlg.p_pow.active = dlg.p_pow.t_active  # Ewentualne przywrócenie trybu powiatu sprzed zmiany
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
         try:
             dlg.p_vn.widgets["cmb_teamusers"].currentIndexChanged.disconnect(teamusers_cb_changed)
-            QgsProject.instance().mapLayersByName("vn_all")[0].selectionChanged.disconnect(vn_sel_changed)
+            dlg.proj.mapLayersByName("vn_all")[0].selectionChanged.disconnect(vn_sel_changed)
         except TypeError:
             print("Obiekt nie jest jeszcze podłączony.")
         dlg.p_vn.box.setCurrentIndex(0)  # zmiana strony p_vn
@@ -592,7 +592,7 @@ def vn_setup_mode(b_flag):
 
 def vn_sel_changed():
     """Rekonfiguracja przycisków w zależności od stanu zaznaczenia vn'ów."""
-    vn_layer = QgsProject.instance().mapLayersByName("vn_all")[0]
+    vn_layer = dlg.proj.mapLayersByName("vn_all")[0]
     value = True if vn_layer.selectedFeatureCount() > 0 else False
     dlg.p_vn.widgets["btn_vn_add"].setEnabled(value)
     dlg.p_vn.widgets["btn_vn_sub"].setEnabled(value)
@@ -603,7 +603,6 @@ def vn_layer_update():
     # print("[vn_layer_update]")
     with CfgPars() as cfg:
         params = cfg.uri()
-    proj = QgsProject.instance()
     URI_CONST = params + ' table="team_'
 
     # Wartość user_id w zależności od włączenia trybu vn_setup:
@@ -624,9 +623,9 @@ def vn_layer_update():
 
     # Włączenie/wyłączenie warstw vn
     for layer in show_layers:
-        proj.layerTreeRoot().findLayer(proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(True)
+        dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(True)
     for layer in hide_layers:
-        proj.layerTreeRoot().findLayer(proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(False)
+        dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(False)
 
     # Wyrażenia sql dla warstw vn
     layer_sql = {"vn_all": "",
@@ -641,7 +640,7 @@ def vn_layer_update():
     # Aktualizacja włączonych warstw vn
     for key, value in layer_sql.items():
         uri =  URI_CONST + str(dlg.team_i) +'"."team_viewnet" (geom) sql= ' + str(value)
-        layer = QgsProject.instance().mapLayersByName(key)[0]
+        layer = dlg.proj.mapLayersByName(key)[0]
         pg_layer_change(uri, layer)
 
     stage_refresh()  # Odświeżenie sceny

@@ -21,7 +21,7 @@ def dlg_maptools(_dlg):
 
 
 class ObjectManager:
-    """Menadżer obiektów."""
+    """Menedżer obiektów."""
     def __init__(self, dlg, canvas):
         self.init_void = True
         self.dlg = dlg  # Referencja do wtyczki
@@ -43,7 +43,7 @@ class ObjectManager:
         if self.init_void:  # Blokada przed odpalaniem podczas ładowania wtyczki
             return
         if attr == "flag":
-            QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'flag_sel', val)
+            QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'flag_sel', val)
             self.flag_hidden = None
             if val:
                 self.flag_data = self.flag_update()
@@ -55,11 +55,11 @@ class ObjectManager:
             self.dlg.flag_panel.id_box.id = val if val else None
             self.dlg.flag_panel.show() if val else self.dlg.flag_panel.hide()
         if attr == "flag_hidden":
-            QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'flag_hidden', val)
-            QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
-            QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
+            QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'flag_hidden', val)
+            dlg.proj.mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
+            dlg.proj.mapLayersByName("flagi_z_teren")[0].triggerRepaint()
         elif attr == "wyr":
-            QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), 'wyr_sel', val)
+            QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'wyr_sel', val)
             if val:
                 self.wyr_data = self.wyr_update()
                 self.list_position_check("wyr")
@@ -68,8 +68,8 @@ class ObjectManager:
                 self.dlg.wyr_panel.notepad_box.set_text(self.wyr_data[2])  # Aktualizacja tekstu notatki
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
-            QgsProject.instance().mapLayersByName("wyr_point")[0].triggerRepaint()
-            QgsProject.instance().mapLayersByName("wyr_poly")[0].triggerRepaint()
+            dlg.proj.mapLayersByName("wyr_point")[0].triggerRepaint()
+            dlg.proj.mapLayersByName("wyr_poly")[0].triggerRepaint()
 
     def flag_hide(self, _bool):
         """Ukrywa lub pokazuje zaznaczoną flagę."""
@@ -101,8 +101,8 @@ class ObjectManager:
         dlg.wyr_panel.hide() if enabled else dlg.wyr_panel.show()
         dlg.side_dock.hide() if enabled else dlg.side_dock.show()
         dlg.bottom_dock.show() if enabled else dlg.bottom_dock.hide()
-        QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("wyr_point")[0].id()).setItemVisibilityChecked(not enabled)
-        QgsProject.instance().layerTreeRoot().findGroup("vn").setItemVisibilityChecked(not enabled)
+        dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName("wyr_point")[0].id()).setItemVisibilityChecked(not enabled)
+        dlg.proj.layerTreeRoot().findGroup("vn").setItemVisibilityChecked(not enabled)
         dlg.p_team.setEnabled(not enabled)
         dlg.p_pow.setEnabled(not enabled)
         dlg.p_vn.setEnabled(not enabled)
@@ -243,12 +243,12 @@ class ObjectManager:
     def pan_to_object(self, _obj):
         if _obj == "flag":
             if self.flag_data[1]:
-                point_lyr = QgsProject.instance().mapLayersByName("flagi_z_teren")[0]
+                point_lyr = dlg.proj.mapLayersByName("flagi_z_teren")[0]
             else:
-                point_lyr = QgsProject.instance().mapLayersByName("flagi_bez_teren")[0]
+                point_lyr = dlg.proj.mapLayersByName("flagi_bez_teren")[0]
             feats = point_lyr.getFeatures(f'"id" = {self.flag}')
         elif _obj == "wyr":
-            point_lyr = QgsProject.instance().mapLayersByName("wyr_point")[0]
+            point_lyr = dlg.proj.mapLayersByName("wyr_point")[0]
             feats = point_lyr.getFeatures(f'"wyr_id" = {self.wyr}')
         try:
             feat = list(feats)[0]
@@ -260,7 +260,7 @@ class ObjectManager:
 
 
 class MapToolManager:
-    """Menadżer maptool'ów."""
+    """Menedżer maptool'ów."""
     def __init__(self, dlg, canvas):
         self.maptool = None  # Instancja klasy maptool'a
         self.mt_name = None  # Nazwa maptool'a
@@ -388,8 +388,8 @@ class MapToolManager:
 
     def geom_to_layers(self, geom):
         """Rozkłada geometrię poligonalną na części pierwsze i przenosi je do warstw tymczasowych."""
-        edit_lyr = QgsProject.instance().mapLayersByName("edit_poly")[0]
-        back_lyr = QgsProject.instance().mapLayersByName("backup_poly")[0]
+        edit_lyr = dlg.proj.mapLayersByName("edit_poly")[0]
+        back_lyr = dlg.proj.mapLayersByName("backup_poly")[0]
         lyrs = [edit_lyr, back_lyr]
         for lyr in lyrs:
             dp = lyr.dataProvider()
@@ -467,8 +467,8 @@ class EditPolyMapTool(QgsMapTool):
         self.change_is_valid = True
         self.valid_changed.connect(self.valid_change)
         self.flash = 0
-        self.edit_layer = QgsProject.instance().mapLayersByName("edit_poly")[0]
-        self.backup_layer = QgsProject.instance().mapLayersByName("backup_poly")[0]
+        self.edit_layer = dlg.proj.mapLayersByName("edit_poly")[0]
+        self.backup_layer = dlg.proj.mapLayersByName("backup_poly")[0]
         self.snap_settings()
         self.rbs_create()
         self.rbs_populate()
@@ -492,7 +492,7 @@ class EditPolyMapTool(QgsMapTool):
         feat_cnt = self.edit_layer.featureCount()
         if feat_cnt == 0:
             # Panning mapy do centroidu wyrobiska:
-            point_lyr = QgsProject.instance().mapLayersByName("wyr_point")[0]
+            point_lyr = dlg.proj.mapLayersByName("wyr_point")[0]
             feats = point_lyr.getFeatures(f'"wyr_id" = {dlg.obj.wyr}')
             try:
                 feat = list(feats)[0]
@@ -1885,7 +1885,7 @@ class PolyDrawMapTool(QgsMapTool):
 # ========== Funkcje:
 
 def obj_sel(layer, feature, click):
-    """Przekazuje do menadżera obiektów dane nowowybranego obiektu (nazwa warstwy i atrybuty obiektu)."""
+    """Przekazuje do menedżera obiektów dane nowowybranego obiektu (nazwa warstwy i atrybuty obiektu)."""
     if layer:
         dlg.obj.obj_change([layer.name(), feature.attributes(), feature.geometry().asPoint()], click)
 
@@ -1905,8 +1905,8 @@ def flag_add(point, extra):
         res = db.query_upd(sql)
         if not res:
             print("Nie udało się dodać flagi.")
-    QgsProject.instance().mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
-    QgsProject.instance().mapLayersByName("flagi_z_teren")[0].triggerRepaint()
+    dlg.proj.mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
+    dlg.proj.mapLayersByName("flagi_z_teren")[0].triggerRepaint()
     dlg.obj.flag_ids = get_flag_ids()  # Aktualizacja listy flag w ObjectManager
     dlg.obj.list_position_check("flag")  # Aktualizacja pozycji na liście obecnie wybranej flagi
 
@@ -1966,7 +1966,7 @@ def wyr_add_poly(geom, wyr_id=None):
     dlg.mt.init("multi_tool")
     if not geom:
         return
-    lyr_poly = QgsProject.instance().mapLayersByName("wyr_poly")[0]
+    lyr_poly = dlg.proj.mapLayersByName("wyr_poly")[0]
     fields = lyr_poly.fields()
     feature = QgsFeature()
     feature.setFields(fields)
@@ -1994,7 +1994,7 @@ def wyr_point_update(wyr_id, geom):
     wyr_layer_update(False)
     # Aktualizacja bieżącego punktu wyrobiska:
     temp_lyr = False
-    lyr_point = QgsProject.instance().mapLayersByName("wyr_point")[0]
+    lyr_point = dlg.proj.mapLayersByName("wyr_point")[0]
     area = area_measure(geom)
     feats = lyr_point.getFeatures(f'"wyr_id" = {wyr_id}')
     try:
@@ -2042,12 +2042,12 @@ def wyr_del(layer, feature):
         res = db.query_upd(sql)
         if not res:
             print("Nie udało się usunąć wyrobiska")
-    QgsProject.instance().mapLayersByName("wyrobiska")[0].triggerRepaint()
+    dlg.proj.mapLayersByName("wyrobiska")[0].triggerRepaint()
 
 def auto_add(geom):
     """Utworzenie nowego obiektu parkingu."""
     dlg.mt.init("multi_tool")
-    layer = QgsProject.instance().mapLayersByName("parking")[0]
+    layer = dlg.proj.mapLayersByName("parking")[0]
     fields = layer.fields()
     feature = QgsFeature()
     feature.setFields(fields)
@@ -2077,7 +2077,7 @@ def auto_del(layer, feature):
 def marsz_add(geom):
     """Utworzenie nowego obiektu marszruty."""
     dlg.mt.init("multi_tool")
-    layer = QgsProject.instance().mapLayersByName("marsz")[0]
+    layer = dlg.proj.mapLayersByName("marsz")[0]
     fields = layer.fields()
     feature = QgsFeature()
     feature.setFields(fields)
@@ -2107,7 +2107,7 @@ def lyr_ref(lyr):
     """Zwraca referencje warstw na podstawie ich nazw."""
     layer = []
     for l in lyr:
-        layer.append(QgsProject.instance().mapLayersByName(l)[0])
+        layer.append(dlg.proj.mapLayersByName(l)[0])
     return layer
 
 def wyr_poly_change(lyr, geom):

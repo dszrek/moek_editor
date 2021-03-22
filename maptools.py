@@ -68,7 +68,7 @@ class ObjectManager:
                 self.dlg.wyr_panel.notepad_box.set_text(self.wyr_data[2])  # Aktualizacja tekstu notatki
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
-            dlg.proj.mapLayersByName("wyr_point")[0].triggerRepaint()
+            wyr_point_lyrs_repaint()
             dlg.proj.mapLayersByName("wyr_poly")[0].triggerRepaint()
 
     def flag_hide(self, _bool):
@@ -1995,6 +1995,7 @@ def wyr_point_update(wyr_id, geom):
     # Aktualizacja bieżącego punktu wyrobiska:
     temp_lyr = False
     lyr_point = dlg.proj.mapLayersByName("wyr_point")[0]
+    lyrs_names = ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_point']
     area = area_measure(geom)
     feats = lyr_point.getFeatures(f'"wyr_id" = {wyr_id}')
     try:
@@ -2025,10 +2026,17 @@ def wyr_point_update(wyr_id, geom):
             lyr_point.updateFeature(feat)
         except Exception as err:
             print(err)
-    lyr_point.triggerRepaint()
+    wyr_point_lyrs_repaint()
     if temp_lyr:
         del lyr_point
     dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych wyrobiska
+
+def wyr_point_lyrs_repaint():
+    """Odświeża widok punktowych warstw wyrobisk."""
+    lyrs_names = ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_point']
+    for lyr_name in lyrs_names:
+        dlg.proj.mapLayersByName(lyr_name)[0].triggerRepaint()
+
 
 def wyr_del(layer, feature):
     dlg.mt.init("multi_tool")

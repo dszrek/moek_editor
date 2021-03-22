@@ -27,7 +27,7 @@ class LayerManager:
         self.root = dlg.proj.layerTreeRoot()
         self.groups_tree = [
             {'level': 0, 'layers': ['wn_kopaliny_pne', 'powiaty', 'arkusze', 'powiaty_mask']},
-            {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_point', 'wyr_poly']},
+            {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_poly']},
             {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
             {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
             {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wybilansowane', 'midas_obszary', 'midas_tereny']},
@@ -35,10 +35,12 @@ class LayerManager:
             {'name': 'basemaps', 'level': 1, 'layers': ['ISOK'], 'subgroups': ['sat', 'topo']},
             {'name': 'sat', 'level': 2, 'parent': 'basemaps', 'layers': ['Google Satellite', 'Google Hybrid', 'Geoportal', 'Geoportal HD', 'Google Earth Pro']},
             {'name': 'topo', 'level': 2, 'parent': 'basemaps', 'layers': ['Google Map', 'OpenStreetMap', 'Topograficzna', 'BDOT', 'BDOO']},
-            {'name': 'temp', 'level': 1, 'layers': ['edit_poly', 'backup_poly']}
+            {'name': 'temp', 'level': 1, 'layers': ['wyr_point', 'edit_poly', 'backup_poly']}
             ]
         self.lyrs = [
-            {"source": "postgres", "name": "wyr_point", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_przed_teren", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_potwierdzone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_odrzucone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
             {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
@@ -72,6 +74,7 @@ class LayerManager:
             {"source": "wms", "name": "BDOT", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/png&layers=BDOT10k&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOT10k?service%3DWMTS%26request%3DgetCapabilities'},
             {"source": "wms", "name": "BDOO", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/png&layers=BDOO&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOO?service%3DWMTS%26request%3DgetCapabilities'},
             {"source": "wms", "name": "ISOK", "root": False, "parent": "basemaps", "pos": 0, "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ISOK_Cien&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WMTS/ShadedRelief?service%3DWMTS%26request%3DgetCapabilities'},
+            {"source": "postgres", "name": "wyr_point", "root": False, "parent": "temp", "visible": False, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
             {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]}
             ]

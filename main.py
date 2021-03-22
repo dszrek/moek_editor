@@ -256,16 +256,28 @@ def wyr_layer_update(check=True):
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.obj.wyr_ids:
-        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
-        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
+        uri_a1 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ') AND b_after_fchk = False'
+        uri_a2 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ') AND b_after_fchk = True AND b_confirmed = True'
+        uri_a3 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ') AND b_after_fchk = True AND b_confirmed = False'
+        uri_a4 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
+        uri_b = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
     else:
-        uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
-        uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id = 0'
-    lyr_1 = dlg.proj.mapLayersByName("wyr_point")[0]
-    lyr_2 = dlg.proj.mapLayersByName("wyr_poly")[0]
+        uri_a1 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
+        uri_a2 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
+        uri_a3 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
+        uri_a4 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
+        uri_b = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id = 0'
+    lyr_a1 = dlg.proj.mapLayersByName("wyr_przed_teren")[0]
+    lyr_a2 = dlg.proj.mapLayersByName("wyr_potwierdzone")[0]
+    lyr_a3 = dlg.proj.mapLayersByName("wyr_odrzucone")[0]
+    lyr_a4 = dlg.proj.mapLayersByName("wyr_point")[0]
+    lyr_b = dlg.proj.mapLayersByName("wyr_poly")[0]
     # Zmiana zawartości warstw z wyrobiskami:
-    pg_layer_change(uri_1, lyr_1)
-    pg_layer_change(uri_2, lyr_2)
+    pg_layer_change(uri_a1, lyr_a1)
+    pg_layer_change(uri_a2, lyr_a2)
+    pg_layer_change(uri_a3, lyr_a3)
+    pg_layer_change(uri_a4, lyr_a4)
+    pg_layer_change(uri_b, lyr_b)
 
 def wyr_powiaty_check():
     """Sprawdza, czy wszystkie wyrobiska zespołu mają wpisy w tabeli 'wyr_pow'.

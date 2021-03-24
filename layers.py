@@ -6,7 +6,8 @@ from qgis.PyQt.QtWidgets import QMessageBox
 from PyQt5.QtCore import Qt, QVariant
 from qgis.utils import iface
 
-from .classes import CfgPars
+from .classes import CfgPars, PgConn
+from .main import flag_layer_update, wyr_layer_update
 
 # Zmienne globalne:
 dlg = None
@@ -259,7 +260,6 @@ class LayerManager:
 
     def layer_in_group_found(self, grp_node, lyr_name):
         """Zwraca, czy warstwa o podanej nazwie znajduje się w podanej grupie."""
-        # print(f"grp_node: {grp_node}, lyr: {lyr_name}")
         for child in grp_node.children():
             if child.name() == lyr_name:
                 return True
@@ -267,7 +267,6 @@ class LayerManager:
 
     def layer_to_group_move(self, grp_node, lyr_name):
         """Przenoszenie warstwy (jeśli istnieje) do właściwej grupy."""
-        print(f"grp_node: {grp_node}, lyr: {lyr_name}")
         try:
             lyr = self.root.findLayer(dlg.proj.mapLayersByName(lyr_name)[0].id())
         except Exception as err:
@@ -279,3 +278,174 @@ class LayerManager:
         grp_node.insertChildNode(0, new_lyr)
         parent.removeChildNode(lyr)
         return True
+
+
+class PanelManager:
+    """Menedżer ustawień (widoczność, rozwinięcie itp.) paneli."""
+    def __init__(self, dlg):
+        self.callback_void = True
+        self.dlg = dlg
+        self.cfg = []
+        self.cfg_dicts = [
+            {'name': 'powiaty', 'action': 'panel_state', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'wn_kopaliny_pne', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_wn"], 'callback': None, 'value': None},
+            {'name': 'MIDAS', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_midas"], 'callback': None, 'value': None},
+            {'name': 'midas_zloza', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'midas_wybilansowane', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'midas_obszary', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'midas_tereny', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'MGSP', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_mgsp"], 'callback': None, 'value': None},
+            {'name': 'mgsp_pkt_kop', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'mgsp_zloza_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'mgsp_zloza_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'mgsp_zloza_wb_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'mgsp_zloza_wb_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'smgp_wyrobiska', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_smgp"], 'callback': None, 'value': None},
+            {'name': 'flagi', 'action': 'panel_state', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'flagi_user', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_user"], 'callback': 'flag_layer_update()', 'value': None},
+            {'name': 'flagi_z_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_fchk_vis"], 'callback': 'flag_layer_update()', 'value': None},
+            {'name': 'flagi_bez_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_nfchk_vis"], 'callback': 'flag_layer_update()', 'value': None},
+            {'name': 'wyrobiska', 'action': 'panel_state', 'btn': None, 'callback': None, 'value': None},
+            {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'value': None},
+            {'name': 'wyr_przed_teren', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'value': None},
+            {'name': 'wyr_potwierdzone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'value': None},
+            {'name': 'wyr_odrzucone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'value': None}
+                        ]
+        self.cfg_dicts_cnt = len(self.cfg_dicts)
+        self.cfg_vals = []
+        self.old_cfg_vals = []
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "cfg_vals":
+            cfg_vals = val
+            try:
+                vals_cnt = len(cfg_vals)
+            except Exception as err:
+                print(err)
+                return
+            if vals_cnt != self.cfg_dicts_cnt:
+                return
+            if len(self.old_cfg_vals) != self.cfg_dicts_cnt:
+                self.old_cfg_vals = self.cfg_vals.copy()
+            for i in range(self.cfg_dicts_cnt):
+                if self.cfg_dicts[i]["value"] != self.old_cfg_vals[i]:
+                    self.cfg_dicts[i]["value"] = self.cfg_vals[i]
+                    self.update_action(self.cfg_dicts[i]["action"], self.cfg_dicts[i]["name"], self.cfg_dicts[i]["btn"], self.cfg_dicts[i]["value"], self.cfg_dicts[i]["callback"])
+            self.old_cfg_vals = self.cfg_vals.copy()
+            if self.callback_void:
+                self.callback_void = False
+
+    def update_action(self, action, name, btn, val, cb):
+        """Przeprowadza zmiany związane z modyfikacją stanu konfiguracji."""
+        if action == "panel_state":
+            return
+        val = True if val == 1 else False  # Konwersja int na bool
+        if action == "lyr_vis":
+            dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(name)[0].id()).setItemVisibilityChecked(val)
+        elif action == "grp_vis":
+            dlg.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(val)
+        if btn:
+            btn.setChecked(val)
+        if cb and not self.callback_void:
+            exec(cb)
+
+    def set_val(self, name, val):
+        """Zamienia aktualną wartość (int albo bool) z cfg_dict o podanej nazwie i aktualizuje cfg_vals w bazie danych."""
+        # Ustalenie prawidłowej wartości:
+        if type(val) == bool:
+            # Konwersja danych int na bool:
+            val = 1 if val else 0
+        else:
+            # Zapewnienie, że val ma wartość 0, 1 lub 2:
+            val = 0 if not val in range(0, 3) else val
+        # Wyszukanie odpowiedniego słownika i podmiana wartości:
+        # Aktualizacja self.cfg_vals:
+        new_vals = []
+        for c_dict in self.cfg_dicts:
+            if c_dict["name"] == name:
+                # Aktualizacja wartości w zmienianym słowniku:
+                c_dict["value"] = val
+            if c_dict["value"] in range(0, 3):
+                new_vals.append(c_dict["value"])
+            else:
+                print(f'Słownik {c_dict["name"]} ma nieprawidłową wartość {c_dict["value"]}')
+                return
+        self.cfg_vals = new_vals
+        # Aktualizacja bazy danych:
+        self.cfg_vals_write()
+
+    def get_val(self, name, convert=True):
+        """Zwraca aktualną wartość (convert=True: bool, False: int) z cfg_dict o podanej nazwie."""
+        val = 0
+        for c_dict in self.cfg_dicts:
+            if c_dict["name"] == name:
+                val = c_dict["value"]
+                break
+        if convert:
+            return False if val == 0 else True
+        else:
+            return val
+
+    def flag_case(self):
+        """Zwraca liczbę wskazującą, które warstwy flag są włączone."""
+        flag_vals = [0, 0, 0, 0]
+        for c_dict in self.cfg_dicts:
+            if c_dict["name"] == "flagi_z_teren" and c_dict["value"] in range(0, 2):
+                flag_vals[0] = c_dict["value"]
+            elif c_dict["name"] == "flagi_bez_teren" and c_dict["value"] in range(0, 2):
+                flag_vals[1] = c_dict["value"]
+            elif c_dict["name"] == "flagi_user" and c_dict["value"] in range(0, 2):
+                flag_vals[2] = c_dict["value"]
+        flag_vals[3] = 1 if dlg.p_pow.is_active() else 0
+        case_val = flag_vals[0] + (flag_vals[1] * 2) + (flag_vals[2] * 4) + (flag_vals[3] * 8)
+        return case_val
+
+    def wyr_case(self):
+        """Zwraca liczbę wskazującą, które warstwy punktowe wyrobisk są włączone."""
+        wyr_vals = [0, 0, 0, 0]
+        for c_dict in self.cfg_dicts:
+            if c_dict["name"] == "wyr_przed_teren" and c_dict["value"] in range(0, 2):
+                wyr_vals[0] = c_dict["value"]
+            elif c_dict["name"] == "wyr_potwierdzone" and c_dict["value"] in range(0, 2):
+                wyr_vals[1] = c_dict["value"]
+            elif c_dict["name"] == "wyr_odrzucone" and c_dict["value"] in range(0, 2):
+                wyr_vals[2] = c_dict["value"]
+            elif c_dict["name"] == "wyr_user" and c_dict["value"] in range(0, 2):
+                wyr_vals[3] = c_dict["value"]
+        case_val = wyr_vals[0] + (wyr_vals[1] * 2) + (wyr_vals[2] * 4) + (wyr_vals[3] * 8)
+        return case_val
+
+    def get_vals(self, n_list, convert=True):
+        """Zwraca aktualne wartości (convert=True: bool, False: int) z cfg_dicts o nazwach z listy 'n_list'."""
+        for c_dict in self.cfg_dicts:
+            if c_dict["name"] == name:
+                val = c_dict["value"]
+                break
+        if convert:
+            return False if val == 0 else True
+        else:
+            return val
+
+    def cfg_vals_read(self):
+        """Wczytanie z bazy danych ustawień paneli do self.cfg_vals."""
+        db = PgConn()
+        sql = "SELECT t_settings FROM team_users WHERE team_id = " + str(self.dlg.team_i) + " AND user_id = " + str(self.dlg.user_id) + ";"
+        if db:
+            res = db.query_sel(sql, False)
+            if res:
+                self.cfg_vals[:0] = res[0]
+            else:
+                if len(self.setting) == 0:
+                    self.cfg_vals[:0] = '011111111111111211121111'
+        self.cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry
+
+    def cfg_vals_write(self):
+        """Zapisanie ustawień paneli z self.cfg_vals do bazy danych."""
+        cfg_val_txt = str("".join(map(str, self.cfg_vals)))  # Zamiana cyfr na tekst
+        db = PgConn()
+        sql = "UPDATE public.team_users SET t_settings = '" + cfg_val_txt + "' WHERE team_id = " + str(self.dlg.team_i) + " AND user_id = " + str(self.dlg.user_id) + ";"
+        if db:
+            db.query_upd(sql)

@@ -34,7 +34,7 @@ from .resources import resources
 
 from .main import dlg_main, db_login, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
 from .widgets import dlg_widgets
-from .layers import dlg_layers
+from .layers import dlg_layers, PanelManager
 from .maptools import dlg_maptools
 from .viewnet import dlg_viewnet
 from .basemaps import dlg_basemaps, basemaps_load
@@ -270,6 +270,7 @@ class MoekEditor:
                 dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
                 dlg_basemaps(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
                 dlg_sequences(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do sequences.py
+                self.dockwidget.cfg = PanelManager(dlg=self.dockwidget)  # Utworzenie menedżera ustawień paneli i warstw
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
@@ -285,7 +286,8 @@ class MoekEditor:
             except Exception as err:
                 print(err)
             return
-        self.title_change()
+        self.dockwidget.cfg.cfg_vals_read()  # Wczytanie ustawień do PanelManager
+        self.title_change()  # Zmiana tytułu okna QGIS
         self.dockwidget.splash_screen.p_bar.setMaximum(0)
         QgsApplication.processEvents()
         self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
@@ -296,7 +298,6 @@ class MoekEditor:
         # TODO: fix to allow choice of dock location
         self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
         self.dockwidget.obj.init_void = False  # Odblokowanie ObjectManager'a
-        self.dockwidget.ext_init()  # Podłączenie funkcji zmiany widoczności warstw z danymi zewnętrznymi
         self.dockwidget.button_conn()  # Podłączenie akcji przycisków
         self.dockwidget.mt.init("multi_tool")  # Aktywacja multi_tool'a
         self.dockwidget.splash_screen.hide()

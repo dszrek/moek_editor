@@ -25,10 +25,9 @@
 import os
 
 from qgis.PyQt import QtGui, QtWidgets, uic
-from qgis.PyQt.QtCore import Qt, QSize
-from PyQt5.QtWidgets import QShortcut, QMessageBox
-from qgis.PyQt.QtCore import pyqtSignal, QEvent, QObject
-from PyQt5.QtGui import QIcon, QPixmap
+from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QObject
+from qgis.PyQt.QtWidgets import QShortcut, QMessageBox
+from qgis.PyQt.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject, QgsFeature
 from qgis.gui import QgsMapToolPan
 from qgis.utils import iface
@@ -109,8 +108,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                     ]
         p_flag_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "nfchk_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj flagi bez kontroli terenowej"},
-                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "fchk_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj flagi z kontrolą terenową"}
+                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "fchk_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj flagi z kontrolą terenową"},
+                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "nfchk_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj flagi bez kontroli terenowej"}
                     ]
         p_wyr_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
@@ -446,10 +445,17 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
-        self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_wn"], grp=False, name="wn_kopaliny_pne"))
-        self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_midas"], grp=True, name="MIDAS"))
-        self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_mgsp"], grp=True, name="MGSP"))
-        self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.ext_visibility(btn=self.p_ext.box.widgets["btn_smgp"], grp=False, name="smgp_wyrobiska"))
+        self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_kopaliny_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
+        self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
+        self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))
+        self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.cfg.set_val(name="smgp_wyrobiska", val=self.p_ext.box.widgets["btn_smgp"].isChecked()))
+        self.p_flag.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="flagi_user", val=self.p_flag.widgets["btn_user"].isChecked()))
+        self.p_flag.widgets["btn_fchk_vis"].clicked.connect(lambda: self.cfg.set_val(name="flagi_z_teren", val=self.p_flag.widgets["btn_fchk_vis"].isChecked()))
+        self.p_flag.widgets["btn_nfchk_vis"].clicked.connect(lambda: self.cfg.set_val(name="flagi_bez_teren", val=self.p_flag.widgets["btn_nfchk_vis"].isChecked()))
+        self.p_wyr.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="wyr_user", val=self.p_wyr.widgets["btn_user"].isChecked()))
+        self.p_wyr.widgets["btn_wyr_grey_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_przed_teren", val=self.p_wyr.widgets["btn_wyr_grey_vis"].isChecked()))
+        self.p_wyr.widgets["btn_wyr_green_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_potwierdzone", val=self.p_wyr.widgets["btn_wyr_green_vis"].isChecked()))
+        self.p_wyr.widgets["btn_wyr_red_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_odrzucone", val=self.p_wyr.widgets["btn_wyr_red_vis"].isChecked()))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
         # self.p_auto.widgets["btn_auto_add"].clicked.connect(lambda: self.mt.init("auto_add"))
         # self.p_auto.widgets["btn_auto_del"].clicked.connect(lambda: self.mt.init("auto_del"))
@@ -487,23 +493,6 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         value = True if self.p_auto.is_active() else False
         self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking")[0].id()).setItemVisibilityChecked(value)
         self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("marsz")[0].id()).setItemVisibilityChecked(value)
-
-    def ext_visibility(self, btn, grp, name):
-        """Włączenie / wyłaczenie warstw z danymi zewnętrznymi."""
-        if grp:
-            self.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(btn.isChecked())
-        else:
-            self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName(name)[0].id()).setItemVisibilityChecked(btn.isChecked())
-
-    def ext_init(self):
-        """Początkowe ustawienia widoczności warstw danych zewnętrznych."""
-        value = True
-        for btns in self.p_ext.box.findChildren(MoekButton):
-            btns.setChecked(value)
-        self.ext_visibility(btn=self.p_ext.box.widgets["btn_wn"], grp=False, name="wn_kopaliny_pne")
-        self.ext_visibility(btn=self.p_ext.box.widgets["btn_midas"], grp=True, name="MIDAS")
-        self.ext_visibility(btn=self.p_ext.box.widgets["btn_mgsp"], grp=True, name="MGSP")
-        self.ext_visibility(btn=self.p_ext.box.widgets["btn_smgp"], grp=False, name="smgp_wyrobiska")
 
     def closeEvent(self, event):
         # Deaktywacja skrótów klawiszowych:
@@ -553,6 +542,10 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             print(err)
         try:
             self.lyr = None
+        except Exception as err:
+            print(err)
+        try:
+            self.cfg = None
         except Exception as err:
             print(err)
         # Przełączenie na QGIS'owy maptool:

@@ -148,11 +148,11 @@ class ObjectManager:
         sql = "SELECT id, b_fieldcheck, t_notatki FROM team_" + str(dlg.team_i) + ".flagi WHERE id = " + str(self.flag) + ";"
         if db:
             res = db.query_sel(sql, False)
-            if res:
-                print(f"res: {res}")
-                return res
-            else:
+            if not res:
+                print(f"Nie udało się wczytać danych flagi: {self.wyr}")
                 return None
+            else:
+                return res
 
     def wyr_update(self):
         """Zwraca dane wyrobiska."""
@@ -160,11 +160,11 @@ class ObjectManager:
         sql = "SELECT wyr_id, i_area_m2, t_notatki FROM team_" + str(dlg.team_i) + ".wyrobiska WHERE wyr_id = " + str(self.wyr) + ";"
         if db:
             res = db.query_sel(sql, False)
-            if res:
-                print(f"res: {res}")
-                return res
-            else:
+            if not res:
+                print(f"Nie udało się wczytać danych wyrobiska: {self.wyr}")
                 return None
+            else:
+                return res
 
     def set_object_from_input(self, _id, _obj):
         """Próba zmiany aktualnej flagi lub wyrobiska po wpisaniu go w idbox'ie."""

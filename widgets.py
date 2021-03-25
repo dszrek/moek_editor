@@ -362,7 +362,7 @@ class WyrCanvasPanel(QFrame):
             if res:
                 dlg.obj.wyr = None
         # Aktualizacja listy wyrobisk w ObjectManager:
-        dlg.obj.wyr_ids = get_wyr_ids("wyrobiska")
+        dlg.obj.wyr_ids = get_wyr_ids()
 
 
 class FlagCanvasPanel(QFrame):

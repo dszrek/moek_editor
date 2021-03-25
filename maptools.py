@@ -43,6 +43,7 @@ class ObjectManager:
         if self.init_void:  # Blokada przed odpalaniem podczas ładowania wtyczki
             return
         if attr == "flag":
+            # Zmiana aktualnej flagi:
             QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'flag_sel', val)
             self.flag_hidden = None
             if val:
@@ -54,11 +55,18 @@ class ObjectManager:
                 self.dlg.mt.init("multi_tool")
             self.dlg.flag_panel.id_box.id = val if val else None
             self.dlg.flag_panel.show() if val else self.dlg.flag_panel.hide()
-        if attr == "flag_hidden":
+        elif attr == "flag_hidden":
+            # Zmiana flagi ukrytej (aktywowana przy przenoszeniu flagi):
             QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'flag_hidden', val)
             dlg.proj.mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
             dlg.proj.mapLayersByName("flagi_z_teren")[0].triggerRepaint()
+        elif attr == "flag_ids":
+            # Zmiana listy dostępnych flag:
+            flag_check = self.list_position_check("flag")
+            if not flag_check:
+                self.flag = None
         elif attr == "wyr":
+            # Zmiana aktualnego wyrobiska:
             QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'wyr_sel', val)
             if val:
                 self.wyr_data = self.wyr_update()
@@ -70,6 +78,11 @@ class ObjectManager:
             self.dlg.wyr_panel.id_box.id = val if val else None
             wyr_point_lyrs_repaint()
             dlg.proj.mapLayersByName("wyr_poly")[0].triggerRepaint()
+        elif attr == "wyr_ids":
+            # Zmiana listy dostępnych wyrobisk:
+            wyr_check = self.list_position_check("wyr")
+            if not wyr_check:
+                self.wyr = None
 
     def flag_hide(self, _bool):
         """Ukrywa lub pokazuje zaznaczoną flagę."""
@@ -222,15 +235,15 @@ class ObjectManager:
             ids = self.wyr_ids
             id_box = dlg.wyr_panel.id_box
         else:
-            return
+            return False
         if not ids or not val:
-            return
+            return False
         obj_cnt = len(ids)
         try:
             cur_id_idx = ids.index(val)  # Pozycja na liście aktualnego obiektu
         except Exception as err:
-            print(err)
-            return
+            print(f"list_position_check: {err}")
+            return False
         if cur_id_idx == 0:  # Pierwsza pozycja na liście
             id_box.prev_btn.setEnabled(False)
         else:
@@ -239,6 +252,7 @@ class ObjectManager:
             id_box.next_btn.setEnabled(False)
         else:
             id_box.next_btn.setEnabled(True)
+        return True
 
     def pan_to_object(self, _obj):
         if _obj == "flag":
@@ -497,7 +511,7 @@ class EditPolyMapTool(QgsMapTool):
             try:
                 feat = list(feats)[0]
             except Exception as err:
-                print(err)
+                print(f"maptools/zoom_to_geom: {err}")
                 return
             point = feat.geometry()
             self.canvas.zoomToFeatureExtent(point.boundingBox())
@@ -1894,17 +1908,24 @@ def flag_add(point, extra):
     dlg.mt.init("multi_tool")
     if not point:
         return
-    is_fldchk = extra[0]
+    is_fchk = extra[0]
+    print(f"is_fchk: {is_fchk}")
     fl_pow = fl_valid(point)
     if not fl_pow:
         QMessageBox.warning(None, "Tworzenie flagi", "Flagę można postawić wyłącznie na obszarze wybranego (aktywnego) powiatu/ów.")
         return
     db = PgConn()
-    sql = "INSERT INTO team_" + str(dlg.team_i) + ".flagi(user_id, pow_grp, b_fieldcheck, geom) VALUES (" + str(dlg.user_id) + ", " + str(fl_pow) + ", " + is_fldchk + ", ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180))"
+    sql = "INSERT INTO team_" + str(dlg.team_i) + ".flagi(user_id, pow_grp, b_fieldcheck, geom) VALUES (" + str(dlg.user_id) + ", " + str(fl_pow) + ", " + is_fchk + ", ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180))"
     if db:
         res = db.query_upd(sql)
         if not res:
             print("Nie udało się dodać flagi.")
+        else:
+            # Włączenie tego rodzaju flag, jeśli są wyłączone:
+            name = "flagi_z_teren" if is_fchk == "true" else "flagi_bez_teren"
+            val = dlg.cfg.get_val(name)
+            if val == 0:
+                dlg.cfg.set_val(name, 1)
     dlg.proj.mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
     dlg.proj.mapLayersByName("flagi_z_teren")[0].triggerRepaint()
     dlg.obj.flag_ids = get_flag_ids()  # Aktualizacja listy flag w ObjectManager
@@ -1946,7 +1967,7 @@ def area_measure(geom):
     try:
         area = geom.area()
     except Exception as err:
-        print(err)
+        print(f"Nie udało się obliczyć powierzchni wyrobiska: {err}")
         return 0
     area_rounded = int(area / 10) * 10 if area <= 1000 else int(area / 100) * 100
     return area_rounded
@@ -1959,7 +1980,16 @@ def wyr_point_add(point):
     sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyrobiska(wyr_id, user_id, wyr_sys, centroid) SELECT nextval, " + str(dlg.user_id) + ", concat('" + str(dlg.team_i) + "_', nextval), ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180) FROM (SELECT nextval(pg_get_serial_sequence('team_" + str(dlg.team_i) + ".wyrobiska', 'wyr_id')) nextval) q RETURNING wyr_id"
     if db:
         res = db.query_upd_ret(sql)
-        return res if res else None
+        if not res:
+            print(f"Nie udało się stworzyć centroidu wyrobiska.")
+            return None
+        else:
+            # Włączenie wyrobisk przed kontrolą terenową, jeśli są wyłączone:
+            val = dlg.cfg.get_val("wyr_przed_teren")
+            print(f"wyr_val: {val}")
+            if val == 0:
+                dlg.cfg.set_val("wyr_przed_teren", 1)
+            return res
 
 def wyr_add_poly(geom, wyr_id=None):
     """Utworzenie nowego obiektu wyrobiska."""
@@ -1980,12 +2010,12 @@ def wyr_add_poly(geom, wyr_id=None):
         try:
             lyr_poly.addFeature(feature)
         except Exception as err:
-            print(err)
+            print(f"maptools/wyr_add_poly: {err}")
             return
     lyr_poly.triggerRepaint()
     wyr_powiaty_change(wyr_id, geom, new=True)
     wyr_point_update(wyr_id, geom)
-    dlg.obj.wyr_ids = get_wyr_ids("wyrobiska")  # Aktualizacja listy wyrobisk w ObjectManager
+    dlg.obj.wyr_ids = get_wyr_ids()  # Aktualizacja listy wyrobisk w ObjectManager
     dlg.obj.list_position_check("wyr")  # Aktualizacja pozycji na liście obecnie wybranego wyrobiska
 
 def wyr_point_update(wyr_id, geom):
@@ -1995,13 +2025,12 @@ def wyr_point_update(wyr_id, geom):
     # Aktualizacja bieżącego punktu wyrobiska:
     temp_lyr = False
     lyr_point = dlg.proj.mapLayersByName("wyr_point")[0]
-    lyrs_names = ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_point']
     area = area_measure(geom)
     feats = lyr_point.getFeatures(f'"wyr_id" = {wyr_id}')
     try:
         feat = list(feats)[0]
     except Exception as err:
-        print(err)
+        print(f"maptools/wyr_point_update[0]: {err}")
         print("Geometria wyrobiska leży poza aktywnymi powiatami?")
         dlg.obj.wyr = None
         # Stworzenie tymczasowej warstwy ze wszystkimi punktami wyrobisk zespołu:
@@ -2015,7 +2044,7 @@ def wyr_point_update(wyr_id, geom):
         try:
             feat = list(feats)[0]
         except Exception as err:
-            print(err)
+            print(f"maptools/wyr_point_update[1]: {err}")
             print(f"Nieudana próba aktualizacji wyrobiska {wyr_id}")
             del lyr_point
             return
@@ -2025,7 +2054,7 @@ def wyr_point_update(wyr_id, geom):
         try:
             lyr_point.updateFeature(feat)
         except Exception as err:
-            print(err)
+            print(f"maptools/wyr_point_update[2]: {err}")
     wyr_point_lyrs_repaint()
     if temp_lyr:
         del lyr_point
@@ -2036,7 +2065,6 @@ def wyr_point_lyrs_repaint():
     lyrs_names = ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_point']
     for lyr_name in lyrs_names:
         dlg.proj.mapLayersByName(lyr_name)[0].triggerRepaint()
-
 
 def wyr_del(layer, feature):
     dlg.mt.init("multi_tool")

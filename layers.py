@@ -76,8 +76,8 @@ class LayerManager:
             {"source": "wms", "name": "BDOO", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/png&layers=BDOO&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOO?service%3DWMTS%26request%3DgetCapabilities'},
             {"source": "wms", "name": "ISOK", "root": False, "parent": "basemaps", "pos": 0, "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ISOK_Cien&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WMTS/ShadedRelief?service%3DWMTS%26request%3DgetCapabilities'},
             {"source": "postgres", "name": "wyr_point", "root": False, "parent": "temp", "visible": False, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
-            {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
-            {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]}
+            {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": ["QgsField('part', QVariant.Int)"]},
+            {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": ["QgsField('part', QVariant.Int)"]}
             ]
         self.lyr_cnt = len(self.lyrs)
         self.lyrs_names = [i for s in [[v for k, v in d.items() if k == "name"] for d in self.lyrs] for i in s]
@@ -177,7 +177,9 @@ class LayerManager:
             if l_dict["source"] == "memory":
                 lyr.setCustomProperty("skipMemoryLayersCheck", 1)
                 pr = lyr.dataProvider()
-                pr.addAttributes(l_dict["attrib"])
+                for attr in l_dict["atrrib"]:
+                    print(f'memory: {attr}')
+                    pr.addAttribute(attr)
                 lyr.updateFields()
             if "crs" in l_dict:
                 lyr.setCrs(CRS_1992)
@@ -417,17 +419,6 @@ class PanelManager:
                 wyr_vals[3] = c_dict["value"]
         case_val = wyr_vals[0] + (wyr_vals[1] * 2) + (wyr_vals[2] * 4) + (wyr_vals[3] * 8)
         return case_val
-
-    def get_vals(self, n_list, convert=True):
-        """Zwraca aktualne wartości (convert=True: bool, False: int) z cfg_dicts o nazwach z listy 'n_list'."""
-        for c_dict in self.cfg_dicts:
-            if c_dict["name"] == name:
-                val = c_dict["value"]
-                break
-        if convert:
-            return False if val == 0 else True
-        else:
-            return val
 
     def cfg_vals_read(self):
         """Wczytanie z bazy danych ustawień paneli do self.cfg_vals."""

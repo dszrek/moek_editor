@@ -465,9 +465,9 @@ def get_flag_ids(case):
         {'value': 5, 'sql': " WHERE b_fieldcheck = True "},
         {'value': 6, 'sql': " WHERE b_fieldcheck = False "},
         {'value': 7, 'sql': ""},
-        {'value': 9, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' AND b_fieldcheck = True "},
-        {'value': 10, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' AND b_fieldcheck = False "},
-        {'value': 11, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' AND user_id = {dlg.user_id} "},
+        {'value': 9, 'sql': " WHERE user_id = {dlg.user_id} AND pow_grp = '{dlg.powiat_i}' AND b_fieldcheck = True "},
+        {'value': 10, 'sql': " WHERE user_id = {dlg.user_id} AND pow_grp = '{dlg.powiat_i}' AND b_fieldcheck = False "},
+        {'value': 11, 'sql': " WHERE user_id = {dlg.user_id} AND pow_grp = '{dlg.powiat_i}' "},
         {'value': 13, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' AND b_fieldcheck = True "},
         {'value': 14, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' AND b_fieldcheck = False "},
         {'value': 15, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' "}

@@ -242,8 +242,9 @@ class LayerManager:
                 if not lyr.isValid():
                     dlg.proj.removeMapLayer(lyr)
                     missing.append(lyr_name)
-        print(f"layer/structure_check - lista brakujących warstw:")
-        print(missing)
+        if missing:
+            print(f"layer/structure_check - lista brakujących warstw:")
+            print(missing)
         return missing if rebuild else True
 
     def group_move(self, parent_node, grp_name):
@@ -290,6 +291,7 @@ class PanelManager:
         self.cfg_dicts = [
             {'name': 'team', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_team.set_state(val)', 'cb_void': False, 'value': None},
             {'name': 'powiaty', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_pow.set_state(val)', 'cb_void': False, 'value': None},
+            {'name': 'powiaty_mask', 'action': 'lyr_vis', 'btn': dlg.p_pow_mask.box.widgets["btn_pow_mask"], 'callback': None, 'cb_void': False, 'value': None},
             {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_vn.set_state(val)', 'cb_void': False, 'value': None},
             {'name': 'external', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_ext.set_state(val)', 'cb_void': False, 'value': None},
             {'name': 'wn_kopaliny_pne', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_wn"], 'callback': None, 'cb_void': False, 'value': None},
@@ -433,7 +435,7 @@ class PanelManager:
             if res:
                 self.cfg_vals[:0] = res[0]
             else:
-                self.cfg_vals[:0] = '10111111111111111211121111'
+                self.cfg_vals[:0] = '101111111111111111211121111'
         if len(self.old_cfg_vals) > 0:
             self.old_cfg_vals = []
             self.old_cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry

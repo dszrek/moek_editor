@@ -37,7 +37,7 @@ from .layers import LayerManager
 from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekButton, MoekSideDock, MoekBottomDock, FlagCanvasPanel, WyrCanvasPanel, SplashScreen
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, FlagCanvasPanel, WyrCanvasPanel, SplashScreen
 from .basemaps import MoekMapPanel
 from .sequences import prev_map, next_map, seq
 
@@ -75,15 +75,76 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.proj.layersWillBeRemoved.connect(self.layers_removing)
         self.proj.legendLayersAdded.connect(self.layers_adding)
         self.app = iface.mainWindow()  # Referencja do aplikacji QGIS
-        iface.mainWindow().installEventFilter(self)  # Nasłuchiwanie zmiany tytułu okna QGIS
         self.canvas = iface.mapCanvas()  # Referencja do okna mapowego
-        iface.mapCanvas().installEventFilter(self)  # Nasłuchiwanie zmiany rozmiaru okna mapowego
+
+        self.p_team = MoekBarPanel(
+                            self,
+                            title="   Zespół:  ",
+                            switch=None,
+                            round="left"
+                            )
+        self.p_pow = MoekBarPanel(
+                            self,
+                            title_off="Wszystkie powiaty",
+                            io_fn="powiaty_mode_changed(clicked=True)",
+                            cfg_name="powiaty",
+                            custom_width=171,
+                            grouped=True,
+                            round="pow"
+                            )
+        self.p_pow_mask = MoekBarPanel(
+                            self,
+                            switch=None,
+                            spacing=8,
+                            wmargin=0,
+                            custom_width=33,
+                            grouped=True,
+                            round="pow_mask"
+                            )
+        self.p_pow_grp = MoekGroupPanel(self)
+        self.p_map = MoekMapPanel(self)
+        self.p_ext = MoekBarPanel(
+                            self,
+                            switch=None,
+                            spacing=8,
+                            wmargin=0
+                            )
+        self.p_vn = MoekBoxPanel(
+                            title="Siatka widoków",
+                            io_fn="vn_mode_changed(clicked=True)",
+                            config=True,
+                            cfg_fn="vn_cfg()",
+                            pages=5)
+        self.p_flag = MoekBoxPanel(
+                            self,
+                            title="Flagi",
+                            io_fn="dlg.flag_visibility()",
+                            expand=True,
+                            exp_fn="flagi")
+        self.p_wyr = MoekBoxPanel(
+                            self,
+                            title="Wyrobiska",
+                            io_fn="dlg.wyr_visibility()",
+                            expand=True,
+                            exp_fn="wyrobiska")
+        # self.p_auto = MoekBoxPanel(
+        #                     self,
+        #                     title="Komunikacja",
+        #                     io_fn="dlg.auto_visibility()")
+
 
         p_team_widgets = [
                     {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
                     ]
         p_pow_widgets = [
                     {"item": "combobox", "name": "pow_act", "height": 21, "border": 1, "b_round": "none"}
+                    ]
+        p_pow_mask_widgets = [
+                    {"item": "button", "name": "pow_mask", "size": 33,"checkable": True, "tooltip": u'włącz/wyłącz maskę powiatów'}
+                    ]
+        p_pow_grp_widgets = [
+                    {"item": "panel", "object": self.p_pow},
+                    {"item": "panel", "object": self.p_pow_mask}
                     ]
         p_map_widgets = []
         p_ext_widgets = [
@@ -129,55 +190,15 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         #             {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_del", "size": 50, "checkable": True, "tooltip": u'usuń marszrutę'}
         #             ]
 
-        self.p_team = MoekBarPanel(
-                            self,
-                            title="Zespół:",
-                            switch=False
-                            )
-        self.p_pow = MoekBarPanel(
-                            self,
-                            title="Powiat:",
-                            title_off="Wszystkie powiaty",
-                            io_fn="powiaty_mode_changed(clicked=True)",
-                            cfg_name="powiaty"
-                            )
-        self.p_map = MoekMapPanel(self)
-        self.p_ext = MoekBarPanel(
-                            self,
-                            title="",
-                            switch=None,
-                            spacing=8,
-                            wmargin=0
-                            )
-        self.p_vn = MoekBoxPanel(
-                            title="Siatka widoków",
-                            io_fn="vn_mode_changed(clicked=True)",
-                            config=True,
-                            cfg_fn="vn_cfg()",
-                            pages=5)
-        self.p_flag = MoekBoxPanel(
-                            self,
-                            title="Flagi",
-                            io_fn="dlg.flag_visibility()",
-                            expand=True,
-                            exp_fn="flagi")
-        self.p_wyr = MoekBoxPanel(
-                            self,
-                            title="Wyrobiska",
-                            io_fn="dlg.wyr_visibility()",
-                            expand=True,
-                            exp_fn="wyrobiska")
-        # self.p_auto = MoekBoxPanel(
-        #                     self,
-        #                     title="Komunikacja",
-        #                     io_fn="dlg.auto_visibility()")
 
-        self.panels = [self.p_team, self.p_pow, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr] #, self.p_auto]
-        self.p_widgets = [p_team_widgets, p_pow_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets] #, p_auto_widgets]
+        self.panels = [self.p_team, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr] #, self.p_auto]
+        self.p_widgets = [p_team_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets] #, p_auto_widgets]
 
         # Wczytanie paneli i ich widgetów do dockwidget'a:
         for (panel, widgets) in zip(self.panels, self.p_widgets):
-            self.vl_main.addWidget(panel)
+            add_widget = not panel.grouped if hasattr(panel, "grouped") else True
+            if add_widget:
+                self.vl_main.addWidget(panel)
             for widget in widgets:
                 if widget["item"] == "button":
                     panel.add_button(widget)
@@ -191,6 +212,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     panel.add_seqaddbox(widget)
                 elif widget["item"] == "seqcfgbox":
                     panel.add_seqcfgbox(widget)
+                elif widget["item"] == "panel":
+                    panel.add_panel(widget)
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)
 
@@ -243,20 +266,22 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.flag_panel.hide()
         self.wyr_panel = WyrCanvasPanel()
         self.wyr_panel.hide()
-        self.mt = MapToolManager(dlg=self, canvas=iface.mapCanvas())
-        self.obj = ObjectManager(dlg=self, canvas=iface.mapCanvas())
+        self.mt = MapToolManager(dlg=self, canvas=self.canvas)
+        self.obj = ObjectManager(dlg=self, canvas=self.canvas)
         self.lyr = LayerManager(dlg=self)
 
         self.side_dock.move(1,0)
-        bottom_y = iface.mapCanvas().height() - 52
+        bottom_y = self.canvas.height() - 52
         self.bottom_dock.move(0, bottom_y)
         self.flag_panel.move(60, 60)
-        wyr_x = iface.mapCanvas().width() - self.wyr_panel.width() - 60
+        wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
-        splash_x = (iface.mapCanvas().width() / 2) - (self.splash_screen.width() / 2)
-        splash_y = (iface.mapCanvas().height() / 2) - (self.splash_screen.height() / 2)
+        splash_x = (self.canvas.width() / 2) - (self.splash_screen.width() / 2)
+        splash_y = (self.canvas.height() / 2) - (self.splash_screen.height() / 2)
         self.splash_screen.move(splash_x, splash_y)
 
+        self.app.installEventFilter(self)  # Nasłuchiwanie zmiany tytułu okna QGIS
+        self.canvas.installEventFilter(self)  # Nasłuchiwanie zmiany rozmiaru okna mapowego
         self.resizeEvent = self.resize_panel
 
         # Wyłączenie messagebar'u:
@@ -317,7 +342,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         iface.messageBar().clearWidgets()
 
     def eventFilter(self, obj, event):
-        if obj is iface.mapCanvas() and event.type() == QEvent.Resize:
+        if obj is self.canvas and event.type() == QEvent.Resize:
             self.resize_canvas()
         if obj is iface.mainWindow() and event.type() == QEvent.WindowTitleChange:
             # Zmiana tytułu okna QGIS:
@@ -333,16 +358,15 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
     def resize_canvas(self):
         """Ustalenie pozycji dockerów po zmianie rozmiaru mapcanvas'u."""
-        canvas = iface.mapCanvas()
-        self.side_dock.setFixedHeight(canvas.height())
+        self.side_dock.setFixedHeight(self.canvas.height())
         self.side_dock.move(1,0)
-        self.bottom_dock.setFixedWidth(canvas.width())
-        self.bottom_dock.move(0, canvas.height() - 52)
+        self.bottom_dock.setFixedWidth(self.canvas.width())
+        self.bottom_dock.move(0, self.canvas.height() - 52)
         self.flag_panel.move(60, 60)
-        wyr_x = iface.mapCanvas().width() - self.wyr_panel.width() - 60
+        wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
-        splash_x = (iface.mapCanvas().width() / 2) - (self.splash_screen.width() / 2)
-        splash_y = (iface.mapCanvas().height() / 2) - (self.splash_screen.height() / 2)
+        splash_x = (self.canvas.width() / 2) - (self.splash_screen.width() / 2)
+        splash_y = (self.canvas.height() / 2) - (self.splash_screen.height() / 2)
         self.splash_screen.move(splash_x, splash_y)
 
     def resize_panel(self, event):
@@ -352,27 +376,37 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         global b_scroll
         w_max = 0
         h_sum = 0
-        p_count = len(self.panels)
+        p_count = 0
         h_header = 25
         h_margin = 8
         w_margin = 12
         w_scrollbar = 25
         # Ustalenie najszerszego panelu
         for panel in self.panels:
-            if panel.rect().width() > w_max:
-                w_max = panel.rect().width()
-            h_sum += panel.rect().height()
+            if not hasattr(panel, "grouped") or (hasattr(panel, "grouped") and not panel.grouped):
+                if panel.rect().width() > w_max:
+                    w_max = panel.rect().width()
+                h_sum += panel.rect().height()
+                p_count += 1
         if w_max == 640:  # Szerokość bazowa przy tworzeniu widget'u
             return
         elif w_max < 208:  # Ustawienie minimalnej szerokości paneli
             w_max = 208
         # Wyrównanie szerokości paneli do najszerszego panelu
         for panel in self.panels:
+            if hasattr(panel, 'custom_width'):
+                custom_width = panel.custom_width
+            else:
+                custom_width = 0
             # TODO: panel.setMinimumWidth(w_max)
-            panel.setFixedWidth(208)
+            if custom_width > 0:
+                panel.setMinimumWidth(custom_width)
+                panel.setMaximumWidth(custom_width)
+                panel.setFixedWidth(custom_width)
+            else:
+                panel.setFixedWidth(208)
         # Algorytm wykrywania i obsługi pionowego scrollbar'u
         dock_height = h_header + h_sum + (p_count * h_margin) - h_margin
-        # print(f"dock_height: {self.height()}, {dock_height}")
         self.setMinimumHeight(dock_height)
         self.setMaximumHeight(dock_height)
         p_width = w_max + w_margin
@@ -518,9 +552,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_unsel"].pressed.connect(lambda: self.proj.mapLayersByName("vn_all")[0].removeSelection())
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
-        self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
-        self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
-        self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
+        self.p_pow_mask.box.widgets["btn_pow_mask"].clicked.connect(lambda: self.cfg.set_val(name="powiaty_mask", val=self.p_pow_mask.box.widgets["btn_pow_mask"].isChecked()))
         self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_kopaliny_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))
@@ -532,6 +564,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_wyr.widgets["btn_wyr_grey_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_przed_teren", val=self.p_wyr.widgets["btn_wyr_grey_vis"].isChecked()))
         self.p_wyr.widgets["btn_wyr_green_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_potwierdzone", val=self.p_wyr.widgets["btn_wyr_green_vis"].isChecked()))
         self.p_wyr.widgets["btn_wyr_red_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_odrzucone", val=self.p_wyr.widgets["btn_wyr_red_vis"].isChecked()))
+        self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
+        self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
+        self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
         # self.p_auto.widgets["btn_auto_add"].clicked.connect(lambda: self.mt.init("auto_add"))
         # self.p_auto.widgets["btn_auto_del"].clicked.connect(lambda: self.mt.init("auto_del"))
@@ -588,27 +623,27 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             print(f"closeEvent/self.proj.disconnect: {err}")
         self.proj = None
         try:
-            iface.mapCanvas().children().remove(self.side_dock)
+            self.canvas.children().remove(self.side_dock)
             self.side_dock.deleteLater()
         except:
             pass
         try:
-            iface.mapCanvas().children().remove(self.bottom_dock)
+            self.canvas.children().remove(self.bottom_dock)
             self.bottom_dock.deleteLater()
         except:
             pass
         try:
-            iface.mapCanvas().children().remove(self.flag_panel)
+            self.canvas.children().remove(self.flag_panel)
             self.flag_panel.deleteLater()
         except:
             pass
         try:
-            iface.mapCanvas().children().remove(self.wyr_panel)
+            self.canvas.children().remove(self.wyr_panel)
             self.wyr_panel.deleteLater()
         except:
             pass
         try:
-            iface.mapCanvas().children().remove(self.splash_screen)
+            self.canvas.children().remove(self.splash_screen)
             self.splash_screen.deleteLater()
         except:
             pass
@@ -625,21 +660,20 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         except Exception as err:
             print(f"closeEvent/self.cfg: {err}")
         # Przełączenie na QGIS'owy maptool:
-        canvas = iface.mapCanvas()
-        map_tool_pan = QgsMapToolPan(canvas)
-        canvas.setMapTool(map_tool_pan)
+        map_tool_pan = QgsMapToolPan(self.canvas)
+        self.canvas.setMapTool(map_tool_pan)
         iface.actionPan().trigger()
         try:
             self.obj = None
         except Exception as err:
             print(f"closeEvent/self.obj: {err}")
         try:
-            iface.mainWindow().removeEventFilter(self)
+            self.app.removeEventFilter(self)
         except Exception as err:
-            print(f"closeEvent/iface.mainWindow().removeEventFilter: {err}")
+            print(f"closeEvent/self.app.removeEventFilter: {err}")
         try:
-            iface.mapCanvas().removeEventFilter(self)
+            self.canvas.removeEventFilter(self)
         except Exception as err:
-            print(f"closeEvent/iface.mapCanvas().removeEventFilter: {err}")
+            print(f"closeEvent/self.canvas.removeEventFilter: {err}")
         self.closingPlugin.emit()
         event.accept()

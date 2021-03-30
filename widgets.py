@@ -46,7 +46,7 @@ class MoekBoxPanel(QFrame):
         self.exp_fn = exp_fn
         self.expanded = None
         self.state = None
-        self.setting = False
+        self.passing_void = False
         self.title = title
         self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         vlay = QVBoxLayout()
@@ -62,7 +62,7 @@ class MoekBoxPanel(QFrame):
         if attr == "active":
             if val is None:
                 return
-            if not self.setting:
+            if not self.passing_void:
                 self.cfg_change()
             self.bar.io_btn.setChecked(val)
             if not val:
@@ -79,7 +79,7 @@ class MoekBoxPanel(QFrame):
         elif attr == "expanded":
             if val is None:
                 return
-            if not self.setting:
+            if not self.passing_void:
                 self.cfg_change()
             try:
                 # dlg.dlg_freeze = True
@@ -121,7 +121,7 @@ class MoekBoxPanel(QFrame):
         # Aktualizacja stanu panelu:
         if val != self.state:
             self.state = val
-            self.setting = True
+            self.passing_void = True
         else:   # Panel ma już ustawiony odpowiedni stan
             return
         if val == 0:
@@ -134,7 +134,7 @@ class MoekBoxPanel(QFrame):
             self.active = True
             self.expanded = True
         self.style_update()
-        self.setting = False
+        self.passing_void = False
 
     def get_state(self):
         """Zwraca wartość int określającą stan panelu (active i expand)."""
@@ -220,51 +220,54 @@ class MoekBoxPanel(QFrame):
 class MoekBarPanel(QFrame):
     """Panel z pojemnikiem w belce."""
 
-    def __init__(self, *args, title="", title_off="", switch=True, io_fn="", cfg_name="", spacing=0, wmargin=4):
+    def __init__(self, *args, title=None, title_off=None, switch=True, io_fn="", cfg_name="", spacing=0, wmargin=4, round=None, custom_width=0, grouped=False):
         super().__init__(*args)
         self.setObjectName("barpnl")
+        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         self.setMinimumHeight(33)
-        shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
-        self.setGraphicsEffect(shadow)
+        self.custom_width = custom_width
+        if self.custom_width > 0:
+            self.setMinimumWidth(self.custom_width)
+            self.setMaximumWidth(self.custom_width)
+        self.grouped = grouped
+        if not self.grouped:
+            shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
+            self.setGraphicsEffect(shadow)
+        self.round = round
         self.box = MoekHBox(self)
         self.box.widgets = {}
         self.switch = switch
-        if self.switch != None:
-            if self.switch:
-                self.io_btn = MoekButton(self, name="io", checkable=True)
-                self.io_btn.clicked.connect(self.io_clicked)
-            else:
-                self.io_btn = MoekButton(self, name="io", enabled=False)
-            self.io_fn = io_fn
+        self.io_fn = io_fn
         self.cfg_name = cfg_name
-        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         self.title = title
         self.title_off = title_off
-        self.l_title = QLabel(self.title)
+        self.l_title = QLabel()
         self.l_title.setObjectName("title")
-        self.active = None
-        self.setting = False
-        self.state = None
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(wmargin, 0, wmargin, 0)
         self.hlay.setSpacing(spacing)
-        if self.switch != None:
+        if self.switch:
+            self.io_btn = MoekButton(self, name="io", checkable=True)
+            self.io_btn.clicked.connect(self.io_clicked)
             self.hlay.addWidget(self.io_btn)
+        if self.title or self.title_off:
             self.hlay.addWidget(self.l_title, stretch=1)
         self.hlay.addWidget(self.box, stretch=3)
         self.setLayout(self.hlay)
+        self.passing_void = True
+        self.active = True
+        self.state = None
+        self.passing_void = False
+        self.style_update()
 
     def io_clicked(self):
         """Zmiana trybu active po kliknięciu na przycisk io."""
         self.active = self.io_btn.isChecked()
         if len(self.io_fn) > 0:
             try:
-                # dlg.dlg_freeze = True
                 exec(self.io_fn)
-                # dlg.dlg_freeze = False
             except TypeError:
                 print("io_fn exception:", self.io_fn)
-                # dlg.dlg_freeze = False
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -272,15 +275,19 @@ class MoekBarPanel(QFrame):
         if attr == "active":
             if val is None:
                 return
-            if not self.setting:
+            if not self.passing_void:
                 self.cfg_change()
             self.box.setVisible(val)
-            if val:
-                self.l_title.setText(self.title)
-            else:
-                self.l_title.setText(self.title_off) if len(self.title_off) > 0 else self.l_title.setText(self.title)
             if self.switch:
                 self.io_btn.setChecked(val)
+            if val:
+                self.l_title.setText(self.title) if self.title else self.l_title.setText("")
+                self.l_title.setVisible(True) if self.title else self.l_title.setVisible(False)
+            else:
+                alt_text = self.title if self.title else ""
+                self.l_title.setText(self.title_off) if self.title_off else self.l_title.setText(alt_text)
+                self.l_title.setVisible(True) if self.title_off or (not self.title_off and len(alt_text) > 0) else self.l_title.setVisible(False)
+
 
     def cfg_change(self):
         """Wysyła do PanelManager'a informację o aktualnej wartości int oznaczającej stan active panelu."""
@@ -296,12 +303,12 @@ class MoekBarPanel(QFrame):
         # Aktualizacja stanu panelu:
         if val != self.state:
             self.state = val
-            self.setting = True
+            self.passing_void = True
         else:   # Panel ma już ustawiony odpowiedni stan
             return
         self.active = True if val else False
         self.style_update()
-        self.setting = False
+        self.passing_void = False
 
     def is_active(self):
         """Zwraca, czy panel jest w trybie active."""
@@ -310,7 +317,14 @@ class MoekBarPanel(QFrame):
     def style_update(self):
         """Modyfikacja stylesheet przy zmianie trybu active."""
         # Wielkości zaokrągleń ramki panelu:
-        b_rad = [6, 6, 6, 6] if self.switch == None else [16, 16, 6, 6]
+        if self.round == "pow":
+            b_rad = [16, 16, 3, 3]
+        elif self.round == "pow_mask":
+            b_rad = [3, 3, 6, 6]
+        elif self.switch or self.round == "left":
+            b_rad = [16, 16, 6, 6]
+        else:
+            b_rad = [6, 6, 6, 6]
         if self.active:
             self.setStyleSheet("""
                                QFrame#barpnl {background-color: white; border: none; border-top-left-radius: """ + str(b_rad[0]) + """px; border-bottom-left-radius: """ + str(b_rad[1]) + """px; border-top-right-radius: """ + str(b_rad[2]) + """px; border-bottom-right-radius: """ + str(b_rad[3]) + """px}
@@ -338,6 +352,30 @@ class MoekBarPanel(QFrame):
         self.box.lay.addWidget(_cmb)
         cmb_name = f'cmb_{dict["name"]}'
         self.box.widgets[cmb_name] = _cmb
+
+
+class MoekGroupPanel(QFrame):
+    """Panel łączący panele w jednej linii."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
+        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        self.setMinimumHeight(33)
+        shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
+        self.setGraphicsEffect(shadow)
+        self.box = MoekHBox(self, spacing=4)
+        self.hlay = QHBoxLayout()
+        self.hlay.setContentsMargins(0, 0, 0, 0)
+        self.hlay.setSpacing(0)
+        self.hlay.addWidget(self.box)
+        self.setLayout(self.hlay)
+
+    def add_panel(self, dict):
+        """Dodanie panelu do box'u."""
+        self.box.lay.addWidget(dict["object"])
 
 
 class MoekBar(QFrame):

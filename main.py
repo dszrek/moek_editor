@@ -80,6 +80,7 @@ def teams_load():
 def teams_cb_changed():
     """Zmiana w cb aktywnego team'u."""
     # print("[teams_cb_changed]")
+    dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
     dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
     t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Zapamiętanie aktualnego dlg.team_t
     list_srch = [t for t in dlg.teams if t_team_t in t]
@@ -89,6 +90,7 @@ def teams_cb_changed():
         dlg.team_t = t_team_t
         dlg.team_i = t_team_i
         print("Pomyślnie załadowano team: ", dlg.team_t)
+        dlg.cfg.cfg_vals_read()  # Wczytanie ustawień paneli i warstw do PanelManager
         # Próba (bo może być jeszcze nie podłączony) odłączenia sygnału zmiany cmb_pow_act:
         try:
             dlg.p_pow.box.widgets["cmb_pow_act"].currentIndexChanged.disconnect(powiaty_cb_changed)
@@ -169,12 +171,13 @@ def powiaty_load():
 def powiaty_mode_changed(clicked):
     """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
     # print("[powiaty_mode_changed:", clicked, "]")
+    dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
     dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
-    if clicked:  # Zmiana trybu wyświetlania powiatów spowodowana kliknięciem w io_btn
-        dlg.cfg.set_val(name="powiaty", val=dlg.p_pow.is_active())
-    else:  # Zmiana trybu wyświetlania powiatów spowodowana zmianą aktywnego team'u
-        # Wczytanie z db b_pow_mode dla nowowybranego team'u i ustawienie trybu active dla p_pow:
-        dlg.p_pow.active = dlg.cfg.get_val(name="powiaty")
+    # if clicked:  # Zmiana trybu wyświetlania powiatów spowodowana kliknięciem w io_btn
+    #     dlg.cfg.set_val(name="powiaty", val=dlg.p_pow.is_active())
+    # else:  # Zmiana trybu wyświetlania powiatów spowodowana zmianą aktywnego team'u
+    #     Wczytanie z db b_pow_mode dla nowowybranego team'u i ustawienie trybu active dla p_pow:
+    #     dlg.p_pow.active = dlg.cfg.get_val(name="powiaty")
     powiaty_cb_changed()
 
 def powiaty_cb_changed():
@@ -189,10 +192,12 @@ def powiaty_cb_changed():
         dlg.powiat_i = t_powiat_i
         print("Ustawiono aktywny powiat: ", str(dlg.powiat_i), " | ", str(dlg.powiat_t))
         pow_layer_update()  # Aktualizacja warstwy z powiatami
+        dlg.cfg.cfg_vals_read()
         vn_mode_changed(clicked=False)
     else:  # Nie udało się zmienić t_active_pow - powrót do poprzedniego
         dlg.p_pow.box.widgets["cmb_pow_act"].setCurrentText(dlg.powiat_t)  # Przywrócenie poprzedniego stanu cb
         print("Nie udało się zmienić powiatu!")
+    dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
 
 def pow_layer_update():
     """Aktualizacja warstwy powiaty."""
@@ -322,7 +327,7 @@ def wyr_powiaty_check():
     wyr_pow_to_add = list_diff(wyr_ids, wyr_pow_ids)
     if not wyr_pow_to_add:
         return
-    print(wyr_pow_to_add)
+    print(f"wyr_pow_to_add: {wyr_pow_to_add}")
     # Uzupełnienie brakujących rekordów w tabeli 'wyr_pow':
     wyr_poly_ids = []
     wyr_point_ids = []
@@ -398,7 +403,6 @@ def get_wyr_ids_with_pows(table, pows=None):
 def get_wyr_ids_with_filter(filter):
     """Zwraca listę wyr_id z użyciem podanego filtru sql."""
     db = PgConn()
-
     sql = "SELECT wyr_id FROM team_" + str(dlg.team_i) + ".wyrobiska" + filter + " ORDER BY wyr_id;"
     if db:
         res = db.query_sel(sql, True)
@@ -408,21 +412,23 @@ def get_wyr_ids_with_filter(filter):
             else:
                 return list(res[0])
         else:
-            return None
+            return []
 
 def get_wyr_ids():
     """Zwraca listę unkalnych wyr_id zgodnych z aktualnie zastosowanymi filtrami."""
     # Określenie, które rodzaje wyrobisk są włączone:
     case = dlg.cfg.wyr_case()
     if case == 0 or case == 8:
-        # Wszystkie rodzaje wyrobisk są wyłączone - brak wyrobisk do wyświetlenia:
+        # Wszystkie rodzaje wyrobisk są wyłączone - brak wyrobisk do wyświetlenia
         return []
     # Utworzenie listy z wyr_id wyrobisk, które należą do aktywnych powiatów:
     pows = active_pow_listed()
     wyr_ids_from_pows = get_wyr_ids_with_pows("wyr_pow", pows)
-    # print(f"wyr_ids_from_pows: {wyr_ids_from_pows}")
+    if not wyr_ids_from_pows:
+        # Brak wyrobisk w aktywnych powiatach
+        return []
     if case == 15:
-        # Wszystkie rodzaje wyrobisk są włączone - brak filtrowania:
+        # Wszystkie rodzaje wyrobisk są włączone - brak filtrowania
         return wyr_ids_from_pows
     # Utworzenie listy z wyr_id wyrobisk, których rodzaje są włączone:
     filter_cases = [
@@ -447,7 +453,9 @@ def get_wyr_ids():
             filter = eval("f'{}'".format(raw_sql))
             break
     wyr_ids_from_filter = get_wyr_ids_with_filter(filter)
-    # print(f"wyr_ids_from_filter: {wyr_ids_from_filter}")
+    if not wyr_ids_from_filter:
+        # Wszystkie wyrobiska zostały wyfiltrowane
+        return []
     # Zwrócenie listy wyr_id wyrobisk, które znajdują się w obu listach:
     result = sorted(set(wyr_ids_from_pows).intersection(wyr_ids_from_filter))
     return result
@@ -500,12 +508,20 @@ def list_diff(l1, l2):
 
 def active_pow_listed():
     """Zwraca listę z numerami aktywnych powiatów."""
-    pows = []
-    lyr_pow = dlg.proj.mapLayersByName("powiaty")[0]
-    feats = lyr_pow.getFeatures()
-    for feat in feats:
-        pows.append(feat.attribute("pow_id"))
-    return pows
+    db = PgConn()
+    if dlg.p_pow.is_active():  # Tryb pojedynczego powiatu
+        sql = "SELECT pow_id FROM team_" + str(dlg.team_i) + ".powiaty WHERE pow_grp = '" + str(dlg.powiat_i) + "'"
+    else:  # Tryb wielu powiatów
+        sql = "SELECT pow_id FROM team_" + str(dlg.team_i) + ".powiaty"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return None
 
 def wyr_powiaty_change(wyr_id, geom, new=False):
     """Aktualizuje tabelę 'wyr_pow' po zmianie geometrii wyrobiska."""
@@ -515,7 +531,7 @@ def wyr_powiaty_change(wyr_id, geom, new=False):
     # Stworzenie listy z aktualnymi powiatami dla wyrobiska:
     p_list = wyr_powiaty_listed(wyr_id, geom)
     if not p_list:  # Brak powiatów
-        print(f"Nie udało się stworzyć listy powiatów dla wyrobiska {wyr_id}")
+        print(f"wyr_powiaty_change: Nie udało się stworzyć listy powiatów dla wyrobiska {wyr_id}")
         return
     # Wstawienie nowych rekordów do tabeli 'wyr_pow':
     wyr_powiaty_update(p_list)
@@ -527,7 +543,7 @@ def wyr_powiaty_delete(wyr_id):
     if db:
         res = db.query_upd(sql)
         if not res:
-            print(f"Brak rekordów dla wyrobiska {wyr_id}.")
+            print(f"wyr_powiaty_delete: brak rekordów dla wyrobiska {wyr_id}")
 
 def wyr_powiaty_update(p_list):
     """Wstawienie do tabeli 'wyr_pow' aktualnych numerów powiatów dla wyrobiska."""
@@ -591,9 +607,6 @@ def vn_mode_changed(clicked):
     # print("[vn_mode_changed:", clicked, "]")
     if clicked:  # Włączenie/wyłączenie vn spowodowane kliknięciem w io_btn
         dlg.cfg.set_val(name="vn", val=dlg.p_vn.is_active())
-    else:  # Włączenie/wyłączenie vn spowodowane zmianą team'u
-        # Wczytanie z db b_vn_mode dla nowowybranego team'u i ustawienie trybu active dla p_vn:
-        dlg.p_vn.active = dlg.cfg.get_val(name="vn")
     if not dlg.p_vn.is_active():  # Vn jest wyłączony
         dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych
         vn_layer_update()  # Aktualizacja warstw z vn
@@ -610,20 +623,16 @@ def vn_pow():
     """Ustalenie w db zakresu wyświetlanych vn'ów dla wybranego powiatu/powiatów."""
     # print("[vn_pow]")
     # Resetowanie b_pow () w db
-    if db_vn_pow_reset():
-        print("Zresetowano b_pow w db")
-    else:
-        print("Nie udało się zresetować siatki widoków!")
+    if not db_vn_pow_reset():
+        print("main/vn_pow: Nie udało się zresetować siatki widoków!")
         return
     db = PgConn()
     # Ustawienie b_pow = True dla vn'ów, które znajdują się w obrębie wybranego powiatu/powiatów:
     sql = "UPDATE team_" + str(dlg.team_i) +".team_viewnet AS tv SET b_pow = True FROM (SELECT tv.vn_id	FROM powiaty p JOIN team_powiaty tp ON tp.pow_id = p.pow_id JOIN team_" + str(dlg.team_i) + ".team_viewnet tv ON ST_Intersects(tv.geom, p.geom) WHERE tp.pow_grp = '" + str(dlg.powiat_i) + "') AS s WHERE tv.vn_id = s.vn_id;"
     if db:
         res = db.query_upd(sql)
-        if res:
-            print("Udało się zaktualizować b_pow: ", str(dlg.powiat_i))
-            return
-    QMessageBox.warning(None, "Problem", "Nie udało się ustawić zakresu siatki widoków. Skontaktuj się z administratorem systemu.")
+        if not res:
+            QMessageBox.warning(None, "Problem", "Nie udało się ustawić zakresu siatki widoków. Jeśli sytuacja będzie się powtarzać, skontaktuj się z administratorem systemu.")
 
 def db_vn_pow_reset():
     """Ustawienie b_pow = False dla wszystkich vn'ów użytkownika z team_viewnet."""

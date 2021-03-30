@@ -2,10 +2,10 @@
 import os
 import time
 
-from PyQt5.QtWidgets import QWidget, QFrame, QSpinBox, QComboBox, QToolButton, QLabel, QHBoxLayout, QVBoxLayout, QSizePolicy, QMessageBox
-from PyQt5.QtCore import Qt, QRect, QSize, pyqtSignal, QTimer
-from PyQt5.QtGui import QPainter, QPixmap, QPen, QIcon, QColor, QBrush, QFont
 from qgis.core import QgsProject
+from qgis.PyQt.QtCore import Qt, QRect, QSize, pyqtSignal, QTimer
+from qgis.PyQt.QtGui import QPainter, QPixmap, QPen, QIcon, QColor, QBrush, QFont
+from qgis.PyQt.QtWidgets import QWidget, QFrame, QSpinBox, QComboBox, QToolButton, QLabel, QHBoxLayout, QVBoxLayout, QSizePolicy, QMessageBox
 from qgis.utils import iface
 
 from .viewnet import vn_zoom

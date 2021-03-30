@@ -284,9 +284,8 @@ class MoekEditor:
             try:
                 self.dockwidget.close()
             except Exception as err:
-                print(err)
+                print(f"moek_editor/run: {err}")
             return
-        self.dockwidget.cfg.cfg_vals_read()  # Wczytanie ustawień do PanelManager
         self.title_change()  # Zmiana tytułu okna QGIS
         self.dockwidget.splash_screen.p_bar.setMaximum(0)
         QgsApplication.processEvents()

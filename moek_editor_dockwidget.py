@@ -24,12 +24,12 @@
 
 import os
 
-from qgis.PyQt import QtGui, QtWidgets, uic
-from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QObject
-from qgis.PyQt.QtWidgets import QShortcut, QMessageBox
-from qgis.PyQt.QtGui import QIcon, QPixmap
 from qgis.core import QgsProject, QgsFeature
 from qgis.gui import QgsMapToolPan
+from qgis.PyQt import uic
+from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QObject, QTimer
+from qgis.PyQt.QtGui import QIcon, QPixmap
+from qgis.PyQt.QtWidgets import QDockWidget, QShortcut, QMessageBox, QSizePolicy
 from qgis.utils import iface
 
 from .classes import PgConn
@@ -48,7 +48,7 @@ SELF = "self."
 
 b_scroll = None
 
-class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
+class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
     closingPlugin = pyqtSignal()
     hk_vn_changed = pyqtSignal(bool)
@@ -64,8 +64,13 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
 
         self.iface = iface
         self.setupUi(self)
-
+        self.resize_timer = None
+        self.freeze = False
+        self.changing = False
+        self.resizing = False
+        self.resize_flag = False
         self.closing = False
+        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
         self.proj = QgsProject.instance()  # Referencja do instancji projektu
         self.proj.layersWillBeRemoved.connect(self.layers_removing)
         self.proj.legendLayersAdded.connect(self.layers_adding)
@@ -133,7 +138,8 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
                             self,
                             title="Powiat:",
                             title_off="Wszystkie powiaty",
-                            io_fn="powiaty_mode_changed(clicked=True)"
+                            io_fn="powiaty_mode_changed(clicked=True)",
+                            cfg_name="powiaty"
                             )
         self.p_map = MoekMapPanel(self)
         self.p_ext = MoekBarPanel(
@@ -152,11 +158,15 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.p_flag = MoekBoxPanel(
                             self,
                             title="Flagi",
-                            io_fn="dlg.flag_visibility()")
+                            io_fn="dlg.flag_visibility()",
+                            expand=True,
+                            exp_fn="flagi")
         self.p_wyr = MoekBoxPanel(
                             self,
                             title="Wyrobiska",
-                            io_fn="dlg.wyr_visibility()")
+                            io_fn="dlg.wyr_visibility()",
+                            expand=True,
+                            exp_fn="wyrobiska")
         # self.p_auto = MoekBoxPanel(
         #                     self,
         #                     title="Komunikacja",
@@ -263,6 +273,45 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         if attr == "hk_seq":
             self.hk_seq_changed.emit(val)
 
+    def freeze_set(self, val, from_resize=False):
+        """Zarządza blokadą odświeżania dockwidget'u."""
+        if val and self.freeze:
+            # Blokada jest już włączona
+            return
+        if not val and not self.freeze:
+            # Blokada jest już wyłączona
+            return
+        if val and not self.freeze:
+            # Zablokowanie odświeżania dockwidget'u:
+            if from_resize and not self.resizing:
+                # Wejście w tryb zmiany rozmiaru dockwidget'u:
+                self.resizing = True
+            if not from_resize and not self.changing:
+                # Wejście w tryb zmiany zawartości paneli:
+                self.changing = True
+            # Włączenie blokady:
+            self.freeze = True
+            self.app.setUpdatesEnabled(False)
+            self.setEnabled(False)
+        elif not val and self.changing and self.freeze:
+            QTimer.singleShot(1, self.changing_stop)
+        elif not val and not self.changing and not self.resizing:
+            QTimer.singleShot(1, self.freeze_end)
+
+    def changing_stop(self):
+        """Zakończenie zmiany stanu / zawartości panelu, odpalone z pewnym opóźnieniem
+        - może się jeszcze zacząć zmiana rozmiaru."""
+        self.changing = False
+        self.freeze_set(False)
+
+    def freeze_end(self):
+        """Faza zakończenia blokady odświeżania QGIS po zmianie rozmiaru / zawartości dockwidget'u."""
+        if not self.freeze:
+            return
+        self.freeze = False
+        self.setEnabled(True)
+        self.app.setUpdatesEnabled(True)
+
     def msgbar_blocker(self, item):
         """Blokuje pojawianie się QGIS'owego messagebar'u."""
         iface.messageBar().clearWidgets()
@@ -297,7 +346,9 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         self.splash_screen.move(splash_x, splash_y)
 
     def resize_panel(self, event):
-        """Ustalenie właściwych rozmiarów paneli i dockwidget'a."""
+        """Ustalenie właściwych rozmiarów paneli i dockwidget'u."""
+        self.freeze_set(val=True, from_resize=True)  # Zablokowanie odświeżania dockwidget'u
+        self.resize_flag = True  # Informacja dla stopera, że sekwencja zmiany rozmiaru trwa nadal
         global b_scroll
         w_max = 0
         h_sum = 0
@@ -321,11 +372,14 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             panel.setFixedWidth(208)
         # Algorytm wykrywania i obsługi pionowego scrollbar'u
         dock_height = h_header + h_sum + (p_count * h_margin) - h_margin
+        # print(f"dock_height: {self.height()}, {dock_height}")
         self.setMinimumHeight(dock_height)
+        self.setMaximumHeight(dock_height)
         p_width = w_max + w_margin
         self.setMinimumWidth(p_width)
         _scroll = True if dock_height > self.rect().height() else False # scrollbar True/False
         if _scroll == b_scroll:  # scrollbar się nie zmienił
+            self.resize_timer_set()
             return
         b_scroll = _scroll  # Aktualizacja flagi
         if b_scroll:  # Scrollbar się pojawił
@@ -335,7 +389,29 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         else:  # Scrollbar znikł
             self.setMinimumWidth(p_width)
             self.resize(p_width, self.height())
-        iface.actionDraw().trigger()
+        # iface.actionDraw().trigger()
+        self.resize_timer_set()
+
+    def resize_timer_set(self):
+        """Odpalenie stopera sprawdzającego, czy dockwidget skończył zmieniać swój rozmiar."""
+        if self.resize_timer:
+            # Timer już działa
+            return
+        # Odpalenie stopera:
+        self.resize_timer = QTimer(self, interval=10)
+        self.resize_timer.timeout.connect(self.resize_check)
+        self.resize_timer.start()  # Odpalenie stopera
+
+    def resize_check(self):
+        """Stoper sprawdzający, czy skończyła się sekwencja zmian rozmiaru dockwidget'u."""
+        if self.resize_flag:
+            self.resize_flag = False
+        else:
+            self.resize_timer.stop()
+            self.resize_timer.timeout.disconnect(self.resize_check)
+            self.resize_timer = None
+            self.resizing = False
+            self.freeze_set(False)
 
     def layers_removing(self, lyr_list):
         """Emitowany, jeśli warstwy mają być usunięte."""
@@ -480,7 +556,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
     def wyr_visibility(self):
         """Włączenie lub wyłączenie warstwy z wyrobiskami."""
         value = True if self.p_wyr.is_active() else False
-        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("wyrobiska")[0].id()).setItemVisibilityChecked(value)
+        self.proj.layerTreeRoot().findGroup("wyrobiska").setItemVisibilityCheckedRecursive(value)
 
     def flag_visibility(self):
         """Włączenie lub wyłączenie warstwy z flagami."""
@@ -509,7 +585,7 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
             self.proj.layersWillBeRemoved.disconnect(self.layers_removing)
             self.proj.legendLayersAdded.disconnect(self.layers_adding)
         except Exception as err:
-            print(err)
+            print(f"closeEvent/self.proj.disconnect: {err}")
         self.proj = None
         try:
             iface.mapCanvas().children().remove(self.side_dock)
@@ -539,15 +615,15 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         try:
             self.mt = None
         except Exception as err:
-            print(err)
+            print(f"closeEvent/self.mt: {err}")
         try:
             self.lyr = None
         except Exception as err:
-            print(err)
+            print(f"closeEvent/self.lyr: {err}")
         try:
             self.cfg = None
         except Exception as err:
-            print(err)
+            print(f"closeEvent/self.cfg: {err}")
         # Przełączenie na QGIS'owy maptool:
         canvas = iface.mapCanvas()
         map_tool_pan = QgsMapToolPan(canvas)
@@ -556,14 +632,14 @@ class MoekEditorDockWidget(QtWidgets.QDockWidget, FORM_CLASS):  #type: ignore
         try:
             self.obj = None
         except Exception as err:
-            print(err)
+            print(f"closeEvent/self.obj: {err}")
         try:
             iface.mainWindow().removeEventFilter(self)
         except Exception as err:
-            print(err)
+            print(f"closeEvent/iface.mainWindow().removeEventFilter: {err}")
         try:
             iface.mapCanvas().removeEventFilter(self)
         except Exception as err:
-            print(err)
+            print(f"closeEvent/iface.mapCanvas().removeEventFilter: {err}")
         self.closingPlugin.emit()
         event.accept()

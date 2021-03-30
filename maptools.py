@@ -1928,7 +1928,7 @@ def flag_add(point, extra):
                 dlg.cfg.set_val(name, 1)
     dlg.proj.mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
     dlg.proj.mapLayersByName("flagi_z_teren")[0].triggerRepaint()
-    dlg.obj.flag_ids = get_flag_ids()  # Aktualizacja listy flag w ObjectManager
+    dlg.obj.flag_ids = get_flag_ids(dlg.cfg.flag_case())  # Aktualizacja listy flag w ObjectManager
     dlg.obj.list_position_check("flag")  # Aktualizacja pozycji na liście obecnie wybranej flagi
 
 def flag_move(point, extra):

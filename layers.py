@@ -76,8 +76,8 @@ class LayerManager:
             {"source": "wms", "name": "BDOO", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/png&layers=BDOO&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOO?service%3DWMTS%26request%3DgetCapabilities'},
             {"source": "wms", "name": "ISOK", "root": False, "parent": "basemaps", "pos": 0, "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ISOK_Cien&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WMTS/ShadedRelief?service%3DWMTS%26request%3DgetCapabilities'},
             {"source": "postgres", "name": "wyr_point", "root": False, "parent": "temp", "visible": False, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
-            {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": ["QgsField('part', QVariant.Int)"]},
-            {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": ["QgsField('part', QVariant.Int)"]}
+            {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
+            {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]}
             ]
         self.lyr_cnt = len(self.lyrs)
         self.lyrs_names = [i for s in [[v for k, v in d.items() if k == "name"] for d in self.lyrs] for i in s]
@@ -177,9 +177,7 @@ class LayerManager:
             if l_dict["source"] == "memory":
                 lyr.setCustomProperty("skipMemoryLayersCheck", 1)
                 pr = lyr.dataProvider()
-                for attr in l_dict["atrrib"]:
-                    print(f'memory: {attr}')
-                    pr.addAttribute(attr)
+                pr.addAttributes(l_dict["attrib"])
                 lyr.updateFields()
             if "crs" in l_dict:
                 lyr.setCrs(CRS_1992)
@@ -244,6 +242,7 @@ class LayerManager:
                 if not lyr.isValid():
                     dlg.proj.removeMapLayer(lyr)
                     missing.append(lyr_name)
+        print(f"layer/structure_check - lista brakujących warstw:")
         print(missing)
         return missing if rebuild else True
 
@@ -272,7 +271,7 @@ class LayerManager:
         try:
             lyr = self.root.findLayer(dlg.proj.mapLayersByName(lyr_name)[0].id())
         except Exception as err:
-            print(err)
+            print(f"layers/layer_to_group_move: {err}")
             return False
         # Warstwa o podanej warstwie jest w projekcie, ale w innej grupie i należy ją przenieść:
         parent = lyr.parent()
@@ -289,30 +288,32 @@ class PanelManager:
         self.dlg = dlg
         self.cfg = []
         self.cfg_dicts = [
-            {'name': 'powiaty', 'action': 'panel_state', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'wn_kopaliny_pne', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_wn"], 'callback': None, 'value': None},
-            {'name': 'MIDAS', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_midas"], 'callback': None, 'value': None},
-            {'name': 'midas_zloza', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'midas_wybilansowane', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'midas_obszary', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'midas_tereny', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'MGSP', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_mgsp"], 'callback': None, 'value': None},
-            {'name': 'mgsp_pkt_kop', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'mgsp_zloza_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'mgsp_zloza_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'mgsp_zloza_wb_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'mgsp_zloza_wb_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'smgp_wyrobiska', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_smgp"], 'callback': None, 'value': None},
-            {'name': 'flagi', 'action': 'panel_state', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'flagi_user', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_user"], 'callback': 'flag_layer_update()', 'value': None},
-            {'name': 'flagi_z_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_fchk_vis"], 'callback': 'flag_layer_update()', 'value': None},
-            {'name': 'flagi_bez_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_nfchk_vis"], 'callback': 'flag_layer_update()', 'value': None},
-            {'name': 'wyrobiska', 'action': 'panel_state', 'btn': None, 'callback': None, 'value': None},
-            {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'value': None},
-            {'name': 'wyr_przed_teren', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'value': None},
-            {'name': 'wyr_potwierdzone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'value': None},
-            {'name': 'wyr_odrzucone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'value': None}
+            {'name': 'team', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_team.set_state(val)', 'cb_void': False, 'value': None},
+            {'name': 'powiaty', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_pow.set_state(val)', 'cb_void': False, 'value': None},
+            {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_vn.set_state(val)', 'cb_void': False, 'value': None},
+            {'name': 'external', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_ext.set_state(val)', 'cb_void': False, 'value': None},
+            {'name': 'wn_kopaliny_pne', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_wn"], 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'MIDAS', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_midas"], 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'midas_zloza', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'midas_wybilansowane', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'midas_obszary', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'midas_tereny', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'MGSP', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_mgsp"], 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'mgsp_pkt_kop', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'mgsp_zloza_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'mgsp_zloza_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'mgsp_zloza_wb_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'mgsp_zloza_wb_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'smgp_wyrobiska', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_smgp"], 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'flagi', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_flag.set_state(val)', 'cb_void': False, 'value': None},
+            {'name': 'flagi_user', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_user"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'flagi_z_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_fchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'flagi_bez_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_nfchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'wyrobiska', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_wyr.set_state(val)', 'cb_void': False, 'value': None},
+            {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
+            {'name': 'wyr_przed_teren', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
+            {'name': 'wyr_potwierdzone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
+            {'name': 'wyr_odrzucone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None}
                         ]
         self.cfg_dicts_cnt = len(self.cfg_dicts)
         self.cfg_vals = []
@@ -322,11 +323,13 @@ class PanelManager:
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "cfg_vals":
+            if not val:
+                return
             cfg_vals = val
             try:
                 vals_cnt = len(cfg_vals)
             except Exception as err:
-                print(err)
+                print(f"PanelManager/setattr: {err}")
                 return
             if vals_cnt != self.cfg_dicts_cnt:
                 return
@@ -334,24 +337,24 @@ class PanelManager:
                 self.old_cfg_vals = self.cfg_vals.copy()
             for i in range(self.cfg_dicts_cnt):
                 if self.cfg_dicts[i]["value"] != self.old_cfg_vals[i]:
+                    dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
                     self.cfg_dicts[i]["value"] = self.cfg_vals[i]
-                    self.update_action(self.cfg_dicts[i]["action"], self.cfg_dicts[i]["name"], self.cfg_dicts[i]["btn"], self.cfg_dicts[i]["value"], self.cfg_dicts[i]["callback"])
+                    self.update_action(self.cfg_dicts[i]["action"], self.cfg_dicts[i]["name"], self.cfg_dicts[i]["btn"], self.cfg_dicts[i]["value"], self.cfg_dicts[i]["callback"], self.cfg_dicts[i]["cb_void"])
             self.old_cfg_vals = self.cfg_vals.copy()
             if self.callback_void:
                 self.callback_void = False
+            dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
 
-    def update_action(self, action, name, btn, val, cb):
+    def update_action(self, action, name, btn, val, cb, cb_void):
         """Przeprowadza zmiany związane z modyfikacją stanu konfiguracji."""
-        if action == "panel_state":
-            return
-        val = True if val == 1 else False  # Konwersja int na bool
+        val_out = True if val == 1 else False  # Konwersja int na bool
         if action == "lyr_vis":
-            dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(name)[0].id()).setItemVisibilityChecked(val)
+            dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(name)[0].id()).setItemVisibilityChecked(val_out)
         elif action == "grp_vis":
-            dlg.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(val)
+            dlg.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(val_out)
         if btn:
-            btn.setChecked(val)
-        if cb and not self.callback_void:
+            btn.setChecked(val_out)
+        if cb and (not self.callback_void or not cb_void):
             exec(cb)
 
     def set_val(self, name, val):
@@ -373,7 +376,7 @@ class PanelManager:
             if c_dict["value"] in range(0, 3):
                 new_vals.append(c_dict["value"])
             else:
-                print(f'Słownik {c_dict["name"]} ma nieprawidłową wartość {c_dict["value"]}')
+                print(f'layers/set_val: Słownik {c_dict["name"]} ma nieprawidłową wartość {c_dict["value"]}')
                 return
         self.cfg_vals = new_vals
         # Aktualizacja bazy danych:
@@ -422,6 +425,7 @@ class PanelManager:
 
     def cfg_vals_read(self):
         """Wczytanie z bazy danych ustawień paneli do self.cfg_vals."""
+        self.cfg_vals = []
         db = PgConn()
         sql = "SELECT t_settings FROM team_users WHERE team_id = " + str(self.dlg.team_i) + " AND user_id = " + str(self.dlg.user_id) + ";"
         if db:
@@ -429,9 +433,13 @@ class PanelManager:
             if res:
                 self.cfg_vals[:0] = res[0]
             else:
-                if len(self.setting) == 0:
-                    self.cfg_vals[:0] = '011111111111111211121111'
-        self.cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry
+                self.cfg_vals[:0] = '10111111111111111211121111'
+        if len(self.old_cfg_vals) > 0:
+            self.old_cfg_vals = []
+            self.old_cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry
+            self.cfg_vals = self.old_cfg_vals
+        else:
+            self.cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry
 
     def cfg_vals_write(self):
         """Zapisanie ustawień paneli z self.cfg_vals do bazy danych."""

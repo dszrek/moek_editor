@@ -82,26 +82,20 @@ class MoekBoxPanel(QFrame):
             if not self.passing_void:
                 self.cfg_change()
             try:
-                # dlg.dlg_freeze = True
                 if self.bar.exp_btn.isChecked() != val:
                     self.bar.exp_btn.setChecked(val)
                 self.box.setVisible(True) if val else self.box.setVisible(False)
-                # dlg.dlg_freeze = False
             except TypeError:
                 print("expand exception")
-                # dlg.dlg_freeze = False
 
     def io_clicked(self, value):
         """Zmiana trybu active po kliknięciu na przycisk io."""
         self.active = value
         if len(self.io_fn) > 0:
             try:
-                # dlg.dlg_freeze = True
                 exec(self.io_fn)
-                # dlg.dlg_freeze = False
             except TypeError:
                 print("io_fn exception:", self.io_fn)
-                # dlg.dlg_freeze = False
 
     def is_active(self):
         """Zwraca, czy panel jest w trybie active."""
@@ -132,7 +126,8 @@ class MoekBoxPanel(QFrame):
                 self.expanded = False
         elif val == 2:
             self.active = True
-            self.expanded = True
+            if self.expand:
+                self.expanded = True
         self.style_update()
         self.passing_void = False
 
@@ -141,7 +136,7 @@ class MoekBoxPanel(QFrame):
         val = 0
         if self.active:
             val += 1
-            if self.expanded:
+            if self.expanded or not self.expand:
                 val += 1
         return val
 
@@ -220,7 +215,7 @@ class MoekBoxPanel(QFrame):
 class MoekBarPanel(QFrame):
     """Panel z pojemnikiem w belce."""
 
-    def __init__(self, *args, title=None, title_off=None, switch=True, io_fn="", cfg_name="", spacing=0, wmargin=4, round=None, custom_width=0, grouped=False):
+    def __init__(self, *args, title=None, title_off=None, switch=True, io_fn="", cfg_name="", spacing=0, wmargin=4, bmargin=None, grey_void=None, round=None, custom_width=0, grouped=False):
         super().__init__(*args)
         self.setObjectName("barpnl")
         self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
@@ -233,8 +228,10 @@ class MoekBarPanel(QFrame):
         if not self.grouped:
             shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
             self.setGraphicsEffect(shadow)
+        self.grey_void = grey_void
         self.round = round
-        self.box = MoekHBox(self)
+        _margin = bmargin if bmargin else [0, 0, 0, 0]
+        self.box = MoekHBox(self, margins=_margin)
         self.box.widgets = {}
         self.switch = switch
         self.io_fn = io_fn
@@ -242,12 +239,14 @@ class MoekBarPanel(QFrame):
         self.title = title
         self.title_off = title_off
         self.l_title = QLabel()
+        self.l_title.setAlignment(Qt.AlignCenter)
         self.l_title.setObjectName("title")
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(wmargin, 0, wmargin, 0)
         self.hlay.setSpacing(spacing)
         if self.switch:
-            self.io_btn = MoekButton(self, name="io", checkable=True)
+            _name = "io_blue" if self.grey_void else "io"
+            self.io_btn = MoekButton(self, name=_name, checkable=True)
             self.io_btn.clicked.connect(self.io_clicked)
             self.hlay.addWidget(self.io_btn)
         if self.title or self.title_off:
@@ -317,14 +316,14 @@ class MoekBarPanel(QFrame):
     def style_update(self):
         """Modyfikacja stylesheet przy zmianie trybu active."""
         # Wielkości zaokrągleń ramki panelu:
-        if self.round == "pow":
-            b_rad = [16, 16, 3, 3]
-        elif self.round == "pow_mask":
-            b_rad = [3, 3, 6, 6]
-        elif self.switch or self.round == "left":
+        if self.switch and not self.round:
             b_rad = [16, 16, 6, 6]
+        elif self.round:
+            b_rad = self.round
         else:
             b_rad = [6, 6, 6, 6]
+        bgr_clr = "white" if self.grey_void else "rgb(245,245,245)"
+        clr = "rgb(37,84,161)" if self.grey_void else "rgb(150,150,150)"
         if self.active:
             self.setStyleSheet("""
                                QFrame#barpnl {background-color: white; border: none; border-top-left-radius: """ + str(b_rad[0]) + """px; border-bottom-left-radius: """ + str(b_rad[1]) + """px; border-top-right-radius: """ + str(b_rad[2]) + """px; border-bottom-right-radius: """ + str(b_rad[3]) + """px}
@@ -332,8 +331,8 @@ class MoekBarPanel(QFrame):
                                """)
         else:
             self.setStyleSheet("""
-                               QFrame#barpnl {background-color: rgb(245,245,245); border: none; border-top-left-radius: """ + str(b_rad[0]) + """px; border-bottom-left-radius: """ + str(b_rad[1]) + """px; border-top-right-radius: """ + str(b_rad[2]) + """px; border-bottom-right-radius: """ + str(b_rad[3]) + """px}
-                               QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: rgb(150,150,150)}
+                               QFrame#barpnl {background-color: """ + str(bgr_clr) + """; border: none; border-top-left-radius: """ + str(b_rad[0]) + """px; border-bottom-left-radius: """ + str(b_rad[1]) + """px; border-top-right-radius: """ + str(b_rad[2]) + """px; border-bottom-right-radius: """ + str(b_rad[3]) + """px}
+                               QLabel#title {font-family: Segoe UI; font-size: 8pt; font-weight: normal; color: """ + str(clr) + """}
                                """)
 
     def add_button(self, dict):
@@ -366,7 +365,7 @@ class MoekGroupPanel(QFrame):
         self.setMinimumHeight(33)
         shadow = QGraphicsDropShadowEffect(blurRadius=6, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow)
-        self.box = MoekHBox(self, spacing=4)
+        self.box = MoekHBox(self, spacing=0)
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(0, 0, 0, 0)
         self.hlay.setSpacing(0)

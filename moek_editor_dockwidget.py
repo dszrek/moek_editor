@@ -79,37 +79,38 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
         self.p_team = MoekBarPanel(
                             self,
-                            title="   Zespół:  ",
+                            title="  Zespół:",
                             switch=None,
-                            round="left"
-                            )
+                            bmargin=[2, 0, 0, 0],
+                            round=[16, 16, 6, 6])
         self.p_pow = MoekBarPanel(
                             self,
                             title_off="Wszystkie powiaty",
                             io_fn="powiaty_mode_changed(clicked=True)",
                             cfg_name="powiaty",
-                            custom_width=171,
+                            custom_width=175,
                             grouped=True,
-                            round="pow"
-                            )
+                            bmargin=[2, 0, 0, 0],
+                            round=[16, 16, 0, 0],
+                            grey_void=True)
         self.p_pow_mask = MoekBarPanel(
                             self,
                             switch=None,
                             spacing=8,
                             wmargin=0,
-                            custom_width=33,
+                            custom_width=35,
                             grouped=True,
-                            round="pow_mask"
-                            )
+                            bmargin=[0, 0, 2, 0],
+                            round=[0, 0, 6, 6])
         self.p_pow_grp = MoekGroupPanel(self)
         self.p_map = MoekMapPanel(self)
         self.p_ext = MoekBarPanel(
                             self,
                             switch=None,
                             spacing=8,
-                            wmargin=0
-                            )
+                            wmargin=0)
         self.p_vn = MoekBoxPanel(
+                            self,
                             title="Siatka widoków",
                             io_fn="vn_mode_changed(clicked=True)",
                             config=True,
@@ -127,11 +128,6 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             io_fn="dlg.wyr_visibility()",
                             expand=True,
                             exp_fn="wyrobiska")
-        # self.p_auto = MoekBoxPanel(
-        #                     self,
-        #                     title="Komunikacja",
-        #                     io_fn="dlg.auto_visibility()")
-
 
         p_team_widgets = [
                     {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
@@ -183,18 +179,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_green_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska po kontroli terenowej, które zostały potwierdzone"},
                     {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_red_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska po kontroli terenowej, które zostały odrzucone"}
                     ]
-        # p_auto_widgets = [
-        #             {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_add", "size": 50, "checkable": True, "tooltip": u"dodaj miejsce parkingowe"},
-        #             {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "auto_del", "size": 50, "checkable": True, "tooltip": u"usuń miejsce parkingowe"},
-        #             {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_add", "size": 50, "checkable": True, "tooltip": u'dodaj marszrutę'},
-        #             {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_del", "size": 50, "checkable": True, "tooltip": u'usuń marszrutę'}
-        #             ]
 
+        self.panels = [self.p_team, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr]
+        self.p_widgets = [p_team_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets]
 
-        self.panels = [self.p_team, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr] #, self.p_auto]
-        self.p_widgets = [p_team_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets] #, p_auto_widgets]
-
-        # Wczytanie paneli i ich widgetów do dockwidget'a:
+        # Wczytanie paneli i ich widgetów do dockwidget'u:
         for (panel, widgets) in zip(self.panels, self.p_widgets):
             add_widget = not panel.grouped if hasattr(panel, "grouped") else True
             if add_widget:
@@ -217,13 +206,13 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)
 
-        # Utworzenie bocznego docker'a z toolbox'ami:
+        # Utworzenie bocznego docker'u z toolbox'ami:
         self.side_dock = MoekSideDock()
         self.side_dock.hide()
-        # Utworzenie dolnego docker'a z toolbox'ami:
+        # Utworzenie dolnego docker'u z toolbox'ami:
         self.bottom_dock = MoekBottomDock()
         self.bottom_dock.hide()
-
+        # Utworzenie splashscreen'u widocznego przy wczytywaniu wtyczki:
         self.splash_screen = SplashScreen()
         self.splash_screen.show()
 
@@ -282,10 +271,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
         self.app.installEventFilter(self)  # Nasłuchiwanie zmiany tytułu okna QGIS
         self.canvas.installEventFilter(self)  # Nasłuchiwanie zmiany rozmiaru okna mapowego
-        self.resizeEvent = self.resize_panel
+        self.resizeEvent = self.resize_panel  # Nasłuchiwanie zmian rozmiaru okna QGIS
 
-        # Wyłączenie messagebar'u:
-        iface.messageBar().widgetAdded.connect(self.msgbar_blocker)
+        iface.messageBar().widgetAdded.connect(self.msgbar_blocker)  # Wyłączenie messagebar'u
 
         self.hk_vn_load()  # Włączenie skrótów klawiszowych vn
         self.hk_seq_load()  # Włączenie skrótów klawiszowych sekwencji mapowych

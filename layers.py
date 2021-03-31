@@ -435,7 +435,7 @@ class PanelManager:
             if res:
                 self.cfg_vals[:0] = res[0]
             else:
-                self.cfg_vals[:0] = '101111111111111111211121111'
+                self.cfg_vals[:0] = '101211111111111111211121111'
         if len(self.old_cfg_vals) > 0:
             self.old_cfg_vals = []
             self.old_cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry

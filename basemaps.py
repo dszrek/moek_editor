@@ -157,9 +157,9 @@ class MoekMapPanel(QFrame):
         # Ustawienie widoczności warstw z podkładami mapowymi:
         for layer in self.layers:
             if layer == self.map_attr(self.map)["lyr_1"] or layer == self.map_attr(self.map)["lyr_2"]:
-                exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(True)')
+                dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(True)
             else:
-                exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(False)')
+                dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(False)
 
     def cat_change(self):
         """Dostosowanie wiget'ów panelu mapowego do zmiany bieżącej kategorii."""

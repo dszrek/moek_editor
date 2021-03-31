@@ -24,15 +24,17 @@
 import os.path
 import time
 
+from qgis.core import QgsApplication
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
+from qgis.utils import iface
 
 from .resources import resources
 
 from .main import dlg_main, db_login, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
 from .widgets import dlg_widgets
-from .layers import dlg_layers, create_qgis_project
+from .layers import dlg_layers, PanelManager
 from .maptools import dlg_maptools
 from .viewnet import dlg_viewnet
 from .basemaps import dlg_basemaps, basemaps_load
@@ -189,23 +191,24 @@ class MoekEditor:
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
 
-        #print "** CLOSING MoekEditor"
+        print("** CLOSING MoekEditor")
 
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
 
         # remove this statement if dockwidget is to remain
         # for reuse if plugin is reopened
-        # Commented next statement since it causes QGIS crashe
+        # Commented next statement since it causes QGIS crashes
         # when closing the docked window:
-        # self.dockwidget = None
-
+        self.dockwidget = None
         self.plugin_is_active = False
+        # Przywrócenie domyślnego tytułu okna QGIS:
+        self.title_change(closing=True)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
 
-        #print "** UNLOAD MoekEditor"
+        print("** UNLOAD MoekEditor")
 
         for action in self.actions:
             self.iface.removePluginMenu(
@@ -214,6 +217,12 @@ class MoekEditor:
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
         del self.toolbar
+
+    def title_change(self, closing=False):
+        """Zmiana tytułu okna QGIS."""
+        title = iface.mainWindow().windowTitle()
+        new_title = title.replace('| MOEK_Editor', '- QGIS') if closing else title.replace('- QGIS', '| MOEK_Editor')
+        iface.mainWindow().setWindowTitle(new_title)
 
     #--------------------------------------------------------------------------
 
@@ -261,6 +270,7 @@ class MoekEditor:
                 dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
                 dlg_basemaps(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
                 dlg_sequences(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do sequences.py
+                self.dockwidget.cfg = PanelManager(dlg=self.dockwidget)  # Utworzenie menedżera ustawień paneli i warstw
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
@@ -269,8 +279,16 @@ class MoekEditor:
             if not teams_load():  # Nie udało się załadować team'ów użytkownika, przerwanie ładowania pluginu
                 self.iface.removeDockWidget(self.dockwidget)
                 return
-        create_qgis_project()  # Utworzenie nowego projektu QGIS i załadowanie do niego warstw
+        project_check = self.dockwidget.lyr.project_check()  # Utworzenie nowego projektu QGIS i załadowanie do niego warstw
+        if not project_check:
+            try:
+                self.dockwidget.close()
+            except Exception as err:
+                print(f"moek_editor/run: {err}")
+            return
+        self.title_change()  # Zmiana tytułu okna QGIS
         self.dockwidget.splash_screen.p_bar.setMaximum(0)
+        QgsApplication.processEvents()
         self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
         teams_cb_changed()  # Załadowanie powiatów
         basemaps_load()  # Załadowanie podkładów mapowych
@@ -279,11 +297,11 @@ class MoekEditor:
         # TODO: fix to allow choice of dock location
         self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
         self.dockwidget.obj.init_void = False  # Odblokowanie ObjectManager'a
-        self.dockwidget.ext_init()  # Podłączenie funkcji zmiany widoczności warstw z danymi zewnętrznymi
         self.dockwidget.button_conn()  # Podłączenie akcji przycisków
         self.dockwidget.mt.init("multi_tool")  # Aktywacja multi_tool'a
         self.dockwidget.splash_screen.hide()
         self.dockwidget.show()
         self.dockwidget.side_dock.show()
+
         finish = time.perf_counter()
         print(f"Proces ładowania pluginu trwał {round(finish - self.start, 2)} sek.")

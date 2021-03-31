@@ -121,7 +121,7 @@ def vn_polysel(geom):
 def select_vn(sel_geom):
     """Wybranie vn'ów znajdujących się w obrębie geometrii sel_geom."""
     global vn_ids
-    vn_layer = QgsProject.instance().mapLayersByName("vn_all")[0]
+    vn_layer = dlg.proj.mapLayersByName("vn_all")[0]
     vn_feats = vn_layer.getFeatures()
     sel_id = []  # Lista dla wybieranych vn'ów
     # Wybranie vn'ów, które nakładają się na geometrię zaznaczenia
@@ -266,34 +266,17 @@ def vn_first():
 
 def vn_zoom(player=False):
     """Zbliżenie mapy do wybranego vn'a."""
-    layer = QgsProject.instance().mapLayersByName("vn_sel")[0]
+    layer = dlg.proj.mapLayersByName("vn_sel")[0]
     layer.selectAll()
     canvas = iface.mapCanvas()
     canvas.zoomToSelected(layer)
     QgsApplication.processEvents()
     layer.removeSelection()
     canvas.refresh()
-    # # Ustawienie widoczności warstw z podkładami mapowymi:
-    # if player:
-    #     for layer in dlg.p_map.layers:
-    #         exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(True)')
-    #     dlg.p_vn.widgets["sqb_seq"].pretimer = QTimer()
-    #     dlg.p_vn.widgets["sqb_seq"].pretimer.setInterval(1200)
-    #     dlg.p_vn.widgets["sqb_seq"].pretimer.timeout.connect(dlg.p_vn.widgets["sqb_seq"].set_pretimer)
-    #     dlg.p_vn.widgets["sqb_seq"].pretimer.start()  # Odpalenie stopera
-#     if player:
-#         for layer in dlg.p_map.layers:
-#             t1 = threading.Thread(target=thread_layer, args=(layer,))
-#             t1.start()
-
-# def thread_layer(layer):
-#     print(layer)
-#     exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(True)')
-#     QgsProject.instance().mapLayersByName(layer)[0].updateExtents()
 
 def vn_pan():
     """Wyśrodkowanie mapy na wybranego vn'a."""
-    layer = QgsProject.instance().mapLayersByName("vn_sel")[0]
+    layer = dlg.proj.mapLayersByName("vn_sel")[0]
     layer.selectAll()
     canvas = iface.mapCanvas()
     canvas.panToSelected(layer)
@@ -303,7 +286,7 @@ def vn_pan():
 def vn_add():
     """Przydzielenie wybranych vn'ów do użytkownika."""
     global vn_ids
-    layer = QgsProject.instance().mapLayersByName("vn_all")[0]
+    layer = dlg.proj.mapLayersByName("vn_all")[0]
     db = PgConn()
     sql = SQL_4 + str(dlg.team_i) +".team_viewnet AS tv SET user_id = " + str(dlg.t_user_id) + " FROM (VALUES %s) AS d (vn_id) WHERE tv.vn_id = d.vn_id"
     if db:
@@ -316,8 +299,8 @@ def vn_sub():
     """Zabranie wybranych vn'ów użytkownikowi."""
     global vn_ids
     sel_ids = []
-    all_layer = QgsProject.instance().mapLayersByName("vn_all")[0]
-    user_layer = QgsProject.instance().mapLayersByName("vn_user")[0]
+    all_layer = dlg.proj.mapLayersByName("vn_all")[0]
+    user_layer = dlg.proj.mapLayersByName("vn_user")[0]
     user_ids = []
     for feat in user_layer.getFeatures():
         user_ids.append((feat["vn_id"],))

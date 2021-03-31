@@ -35,6 +35,7 @@ class ObjectManager:
         self.wyr_ids = []
         self.wyr = None
         self.wyr_data = []
+        self.wn_ids = []
         self.p_vn = False
 
     def __setattr__(self, attr, val):
@@ -286,8 +287,8 @@ class MapToolManager:
         self.canvas.mapToolSet.connect(self.maptool_change)
         self.tool_kinds = (MultiMapTool, IdentMapTool, PolyDrawMapTool, PointDrawMapTool, EditPolyMapTool)
         self.maptools = [
-            # {"name" : "edit_poly", "class" : EditPolyMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_kopaliny_pne", "wyrobiska"], "fn" : obj_sel},
-            {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"], "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_kopaliny_pne", "wyr_point"], "fn" : obj_sel},
+            # {"name" : "edit_poly", "class" : EditPolyMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_pne", "wyrobiska"], "fn" : obj_sel},
+            {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"], "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_pne", "wyr_point"], "fn" : obj_sel},
             {"name" : "vn_sel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_sel"], "lyr" : ["vn_user"], "fn" : vn_change},
             {"name" : "vn_powsel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_powsel"], "lyr" : ["powiaty"], "fn" : vn_powsel},
             {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel, "extra" : [(0, 0, 255, 128), (0, 0, 255, 80)]},

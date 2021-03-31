@@ -101,7 +101,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             custom_width=35,
                             grouped=True,
                             bmargin=[0, 0, 2, 0],
-                            round=[0, 0, 6, 6])
+                            round=[0, 0, 6, 16])
         self.p_pow_grp = MoekGroupPanel(self)
         self.p_map = MoekMapPanel(self)
         self.p_ext = MoekBarPanel(
@@ -541,7 +541,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
         self.p_pow_mask.box.widgets["btn_pow_mask"].clicked.connect(lambda: self.cfg.set_val(name="powiaty_mask", val=self.p_pow_mask.box.widgets["btn_pow_mask"].isChecked()))
-        self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_kopaliny_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
+        self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))
         self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.cfg.set_val(name="smgp_wyrobiska", val=self.p_ext.box.widgets["btn_smgp"].isChecked()))

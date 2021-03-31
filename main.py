@@ -211,8 +211,9 @@ def pow_layer_update():
     layer = dlg.proj.mapLayersByName("powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     ark_layer_update()  # Aktualizacja warstwy z arkuszami
-    flag_layer_update()  # Aktualizacja warstwy z flagami
-    wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
+    flag_layer_update()  # Aktualizacja warstw z flagami
+    wyr_layer_update()  # Aktualizacja warstw z wyrobiskami
+    wn_layer_update()  # Aktualizacja warstwy z wn_pne
     # auto_layer_update()  # Aktualizacja warstwy z parkingami
     # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
     # zloza_layer_update()  # Aktualizacja warstwy ze złożami
@@ -280,6 +281,7 @@ def flag_layer_update():
         lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
         pg_layer_change(l_tuple[1], lyr)
         lyr.triggerRepaint()
+    dlg.flag_visibility()  # Aktualizacja widoczności warstw
     QgsApplication.restoreOverrideCursor()
 
 def wyr_layer_update(check=True):
@@ -317,6 +319,7 @@ def wyr_layer_update(check=True):
         lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
         pg_layer_change(l_tuple[1], lyr)
         lyr.triggerRepaint()
+    dlg.wyr_visibility()  # Aktualizacja widoczności warstw
     QgsApplication.restoreOverrideCursor()
 
 def wyr_powiaty_check():
@@ -571,6 +574,40 @@ def wyr_powiaty_listed(wyr_id, geom):
             p_list.append((wyr_id, feat.attribute("pow_id")))
     del lyr_pow
     return p_list
+
+def wn_layer_update():
+    """Aktualizacja warstwy z wn_pne."""
+    QgsApplication.setOverrideCursor(Qt.WaitCursor)
+    # Stworzenie listy wn_pne z aktywnych powiatów:
+    pows = active_pow_listed()
+    dlg.obj.wn_ids = get_wn_ids_with_pows(pows)
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    if dlg.obj.wn_ids:
+        uri = params + 'table="external"."wn_pne" (geom) sql=id_arkusz IN (' + str(dlg.obj.wn_ids)[1:-1] + ')'
+    else:
+        uri = params + 'table="external"."wn_pne" (geom) sql=id_arkusz = Null'
+    # Zmiana zawartości warstwy z wn_pne:
+    lyr = dlg.proj.mapLayersByName("wn_pne")[0]
+    pg_layer_change(uri, lyr)
+    lyr.triggerRepaint()
+    QgsApplication.restoreOverrideCursor()
+
+def get_wn_ids_with_pows(pows=None):
+    """Zwraca listę unikalnych id_arkusz z tabeli wn_pne_pow w obrębie podanych powiatów."""
+    if not pows:
+        return
+    db = PgConn()
+    sql = f"SELECT DISTINCT id_arkusz FROM external.wn_pne_pow WHERE pow_id IN ({str(pows)[1:-1]}) AND b_active = True ORDER BY id_arkusz;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return None
 
 def auto_layer_update():
     """Aktualizacja warstwy parking."""

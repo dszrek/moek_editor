@@ -27,7 +27,7 @@ class LayerManager:
     def __init__(self, dlg):
         self.root = dlg.proj.layerTreeRoot()
         self.groups_tree = [
-            {'level': 0, 'layers': ['wn_kopaliny_pne', 'powiaty', 'arkusze', 'powiaty_mask']},
+            {'level': 0, 'layers': ['wn_pne', 'powiaty', 'arkusze', 'powiaty_mask']},
             {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_poly']},
             {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
             {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
@@ -45,7 +45,7 @@ class LayerManager:
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
             {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
-            {"source": "postgres", "name": "wn_kopaliny_pne", "root": True, "pos": 2, "visible": True, "uri": '{PARAMS} table="external"."wn_kopaliny_pne" (geom) srid=4326 sql=', "crs": 4326},
+            {"source": "postgres", "name": "wn_pne", "root": True, "pos": 2, "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
             {"source": "postgres", "name": "powiaty", "root": True, "pos": 3, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
             {"source": "postgres", "name": "arkusze", "root": True, "pos": 4, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
             {"source": "postgres", "name": "vn_sel", "root": False, "parent": "vn", "visible": True, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
@@ -294,7 +294,7 @@ class PanelManager:
             {'name': 'powiaty_mask', 'action': 'lyr_vis', 'btn': dlg.p_pow_mask.box.widgets["btn_pow_mask"], 'callback': None, 'cb_void': False, 'value': None},
             {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_vn.set_state(val)', 'cb_void': False, 'value': None},
             {'name': 'external', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_ext.set_state(val)', 'cb_void': False, 'value': None},
-            {'name': 'wn_kopaliny_pne', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_wn"], 'callback': None, 'cb_void': False, 'value': None},
+            {'name': 'wn_pne', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_wn"], 'callback': None, 'cb_void': False, 'value': None},
             {'name': 'MIDAS', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_midas"], 'callback': None, 'cb_void': False, 'value': None},
             {'name': 'midas_zloza', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
             {'name': 'midas_wybilansowane', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},

@@ -37,7 +37,7 @@ from .layers import LayerManager
 from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, FlagCanvasPanel, WyrCanvasPanel, SplashScreen
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, WyrCanvasPanel, WnCanvasPanel
 from .basemaps import MoekMapPanel
 from .sequences import prev_map, next_map, seq
 
@@ -255,6 +255,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.flag_panel.hide()
         self.wyr_panel = WyrCanvasPanel()
         self.wyr_panel.hide()
+        self.wn_panel = WnCanvasPanel()
+        self.wn_panel.hide()
         self.mt = MapToolManager(dlg=self, canvas=self.canvas)
         self.obj = ObjectManager(dlg=self, canvas=self.canvas)
         self.lyr = LayerManager(dlg=self)
@@ -263,6 +265,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         bottom_y = self.canvas.height() - 52
         self.bottom_dock.move(0, bottom_y)
         self.flag_panel.move(60, 60)
+        self.wn_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
         splash_x = (self.canvas.width() / 2) - (self.splash_screen.width() / 2)
@@ -351,6 +354,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.bottom_dock.setFixedWidth(self.canvas.width())
         self.bottom_dock.move(0, self.canvas.height() - 52)
         self.flag_panel.move(60, 60)
+        self.wyr_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
         splash_x = (self.canvas.width() / 2) - (self.splash_screen.width() / 2)
@@ -628,6 +632,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         try:
             self.canvas.children().remove(self.wyr_panel)
             self.wyr_panel.deleteLater()
+        except:
+            pass
+        try:
+            self.canvas.children().remove(self.wn_panel)
+            self.wn_panel.deleteLater()
         except:
             pass
         try:

@@ -558,10 +558,46 @@ class FlagCanvasPanel(QFrame):
         self.notepad_box = TextPadBox(self, height=110, obj="flag")
         self.sp_notepad.box.lay.addWidget(self.notepad_box)
 
-
     def exit_clicked(self):
         """Zmiana trybu active po kliknięciu na przycisk io."""
         dlg.obj.flag = None
+
+
+class WnCanvasPanel(QFrame):
+    """Zagnieżdżony w mapcanvas'ie panel do obsługi punktów WN_PNE."""
+    def __init__(self):
+        super().__init__()
+        self.setParent(iface.mapCanvas())
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
+        self.setFixedWidth(350)
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        self.bar = CanvasPanelTitleBar(self, title="WN_Kopaliny_PNE", width=self.width())
+        self.box = MoekVBox(self)
+        self.box.setObjectName("box")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(3, 3, 3, 3)
+        vlay.setSpacing(1)
+        vlay.addWidget(self.bar)
+        vlay.addWidget(self.box)
+        self.setLayout(vlay)
+        self.sp_id = CanvasHSubPanel(self, height=34)
+        self.box.lay.addWidget(self.sp_id)
+        self.id_label = PanelLabel(text="  Id_arkusz:", size=12)
+        self.sp_id.box.lay.addWidget(self.id_label)
+        self.id_box = IdSpinBox(self, _obj="wn", width=125, max_len=8, validator="id_arkusz")
+        self.sp_id.box.lay.addWidget(self.id_box)
+        spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.sp_id.box.lay.addItem(spacer)
+
+    def exit_clicked(self):
+        """Zmiana trybu active po kliknięciu na przycisk io."""
+        dlg.obj.wn = None
 
 
 class CanvasPanelTitleBar(QFrame):
@@ -669,17 +705,19 @@ class FlagTools(QFrame):
 
 class IdSpinBox(QFrame):
     """Widget z centralnie umieszczonym labelem i przyciskami zmiany po jego obu stronach."""
-    def __init__(self, *args, _obj):
+    def __init__(self, *args, _obj, width=90, height=34, max_len=4, validator="id"):
         super().__init__(*args)
         self.obj = _obj
+        self.max_len = max_len
+        self.validator = validator
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(90, 34)
+        self.setFixedSize(width, height)
         self.prev_btn = MoekButton(self, name="id_prev", size=22, hsize=34, checkable=False)
         self.prev_btn.clicked.connect(self.prev_clicked)
         self.next_btn = MoekButton(self, name="id_next", size=22, hsize=34, checkable=False)
         self.next_btn.clicked.connect(self.next_clicked)
-        self.idbox = IdLineEdit(self, width=self.width() - 44, height=30)
+        self.idbox = IdLineEdit(self, width=self.width() - 44, height=self.height() - 4, max_len=self.max_len, validator=self.validator)
         self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(0, 0, 0, 0)
@@ -707,13 +745,17 @@ class IdSpinBox(QFrame):
 
 class IdLineEdit(QLineEdit):
     """Lineedit dla zarządzania id."""
-    def __init__(self, *args, height, width):
+    def __init__(self, *args, width, height, max_len, validator):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
         self.setFrame(False)
-        self.setMaxLength(4)
-        self.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]*") ))
+        if max_len:
+            self.setMaxLength(max_len)
+        if validator == "id":
+            self.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]*") ))
+        elif validator == "id_arkusz":
+            self.setValidator(QRegExpValidator(QRegExp("[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9]") ))
         self.hover_on(False)
         self.focused = False
 
@@ -746,7 +788,7 @@ class IdLineEdit(QLineEdit):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
-            dlg.obj.set_object_from_input(int(self.text()), self.parent().obj)
+            dlg.obj.set_object_from_input(self.text(), self.parent().obj)
             self.clearFocus()
         else:
             super().keyPressEvent(event)

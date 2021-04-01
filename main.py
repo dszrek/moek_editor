@@ -81,7 +81,7 @@ def teams_cb_changed():
     """Zmiana w cb aktywnego team'u."""
     # print("[teams_cb_changed]")
     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
-    dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
+    dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
     t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Zapamiętanie aktualnego dlg.team_t
     list_srch = [t for t in dlg.teams if t_team_t in t]
     t_team_i = list_srch[0][0]  # Tymczasowy team_i
@@ -172,7 +172,7 @@ def powiaty_mode_changed(clicked):
     """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
     # print("[powiaty_mode_changed:", clicked, "]")
     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
-    dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
+    dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
     # if clicked:  # Zmiana trybu wyświetlania powiatów spowodowana kliknięciem w io_btn
     #     dlg.cfg.set_val(name="powiaty", val=dlg.p_pow.is_active())
     # else:  # Zmiana trybu wyświetlania powiatów spowodowana zmianą aktywnego team'u
@@ -732,7 +732,7 @@ def vn_setup_mode(b_flag):
     dlg.mt.init("multi_tool")  # Przełączenie na multi_tool'a
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
-        dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
+        dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
         dlg.side_dock.hide()  # Schowanie bocznego dock'u
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą
         dlg.p_pow.active = False  # Wyłączenie trybu wybranego powiatu

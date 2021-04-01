@@ -2,7 +2,7 @@
 
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
-from qgis.core import QgsApplication, QgsProject, QgsSettings, QgsLayerTreeLayer, QgsGeometry, QgsVectorLayer, QgsFeature, QgsWkbTypes, QgsPointXY, QgsPoint, QgsExpressionContextUtils, QgsFeatureRequest, QgsRectangle, QgsTolerance, QgsPointLocator, edit
+from qgis.core import QgsApplication, QgsProject, QgsSettings, QgsLayerTreeLayer, QgsGeometry, QgsVectorLayer, QgsFeature, QgsWkbTypes, QgsPointXY, QgsPoint, QgsExpression, QgsExpressionContextUtils, QgsFeatureRequest, QgsRectangle, QgsTolerance, QgsPointLocator, edit
 from qgis.PyQt.QtCore import Qt, pyqtSignal, QPoint, QTimer
 from PyQt5.QtGui import QColor, QKeySequence, QCursor
 from qgis.utils import iface
@@ -36,6 +36,8 @@ class ObjectManager:
         self.wyr = None
         self.wyr_data = []
         self.wn_ids = []
+        self.wn = None
+        self.wn_data = []
         self.p_vn = False
 
     def __setattr__(self, attr, val):
@@ -52,6 +54,9 @@ class ObjectManager:
                 self.list_position_check("flag")
                 self.dlg.flag_panel.flag_tools.fchk = self.flag_data[1]  # Aktualizacja przycisku fchg
                 self.dlg.flag_panel.notepad_box.set_text(self.flag_data[2])  # Aktualizacja tekstu notatki
+                if self.wn:
+                    # Wyłączenie panelu wn, jeśli jest włączony:
+                    self.wn = None
             if self.dlg.mt.mt_name == "flag_move":
                 self.dlg.mt.init("multi_tool")
             self.dlg.flag_panel.id_box.id = val if val else None
@@ -69,6 +74,8 @@ class ObjectManager:
         elif attr == "wyr":
             # Zmiana aktualnego wyrobiska:
             QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'wyr_sel', val)
+            wyr_point_lyrs_repaint()
+            dlg.proj.mapLayersByName("wyr_poly")[0].triggerRepaint()
             if val:
                 self.wyr_data = self.wyr_update()
                 self.list_position_check("wyr")
@@ -77,13 +84,28 @@ class ObjectManager:
                 self.dlg.wyr_panel.notepad_box.set_text(self.wyr_data[2])  # Aktualizacja tekstu notatki
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
-            wyr_point_lyrs_repaint()
-            dlg.proj.mapLayersByName("wyr_poly")[0].triggerRepaint()
         elif attr == "wyr_ids":
             # Zmiana listy dostępnych wyrobisk:
             wyr_check = self.list_position_check("wyr")
             if not wyr_check:
                 self.wyr = None
+        elif attr == "wn":
+            # Zmiana aktualnego punktu WN_PNE:
+            QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'wn_sel', val)
+            dlg.proj.mapLayersByName("wn_pne")[0].triggerRepaint()
+            if val:
+                self.wn_data = self.wn_update()
+                self.list_position_check("wn")
+                if self.flag:
+                    # Wyłączenie panelu wn, jeśli jest włączony:
+                    self.flag = None
+            self.dlg.wn_panel.id_box.id = val if val else None
+            self.dlg.wn_panel.show() if val else self.dlg.wn_panel.hide()
+        elif attr == "wn_ids":
+            # Zmiana listy dostępnych punktów WN_PNE:
+            wn_check = self.list_position_check("wn")
+            if not wn_check:
+                self.wn = None
 
     def flag_hide(self, _bool):
         """Ukrywa lub pokazuje zaznaczoną flagę."""
@@ -102,13 +124,17 @@ class ObjectManager:
             elif lyr_name == "flagi_z_teren" or lyr_name == "flagi_bez_teren":
                 if self.flag != obj_data[1][0]:
                     self.flag = obj_data[1][0]
+            elif lyr_name == "wn_pne":
+                self.wn = obj_data[1][1]
 
     def clear_sel(self):
-        """Odznaczenie wybranych flag i wyrobisk."""
+        """Odznaczenie wybranych flag, wyrobisk i punktów WN_PNE."""
         if self.flag:
             self.flag = None
         if self.wyr:
             self.wyr = None
+        if self.wn:
+            self.wn = None
 
     def edit_mode(self, enabled):
         """Zmiana ui pod wpływem włączenia/wyłączenia EditPolyMapTool."""
@@ -143,18 +169,23 @@ class ObjectManager:
             obj = "self.flag"
             ids = self.flag_ids
             val = self.flag
+            is_int = True
         elif _obj == "wyr":
             obj = "self.wyr"
             ids = self.wyr_ids
             val = self.wyr
+            is_int = True
+        elif _obj == "wn":
+            obj = "self.wn"
+            ids = self.wn_ids
+            val = self.wn
+            is_int = False
         else:
             return
         cur_id_idx = ids.index(val)  # Pozycja na liście aktualnego obiektu
-        if next:
-            exec( obj + " = " + str(ids[cur_id_idx + 1]))
-        else:
-            exec( obj + " = " + str(ids[cur_id_idx - 1]))
-        self.pan_to_object(_obj)
+        exec_val = ids[cur_id_idx + 1] if next else ids[cur_id_idx - 1]  # Wartość następna / poprzednia
+        exec(f"{obj} = {exec_val}") if is_int else exec(f"{obj} = '{exec_val}'")  # Zmiana aktualnego obiektu
+        self.pan_to_object(_obj)  # Centrowanie widoku mapy na nowy obiekt
 
     def flag_update(self):
         """Zwraca dane flagi."""
@@ -163,7 +194,7 @@ class ObjectManager:
         if db:
             res = db.query_sel(sql, False)
             if not res:
-                print(f"Nie udało się wczytać danych flagi: {self.wyr}")
+                print(f"Nie udało się wczytać danych flagi: {self.flag}")
                 return None
             else:
                 return res
@@ -180,25 +211,47 @@ class ObjectManager:
             else:
                 return res
 
+    def wn_update(self):
+        """Zwraca dane punktu WN_PNE."""
+        db = PgConn()
+        sql = "SELECT id_arkusz FROM external.wn_pne WHERE id_arkusz = '" + str(self.wn) + "';"
+        if db:
+            res = db.query_sel(sql, False)
+            if not res:
+                print(f"Nie udało się wczytać danych punktu WN_PNE: {self.wn}")
+                return None
+            else:
+                return res
+
     def set_object_from_input(self, _id, _obj):
-        """Próba zmiany aktualnej flagi lub wyrobiska po wpisaniu go w idbox'ie."""
+        """Próba zmiany aktualnej flagi, wyrobiska lub WN_PNE po wpisaniu go w idbox'ie."""
         if _obj == "flag":
             obj = "self.flag"
             ids = self.flag_ids
             id_box = "dlg.flag_panel.id_box.id"
+            is_int = True
         elif _obj == "wyr":
             obj = "self.wyr"
             ids = self.wyr_ids
             id_box = "dlg.wyr_panel.id_box.id"
+            is_int = True
+        elif _obj == "wn":
+            obj = "self.wn"
+            ids = self.wn_ids
+            id_box = "dlg.wn_panel.id_box.id"
+            is_int = False
         else:
             return
+        if is_int:
+            _id = int(_id)
         if _id in ids:
-            exec(obj + ' = ' + str(_id))
+            exec(f"{obj} = {_id}") if is_int else exec(f"{obj} = '{_id}'")  # Zmiana aktualnego obiektu
             self.pan_to_object(_obj)
         else:
             exec(id_box + ' = ' + obj)
 
     def set_object_text(self, _obj):
+        """Zmiana tekstu w notepadzie."""
         if _obj == "flag":
             panel = self.dlg.flag_panel
             table = f"team_{str(dlg.team_i)}.flagi"
@@ -209,6 +262,11 @@ class ObjectManager:
             table = f"team_{str(dlg.team_i)}.wyrobiska"
             bns = f" WHERE wyr_id = {self.wyr}"
             upd = "self.wyr = self.wyr"
+        elif _obj == "wn":
+            panel = self.dlg.wn_panel
+            table = f"external.wn_pne"
+            bns = f" WHERE id_arkusz = '{self.wn}'"
+            upd = "self.wn = self.wn"
         raw_text = panel.notepad_box.get_text()
         if not raw_text:
             text = "NULL"
@@ -224,7 +282,7 @@ class ObjectManager:
             return True
 
     def list_position_check(self, _obj):
-        """Sprawdza pozycję flagi lub wyrobiska na liście."""
+        """Sprawdza pozycję flagi, wyrobiska lub punktu WN_PNE na liście."""
         if _obj == "flag":
             obj = "self.flag"
             val = self.flag
@@ -235,6 +293,11 @@ class ObjectManager:
             val = self.wyr
             ids = self.wyr_ids
             id_box = dlg.wyr_panel.id_box
+        elif _obj == "wn":
+            obj = "self.wn"
+            val = self.wn
+            ids = self.wn_ids
+            id_box = dlg.wn_panel.id_box
         else:
             return False
         if not ids or not val:
@@ -256,6 +319,7 @@ class ObjectManager:
         return True
 
     def pan_to_object(self, _obj):
+        """Centruje widok mapy na wybrany obiekt."""
         if _obj == "flag":
             if self.flag_data[1]:
                 point_lyr = dlg.proj.mapLayersByName("flagi_z_teren")[0]
@@ -265,6 +329,9 @@ class ObjectManager:
         elif _obj == "wyr":
             point_lyr = dlg.proj.mapLayersByName("wyr_point")[0]
             feats = point_lyr.getFeatures(f'"wyr_id" = {self.wyr}')
+        elif _obj == "wn":
+            point_lyr = dlg.proj.mapLayersByName("wn_pne")[0]
+            feats = point_lyr.getFeatures(QgsFeatureRequest(QgsExpression('"id_arkusz"=' + "'" + str(self.wn) + "'")))
         try:
             feat = list(feats)[0]
         except Exception as err:

@@ -79,6 +79,7 @@ class LayerManager:
             {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
             {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]}
             ]
+        self.lyr_vis = [["wyr_point", None], ["flagi_z_teren", None], ["flagi_bez_teren", None], ["wn_pne", None]]
         self.lyr_cnt = len(self.lyrs)
         self.lyrs_names = [i for s in [[v for k, v in d.items() if k == "name"] for d in self.lyrs] for i in s]
 
@@ -134,9 +135,6 @@ class LayerManager:
                         sgrp_node.setExpanded(False)
         # Ukrycie grupy 'temp':
         self.root.findGroup("temp").setItemVisibilityChecked(False)
-        # Rozwinięcie grup 'wyrobiska' i 'flagi':
-        self.root.findGroup("wyrobiska").setExpanded(True)
-        self.root.findGroup("flagi").setExpanded(True)
 
     def layers_create(self, missing=None):
         """Utworzenie warstw w projekcie. Podanie atrybutu 'missing' spowoduje, że tylko wybrane warstwy będą dodane."""
@@ -281,6 +279,24 @@ class LayerManager:
         parent.removeChildNode(lyr)
         return True
 
+    def vis_change(self, grp_name, val):
+        """Zmiana parametru widoczności warstwy dla MultiMapTool."""
+        if grp_name == "flagi":
+            if not val:
+                dlg.obj.flag = None
+            lyr_names = ["flagi_z_teren", "flagi_bez_teren"]
+        elif grp_name == "wyrobiska":
+            if not val:
+                dlg.obj.wyr = None
+            lyr_names = ["wyr_point"]
+        elif grp_name == "wn_pne":
+            if not val:
+                dlg.obj.wn = None
+            lyr_names = ["wn_pne"]
+        for lyr_name in lyr_names:
+            for _list in self.lyr_vis:
+                if _list[0] == lyr_name and _list[1] != val:
+                    _list[1] = val
 
 class PanelManager:
     """Menedżer ustawień (widoczność, rozwinięcie itp.) paneli."""
@@ -349,11 +365,14 @@ class PanelManager:
 
     def update_action(self, action, name, btn, val, cb, cb_void):
         """Przeprowadza zmiany związane z modyfikacją stanu konfiguracji."""
-        val_out = True if val == 1 else False  # Konwersja int na bool
+        val_out = False if val == 0 else True  # Konwersja int na bool
         if action == "lyr_vis":
             dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(name)[0].id()).setItemVisibilityChecked(val_out)
         elif action == "grp_vis":
             dlg.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(val_out)
+        if name == "flagi" or name == "wyrobiska" or name == "wn_pne":
+            # Zmiana parametru widoczności dla MultiMapTool:
+            dlg.lyr.vis_change(name, val_out)
         if btn:
             btn.setChecked(val_out)
         if cb and (not self.callback_void or not cb_void):

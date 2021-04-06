@@ -2,7 +2,7 @@
 
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
-from qgis.core import QgsApplication, QgsProject, QgsSettings, QgsLayerTreeLayer, QgsGeometry, QgsVectorLayer, QgsFeature, QgsWkbTypes, QgsPointXY, QgsPoint, QgsExpression, QgsExpressionContextUtils, QgsFeatureRequest, QgsRectangle, QgsTolerance, QgsPointLocator, edit
+from qgis.core import QgsApplication, QgsProject, QgsSettings, QgsLayerTreeLayer, QgsGeometry, QgsVectorLayer, QgsFeature, QgsFields, QgsWkbTypes, QgsPointXY, QgsPoint, QgsExpression, QgsExpressionContextUtils, QgsFeatureRenderer, QgsCoordinateReferenceSystem, QgsFeatureRequest, QgsRenderContext, QgsRectangle, QgsTolerance, QgsPointLocator, edit
 from qgis.PyQt.QtCore import Qt, pyqtSignal, QPoint, QTimer
 from PyQt5.QtGui import QColor, QKeySequence, QCursor
 from qgis.utils import iface
@@ -355,7 +355,7 @@ class MapToolManager:
         self.tool_kinds = (MultiMapTool, IdentMapTool, PolyDrawMapTool, PointDrawMapTool, EditPolyMapTool)
         self.maptools = [
             # {"name" : "edit_poly", "class" : EditPolyMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_pne", "wyrobiska"], "fn" : obj_sel},
-            {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"], "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_pne", "wyr_point"], "fn" : obj_sel},
+            {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"],"fn" : obj_sel},
             {"name" : "vn_sel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_sel"], "lyr" : ["vn_user"], "fn" : vn_change},
             {"name" : "vn_powsel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_powsel"], "lyr" : ["powiaty"], "fn" : vn_powsel},
             {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel, "extra" : [(0, 0, 255, 128), (0, 0, 255, 80)]},
@@ -414,7 +414,7 @@ class MapToolManager:
         if "lyr" in self.params:
             lyr = lyr_ref(self.params["lyr"])
         if self.params["class"] == MultiMapTool:
-            self.maptool = self.params["class"](self.canvas, lyr, self.params["button"])
+            self.maptool = self.params["class"](self.canvas, self.params["button"])
             self.maptool.identified.connect(self.params["fn"])
         elif self.params["class"] == IdentMapTool:
             self.maptool = self.params["class"](self.canvas, lyr, self.params["button"])
@@ -1550,13 +1550,14 @@ class MultiMapTool(QgsMapToolIdentify):
     identified = pyqtSignal(object, object, str)
     cursor_changed = pyqtSignal(str)
 
-    def __init__(self, canvas, layer, button):
+    def __init__(self, canvas, button):
         QgsMapToolIdentify.__init__(self, canvas)
         self.canvas = canvas
-        self.layer = layer
         self._button = button
         if not self._button.isChecked():
             self._button.setChecked(True)
+        self.layer = QgsVectorLayer()
+        self.layer.setCrs(QgsCoordinateReferenceSystem(2180))
         self.dragging = False
         self.sel = False
         self.cursor_changed.connect(self.cursor_change)
@@ -1567,7 +1568,7 @@ class MultiMapTool(QgsMapToolIdentify):
 
     @threading_func
     def findFeatureAt(self, pos):
-        pos = self.toLayerCoordinates(self.layer[0], pos)
+        pos = self.toLayerCoordinates(self.layer, pos)
         scale = iface.mapCanvas().scale()
         tolerance = scale / 250
         search_rect = QgsRectangle(pos.x() - tolerance,
@@ -1577,15 +1578,28 @@ class MultiMapTool(QgsMapToolIdentify):
         request = QgsFeatureRequest()
         request.setFilterRect(search_rect)
         request.setFlags(QgsFeatureRequest.ExactIntersect)
-        for lyr in self.layer:
-            for feat in lyr.getFeatures(request):
-                return feat
-        return None
+        lyrs = self.get_lyrs()
+        if lyrs:
+            for lyr in lyrs:
+                for feat in lyr.getFeatures(request):
+                    return feat
+        else:
+            return None
+
+    def get_lyrs(self):
+        """Zwraca listę włączonych warstw z obiektami."""
+        lyrs = []
+        for _list in dlg.lyr.lyr_vis:
+            if _list[1]:
+                lyr = dlg.proj.mapLayersByName(_list[0])[0]
+                lyrs.append(lyr)
+        return lyrs
 
     @threading_func
     def ident_in_thread(self, x, y):
         """Zwraca wynik identyfikacji przeprowadzonej poza wątkiem głównym QGIS'a."""
-        return self.identify(x, y, self.TopDownStopAtFirst, self.layer, self.VectorLayer)
+        lyrs = self.get_lyrs()
+        return self.identify(x, y, self.TopDownStopAtFirst, lyrs, self.VectorLayer)
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -1977,7 +1991,6 @@ def flag_add(point, extra):
     if not point:
         return
     is_fchk = extra[0]
-    print(f"is_fchk: {is_fchk}")
     fl_pow = fl_valid(point)
     if not fl_pow:
         QMessageBox.warning(None, "Tworzenie flagi", "Flagę można postawić wyłącznie na obszarze wybranego (aktywnego) powiatu/ów.")
@@ -2054,7 +2067,6 @@ def wyr_point_add(point):
         else:
             # Włączenie wyrobisk przed kontrolą terenową, jeśli są wyłączone:
             val = dlg.cfg.get_val("wyr_przed_teren")
-            print(f"wyr_val: {val}")
             if val == 0:
                 dlg.cfg.set_val("wyr_przed_teren", 1)
             return res

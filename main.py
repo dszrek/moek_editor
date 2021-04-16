@@ -706,6 +706,7 @@ def user_has_vn():
 
 def vn_cfg(seq=0):
     """Wejście lub wyjście z odpowiedniego trybu konfiguracyjnego panelu viewnet (vn_setup lub sekwencje podkładów mapowych)."""
+    dlg.freeze_set(True, delay=True)  # Zablokowanie odświeżania dockwidget'u
     if dlg.p_vn.bar.cfg_btn.isChecked():  # Przycisk konfiguracyjny został wciśnięty
         if dlg.hk_vn:  # Skróty klawiszowe vn włączone
             dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
@@ -714,6 +715,7 @@ def vn_cfg(seq=0):
             vn_setup_mode(True)
         else:  # Włączenie ustawień którejś z sekwencji
             dlg.p_vn.widgets["sqb_seq"].enter_setup(seq)
+        dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
     else:  # Przycisk konfiguracyjny został wyciśnięty
         if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
             dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
@@ -722,6 +724,7 @@ def vn_cfg(seq=0):
             vn_setup_mode(False)
         else:  # Wychodzenie z ustawień któreś z sekwencji
             dlg.p_vn.widgets["sqb_seq"].exit_setup()
+        dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
 
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""

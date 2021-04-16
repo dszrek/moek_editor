@@ -289,7 +289,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         if attr == "hk_seq":
             self.hk_seq_changed.emit(val)
 
-    def freeze_set(self, val, from_resize=False):
+    def freeze_set(self, val, from_resize=False, delay=False):
         """Zarządza blokadą odświeżania dockwidget'u."""
         if val and self.freeze:
             # Blokada jest już włączona
@@ -307,8 +307,10 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                 self.changing = True
             # Włączenie blokady:
             self.freeze = True
-            self.app.setUpdatesEnabled(False)
-            self.setEnabled(False)
+            if delay:
+                QTimer.singleShot(100, self.freeze_start)
+            else:
+                self.freeze_start()
         elif not val and self.changing and self.freeze:
             QTimer.singleShot(1, self.changing_stop)
         elif not val and not self.changing and not self.resizing:
@@ -319,6 +321,12 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         - może się jeszcze zacząć zmiana rozmiaru."""
         self.changing = False
         self.freeze_set(False)
+
+    def freeze_start(self):
+        """Rozpoczęcie zmiany stanu / zawartości panelu, odpalone z pewnym opóźnieniem
+        - bo się wiesza bez tego :)."""
+        self.app.setUpdatesEnabled(False)
+        self.setEnabled(False)
 
     def freeze_end(self):
         """Faza zakończenia blokady odświeżania QGIS po zmianie rozmiaru / zawartości dockwidget'u."""

@@ -32,13 +32,13 @@ from qgis.utils import iface
 
 from .resources import resources
 
-from .main import dlg_main, db_login, teams_load, teams_cb_changed, powiaty_cb_changed, vn_mode_changed
+from .main import dlg_main, db_login, teams_load, teams_cb_changed
 from .widgets import dlg_widgets
 from .layers import dlg_layers, PanelManager
 from .maptools import dlg_maptools
 from .viewnet import dlg_viewnet
-from .basemaps import dlg_basemaps, basemaps_load
-from .sequences import dlg_sequences, sequences_load
+from .basemaps import dlg_basemaps
+from .sequences import dlg_sequences
 from .classes import GESync
 
 # Import the code for the DockWidget
@@ -291,8 +291,6 @@ class MoekEditor:
         QgsApplication.processEvents()
         self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
         teams_cb_changed()  # Załadowanie powiatów
-        basemaps_load()  # Załadowanie podkładów mapowych
-        sequences_load()
         # show the dockwidget
         # TODO: fix to allow choice of dock location
         self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)

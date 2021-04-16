@@ -90,6 +90,7 @@ def teams_cb_changed():
         dlg.team_t = t_team_t
         dlg.team_i = t_team_i
         print("Pomyślnie załadowano team: ", dlg.team_t)
+        dlg.basemaps_and_sequences_load()  # Wczytanie ustawień podkładów i sekwencji
         dlg.cfg.cfg_vals_read()  # Wczytanie ustawień paneli i warstw do PanelManager
         # Próba (bo może być jeszcze nie podłączony) odłączenia sygnału zmiany cmb_pow_act:
         try:

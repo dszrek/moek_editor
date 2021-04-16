@@ -38,8 +38,8 @@ from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, WyrCanvasPanel, WnCanvasPanel
-from .basemaps import MoekMapPanel
-from .sequences import prev_map, next_map, seq
+from .basemaps import MoekMapPanel, basemaps_load
+from .sequences import sequences_load, prev_map, next_map, seq
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -463,6 +463,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         if not self.closing:
             QMessageBox.critical(self.app, "Moek_Editor", m_text)
             self.close()
+
+    def basemaps_and_sequences_load(self):
+        """Odpala basemaps_load() z basemaps.py i sequences_load() z sequences.py."""
+        basemaps_load()
+        sequences_load()
 
     def hk_vn_load(self):
         """Załadowanie skrótów klawiszowych do obsługi vn."""

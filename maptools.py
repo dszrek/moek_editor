@@ -214,7 +214,7 @@ class ObjectManager:
     def wn_update(self):
         """Zwraca dane punktu WN_PNE."""
         db = PgConn()
-        sql = "SELECT id_arkusz FROM external.wn_pne WHERE id_arkusz = '" + str(self.wn) + "';"
+        sql = "SELECT e.id_arkusz, e.kopalina, e.wyrobisko, e.zawodn, e.eksploat, e.wyp_odpady, e.nadkl_min, e.nadkl_max, e.nadkl_sr, e.miazsz_min, e.miazsz_max, e.dlug_max, e.szer_max, e.wys_min, e.wys_max, e.data_kontrol, e.uwagi, (SELECT COUNT(*) FROM external.wn_pne_pow AS p WHERE e.id_arkusz = p.id_arkusz AND p.b_active = true) AS i_pow_cnt, t.t_notatki FROM external.wn_pne AS e INNER JOIN team_" + str(dlg.team_i) + ".wn_pne AS t USING(id_arkusz) WHERE id_arkusz = '" + str(self.wn) + "';"
         if db:
             res = db.query_sel(sql, False)
             if not res:

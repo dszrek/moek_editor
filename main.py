@@ -584,7 +584,7 @@ def wn_layer_update():
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.obj.wn_ids:
-        uri = params + 'table="external"."wn_pne" (geom) sql=id_arkusz IN (' + str(dlg.obj.wn_ids)[1:-1] + ')'
+        uri = params + 'key="id_arkusz" table="(SELECT e.id_arkusz, e.kopalina, e.wyrobisko, e.zawodn, e.eksploat, e.wyp_odpady, e.nadkl_min, e.nadkl_max, e.nadkl_sr, e.miazsz_min, e.miazsz_max, e.dlug_max, e.szer_max, e.wys_min, e.wys_max, e.data_kontrol, e.uwagi, (SELECT COUNT(*) FROM external.wn_pne_pow AS p WHERE e.id_arkusz = p.id_arkusz AND p.b_active = true) AS i_pow_cnt, t.t_notatki, e.geom FROM external.wn_pne e, team_' + str(dlg.team_i) + '.wn_pne t WHERE e.id_arkusz = t.id_arkusz AND e.id_arkusz IN (' + str(dlg.obj.wn_ids)[1:-1] + '))" (geom) sql='
     else:
         uri = params + 'table="external"."wn_pne" (geom) sql=id_arkusz = Null'
     # Zmiana zawartości warstwy z wn_pne:
@@ -809,7 +809,7 @@ def vn_layer_update():
 
     # Aktualizacja włączonych warstw vn
     for key, value in layer_sql.items():
-        uri =  URI_CONST + str(dlg.team_i) +'"."team_viewnet" (geom) sql= ' + str(value)
+        uri = URI_CONST + str(dlg.team_i) +'"."team_viewnet" (geom) sql= ' + str(value)
         layer = dlg.proj.mapLayersByName(key)[0]
         pg_layer_change(uri, layer)
 

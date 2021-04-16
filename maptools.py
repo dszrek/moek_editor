@@ -97,8 +97,9 @@ class ObjectManager:
                 self.wn_data = self.wn_update()
                 self.list_position_check("wn")
                 if self.flag:
-                    # Wyłączenie panelu wn, jeśli jest włączony:
+                    # Wyłączenie panelu flagi, jeśli jest włączony:
                     self.flag = None
+                dlg.wn_panel.values_update(self.wn_data)
             self.dlg.wn_panel.id_box.id = val if val else None
             self.dlg.wn_panel.show() if val else self.dlg.wn_panel.hide()
         elif attr == "wn_ids":
@@ -125,7 +126,7 @@ class ObjectManager:
                 if self.flag != obj_data[1][0]:
                     self.flag = obj_data[1][0]
             elif lyr_name == "wn_pne":
-                self.wn = obj_data[1][1]
+                self.wn = obj_data[1][0]
 
     def clear_sel(self):
         """Odznaczenie wybranych flag, wyrobisk i punktów WN_PNE."""

@@ -11,13 +11,12 @@ from qgis.utils import iface
 from .classes import PgConn, CfgPars
 from .viewnet import vn_set_gvars, stage_refresh
 
-# Stałe globalne
+# Stałe globalne:
 SQL_1 = " WHERE user_id = "
-
+PLUGIN_VER = "0.3.0"
 USER = ""
 
-# Zmienne globalne
-
+# Zmienne globalne:
 dlg = None
 vn_setup = False
 
@@ -32,7 +31,7 @@ def db_login():
     user_login = os.getlogin().lower() if USER == "" else USER
     db = PgConn()
     # Wyszukanie aliasu systemowego w tabeli users:
-    sql = "SELECT user_id, t_user_name, i_active_team FROM users WHERE t_user_alias = '" + user_login + "' AND b_active = true;"
+    sql = "SELECT user_id, t_user_name, i_active_team, t_plugin_ver FROM users WHERE t_user_alias = '" + user_login + "' AND b_active = true;"
     if db:
         res = db.query_sel(sql, False)
         if res: # Alias użytkownika znajduje się w tabeli users - logujemy
@@ -41,12 +40,23 @@ def db_login():
             if res[2]:  # Użytkownik ma zdefiniowany aktywny team
                 team_i = res[2]
             print("Użytkownik " + user_name + " zalogował się do systemu MOEK.")
+            # Sprawdzenie, czy zainstalowana wersja wtyczki się zmieniła:
+            if PLUGIN_VER != res[3]:
+                # Aktualizacja numeru zainstalowanej wersji wtyczki w db:
+                version_update(res[0])
             return res[0], res[1], res[2]
         else: # Użytkownika nie ma w tabeli users - nie logujemy
             QMessageBox.warning(None, "Logowanie...", "Użytkownik " + user_login + " nie ma dostępu do systemu MOEK.")
             return False, False, False
     else:
         return False, False, False
+
+def version_update(user_id):
+    """Aktualizacja numeru wersji wtyczki w db."""
+    db = PgConn()
+    sql = f"UPDATE public.users SET t_plugin_ver = '{PLUGIN_VER}' WHERE user_id = {user_id}"
+    if db:
+        res = db.query_upd(sql)
 
 def teams_load():
     """Wczytanie team'ów użytkownika z bazy danych i wgranie ich do combobox'a (cmb_team_act)."""

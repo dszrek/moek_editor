@@ -314,7 +314,10 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         elif not val and self.changing and self.freeze:
             QTimer.singleShot(1, self.changing_stop)
         elif not val and not self.changing and not self.resizing:
-            QTimer.singleShot(1, self.freeze_end)
+            if delay:
+                QTimer.singleShot(100, self.freeze_end)
+            else:
+                QTimer.singleShot(1, self.freeze_end)
 
     def changing_stop(self):
         """Zakończenie zmiany stanu / zawartości panelu, odpalone z pewnym opóźnieniem
@@ -409,6 +412,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         dock_height = h_header + h_sum + (p_count * h_margin) - h_margin
         self.setMinimumHeight(dock_height)
         self.setMaximumHeight(dock_height)
+        self.frm_main.updateGeometry()
         p_width = w_max + w_margin
         self.setMinimumWidth(p_width)
         _scroll = True if dock_height > self.rect().height() else False # scrollbar True/False
@@ -514,7 +518,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
     def hk_seq_load(self):
         """Załadowanie skrótów klawiszowych do obsługi sekwencji podkładów mapowych."""
-        hotkeys = {"hk_1": "1", "hk_2": "2",  "hk_3": "3", "hk_tilde": "QuoteLeft", "hk_tab": "Tab"}
+        hotkeys = {"hk_1": "1", "hk_2": "2", "hk_3": "3", "hk_tilde": "QuoteLeft", "hk_tab": "Tab"}
         for key, val in hotkeys.items():
             exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", self)")
             exec(SELF + key + ".setEnabled(False)")

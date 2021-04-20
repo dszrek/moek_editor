@@ -48,7 +48,7 @@ class MoekBoxPanel(QFrame):
         self.state = None
         self.passing_void = False
         self.title = title
-        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        # self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(0, 0, 0, 0)
         vlay.setSpacing(0)
@@ -569,7 +569,7 @@ class WnCanvasPanel(QFrame):
         super().__init__()
         self.setParent(iface.mapCanvas())
         self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self.setFixedWidth(350)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
@@ -1275,7 +1275,7 @@ class MoekVBox(QFrame):
     """Zawartość toolbox'a w kompozycji QVBoxLayout."""
     def __init__(self, *args, margins=[0, 0, 0, 0], spacing=0):
         super().__init__(*args)
-        # self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Maximum)
         self.lay = QVBoxLayout()
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)

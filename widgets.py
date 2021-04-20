@@ -2,12 +2,12 @@
 import os
 
 from qgis.core import QgsProject
-from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QFrame, QToolButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
+from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QFrame, QToolButton, QPushButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
 from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp
 from qgis.PyQt.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, wn_layer_update
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
 from .classes import PgConn
 
@@ -588,11 +588,11 @@ class WnCanvasPanel(QFrame):
         self.setLayout(vlay)
         self.sp_id = CanvasHSubPanel(self, height=34)
         self.box.lay.addWidget(self.sp_id)
-        self.separator = CanvasHSubPanel(self, height=1, alpha=0.0)
-        self.box.lay.addWidget(self.separator)
+        self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        self.box.lay.addWidget(self.separator_1)
         self.top_margin = CanvasHSubPanel(self, height=8)
         self.box.lay.addWidget(self.top_margin)
-        self.id_label = PanelLabel(text="  Id_arkusz:", size=12)
+        self.id_label = PanelLabel(text="   Id_arkusz:", size=11)
         self.sp_id.lay.addWidget(self.id_label)
         self.id_box = IdSpinBox(self, _obj="wn", width=125, max_len=8, validator="id_arkusz")
         self.sp_id.lay.addWidget(self.id_box)
@@ -600,39 +600,39 @@ class WnCanvasPanel(QFrame):
         self.sp_id.lay.addItem(spacer)
         self.params_1 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_1)
-        self.kopalina = ParamBox(self, width=217, value="PC - Piasek kwarc. niezawodniony", title_down="KOPALINA")
+        self.kopalina = ParamBox(self, width=217, title_down="KOPALINA")
         self.params_1.lay.addWidget(self.kopalina)
-        self.data_inw = ParamBox(self, width=103, value="2009-07-16", title_down="DATA INWENTARYZACJI")
+        self.data_inw = ParamBox(self, width=103, title_down="DATA INWENTARYZACJI")
         self.params_1.lay.addWidget(self.data_inw)
         self.params_2 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_2)
-        self.wyrobisko = ParamBox(self, value="stokowo-wgłębne", title_down="WYROBISKO")
+        self.wyrobisko = ParamBox(self, title_down="WYROBISKO")
         self.params_2.lay.addWidget(self.wyrobisko)
-        self.zawodn = ParamBox(self, value="zawodnione częściowo", title_down="ZAWODNIENIE")
+        self.zawodn = ParamBox(self, title_down="ZAWODNIENIE")
         self.params_2.lay.addWidget(self.zawodn)
         self.params_3 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_3)
-        self.eksploat = ParamBox(self, value="zorganizowana", title_down="EKSPLOATACJA")
+        self.eksploat = ParamBox(self, title_down="EKSPLOATACJA")
         self.params_3.lay.addWidget(self.eksploat)
-        self.odpady = ParamBox(self, value="pomiędzy 30% a 70%", title_down="WYPEŁNIENIE ODPADAMI")
+        self.odpady = ParamBox(self, title_down="WYPEŁNIENIE ODPADAMI")
         self.params_3.lay.addWidget(self.odpady)
         self.params_4 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_4)
-        self.dlug_max = ParamBox(self, value="150,0", title_left="Długość maks. [m]:")
+        self.dlug_max = ParamBox(self, title_left="Długość maks. [m]:")
         self.params_4.lay.addWidget(self.dlug_max)
-        self.szer_max = ParamBox(self, value="150,0", title_left="Szerokość maks. [m]:")
+        self.szer_max = ParamBox(self, title_left="Szerokość maks. [m]:")
         self.params_4.lay.addWidget(self.szer_max)
         self.params_5 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_5)
-        self.wysokosc = ParamBox(self, width=328, value="1,0", value_2="12,0", title_down="MIN", title_down_2="MAX", title_left="Wysokość wyrobiska [m]:")
+        self.wysokosc = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Wysokość wyrobiska [m]:")
         self.params_5.lay.addWidget(self.wysokosc)
         self.params_6 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_6)
-        self.nadklad = ParamBox(self, width=328, value="1,0", value_2="12,0", title_down="MIN", title_down_2="MAX", title_left="Grubość nadkładu [m]:")
+        self.nadklad = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Grubość nadkładu [m]:")
         self.params_6.lay.addWidget(self.nadklad)
         self.params_7 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_7)
-        self.miazsz = ParamBox(self, width=328, value="1,0", value_2="12,0", title_down="MIN", title_down_2="MAX", title_left="Miąższość kopaliny [m]:")
+        self.miazsz = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Miąższość kopaliny [m]:")
         self.params_7.lay.addWidget(self.miazsz)
         self.params_8 = CanvasHSubPanel(self, height=90, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_8)
@@ -640,6 +640,12 @@ class WnCanvasPanel(QFrame):
         self.params_8.lay.addWidget(self.uwagi)
         self.bottom_margin = CanvasHSubPanel(self, height=4)
         self.box.lay.addWidget(self.bottom_margin)
+        self.separator_2 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        self.box.lay.addWidget(self.separator_2)
+        self.sp_pow = CanvasHSubPanel(self, height=34)
+        self.box.lay.addWidget(self.sp_pow)
+        self.pow_selector = WnPowSelector(self)
+        self.sp_pow.lay.addWidget(self.pow_selector)
 
     def values_update(self, _dict):
         """Aktualizuje wartości parametrów."""
@@ -665,6 +671,10 @@ class WnCanvasPanel(QFrame):
                 param[0].value_change(param[1])
             elif len(param) == 3:
                 param[0].value_change(param[1], param[2])
+
+    def pow_update(self, _list):
+        """Aktualizuje ilość dostępnych powiatów dla punktu WN_PNE."""
+        self.pow_selector.pow_update(_list)
 
     def exit_clicked(self):
         """Dezaktywuje punkt WN_PNE przy wyłączeniu canvaspanel'u."""
@@ -712,6 +722,123 @@ class CanvasHSubPanel(QFrame):
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)
         self.setLayout(self.lay)
+
+
+class WnPowSelector(QFrame):
+    """Belka wyboru aktywnych powiatów dla punktu WN_PNE."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setFixedHeight(34)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(8, 2, 8, 2)
+        self.lay.setSpacing(8)
+        self.setLayout(self.lay)
+        self.all_cnt = int()
+        self.act_cnt = int()
+        self.itms = {}
+        for i in range(4):
+            _itm = PowSelectorItem(self, _id=i)
+            self.lay.addWidget(_itm)
+            itm_name = f'pow_btn_{i}'
+            self.itms[itm_name] = _itm
+
+    def pow_update(self, _list):
+        """Aktualizacja danych dotyczących aktywnych powiatów."""
+        print(_list)
+        self.all_cnt = len(_list)
+        self.act_cnt = 0
+        for i in range(4):
+            _bool = True if i < self.all_cnt else False
+            widget = self.itms[f"pow_btn_{i}"]
+            if widget:
+                # Odsłania tyle guzików, ile jest powiatów:
+                widget.setVisible(_bool)
+                if _bool:
+                    _act = _list[i][2]  # Czy powiat jest aktywny?
+                    if _act:
+                        # Zliczanie aktywnych powiatów:
+                        self.act_cnt += 1
+                    # Ustawienie guzików:
+                    widget.setText(_list[i][0])
+                    widget.setChecked(_act)
+        # Wyłącza hovering, jeśli tylko jeden powiat dostępny:
+        self.itms[f"pow_btn_0"].setEnabled(False) if self.all_cnt == 1 else self.itms[f"pow_btn_0"].setEnabled(True)
+
+    def btn_clicked(self, _id):
+        """Włączenie/wyłączenie powiatu po naciśnięciu przycisku."""
+        btn = self.itms[f"pow_btn_{_id}"]
+        if btn.isChecked():
+            # Włączono powiat:
+            self.act_cnt += 1
+        else:
+            # Wyłączono powiat:
+            self.act_cnt -= 1
+        # Sprawdzenie, czy wszystkie guziki zostały wyłączone:
+        if self.act_cnt == 0:  # Jeden guzik musi być włączony, cofamy zmianę:
+            self.act_cnt += 1
+            btn.setChecked(True)
+        else:
+            self.db_update(btn)  # Aktualizacja db
+            wn_layer_update()  # Aktualizacja warstwy wn_pne
+
+    def db_update(self, btn):
+        """Aktualizacja atrybutu 'b_active' w db."""
+        id_arkusz = dlg.obj.wn
+        pow_id = btn.text()
+        b_active = 'true' if btn.isChecked() else 'false'
+        print(f"WN: {id_arkusz}, pow: {pow_id}, b_active: {b_active}")
+        db = PgConn()
+        sql = f"UPDATE external.wn_pne_pow SET b_active = {b_active} WHERE id_arkusz = '{id_arkusz}' and pow_id = '{pow_id}';"
+        if db:
+            res = db.query_upd(sql)
+            if not res:
+                print(f"Nie udało się zmienić ustawienia powiatu {pow_id} dla punktu WN_PNE: {id_arkusz}")
+
+
+class PowSelectorItem(QPushButton):
+    """Guzik do wyboru aktywnych powiatów dla punktu WN_PNE."""
+    def __init__(self, *args, _id):
+        super().__init__(*args)
+        self.setCheckable(True)
+        self.id = _id
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setStyleSheet("""
+                            QPushButton {
+                                border: 2px solid rgba(217, 0, 143, 0.4);
+                                background: rgba(217, 0, 143, 0.2);
+                                color: rgba(255, 255, 255, 0.6);
+                                font-size: 11pt;
+                            }
+                            QPushButton:hover {
+                                border: 2px solid rgba(217, 0, 143, 0.4);
+                                background: rgba(217, 0, 143, 0.4);
+                                color: rgba(255, 255, 255, 0.6);
+                                font-size: 11pt;
+                            }
+                            QPushButton:checked {
+                                border: 2px solid rgba(217, 0, 143, 1.0);
+                                background: rgba(217, 0, 143, 0.7);
+                                color: rgb(255, 255, 255);
+                                font-size: 11pt;
+                            }
+                            QPushButton:hover:checked {
+                                border: 2px solid rgba(217, 0, 143, 1.0);
+                                background: rgba(217, 0, 143, 1.0);
+                                color: rgb(255, 255, 255);
+                                font-size: 11pt;
+                            }
+                            QPushButton:disabled {
+                                border: 2px solid rgba(217, 0, 143, 1.0);
+                                background: rgba(217, 0, 143, 0.7);
+                                color: rgb(255, 255, 255);
+                                font-size: 11pt;
+                           """)
+        self.clicked.connect(lambda: self.parent().btn_clicked(self.id))
 
 
 class FlagTools(QFrame):

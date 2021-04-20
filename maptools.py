@@ -38,6 +38,7 @@ class ObjectManager:
         self.wn_ids = []
         self.wn = None
         self.wn_data = []
+        self.wn_pow = []
         self.p_vn = False
 
     def __setattr__(self, attr, val):
@@ -91,15 +92,18 @@ class ObjectManager:
                 self.wyr = None
         elif attr == "wn":
             # Zmiana aktualnego punktu WN_PNE:
+            dlg.wn_panel.hide()
             QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'wn_sel', val)
             dlg.proj.mapLayersByName("wn_pne")[0].triggerRepaint()
             if val:
                 self.wn_data = self.wn_update()
+                self.wn_pow = self.wn_pow_update()
                 self.list_position_check("wn")
                 if self.flag:
                     # Wyłączenie panelu flagi, jeśli jest włączony:
                     self.flag = None
                 dlg.wn_panel.values_update(self.wn_data)
+                dlg.wn_panel.pow_update(self.wn_pow)
             self.dlg.wn_panel.id_box.id = val if val else None
             self.dlg.wn_panel.show() if val else self.dlg.wn_panel.hide()
         elif attr == "wn_ids":
@@ -218,6 +222,18 @@ class ObjectManager:
         sql = "SELECT e.id_arkusz, e.kopalina, e.wyrobisko, e.zawodn, e.eksploat, e.wyp_odpady, e.nadkl_min, e.nadkl_max, e.nadkl_sr, e.miazsz_min, e.miazsz_max, e.dlug_max, e.szer_max, e.wys_min, e.wys_max, e.data_kontrol, e.uwagi, (SELECT COUNT(*) FROM external.wn_pne_pow AS p WHERE e.id_arkusz = p.id_arkusz AND p.b_active = true) AS i_pow_cnt, t.t_notatki FROM external.wn_pne AS e INNER JOIN team_" + str(dlg.team_i) + ".wn_pne AS t USING(id_arkusz) WHERE id_arkusz = '" + str(self.wn) + "';"
         if db:
             res = db.query_sel(sql, False)
+            if not res:
+                print(f"Nie udało się wczytać danych punktu WN_PNE: {self.wn}")
+                return None
+            else:
+                return res
+
+    def wn_pow_update(self):
+        """Zwraca dane o powiatach punktu WN_PNE."""
+        db = PgConn()
+        sql = "SELECT pow_id, t_pow_name, b_active FROM external.wn_pne_pow WHERE id_arkusz = '" + str(self.wn) + "';"
+        if db:
+            res = db.query_sel(sql, True)
             if not res:
                 print(f"Nie udało się wczytać danych punktu WN_PNE: {self.wn}")
                 return None

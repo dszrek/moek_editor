@@ -37,9 +37,9 @@ from .layers import LayerManager
 from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, FlagCanvasPanel, WyrCanvasPanel, SplashScreen
-from .basemaps import MoekMapPanel
-from .sequences import prev_map, next_map, seq
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, WyrCanvasPanel, WnCanvasPanel
+from .basemaps import MoekMapPanel, basemaps_load
+from .sequences import sequences_load, prev_map, next_map, seq
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -101,7 +101,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             custom_width=35,
                             grouped=True,
                             bmargin=[0, 0, 2, 0],
-                            round=[0, 0, 6, 6])
+                            round=[0, 0, 6, 16])
         self.p_pow_grp = MoekGroupPanel(self)
         self.p_map = MoekMapPanel(self)
         self.p_ext = MoekBarPanel(
@@ -255,6 +255,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.flag_panel.hide()
         self.wyr_panel = WyrCanvasPanel()
         self.wyr_panel.hide()
+        self.wn_panel = WnCanvasPanel()
+        self.wn_panel.hide()
         self.mt = MapToolManager(dlg=self, canvas=self.canvas)
         self.obj = ObjectManager(dlg=self, canvas=self.canvas)
         self.lyr = LayerManager(dlg=self)
@@ -263,6 +265,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         bottom_y = self.canvas.height() - 52
         self.bottom_dock.move(0, bottom_y)
         self.flag_panel.move(60, 60)
+        self.wn_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
         splash_x = (self.canvas.width() / 2) - (self.splash_screen.width() / 2)
@@ -286,7 +289,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         if attr == "hk_seq":
             self.hk_seq_changed.emit(val)
 
-    def freeze_set(self, val, from_resize=False):
+    def freeze_set(self, val, from_resize=False, delay=False):
         """Zarządza blokadą odświeżania dockwidget'u."""
         if val and self.freeze:
             # Blokada jest już włączona
@@ -304,18 +307,29 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                 self.changing = True
             # Włączenie blokady:
             self.freeze = True
-            self.app.setUpdatesEnabled(False)
-            self.setEnabled(False)
+            if delay:
+                QTimer.singleShot(100, self.freeze_start)
+            else:
+                self.freeze_start()
         elif not val and self.changing and self.freeze:
             QTimer.singleShot(1, self.changing_stop)
         elif not val and not self.changing and not self.resizing:
-            QTimer.singleShot(1, self.freeze_end)
+            if delay:
+                QTimer.singleShot(100, self.freeze_end)
+            else:
+                QTimer.singleShot(1, self.freeze_end)
 
     def changing_stop(self):
         """Zakończenie zmiany stanu / zawartości panelu, odpalone z pewnym opóźnieniem
         - może się jeszcze zacząć zmiana rozmiaru."""
         self.changing = False
         self.freeze_set(False)
+
+    def freeze_start(self):
+        """Rozpoczęcie zmiany stanu / zawartości panelu, odpalone z pewnym opóźnieniem
+        - bo się wiesza bez tego :)."""
+        self.app.setUpdatesEnabled(False)
+        self.setEnabled(False)
 
     def freeze_end(self):
         """Faza zakończenia blokady odświeżania QGIS po zmianie rozmiaru / zawartości dockwidget'u."""
@@ -351,6 +365,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.bottom_dock.setFixedWidth(self.canvas.width())
         self.bottom_dock.move(0, self.canvas.height() - 52)
         self.flag_panel.move(60, 60)
+        self.wyr_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
         splash_x = (self.canvas.width() / 2) - (self.splash_screen.width() / 2)
@@ -397,6 +412,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         dock_height = h_header + h_sum + (p_count * h_margin) - h_margin
         self.setMinimumHeight(dock_height)
         self.setMaximumHeight(dock_height)
+        self.frm_main.updateGeometry()
         p_width = w_max + w_margin
         self.setMinimumWidth(p_width)
         _scroll = True if dock_height > self.rect().height() else False # scrollbar True/False
@@ -460,6 +476,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             QMessageBox.critical(self.app, "Moek_Editor", m_text)
             self.close()
 
+    def basemaps_and_sequences_load(self):
+        """Odpala basemaps_load() z basemaps.py i sequences_load() z sequences.py."""
+        basemaps_load()
+        sequences_load()
+
     def hk_vn_load(self):
         """Załadowanie skrótów klawiszowych do obsługi vn."""
         hotkeys = {"hk_up": "Up", "hk_down": "Down", "hk_left": "Left", "hk_right": "Right", "hk_space": "Space"}
@@ -497,7 +518,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
     def hk_seq_load(self):
         """Załadowanie skrótów klawiszowych do obsługi sekwencji podkładów mapowych."""
-        hotkeys = {"hk_1": "1", "hk_2": "2",  "hk_3": "3", "hk_tilde": "QuoteLeft", "hk_tab": "Tab"}
+        hotkeys = {"hk_1": "1", "hk_2": "2", "hk_3": "3", "hk_tilde": "QuoteLeft", "hk_tab": "Tab"}
         for key, val in hotkeys.items():
             exec(SELF + key + " = QShortcut(Qt.Key_" + val + ", self)")
             exec(SELF + key + ".setEnabled(False)")
@@ -541,7 +562,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
         self.p_pow_mask.box.widgets["btn_pow_mask"].clicked.connect(lambda: self.cfg.set_val(name="powiaty_mask", val=self.p_pow_mask.box.widgets["btn_pow_mask"].isChecked()))
-        self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_kopaliny_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
+        self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))
         self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.cfg.set_val(name="smgp_wyrobiska", val=self.p_ext.box.widgets["btn_smgp"].isChecked()))
@@ -628,6 +649,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         try:
             self.canvas.children().remove(self.wyr_panel)
             self.wyr_panel.deleteLater()
+        except:
+            pass
+        try:
+            self.canvas.children().remove(self.wn_panel)
+            self.wn_panel.deleteLater()
         except:
             pass
         try:

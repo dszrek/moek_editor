@@ -81,7 +81,7 @@ def teams_cb_changed():
     """Zmiana w cb aktywnego team'u."""
     # print("[teams_cb_changed]")
     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
-    dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
+    dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
     t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Zapamiętanie aktualnego dlg.team_t
     list_srch = [t for t in dlg.teams if t_team_t in t]
     t_team_i = list_srch[0][0]  # Tymczasowy team_i
@@ -90,6 +90,7 @@ def teams_cb_changed():
         dlg.team_t = t_team_t
         dlg.team_i = t_team_i
         print("Pomyślnie załadowano team: ", dlg.team_t)
+        dlg.basemaps_and_sequences_load()  # Wczytanie ustawień podkładów i sekwencji
         dlg.cfg.cfg_vals_read()  # Wczytanie ustawień paneli i warstw do PanelManager
         # Próba (bo może być jeszcze nie podłączony) odłączenia sygnału zmiany cmb_pow_act:
         try:
@@ -172,7 +173,7 @@ def powiaty_mode_changed(clicked):
     """Zmiana trybu wyświetlania powiatów (jeden albo wszystkie)."""
     # print("[powiaty_mode_changed:", clicked, "]")
     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
-    dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
+    dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
     # if clicked:  # Zmiana trybu wyświetlania powiatów spowodowana kliknięciem w io_btn
     #     dlg.cfg.set_val(name="powiaty", val=dlg.p_pow.is_active())
     # else:  # Zmiana trybu wyświetlania powiatów spowodowana zmianą aktywnego team'u
@@ -211,8 +212,9 @@ def pow_layer_update():
     layer = dlg.proj.mapLayersByName("powiaty")[0]
     pg_layer_change(uri, layer)  # Zmiana zawartości warstwy powiatów
     ark_layer_update()  # Aktualizacja warstwy z arkuszami
-    flag_layer_update()  # Aktualizacja warstwy z flagami
-    wyr_layer_update()  # Aktualizacja warstwy z wyrobiskami
+    flag_layer_update()  # Aktualizacja warstw z flagami
+    wyr_layer_update()  # Aktualizacja warstw z wyrobiskami
+    wn_layer_update()  # Aktualizacja warstwy z wn_pne
     # auto_layer_update()  # Aktualizacja warstwy z parkingami
     # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
     # zloza_layer_update()  # Aktualizacja warstwy ze złożami
@@ -280,6 +282,7 @@ def flag_layer_update():
         lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
         pg_layer_change(l_tuple[1], lyr)
         lyr.triggerRepaint()
+    dlg.flag_visibility()  # Aktualizacja widoczności warstw
     QgsApplication.restoreOverrideCursor()
 
 def wyr_layer_update(check=True):
@@ -317,6 +320,7 @@ def wyr_layer_update(check=True):
         lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
         pg_layer_change(l_tuple[1], lyr)
         lyr.triggerRepaint()
+    dlg.wyr_visibility()  # Aktualizacja widoczności warstw
     QgsApplication.restoreOverrideCursor()
 
 def wyr_powiaty_check():
@@ -572,6 +576,40 @@ def wyr_powiaty_listed(wyr_id, geom):
     del lyr_pow
     return p_list
 
+def wn_layer_update():
+    """Aktualizacja warstwy z wn_pne."""
+    QgsApplication.setOverrideCursor(Qt.WaitCursor)
+    # Stworzenie listy wn_pne z aktywnych powiatów:
+    pows = active_pow_listed()
+    dlg.obj.wn_ids = get_wn_ids_with_pows(pows)
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    if dlg.obj.wn_ids:
+        uri = params + 'key="id_arkusz" table="(SELECT e.id_arkusz, e.kopalina, e.wyrobisko, e.zawodn, e.eksploat, e.wyp_odpady, e.nadkl_min, e.nadkl_max, e.nadkl_sr, e.miazsz_min, e.miazsz_max, e.dlug_max, e.szer_max, e.wys_min, e.wys_max, e.data_kontrol, e.uwagi, (SELECT COUNT(*) FROM external.wn_pne_pow AS p WHERE e.id_arkusz = p.id_arkusz AND p.b_active = true) AS i_pow_cnt, t.t_notatki, e.geom FROM external.wn_pne e, team_' + str(dlg.team_i) + '.wn_pne t WHERE e.id_arkusz = t.id_arkusz AND e.id_arkusz IN (' + str(dlg.obj.wn_ids)[1:-1] + '))" (geom) sql='
+    else:
+        uri = params + 'table="external"."wn_pne" (geom) sql=id_arkusz = Null'
+    # Zmiana zawartości warstwy z wn_pne:
+    lyr = dlg.proj.mapLayersByName("wn_pne")[0]
+    pg_layer_change(uri, lyr)
+    lyr.triggerRepaint()
+    QgsApplication.restoreOverrideCursor()
+
+def get_wn_ids_with_pows(pows=None):
+    """Zwraca listę unikalnych id_arkusz z tabeli wn_pne_pow w obrębie podanych powiatów."""
+    if not pows:
+        return
+    db = PgConn()
+    sql = f"SELECT DISTINCT id_arkusz FROM external.wn_pne_pow WHERE pow_id IN ({str(pows)[1:-1]}) AND b_active = True ORDER BY id_arkusz;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return None
+
 def auto_layer_update():
     """Aktualizacja warstwy parking."""
     # print("[parking_layer_update]")
@@ -668,6 +706,7 @@ def user_has_vn():
 
 def vn_cfg(seq=0):
     """Wejście lub wyjście z odpowiedniego trybu konfiguracyjnego panelu viewnet (vn_setup lub sekwencje podkładów mapowych)."""
+    dlg.freeze_set(True, delay=True)  # Zablokowanie odświeżania dockwidget'u
     if dlg.p_vn.bar.cfg_btn.isChecked():  # Przycisk konfiguracyjny został wciśnięty
         if dlg.hk_vn:  # Skróty klawiszowe vn włączone
             dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
@@ -676,6 +715,7 @@ def vn_cfg(seq=0):
             vn_setup_mode(True)
         else:  # Włączenie ustawień którejś z sekwencji
             dlg.p_vn.widgets["sqb_seq"].enter_setup(seq)
+        dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
     else:  # Przycisk konfiguracyjny został wyciśnięty
         if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
             dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
@@ -684,6 +724,7 @@ def vn_cfg(seq=0):
             vn_setup_mode(False)
         else:  # Wychodzenie z ustawień któreś z sekwencji
             dlg.p_vn.widgets["sqb_seq"].exit_setup()
+        dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
 
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
@@ -695,7 +736,7 @@ def vn_setup_mode(b_flag):
     dlg.mt.init("multi_tool")  # Przełączenie na multi_tool'a
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
-        dlg.obj.clear_sel()  # Odznaczenie flag i wyrobisk
+        dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
         dlg.side_dock.hide()  # Schowanie bocznego dock'u
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą
         dlg.p_pow.active = False  # Wyłączenie trybu wybranego powiatu
@@ -772,7 +813,7 @@ def vn_layer_update():
 
     # Aktualizacja włączonych warstw vn
     for key, value in layer_sql.items():
-        uri =  URI_CONST + str(dlg.team_i) +'"."team_viewnet" (geom) sql= ' + str(value)
+        uri = URI_CONST + str(dlg.team_i) +'"."team_viewnet" (geom) sql= ' + str(value)
         layer = dlg.proj.mapLayersByName(key)[0]
         pg_layer_change(uri, layer)
 

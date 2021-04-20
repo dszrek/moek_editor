@@ -336,6 +336,7 @@ class PanelManager:
         self.cfg_dicts_cnt = len(self.cfg_dicts)
         self.cfg_vals = []
         self.old_cfg_vals = []
+        self.cfg_mem = []
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -378,7 +379,7 @@ class PanelManager:
         if cb and (not self.callback_void or not cb_void):
             exec(cb)
 
-    def set_val(self, name, val):
+    def set_val(self, name, val, db=True):
         """Zamienia aktualną wartość (int albo bool) z cfg_dict o podanej nazwie i aktualizuje cfg_vals w bazie danych."""
         # Ustalenie prawidłowej wartości:
         if type(val) == bool:
@@ -401,7 +402,8 @@ class PanelManager:
                 return
         self.cfg_vals = new_vals
         # Aktualizacja bazy danych:
-        self.cfg_vals_write()
+        if db:
+            self.cfg_vals_write()
 
     def get_val(self, name, convert=True):
         """Zwraca aktualną wartość (convert=True: bool, False: int) z cfg_dict o podanej nazwie."""
@@ -469,3 +471,20 @@ class PanelManager:
         sql = "UPDATE public.team_users SET t_settings = '" + cfg_val_txt + "' WHERE team_id = " + str(self.dlg.team_i) + " AND user_id = " + str(self.dlg.user_id) + ";"
         if db:
             db.query_upd(sql)
+
+    def switch_lyrs_on_setup(self, off=True):
+        """Włączenie/wyłączenie warstw przy wychodzeniu/wchodzeniu do trybu ustawień."""
+        if off:
+            # Wyłączanie warstw:
+            lyrs = [5, 6, 11, 17, 18, 22]
+            for lyr in lyrs:
+                # Zapamiętanie ustawień warstwy:
+                self.cfg_mem.append([self.cfg_dicts[lyr]["name"], self.cfg_dicts[lyr]["value"]])
+                # Wyłączenie warstwy:
+                self.set_val(self.cfg_dicts[lyr]["name"], 0, db=False)
+        elif not off:
+            # Włączanie warstw:
+            for lyr in self.cfg_mem:
+                # Przywrócenie pierwotnych ustawień warstw:
+                self.set_val(lyr[0], lyr[1], db=False)
+            self.cfg_mem = []  # Wyczyszczenie listy

@@ -708,6 +708,11 @@ def vn_cfg(seq=0):
     """Wejście lub wyjście z odpowiedniego trybu konfiguracyjnego panelu viewnet (vn_setup lub sekwencje podkładów mapowych)."""
     dlg.freeze_set(True, delay=True)  # Zablokowanie odświeżania dockwidget'u
     if dlg.p_vn.bar.cfg_btn.isChecked():  # Przycisk konfiguracyjny został wciśnięty
+        dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
+        # Wyłączenie warstw flag, wyrobisk i external'i:
+        dlg.cfg.switch_lyrs_on_setup(off=True)
+        block_panels(dlg.p_vn, True)  # Zablokowanie pozostałych paneli
+        dlg.side_dock.hide()  # Schowanie bocznego dock'u
         if dlg.hk_vn:  # Skróty klawiszowe vn włączone
             dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
         dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
@@ -717,6 +722,10 @@ def vn_cfg(seq=0):
             dlg.p_vn.widgets["sqb_seq"].enter_setup(seq)
         dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
     else:  # Przycisk konfiguracyjny został wyciśnięty
+        # Włączenie warstw flag, wyrobisk i external'i:
+        dlg.cfg.switch_lyrs_on_setup(off=False)
+        block_panels(dlg.p_vn, False)  # Odblokowanie pozostałych paneli
+        dlg.side_dock.show()  # Odkrycie bocznego dock'u
         if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
             dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
             dlg.t_hk_vn = False
@@ -729,15 +738,10 @@ def vn_cfg(seq=0):
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     # print("[vn_setup_mode:", b_flag, "]")
-    # Włączenie/Wyłączenie warstw flag i wyrobisk:
-    dlg.proj.layerTreeRoot().findGroup("wyrobiska").setItemVisibilityChecked(not b_flag)
-    dlg.proj.layerTreeRoot().findGroup("flagi").setItemVisibilityChecked(not b_flag)
     global vn_setup
     dlg.mt.init("multi_tool")  # Przełączenie na multi_tool'a
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
-        dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
-        dlg.side_dock.hide()  # Schowanie bocznego dock'u
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą
         dlg.p_pow.active = False  # Wyłączenie trybu wybranego powiatu
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
@@ -751,7 +755,6 @@ def vn_setup_mode(b_flag):
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
         dlg.proj.mapLayersByName("vn_all")[0].removeSelection()
-        dlg.side_dock.show()
         dlg.p_pow.active = dlg.p_pow.t_active  # Ewentualne przywrócenie trybu powiatu sprzed zmiany
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
         try:
@@ -874,5 +877,5 @@ def layer_zoom(layer):
 def block_panels(_panel, value):
     """Zablokowanie wszystkich paneli prócz wybranego."""
     for panel in dlg.panels:
-        if panel != _panel or panel == "p_map":
+        if panel != _panel and panel != dlg.p_map:
             panel.setEnabled(not value)

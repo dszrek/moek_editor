@@ -11,13 +11,12 @@ from qgis.utils import iface
 from .classes import PgConn, CfgPars
 from .viewnet import vn_set_gvars, stage_refresh
 
-# Stałe globalne
+# Stałe globalne:
 SQL_1 = " WHERE user_id = "
-
+PLUGIN_VER = "0.3.0"
 USER = ""
 
-# Zmienne globalne
-
+# Zmienne globalne:
 dlg = None
 vn_setup = False
 
@@ -32,7 +31,7 @@ def db_login():
     user_login = os.getlogin().lower() if USER == "" else USER
     db = PgConn()
     # Wyszukanie aliasu systemowego w tabeli users:
-    sql = "SELECT user_id, t_user_name, i_active_team FROM users WHERE t_user_alias = '" + user_login + "' AND b_active = true;"
+    sql = "SELECT user_id, t_user_name, i_active_team, t_plugin_ver FROM users WHERE t_user_alias = '" + user_login + "' AND b_active = true;"
     if db:
         res = db.query_sel(sql, False)
         if res: # Alias użytkownika znajduje się w tabeli users - logujemy
@@ -41,12 +40,23 @@ def db_login():
             if res[2]:  # Użytkownik ma zdefiniowany aktywny team
                 team_i = res[2]
             print("Użytkownik " + user_name + " zalogował się do systemu MOEK.")
+            # Sprawdzenie, czy zainstalowana wersja wtyczki się zmieniła:
+            if PLUGIN_VER != res[3]:
+                # Aktualizacja numeru zainstalowanej wersji wtyczki w db:
+                version_update(res[0])
             return res[0], res[1], res[2]
         else: # Użytkownika nie ma w tabeli users - nie logujemy
             QMessageBox.warning(None, "Logowanie...", "Użytkownik " + user_login + " nie ma dostępu do systemu MOEK.")
             return False, False, False
     else:
         return False, False, False
+
+def version_update(user_id):
+    """Aktualizacja numeru wersji wtyczki w db."""
+    db = PgConn()
+    sql = f"UPDATE public.users SET t_plugin_ver = '{PLUGIN_VER}' WHERE user_id = {user_id}"
+    if db:
+        res = db.query_upd(sql)
 
 def teams_load():
     """Wczytanie team'ów użytkownika z bazy danych i wgranie ich do combobox'a (cmb_team_act)."""
@@ -708,6 +718,11 @@ def vn_cfg(seq=0):
     """Wejście lub wyjście z odpowiedniego trybu konfiguracyjnego panelu viewnet (vn_setup lub sekwencje podkładów mapowych)."""
     dlg.freeze_set(True, delay=True)  # Zablokowanie odświeżania dockwidget'u
     if dlg.p_vn.bar.cfg_btn.isChecked():  # Przycisk konfiguracyjny został wciśnięty
+        dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
+        # Wyłączenie warstw flag, wyrobisk i external'i:
+        dlg.cfg.switch_lyrs_on_setup(off=True)
+        block_panels(dlg.p_vn, True)  # Zablokowanie pozostałych paneli
+        dlg.side_dock.hide()  # Schowanie bocznego dock'u
         if dlg.hk_vn:  # Skróty klawiszowe vn włączone
             dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
         dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
@@ -717,6 +732,10 @@ def vn_cfg(seq=0):
             dlg.p_vn.widgets["sqb_seq"].enter_setup(seq)
         dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
     else:  # Przycisk konfiguracyjny został wyciśnięty
+        # Włączenie warstw flag, wyrobisk i external'i:
+        dlg.cfg.switch_lyrs_on_setup(off=False)
+        block_panels(dlg.p_vn, False)  # Odblokowanie pozostałych paneli
+        dlg.side_dock.show()  # Odkrycie bocznego dock'u
         if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
             dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
             dlg.t_hk_vn = False
@@ -729,15 +748,10 @@ def vn_cfg(seq=0):
 def vn_setup_mode(b_flag):
     """Włączenie lub wyłączenie trybu ustawień viewnet."""
     # print("[vn_setup_mode:", b_flag, "]")
-    # Włączenie/Wyłączenie warstw flag i wyrobisk:
-    dlg.proj.layerTreeRoot().findGroup("wyrobiska").setItemVisibilityChecked(not b_flag)
-    dlg.proj.layerTreeRoot().findGroup("flagi").setItemVisibilityChecked(not b_flag)
     global vn_setup
     dlg.mt.init("multi_tool")  # Przełączenie na multi_tool'a
     if b_flag:  # Włączenie trybu ustawień vn przez wciśnięcie cfg_btn w p_vn
         vn_setup = True
-        dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
-        dlg.side_dock.hide()  # Schowanie bocznego dock'u
         dlg.p_pow.t_active = dlg.p_pow.is_active()  # Zapamiętanie trybu powiatu przed ewentualną zmianą
         dlg.p_pow.active = False  # Wyłączenie trybu wybranego powiatu
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
@@ -751,7 +765,6 @@ def vn_setup_mode(b_flag):
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
         dlg.proj.mapLayersByName("vn_all")[0].removeSelection()
-        dlg.side_dock.show()
         dlg.p_pow.active = dlg.p_pow.t_active  # Ewentualne przywrócenie trybu powiatu sprzed zmiany
         # Próba (bo może być jeszcze nie podłączone) odłączenia sygnałów:
         try:
@@ -874,5 +887,5 @@ def layer_zoom(layer):
 def block_panels(_panel, value):
     """Zablokowanie wszystkich paneli prócz wybranego."""
     for panel in dlg.panels:
-        if panel != _panel or panel == "p_map":
+        if panel != _panel and panel != dlg.p_map:
             panel.setEnabled(not value)

@@ -2,10 +2,10 @@
 import os
 import time
 
-from PyQt5.QtWidgets import QWidget, QFrame, QSpinBox, QComboBox, QToolButton, QLabel, QHBoxLayout, QVBoxLayout, QSizePolicy, QMessageBox
-from PyQt5.QtCore import Qt, QRect, QSize, pyqtSignal, QTimer
-from PyQt5.QtGui import QPainter, QPixmap, QPen, QIcon, QColor, QBrush, QFont
 from qgis.core import QgsProject
+from qgis.PyQt.QtCore import Qt, QRect, QSize, pyqtSignal, QTimer
+from qgis.PyQt.QtGui import QPainter, QPixmap, QPen, QIcon, QColor, QBrush, QFont
+from qgis.PyQt.QtWidgets import QWidget, QFrame, QSpinBox, QComboBox, QToolButton, QLabel, QHBoxLayout, QVBoxLayout, QSizePolicy, QMessageBox
 from qgis.utils import iface
 
 from .viewnet import vn_zoom
@@ -598,8 +598,9 @@ class MoekSeqCfgBox(QFrame):
 
     def cnt_change(self):
         """Zmiana ilości aktywnych seqcfg'ów w seqcfgbox'ie."""
+        dlg.freeze_set(True, delay=True)  # Zablokowanie odświeżania dockwidget'u
         # Obejście problemów z sizePolicy przy zmianie ilości widocznych seqcfg'ów:
-        self.height = 83+38*(self.cnt - 1)  # Obliczenie wysokości pojemnika
+        # self.height = 83+38*(self.cnt - 1)  # Obliczenie wysokości pojemnika
         # Ustawienie odpowiedniej wysokości pojemnika:
         if self.size().height() != 480:  # Pominięcie zmiany przy starcie plugin'u
             self.parent().parent().setMinimumHeight(self.height)
@@ -619,6 +620,7 @@ class MoekSeqCfgBox(QFrame):
         sab.combobox_update(self.id)  # Aktualizacja combobox'a
         # Uniemożliwienie dodania do sekwencji więcej niż 5 podkładów mapowych:
         sab.add_btn.setEnabled(False) if self.cnt == 5 else sab.add_btn.setEnabled(True)
+        dlg.freeze_set(False, delay=True)  # Odblokowanie odświeżania dockwidget'u
 
 
 class MoekSeqCfg(QFrame):

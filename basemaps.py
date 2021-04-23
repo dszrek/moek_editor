@@ -157,9 +157,9 @@ class MoekMapPanel(QFrame):
         # Ustawienie widoczności warstw z podkładami mapowymi:
         for layer in self.layers:
             if layer == self.map_attr(self.map)["lyr_1"] or layer == self.map_attr(self.map)["lyr_2"]:
-                exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(True)')
+                dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(True)
             else:
-                exec('QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("' + layer + '")[0].id()).setItemVisibilityChecked(False)')
+                dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(layer)[0].id()).setItemVisibilityChecked(False)
 
     def cat_change(self):
         """Dostosowanie wiget'ów panelu mapowego do zmiany bieżącej kategorii."""
@@ -249,13 +249,16 @@ class MoekMapPanel(QFrame):
 
     def cfg_clicked(self):
         """Wejście do ustawień wyboru map z aktywnej kategorii."""
+        dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
         self.box.setCurrentIndex(1) if self.cat == "sat" or self.cat == "snmt" else self.box.setCurrentIndex(2)
         block_panels(self, True)  # Zablokowanie pozostałych paneli na czas wyboru map
         dlg.p_map.btns.setEnabled(False)  # Zablokowanie przycisków z p_map
         dlg.p_vn.widgets["sqb_seq"].num = 0  # Deaktywacja sekwencji
+        dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
     
     def exit_clicked(self):
         """Wyjście z ustawień wyboru map z aktywnej kategorii."""
+        dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
         m_list = []
         blokada = True  # Zabezpieczenie przed odznaczeniem wszystkich map z kategorii (musi być przynajmniej jedna)
         if self.cat == "sat" or self.cat == "snmt":
@@ -315,6 +318,7 @@ class MoekMapPanel(QFrame):
             self.first_map(self.cat)
             self.spb_update()  # Wymuszenie odświeżenia spinbox'a
             self.box.setCurrentIndex(0)  # Powrót do spinbox'a
+            dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
 
 
 class MoekMapButtons(QFrame):

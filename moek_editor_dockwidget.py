@@ -128,6 +128,12 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             io_fn="dlg.wyr_visibility()",
                             expand=True,
                             exp_fn="wyrobiska")
+        self.p_komunikacja = MoekBoxPanel(
+                            self,
+                            title="Komunikacja",
+                            io_fn="dlg.komunikacja_visibility()",
+                            expand=True,
+                            exp_fn="komunikacja")
 
         p_team_widgets = [
                     {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
@@ -179,9 +185,14 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_green_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska po kontroli terenowej, które zostały potwierdzone"},
                     {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_red_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska po kontroli terenowej, które zostały odrzucone"}
                     ]
+        p_komunikacja_widgets = [
+                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
+                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "parking_przed_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyznaczone do odwiedzenia miejsca parkowania"},
+                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "parking_po_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj odwiedzone miejsca parkowania"}
+                    ]
 
-        self.panels = [self.p_team, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr]
-        self.p_widgets = [p_team_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets]
+        self.panels = [self.p_team, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
+        self.p_widgets = [p_team_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_komunikacja_widgets]
 
         # Wczytanie paneli i ich widgetów do dockwidget'u:
         for (panel, widgets) in zip(self.panels, self.p_widgets):
@@ -574,10 +585,14 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_wyr.widgets["btn_wyr_grey_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_przed_teren", val=self.p_wyr.widgets["btn_wyr_grey_vis"].isChecked()))
         self.p_wyr.widgets["btn_wyr_green_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_potwierdzone", val=self.p_wyr.widgets["btn_wyr_green_vis"].isChecked()))
         self.p_wyr.widgets["btn_wyr_red_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_odrzucone", val=self.p_wyr.widgets["btn_wyr_red_vis"].isChecked()))
+        self.p_komunikacja.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="parking_user", val=self.p_komunikacja.widgets["btn_user"].isChecked()))
+        self.p_komunikacja.widgets["btn_parking_przed_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_przed", val=self.p_komunikacja.widgets["btn_parking_przed_vis"].isChecked()))
+        self.p_komunikacja.widgets["btn_parking_po_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_po", val=self.p_komunikacja.widgets["btn_parking_po_vis"].isChecked()))
         self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
+        self.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"].clicked.connect(lambda: self.mt.init("parking_add"))
         # self.p_auto.widgets["btn_auto_add"].clicked.connect(lambda: self.mt.init("auto_add"))
         # self.p_auto.widgets["btn_auto_del"].clicked.connect(lambda: self.mt.init("auto_del"))
         # self.p_auto.widgets["btn_marsz_add"].clicked.connect(lambda: self.mt.init("marsz_add"))
@@ -609,11 +624,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("flagi_z_teren")[0].id()).setItemVisibilityChecked(value)
         self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("flagi_bez_teren")[0].id()).setItemVisibilityChecked(value)
 
-    def auto_visibility(self):
-        """Włączenie lub wyłączenie warstw auto i marsz."""
-        value = True if self.p_auto.is_active() else False
-        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking")[0].id()).setItemVisibilityChecked(value)
-        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("marsz")[0].id()).setItemVisibilityChecked(value)
+    def parking_visibility(self):
+        """Włączenie lub wyłączenie warstw z parkingami."""
+        value = True if self.p_komunikacja.is_active() else False
+        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking_przed")[0].id()).setItemVisibilityChecked(value)
+        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking_po")[0].id()).setItemVisibilityChecked(value)
 
     def closeEvent(self, event):
         # Deaktywacja skrótów klawiszowych:

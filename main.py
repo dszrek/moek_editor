@@ -225,7 +225,7 @@ def pow_layer_update():
     flag_layer_update()  # Aktualizacja warstw z flagami
     wyr_layer_update()  # Aktualizacja warstw z wyrobiskami
     wn_layer_update()  # Aktualizacja warstwy z wn_pne
-    # auto_layer_update()  # Aktualizacja warstwy z parkingami
+    parking_layer_update()  # Aktualizacja warstwy z parkingami
     # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
     # zloza_layer_update()  # Aktualizacja warstwy ze złożami
     layer_zoom(layer)  # Przybliżenie widoku mapy do wybranego powiatu/powiatów
@@ -620,14 +620,95 @@ def get_wn_ids_with_pows(pows=None):
         else:
             return None
 
-def auto_layer_update():
+def parking_layer_update():
     """Aktualizacja warstwy parking."""
     # print("[parking_layer_update]")
+    QgsApplication.setOverrideCursor(Qt.WaitCursor)
+    # Określenie, które rodzaje parkingów są włączone:
+    case = dlg.cfg.parking_case()
+    # Aktualizacja listy flag w ObjectManager:
+    dlg.obj.parking_ids = get_parking_ids(case)
+    # Utworzenie listy z id parkingów, których rodzaje są włączone:
+    sql_cases = [
+        {'value': 0, 'sql_1': "user_id = 0", 'sql_2': "user_id = 0"},
+        {'value': 1, 'sql_1': "user_id = {dlg.user_id} AND i_status = 0", 'sql_2': "user_id = 0"},
+        {'value': 2, 'sql_1': "user_id = 0", 'sql_2': " user_id = {dlg.user_id} AND i_status = 1"},
+        {'value': 3, 'sql_1': "user_id = {dlg.user_id} AND i_status = 0", 'sql_2': "user_id = {dlg.user_id} AND i_status = 1"},
+        {'value': 4, 'sql_1': "user_id = 0", 'sql_2': "user_id = 0"},
+        {'value': 5, 'sql_1': "i_status = 0", 'sql_2': "user_id = 0"},
+        {'value': 6, 'sql_1': "user_id = 0", 'sql_2': "i_status = 1"},
+        {'value': 7, 'sql_1': "i_status = 0", 'sql_2': "i_status = 1"},
+        {'value': 8, 'sql_1': "user_id = 0", 'sql_2': "user_id = 0"},
+        {'value': 9, 'sql_1': "pow_grp = '{dlg.powiat_i}' AND user_id = {dlg.user_id} AND i_status = 0", 'sql_2': "user_id = 0"},
+        {'value': 10, 'sql_1': "user_id = 0", 'sql_2': "pow_grp = '{dlg.powiat_i}' AND user_id = {dlg.user_id} AND i_status = 1"},
+        {'value': 11, 'sql_1': "pow_grp = '{dlg.powiat_i}' AND user_id = {dlg.user_id} AND i_status = 0", 'sql_2': "pow_grp = '{dlg.powiat_i}' AND user_id = {dlg.user_id} AND i_status = 1"},
+        {'value': 12, 'sql_1': "user_id = 0", 'sql_2': "user_id = 0"},
+        {'value': 13, 'sql_1': "pow_grp = '{dlg.powiat_i}' AND i_status = 0", 'sql_2': "user_id = 0"},
+        {'value': 14, 'sql_1': "user_id = 0", 'sql_2': "pow_grp = '{dlg.powiat_i}' AND i_status = 1"},
+        {'value': 15, 'sql_1': "pow_grp = '{dlg.powiat_i}' AND i_status = 0", 'sql_2': "pow_grp = '{dlg.powiat_i}' AND i_status = 1"}
+                ]
+    sql_1 = ""
+    sql_2 = ""
+    for e_dict in sql_cases:
+        if e_dict["value"] == case:
+            raw_sql_1 = e_dict["sql_1"]
+            sql_1 = eval('f"{}"'.format(raw_sql_1))
+            raw_sql_2 = e_dict["sql_2"]
+            sql_2 = eval('f"{}"'.format(raw_sql_2))
+            break
     with CfgPars() as cfg:
         params = cfg.uri()
-    uri = params + 'table="team_' + str(dlg.team_i) + '"."auto" (geom)'
-    layer = dlg.proj.mapLayersByName("parking")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy parking
+    uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."parking" (geom) sql=' + sql_1
+    uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."parking" (geom) sql=' + sql_2
+    # Zmiana zawartości warstw z parkingami:
+    l_tuples = [
+        ("parking_przed", uri_1),
+        ("parking_po", uri_2)
+        ]
+    for l_tuple in l_tuples:
+        lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
+        pg_layer_change(l_tuple[1], lyr)
+        lyr.triggerRepaint()
+    dlg.parking_visibility()  # Aktualizacja widoczności warstw
+    QgsApplication.restoreOverrideCursor()
+
+def get_parking_ids(case):
+    """Zwraca listę wyfiltrowanych id parkingów i sql filtru."""
+    if case == 0 or case == 4 or case == 8 or case == 12:
+        # Wszystkie rodzaje parkingów są wyłączone - brak parkingów do wyświetlenia:
+        return []
+    # Utworzenie listy z id parkingów, których rodzaje są włączone:
+    filter_cases = [
+        {'value': 1, 'sql': " WHERE user_id = {dlg.user_id} AND i_status = 0 "},
+        {'value': 2, 'sql': " WHERE user_id = {dlg.user_id} AND i_status = 1 "},
+        {'value': 3, 'sql': " WHERE user_id = {dlg.user_id} "},
+        {'value': 5, 'sql': " WHERE i_status = 0 "},
+        {'value': 6, 'sql': " WHERE i_status = 1 "},
+        {'value': 7, 'sql': ""},
+        {'value': 9, 'sql': " WHERE user_id = {dlg.user_id} AND pow_grp = '{dlg.powiat_i}' AND i_status = 0 "},
+        {'value': 10, 'sql': " WHERE user_id = {dlg.user_id} AND pow_grp = '{dlg.powiat_i}' AND i_status = 1 "},
+        {'value': 11, 'sql': " WHERE user_id = {dlg.user_id} AND pow_grp = '{dlg.powiat_i}' "},
+        {'value': 13, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' AND i_status = 0 "},
+        {'value': 14, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' AND i_status = 1 "},
+        {'value': 15, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' "}
+                ]
+    filter = ""
+    for e_dict in filter_cases:
+        if e_dict["value"] == case:
+            raw_sql = e_dict["sql"]
+            filter = eval('f"{}"'.format(raw_sql))
+            break
+    db = PgConn()
+    sql = "SELECT id FROM team_" + str(dlg.team_i) + ".parking" + filter + " ORDER BY id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return None
 
 def marsz_layer_update():
     """Aktualizacja warstwy marsz."""

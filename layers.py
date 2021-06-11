@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, QVariant
 from qgis.utils import iface
 
 from .classes import CfgPars, PgConn
-from .main import flag_layer_update, wyr_layer_update
+from .main import flag_layer_update, wyr_layer_update, parking_layer_update
 
 # Zmienne globalne:
 dlg = None
@@ -46,7 +46,8 @@ class LayerManager:
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
             {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
-            {"source": "postgres", "name": "parking", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_4"."parking" (geom) sql='},
+            {"source": "postgres", "name": "parking_przed", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
+            {"source": "postgres", "name": "parking_po", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
             {"source": "postgres", "name": "wn_pne", "root": True, "pos": 3, "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
             {"source": "postgres", "name": "powiaty", "root": True, "pos": 4, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
             {"source": "postgres", "name": "arkusze", "root": True, "pos": 5, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
@@ -333,7 +334,11 @@ class PanelManager:
             {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
             {'name': 'wyr_przed_teren', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
             {'name': 'wyr_potwierdzone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
-            {'name': 'wyr_odrzucone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None}
+            {'name': 'wyr_odrzucone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
+            {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},
+            {'name': 'parking_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'parking_przed', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_przed_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'parking_po', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_po_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
                         ]
         self.cfg_dicts_cnt = len(self.cfg_dicts)
         self.cfg_vals = []
@@ -448,6 +453,20 @@ class PanelManager:
         case_val = wyr_vals[0] + (wyr_vals[1] * 2) + (wyr_vals[2] * 4) + (wyr_vals[3] * 8)
         return case_val
 
+    def parking_case(self):
+        """Zwraca liczbę wskazującą, które warstwy parkingów są włączone."""
+        parking_vals = [0, 0, 0, 0]
+        for c_dict in self.cfg_dicts:
+            if c_dict["name"] == "parking_przed" and c_dict["value"] in range(0, 2):
+                parking_vals[0] = c_dict["value"]
+            elif c_dict["name"] == "parking_po" and c_dict["value"] in range(0, 2):
+                parking_vals[1] = c_dict["value"]
+            elif c_dict["name"] == "parking_user" and c_dict["value"] in range(0, 2):
+                parking_vals[2] = c_dict["value"]
+        parking_vals[3] = 1 if dlg.p_pow.is_active() else 0
+        case_val = parking_vals[0] + (parking_vals[1] * 2) + (parking_vals[2] * 4) + (parking_vals[3] * 8)
+        return case_val
+
     def cfg_vals_read(self):
         """Wczytanie z bazy danych ustawień paneli do self.cfg_vals."""
         self.cfg_vals = []
@@ -458,7 +477,7 @@ class PanelManager:
             if res:
                 self.cfg_vals[:0] = res[0]
             else:
-                self.cfg_vals[:0] = '101211111111111111211121111'
+                self.cfg_vals[:0] = '1012111111111111112111211112111'
         if len(self.old_cfg_vals) > 0:
             self.old_cfg_vals = []
             self.old_cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry

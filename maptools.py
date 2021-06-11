@@ -380,8 +380,8 @@ class MapToolManager:
             {"name" : "flf_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"], "fn" : flag_add, "extra" : ['false']},
             {"name" : "flag_move", "class" : PointDrawMapTool, "button" : self.dlg.flag_panel.flag_tools.flag_move, "fn" : flag_move, "extra" : []},
             {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly, "extra" : [(0, 255, 0, 128), (0, 255, 0, 80)]},
-            {"name" : "wyr_edit", "class" : EditPolyMapTool, "button" : self.dlg.wyr_panel.wyr_edit, "lyr" : ["wyr_poly"], "fn" : wyr_poly_change}
-            # {"name" : "auto_add", "class" : PointDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_add"], "fn" : auto_add},
+            {"name" : "wyr_edit", "class" : EditPolyMapTool, "button" : self.dlg.wyr_panel.wyr_edit, "lyr" : ["wyr_poly"], "fn" : wyr_poly_change},
+            {"name" : "parking_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"], "fn" : parking_add, "extra" : []}
             # {"name" : "auto_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_del"], "lyr" : ["parking"], "fn" : auto_del},
             # {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_add"], "fn" : marsz_add},
             # {"name" : "marsz_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_del"], "lyr" : ["marsz"], "fn" : marsz_del}
@@ -2177,10 +2177,10 @@ def wyr_del(layer, feature):
             print("Nie udało się usunąć wyrobiska")
     dlg.proj.mapLayersByName("wyrobiska")[0].triggerRepaint()
 
-def auto_add(geom):
+def parking_add(geom):
     """Utworzenie nowego obiektu parkingu."""
     dlg.mt.init("multi_tool")
-    layer = dlg.proj.mapLayersByName("parking")[0]
+    layer = dlg.proj.mapLayersByName("parking_przed")[0]
     fields = layer.fields()
     feature = QgsFeature()
     feature.setFields(fields)
@@ -2192,7 +2192,7 @@ def auto_add(geom):
     layer.commitChanges()
     iface.actionDraw().trigger()
 
-def auto_del(layer, feature):
+def parking_del(layer, feature):
     """Usunięcie wybranego obiektu parkingu."""
     dlg.mt.init("multi_tool")
     if layer:
@@ -2200,7 +2200,7 @@ def auto_del(layer, feature):
     else:
         return
     db = PgConn()
-    sql = "DELETE FROM team_" + str(dlg.team_i) + ".auto WHERE id = " + str(fid) + ";"
+    sql = "DELETE FROM team_" + str(dlg.team_i) + ".parking WHERE id = " + str(fid) + ";"
     if db:
         res = db.query_upd(sql)
         if res:

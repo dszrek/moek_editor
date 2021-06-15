@@ -240,9 +240,9 @@ class LayerManager:
                         missing.append(lyr_name)
                         continue
                 lyr = dlg.proj.mapLayersByName(lyr_name)[0]
-                if not lyr.isValid():
-                    dlg.proj.removeMapLayer(lyr)
-                    missing.append(lyr_name)
+                # if not lyr.isValid():
+                #     dlg.proj.removeMapLayer(lyr)
+                #     missing.append(lyr_name)
         if missing:
             print(f"layer/structure_check - lista brakujących warstw:")
             print(missing)

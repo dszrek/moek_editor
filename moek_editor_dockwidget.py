@@ -37,7 +37,7 @@ from .layers import LayerManager
 from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, WyrCanvasPanel, WnCanvasPanel
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, WyrCanvasPanel, WnCanvasPanel
 from .basemaps import MoekMapPanel, basemaps_load
 from .sequences import sequences_load, prev_map, next_map, seq
 
@@ -187,8 +187,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     ]
         p_komunikacja_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "parking_przed_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyznaczone do odwiedzenia miejsca parkowania"},
-                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "parking_po_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj odwiedzone miejsca parkowania"}
+                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "parking_before_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyznaczone do odwiedzenia miejsca parkowania"},
+                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "parking_after_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj odwiedzone miejsca parkowania"}
                     ]
 
         self.panels = [self.p_team, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
@@ -265,6 +265,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
         self.flag_panel = FlagCanvasPanel()
         self.flag_panel.hide()
+        self.parking_panel = ParkingCanvasPanel()
+        self.parking_panel.hide()
         self.wyr_panel = WyrCanvasPanel()
         self.wyr_panel.hide()
         self.wn_panel = WnCanvasPanel()
@@ -277,6 +279,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         bottom_y = self.canvas.height() - 52
         self.bottom_dock.move(0, bottom_y)
         self.flag_panel.move(60, 60)
+        self.parking_panel.move(60, 60)
         self.wn_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
@@ -377,6 +380,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.bottom_dock.setFixedWidth(self.canvas.width())
         self.bottom_dock.move(0, self.canvas.height() - 52)
         self.flag_panel.move(60, 60)
+        self.parking_panel.move(60, 60)
         self.wyr_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
@@ -586,8 +590,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_wyr.widgets["btn_wyr_green_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_potwierdzone", val=self.p_wyr.widgets["btn_wyr_green_vis"].isChecked()))
         self.p_wyr.widgets["btn_wyr_red_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_odrzucone", val=self.p_wyr.widgets["btn_wyr_red_vis"].isChecked()))
         self.p_komunikacja.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="parking_user", val=self.p_komunikacja.widgets["btn_user"].isChecked()))
-        self.p_komunikacja.widgets["btn_parking_przed_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_przed", val=self.p_komunikacja.widgets["btn_parking_przed_vis"].isChecked()))
-        self.p_komunikacja.widgets["btn_parking_po_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_po", val=self.p_komunikacja.widgets["btn_parking_po_vis"].isChecked()))
+        self.p_komunikacja.widgets["btn_parking_before_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_planowane", val=self.p_komunikacja.widgets["btn_parking_before_vis"].isChecked()))
+        self.p_komunikacja.widgets["btn_parking_after_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_odwiedzone", val=self.p_komunikacja.widgets["btn_parking_after_vis"].isChecked()))
         self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
@@ -627,8 +631,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
     def parking_visibility(self):
         """Włączenie lub wyłączenie warstw z parkingami."""
         value = True if self.p_komunikacja.is_active() else False
-        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking_przed")[0].id()).setItemVisibilityChecked(value)
-        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking_po")[0].id()).setItemVisibilityChecked(value)
+        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking_planowane")[0].id()).setItemVisibilityChecked(value)
+        self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking_odwiedzone")[0].id()).setItemVisibilityChecked(value)
 
     def closeEvent(self, event):
         # Deaktywacja skrótów klawiszowych:
@@ -660,6 +664,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         try:
             self.canvas.children().remove(self.flag_panel)
             self.flag_panel.deleteLater()
+        except:
+            pass
+        try:
+            self.canvas.children().remove(self.parking_panel)
+            self.parking_panel.deleteLater()
         except:
             pass
         try:

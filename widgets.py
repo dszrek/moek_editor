@@ -7,7 +7,7 @@ from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp
 from qgis.PyQt.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, wn_layer_update
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, wn_layer_update
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
 from .classes import PgConn
 
@@ -563,6 +563,49 @@ class FlagCanvasPanel(QFrame):
         dlg.obj.flag = None
 
 
+class ParkingCanvasPanel(QFrame):
+    """Zagnieżdżony w mapcanvas'ie panel do obsługi parkingów."""
+    def __init__(self):
+        super().__init__()
+        self.setParent(iface.mapCanvas())
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
+        self.setFixedWidth(350)
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        self.bar = CanvasPanelTitleBar(self, title="Miejsca parkowania", width=self.width())
+        self.box = MoekVBox(self)
+        self.box.setObjectName("box")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(3, 3, 3, 3)
+        vlay.setSpacing(1)
+        vlay.addWidget(self.bar)
+        vlay.addWidget(self.box)
+        self.setLayout(vlay)
+        self.sp_tools = CanvasHSubPanel(self, height=34)
+        self.box.lay.addWidget(self.sp_tools)
+        self.id_label = PanelLabel(text="  Id:", size=12)
+        self.sp_tools.lay.addWidget(self.id_label)
+        self.id_box = IdSpinBox(self, _obj="parking")
+        self.sp_tools.lay.addWidget(self.id_box)
+        spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.sp_tools.lay.addItem(spacer)
+        self.parking_tools = ParkingTools(self)
+        self.sp_tools.lay.addWidget(self.parking_tools)
+        # self.sp_notepad = CanvasHSubPanel(self, height=110)
+        # self.box.lay.addWidget(self.sp_notepad)
+        # self.notepad_box = TextPadBox(self, height=110, obj="flag")
+        # self.sp_notepad.lay.addWidget(self.notepad_box)
+
+    def exit_clicked(self):
+        """Zmiana trybu active po kliknięciu na przycisk io."""
+        dlg.obj.parking = None
+
+
 class WnCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi punktów WN_PNE."""
     def __init__(self):
@@ -896,7 +939,65 @@ class FlagTools(QFrame):
             if res:
                 dlg.obj.flag = None
         # Aktualizacja listy flag w ObjectManager:
-        dlg.obj.flag_ids = get_flag_ids()
+        dlg.obj.flag_ids = get_flag_ids(dlg.cfg.flag_case())
+
+
+class ParkingTools(QFrame):
+    """Menu przyborne dla parkingów."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setCursor(Qt.ArrowCursor)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(104, 34)
+        self.setObjectName("main")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
+        self.parking_chg = MoekButton(self, name="parking_before", size=34)
+        self.parking_move = MoekButton(self, name="move", size=34, checkable=True)
+        self.parking_del = MoekButton(self, name="trash", size=34)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(1)
+        hlay.addWidget(self.parking_chg)
+        hlay.addWidget(self.parking_move)
+        hlay.addWidget(self.parking_del)
+        self.setLayout(hlay)
+        self.status = 0
+        self.parking_chg.clicked.connect(self.parking_status_change)
+        self.parking_move.clicked.connect(self.init_move)
+        self.parking_del.clicked.connect(self.parking_delete)
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "status":
+            self.parking_chg.set_icon(name="parking_before", size=34) if val == 0 else self.parking_chg.set_icon(name="parking_after", size=34)
+
+    def init_move(self):
+        """Zmiana lokalizacji parkingu."""
+        dlg.obj.parking_hide(True)
+        dlg.mt.init("parking_move")
+
+    def parking_status_change(self):
+        """Zmiana statusu parkingu."""
+        table = f"team_{str(dlg.team_i)}.parking"
+        bns = f" WHERE id = {dlg.obj.parking}"
+        self.status = 0 if self.status == 1 else 1
+        db_attr_change(tbl=table, attr="i_status", val=self.status, sql_bns=bns, user=False)
+        dlg.proj.mapLayersByName("parking_planowane")[0].triggerRepaint()
+        dlg.proj.mapLayersByName("parking_odwiedzone")[0].triggerRepaint()
+
+    def parking_delete(self):
+        """Usunięcie parkingu z bazy danych."""
+        db = PgConn()
+        sql = "DELETE FROM team_" + str(dlg.team_i) + ".parking WHERE id = " + str(dlg.obj.parking) + ";"
+        if db:
+            res = db.query_upd(sql)
+            if res:
+                dlg.obj.parking = None
+        # Aktualizacja listy parkingów w ObjectManager:
+        dlg.obj.parking_ids = get_parking_ids(dlg.cfg.parking_case())
 
 
 class ParamBox(QFrame):

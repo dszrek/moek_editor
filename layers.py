@@ -30,7 +30,7 @@ class LayerManager:
             {'level': 0, 'layers': ['wn_pne', 'powiaty', 'arkusze', 'powiaty_mask']},
             {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_poly']},
             {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
-            {'name': 'komunikacja', 'level': 1, 'layers': ['parking']},
+            {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone']},
             {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
             {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wybilansowane', 'midas_obszary', 'midas_tereny']},
             {'name': 'MGSP', 'level': 1, 'layers': ['mgsp_pkt_kop', 'mgsp_zloza_p', 'mgsp_zloza_a', 'mgsp_zloza_wb_p', 'mgsp_zloza_wb_a']},
@@ -46,8 +46,8 @@ class LayerManager:
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
             {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
-            {"source": "postgres", "name": "parking_przed", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
-            {"source": "postgres", "name": "parking_po", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
+            {"source": "postgres", "name": "parking_planowane", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
+            {"source": "postgres", "name": "parking_odwiedzone", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
             {"source": "postgres", "name": "wn_pne", "root": True, "pos": 3, "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
             {"source": "postgres", "name": "powiaty", "root": True, "pos": 4, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
             {"source": "postgres", "name": "arkusze", "root": True, "pos": 5, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
@@ -82,7 +82,7 @@ class LayerManager:
             {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
             {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]}
             ]
-        self.lyr_vis = [["wyr_point", None], ["flagi_z_teren", None], ["flagi_bez_teren", None], ["wn_pne", None]]
+        self.lyr_vis = [["wyr_point", None], ["flagi_z_teren", None], ["flagi_bez_teren", None], ["parking_planowane", None], ["parking_odwiedzone", None], ["wn_pne", None]]
         self.lyr_cnt = len(self.lyrs)
         self.lyrs_names = [i for s in [[v for k, v in d.items() if k == "name"] for d in self.lyrs] for i in s]
 
@@ -288,6 +288,10 @@ class LayerManager:
             if not val:
                 dlg.obj.flag = None
             lyr_names = ["flagi_z_teren", "flagi_bez_teren"]
+        elif grp_name == "komunikacja":
+            if not val:
+                dlg.obj.parking = None
+            lyr_names = ["parking_planowane", "parking_odwiedzone"]
         elif grp_name == "wyrobiska":
             if not val:
                 dlg.obj.wyr = None
@@ -337,8 +341,8 @@ class PanelManager:
             {'name': 'wyr_odrzucone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
             {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},
             {'name': 'parking_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
-            {'name': 'parking_przed', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_przed_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
-            {'name': 'parking_po', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_po_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'parking_odwiedzone', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_after_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
                         ]
         self.cfg_dicts_cnt = len(self.cfg_dicts)
         self.cfg_vals = []
@@ -378,7 +382,7 @@ class PanelManager:
             dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(name)[0].id()).setItemVisibilityChecked(val_out)
         elif action == "grp_vis":
             dlg.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(val_out)
-        if name == "flagi" or name == "wyrobiska" or name == "wn_pne":
+        if name == "flagi" or name == "komunikacja" or name == "wyrobiska" or name == "wn_pne":
             # Zmiana parametru widoczności dla MultiMapTool:
             dlg.lyr.vis_change(name, val_out)
         if btn:
@@ -457,9 +461,9 @@ class PanelManager:
         """Zwraca liczbę wskazującą, które warstwy parkingów są włączone."""
         parking_vals = [0, 0, 0, 0]
         for c_dict in self.cfg_dicts:
-            if c_dict["name"] == "parking_przed" and c_dict["value"] in range(0, 2):
+            if c_dict["name"] == "parking_planowane" and c_dict["value"] in range(0, 2):
                 parking_vals[0] = c_dict["value"]
-            elif c_dict["name"] == "parking_po" and c_dict["value"] in range(0, 2):
+            elif c_dict["name"] == "parking_odwiedzone" and c_dict["value"] in range(0, 2):
                 parking_vals[1] = c_dict["value"]
             elif c_dict["name"] == "parking_user" and c_dict["value"] in range(0, 2):
                 parking_vals[2] = c_dict["value"]

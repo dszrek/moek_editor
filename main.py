@@ -662,8 +662,8 @@ def parking_layer_update():
     uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."parking" (geom) sql=' + sql_2
     # Zmiana zawartości warstw z parkingami:
     l_tuples = [
-        ("parking_przed", uri_1),
-        ("parking_po", uri_2)
+        ("parking_planowane", uri_1),
+        ("parking_odwiedzone", uri_2)
         ]
     for l_tuple in l_tuples:
         lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]

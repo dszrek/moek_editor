@@ -83,7 +83,7 @@ class LayerManager:
             {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
             {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]}
             ]
-        self.lyr_vis = [["wyr_point", None], ["flagi_z_teren", None], ["flagi_bez_teren", None], ["parking_planowane", None], ["parking_odwiedzone", None], ["wn_pne", None]]
+        self.lyr_vis = [["wyr_point", True], ["flagi_z_teren", None], ["flagi_bez_teren", None], ["parking_planowane", None], ["parking_odwiedzone", None], ["marszruty", None], ["wn_pne", None]]
         self.lyr_cnt = len(self.lyrs)
         self.lyrs_names = [i for s in [[v for k, v in d.items() if k == "name"] for d in self.lyrs] for i in s]
 
@@ -283,8 +283,8 @@ class LayerManager:
         parent.removeChildNode(lyr)
         return True
 
-    def vis_change(self, grp_name, val):
-        """Zmiana parametru widoczności warstwy dla MultiMapTool."""
+    def grp_vis_change(self, grp_name, val):
+        """Zmiana parametru widoczności warstw z podanej grupy dla MultiMapTool."""
         if grp_name == "flagi":
             if not val:
                 dlg.obj.flag = None
@@ -292,19 +292,29 @@ class LayerManager:
         elif grp_name == "komunikacja":
             if not val:
                 dlg.obj.parking = None
-            lyr_names = ["parking_planowane", "parking_odwiedzone"]
+                dlg.obj.marsz = None
+            lyr_names = ["parking_planowane", "parking_odwiedzone", "marszruty"]
         elif grp_name == "wyrobiska":
             if not val:
                 dlg.obj.wyr = None
-            lyr_names = ["wyr_point"]
+            for _list in self.lyr_vis:
+                if _list[0] == "wyr_point":
+                    _list[1] = False if not val else True
+                    return
         elif grp_name == "wn_pne":
             if not val:
                 dlg.obj.wn = None
             lyr_names = ["wn_pne"]
         for lyr_name in lyr_names:
             for _list in self.lyr_vis:
-                if _list[0] == lyr_name and _list[1] != val:
-                    _list[1] = val
+                if _list[0] == lyr_name:
+                    _list[1] = False if not val else dlg.cfg.get_val(_list[0])
+
+    def lyr_vis_change(self, lyr_name, val):
+        """Zmiana parametru widoczności warstwy dla MultiMapTool."""
+        for _list in self.lyr_vis:
+            if _list[0] == lyr_name:
+                _list[1] = val
 
 class PanelManager:
     """Menedżer ustawień (widoczność, rozwinięcie itp.) paneli."""
@@ -372,6 +382,9 @@ class PanelManager:
                     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
                     self.cfg_dicts[i]["value"] = self.cfg_vals[i]
                     self.update_action(self.cfg_dicts[i]["action"], self.cfg_dicts[i]["name"], self.cfg_dicts[i]["btn"], self.cfg_dicts[i]["value"], self.cfg_dicts[i]["callback"], self.cfg_dicts[i]["cb_void"])
+                    if any(l[0] == self.cfg_dicts[i]["name"] for l in dlg.lyr.lyr_vis):
+                        # Aktualizacja wartości na liście lyr_vis dla multitool'a:
+                        dlg.lyr.lyr_vis_change(self.cfg_dicts[i]["name"], bool(self.cfg_dicts[i]["value"]))
             self.old_cfg_vals = self.cfg_vals.copy()
             if self.callback_void:
                 self.callback_void = False
@@ -385,8 +398,8 @@ class PanelManager:
         elif action == "grp_vis":
             dlg.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(val_out)
         if name == "flagi" or name == "komunikacja" or name == "wyrobiska" or name == "wn_pne":
-            # Zmiana parametru widoczności dla MultiMapTool:
-            dlg.lyr.vis_change(name, val_out)
+            # Zmiana parametru widoczności wszystkich warstw z określonej grupy dla MultiMapTool:
+            dlg.lyr.grp_vis_change(name, val_out)
         if btn:
             btn.setChecked(val_out)
         if cb and (not self.callback_void or not cb_void):
@@ -408,6 +421,9 @@ class PanelManager:
             if c_dict["name"] == name:
                 # Aktualizacja wartości w zmienianym słowniku:
                 c_dict["value"] = val
+                if any(l[0] == c_dict["name"] for l in dlg.lyr.lyr_vis):
+                    # Aktualizacja wartości na liście lyr_vis dla multitool'a:
+                    dlg.lyr.lyr_vis_change(c_dict["name"], bool(val))
             if c_dict["value"] in range(0, 3):
                 new_vals.append(c_dict["value"])
             else:

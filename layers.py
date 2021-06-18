@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, QVariant
 from qgis.utils import iface
 
 from .classes import CfgPars, PgConn
-from .main import flag_layer_update, wyr_layer_update, parking_layer_update
+from .main import flag_layer_update, wyr_layer_update, parking_layer_update, marsz_layer_update
 
 # Zmienne globalne:
 dlg = None
@@ -30,7 +30,7 @@ class LayerManager:
             {'level': 0, 'layers': ['wn_pne', 'powiaty', 'arkusze', 'powiaty_mask']},
             {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_poly']},
             {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
-            {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone']},
+            {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone', 'marszruty']},
             {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
             {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wybilansowane', 'midas_obszary', 'midas_tereny']},
             {'name': 'MGSP', 'level': 1, 'layers': ['mgsp_pkt_kop', 'mgsp_zloza_p', 'mgsp_zloza_a', 'mgsp_zloza_wb_p', 'mgsp_zloza_wb_a']},
@@ -48,6 +48,7 @@ class LayerManager:
             {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
             {"source": "postgres", "name": "parking_planowane", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
             {"source": "postgres", "name": "parking_odwiedzone", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
+            {"source": "postgres", "name": "marszruty", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."marsz" (geom) sql='},
             {"source": "postgres", "name": "wn_pne", "root": True, "pos": 3, "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
             {"source": "postgres", "name": "powiaty", "root": True, "pos": 4, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
             {"source": "postgres", "name": "arkusze", "root": True, "pos": 5, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
@@ -340,9 +341,10 @@ class PanelManager:
             {'name': 'wyr_potwierdzone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
             {'name': 'wyr_odrzucone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
             {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},
-            {'name': 'parking_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'komunikacja_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'self.komunikacja_layers_update()', 'cb_void': True, 'value': None},
             {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
             {'name': 'parking_odwiedzone', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_after_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'marszruty', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_marsz_vis"], 'callback': 'marsz_layer_update()', 'cb_void': True, 'value': None}
                         ]
         self.cfg_dicts_cnt = len(self.cfg_dicts)
         self.cfg_vals = []
@@ -465,10 +467,22 @@ class PanelManager:
                 parking_vals[0] = c_dict["value"]
             elif c_dict["name"] == "parking_odwiedzone" and c_dict["value"] in range(0, 2):
                 parking_vals[1] = c_dict["value"]
-            elif c_dict["name"] == "parking_user" and c_dict["value"] in range(0, 2):
+            elif c_dict["name"] == "komunikacja_user" and c_dict["value"] in range(0, 2):
                 parking_vals[2] = c_dict["value"]
         parking_vals[3] = 1 if dlg.p_pow.is_active() else 0
         case_val = parking_vals[0] + (parking_vals[1] * 2) + (parking_vals[2] * 4) + (parking_vals[3] * 8)
+        return case_val
+
+    def marsz_case(self):
+        """Zwraca liczbę wskazującą, które warstwy parkingów są włączone."""
+        marsz_vals = [0, 0, 0]
+        for c_dict in self.cfg_dicts:
+            if c_dict["name"] == "marszruty" and c_dict["value"] in range(0, 2):
+                marsz_vals[0] = c_dict["value"]
+            elif c_dict["name"] == "komunikacja_user" and c_dict["value"] in range(0, 2):
+                marsz_vals[1] = c_dict["value"]
+        marsz_vals[2] = 1 if dlg.p_pow.is_active() else 0
+        case_val = marsz_vals[0] + (marsz_vals[1] * 2) + (marsz_vals[2] * 4)
         return case_val
 
     def cfg_vals_read(self):
@@ -513,3 +527,8 @@ class PanelManager:
                 # Przywrócenie pierwotnych ustawień warstw:
                 self.set_val(lyr[0], lyr[1], db=False)
             self.cfg_mem = []  # Wyczyszczenie listy
+
+    def komunikacja_layers_update(self):
+        """Aktualizacja warstw parkingów i marszrut."""
+        parking_layer_update()
+        marsz_layer_update()

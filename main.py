@@ -226,7 +226,7 @@ def pow_layer_update():
     wyr_layer_update()  # Aktualizacja warstw z wyrobiskami
     wn_layer_update()  # Aktualizacja warstwy z wn_pne
     parking_layer_update()  # Aktualizacja warstwy z parkingami
-    # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
+    marsz_layer_update()  # Aktualizacja warstwy z marszrutami
     # zloza_layer_update()  # Aktualizacja warstwy ze złożami
     layer_zoom(layer)  # Przybliżenie widoku mapy do wybranego powiatu/powiatów
     stage_refresh()  # Odświeżenie sceny
@@ -297,11 +297,11 @@ def flag_layer_update():
 
 def wyr_layer_update(check=True):
     """Aktualizacja warstw z wyrobiskami."""
+    QgsApplication.setOverrideCursor(Qt.WaitCursor)
     if check:
     # Sprawdzenie, czy wszystkie wyrobiska mają przypisane powiaty
     # i dokonanie aktualizacji, jeśli występują braki:
         wyr_powiaty_check()
-    QgsApplication.setOverrideCursor(Qt.WaitCursor)
     # Stworzenie listy wyrobisk z aktywnych powiatów:
     dlg.obj.wyr_ids = get_wyr_ids()
     with CfgPars() as cfg:
@@ -669,7 +669,7 @@ def parking_layer_update():
         lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
         pg_layer_change(l_tuple[1], lyr)
         lyr.triggerRepaint()
-    dlg.parking_visibility()  # Aktualizacja widoczności warstw
+    dlg.komunikacja_visibility()  # Aktualizacja widoczności warstw
     QgsApplication.restoreOverrideCursor()
 
 def get_parking_ids(case):
@@ -710,14 +710,170 @@ def get_parking_ids(case):
         else:
             return None
 
-def marsz_layer_update():
-    """Aktualizacja warstwy marsz."""
-    # print("[marsz_layer_update]")
+def marsz_layer_update(check=True):
+    """Aktualizacja warstwy z marszrutami."""
+    QgsApplication.setOverrideCursor(Qt.WaitCursor)
+    if check:
+    # Sprawdzenie, czy wszystkie marszruty mają przypisane powiaty
+    # i dokonanie aktualizacji, jeśli występują braki:
+        marsz_powiaty_check()
+    # Stworzenie listy marszrut z aktywnych powiatów:
+    dlg.obj.marsz_ids = get_marsz_ids()
     with CfgPars() as cfg:
         params = cfg.uri()
-    uri = params + 'table="team_' + str(dlg.team_i) + '"."marsz" (geom)'
-    layer = dlg.proj.mapLayersByName("marsz")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy mnarsz
+    if dlg.obj.marsz_ids:
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."marsz" (geom) sql=marsz_id IN (' + str(dlg.obj.marsz_ids)[1:-1] + ')'
+    else:
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."marsz" (geom) sql=marsz_id = 0'
+    # Zmiana zawartości warstw z wyrobiskami:
+    l_tuples = [
+        ("marszruty", uri)
+        ]
+    for l_tuple in l_tuples:
+        lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
+        pg_layer_change(l_tuple[1], lyr)
+        lyr.triggerRepaint()
+    dlg.komunikacja_visibility()  # Aktualizacja widoczności warstw
+    QgsApplication.restoreOverrideCursor()
+
+def get_marsz_ids():
+    """Zwraca listę unkalnych marsz_id zgodnych z aktualnymi filtrami."""
+    # Określenie, które rodzaje wyrobisk są włączone:
+    case = dlg.cfg.marsz_case()
+    if case == 0 or case == 2 or case == 4 or case == 6:
+        # Warstwa z marszrutami jest wyłączona - brak marszrut do wyświetlenia
+        return []
+    # Utworzenie listy z marsz_id marszrut, które należą do aktywnych powiatów:
+    pows = active_pow_listed()
+    marsz_ids_from_pows = get_marsz_ids_with_pows("marsz_pow", pows)
+    if not marsz_ids_from_pows:
+        # Brak wyrobisk w aktywnych powiatach
+        return []
+    if case == 7:
+        # Wszystkie marszruty są włączone - brak filtrowania
+        return marsz_ids_from_pows
+    # Utworzenie listy z marsz_id wyrobisk, których rodzaje są włączone:
+    filter_cases = [
+        {'value': 1, 'sql': " WHERE user_id = {dlg.user_id}"}
+                ]
+    filter = ""
+    for e_dict in filter_cases:
+        if e_dict["value"] == case:
+            raw_sql = e_dict["sql"]
+            filter = eval("f'{}'".format(raw_sql))
+            break
+    marsz_ids_from_filter = get_marsz_ids_with_filter(filter)
+    if not marsz_ids_from_filter:
+        # Wszystkie marszruty zostały wyfiltrowane
+        return []
+    # Zwrócenie listy marsz_id marszrut, które znajdują się w obu listach:
+    result = sorted(set(marsz_ids_from_pows).intersection(marsz_ids_from_filter))
+    return result
+
+def get_marsz_ids_with_filter(filter):
+    """Zwraca listę marsz_id z użyciem podanego filtru sql."""
+    db = PgConn()
+    sql = "SELECT marsz_id FROM team_" + str(dlg.team_i) + ".marsz" + filter + " ORDER BY marsz_id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return []
+
+def marsz_powiaty_check():
+    """Sprawdza, czy wszystkie marszruty zespołu mają wpisy w tabeli 'marsz_pow'.
+    Jeśli nie, to przypisuje je na podstawie geometrii liniowej."""
+    marsz_ids = get_marsz_ids_with_pows("marsz")
+    marsz_pow_ids = get_marsz_ids_with_pows("marsz_pow")
+    marsz_pow_to_add = list_diff(marsz_ids, marsz_pow_ids)
+    if not marsz_pow_to_add:
+        return
+    print(f"marsz_pow_to_add: {marsz_pow_to_add}")
+    # Uzupełnienie brakujących rekordów w tabeli 'marsz_pow':
+    marsz_lines = get_lines_from_ids(marsz_pow_to_add)
+    for marsz_line in marsz_lines:
+        marsz_powiaty_change(marsz_line[0], marsz_line[1])
+
+def get_marsz_ids_with_pows(table, pows=None):
+    """Zwraca listę unikalnych marsz_id z podanej tabeli w obrębie podanych powiatów."""
+    db = PgConn()
+    extras = f" WHERE pow_id IN ({str(pows)[1:-1]})" if pows else ""
+    sql = "SELECT DISTINCT marsz_id FROM team_" + str(dlg.team_i) + "." + table + extras + " ORDER BY marsz_id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return None
+
+def get_lines_from_ids(marsz_ids):
+    """Zwraca listę z geometriami liniowymi marszrut na podstawie ich id."""
+    marsz_lines = []
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    table = '"team_' + str(dlg.team_i) + '"."marsz"'
+    sql = "marsz_id IN (" + str(marsz_ids)[1:-1] + ")"
+    uri = f'{params} table={table} (geom) sql={sql}'
+    lyr_line = QgsVectorLayer(uri, "temp_marsz_line", "postgres")
+    feats = lyr_line.getFeatures()
+    for feat in feats:
+        marsz_lines.append((feat.attribute("marsz_id"), feat.geometry()))
+    del lyr_line
+    return marsz_lines
+
+def marsz_powiaty_change(marsz_id, geom, new=False):
+    """Aktualizuje tabelę 'marsz_pow' po zmianie geometrii marszruty."""
+    if not new:
+        # Usunięcie poprzednich wpisów z tabeli 'marsz_pow':
+        marsz_powiaty_delete(marsz_id)
+    # Stworzenie listy z aktualnymi powiatami dla marszruty:
+    p_list = marsz_powiaty_listed(marsz_id, geom)
+    if not p_list:  # Brak powiatów
+        print(f"marsz_powiaty_change: Nie udało się stworzyć listy powiatów dla marszruty {marsz_id}")
+        return
+    # Wstawienie nowych rekordów do tabeli 'marsz_pow':
+    marsz_powiaty_update(p_list)
+
+def marsz_powiaty_delete(marsz_id):
+    """Usunięcie z tabeli 'marsz_pow' rekordów odnoszących się do marsz_id."""
+    db = PgConn()
+    sql = "DELETE FROM team_" + str(dlg.team_i) + ".marsz_pow WHERE marsz_id = " + str(marsz_id) + ";"
+    if db:
+        res = db.query_upd(sql)
+        if not res:
+            print(f"marsz_powiaty_delete: brak rekordów dla marszruty {marsz_id}")
+
+def marsz_powiaty_listed(marsz_id, geom):
+    """Zwraca listę powiatów, w obrębie których leży geometria marszruty."""
+    p_list = []
+    bbox = geom.makeValid().boundingBox().asWktPolygon()
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    table = '"(SELECT pow_id, geom FROM public.powiaty)"'
+    key = '"pow_id"'
+    sql = "ST_Intersects(ST_SetSRID(ST_GeomFromText('" + str(bbox) + "'), 2180), geom)"
+    uri = f'{params} key={key} table={table} (geom) sql={sql}'
+    lyr_pow = QgsVectorLayer(uri, "powiaty_bbox", "postgres")
+    feats = lyr_pow.getFeatures()
+    for feat in feats:
+        if geom.makeValid().intersects(feat.geometry()):
+            p_list.append((marsz_id, feat.attribute("pow_id")))
+    del lyr_pow
+    return p_list
+
+def marsz_powiaty_update(p_list):
+    """Wstawienie do tabeli 'marsz_pow' aktualnych numerów powiatów dla marszruty."""
+    db = PgConn()
+    sql = "INSERT INTO team_" + str(dlg.team_i) + ".marsz_pow(marsz_id, pow_id) VALUES %s"
+    if db:
+        db.query_exeval(sql, p_list)
 
 def zloza_layer_update():
     """Aktualizacja warstwy zloza."""

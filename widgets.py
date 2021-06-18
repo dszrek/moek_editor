@@ -48,7 +48,7 @@ class MoekBoxPanel(QFrame):
         self.state = None
         self.passing_void = False
         self.title = title
-        # self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        # self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(0, 0, 0, 0)
         vlay.setSpacing(0)

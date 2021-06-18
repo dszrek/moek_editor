@@ -10,7 +10,7 @@ from itertools import combinations
 
 from .classes import PgConn, CfgPars, threading_func
 from .viewnet import vn_change, vn_powsel, vn_polysel
-from .main import wyr_powiaty_change, wyr_layer_update, parking_layer_update, db_attr_change, get_wyr_ids, get_flag_ids
+from .main import wyr_powiaty_change, marsz_powiaty_change, wyr_layer_update, parking_layer_update, marsz_layer_update, db_attr_change, get_wyr_ids, get_flag_ids, get_marsz_ids
 
 dlg = None
 
@@ -28,6 +28,7 @@ class ObjectManager:
         self.canvas = canvas  # Referencja do mapy
         self.flag_clicked = False
         self.parking_clicked = False
+        self.marsz_clicked = False
         self.wyr_clicked = False
         self.flag_ids = []
         self.flag = None
@@ -37,6 +38,9 @@ class ObjectManager:
         self.parking = None
         self.parking_data = []
         self.parking_hidden = None
+        self.marsz_ids = []
+        self.marsz = None
+        self.marsz_data = []
         self.wyr_ids = []
         self.wyr = None
         self.wyr_data = []
@@ -150,6 +154,22 @@ class ObjectManager:
             parking_check = self.list_position_check("parking")
             if not parking_check:
                 self.parking = None
+        elif attr == "marsz":
+            # Zmiana aktualnej marszruty:
+            QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'marsz_sel', val)
+            if val:
+                self.marsz_data = self.marsz_update()
+                self.list_position_check("marsz")
+                # self.dlg.parking_panel.parking_tools.status = self.parking_data[1]  # Aktualizacja przycisku status
+            # if self.dlg.mt.mt_name == "parking_move":
+            #     self.dlg.mt.init("multi_tool")
+            # self.dlg.parking_panel.id_box.id = val if val else None
+            # self.dlg.parking_panel.show() if val else self.dlg.parking_panel.hide()
+        elif attr == "marsz_ids":
+            # Zmiana listy dostępnych marszrut:
+            marsz_check = self.list_position_check("marsz")
+            if not marsz_check:
+                self.marsz = None
 
     def flag_hide(self, _bool):
         """Ukrywa lub pokazuje zaznaczoną flagę."""
@@ -178,15 +198,20 @@ class ObjectManager:
             elif lyr_name == "parking_planowane" or lyr_name == "parking_odwiedzone":
                 if self.parking != obj_data[1][0]:
                     self.parking = obj_data[1][0]
+            elif lyr_name == "marszruty":
+                if self.marsz != obj_data[1][0]:
+                    self.marsz = obj_data[1][0]
             elif lyr_name == "wn_pne":
                 self.wn = obj_data[1][0]
 
     def clear_sel(self):
-        """Odznaczenie wybranych flag, wyrobisk, parkingów i punktów WN_PNE."""
+        """Odznaczenie wybranych flag, wyrobisk, parkingów, marszrut i punktów WN_PNE."""
         if self.flag:
             self.flag = None
         if self.parking:
             self.parking = None
+        if self.marsz:
+            self.marsz = None
         if self.wyr:
             self.wyr = None
         if self.wn:
@@ -274,6 +299,18 @@ class ObjectManager:
             res = db.query_sel(sql, False)
             if not res:
                 print(f"Nie udało się wczytać danych parkingu: {self.parking}")
+                return None
+            else:
+                return res
+
+    def marsz_update(self):
+        """Zwraca dane marszruty."""
+        db = PgConn()
+        sql = "SELECT marsz_id, marsz_m, marsz_t FROM team_" + str(dlg.team_i) + ".marsz WHERE marsz_id = " + str(self.marsz) + ";"
+        if db:
+            res = db.query_sel(sql, False)
+            if not res:
+                print(f"Nie udało się wczytać danych marszruty: {self.marsz}")
                 return None
             else:
                 return res
@@ -459,7 +496,7 @@ class MapToolManager:
         self.old_button = None
         self.feat_backup = None
         self.canvas.mapToolSet.connect(self.maptool_change)
-        self.tool_kinds = (MultiMapTool, IdentMapTool, PolyDrawMapTool, PointDrawMapTool, EditPolyMapTool)
+        self.tool_kinds = (MultiMapTool, IdentMapTool, PolyDrawMapTool, PointDrawMapTool, LineDrawMapTool, EditPolyMapTool)
         self.maptools = [
             # {"name" : "edit_poly", "class" : EditPolyMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_pne", "wyrobiska"], "fn" : obj_sel},
             {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"],"fn" : obj_sel},
@@ -472,10 +509,8 @@ class MapToolManager:
             {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly, "extra" : [(0, 255, 0, 128), (0, 255, 0, 80)]},
             {"name" : "wyr_edit", "class" : EditPolyMapTool, "button" : self.dlg.wyr_panel.wyr_edit, "lyr" : ["wyr_poly"], "fn" : wyr_poly_change},
             {"name" : "parking_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"], "fn" : parking_add, "extra" : []},
-            {"name" : "parking_move", "class" : PointDrawMapTool, "button" : self.dlg.parking_panel.parking_tools.parking_move, "fn" : parking_move, "extra" : []}
-            # {"name" : "auto_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_auto_del"], "lyr" : ["parking"], "fn" : auto_del},
-            # {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_add"], "fn" : marsz_add},
-            # {"name" : "marsz_del", "class" : IdentMapTool, "button" : self.dlg.p_auto.widgets["btn_marsz_del"], "lyr" : ["marsz"], "fn" : marsz_del}
+            {"name" : "parking_move", "class" : PointDrawMapTool, "button" : self.dlg.parking_panel.parking_tools.parking_move, "fn" : parking_move, "extra" : []},
+            {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : []}
         ]
 
     def maptool_change(self, new_tool, old_tool):
@@ -533,6 +568,9 @@ class MapToolManager:
             self.maptool = self.params["class"](self.canvas, lyr[0], self.params["button"])
             self.maptool.ending.connect(self.params["fn"])
         elif self.params["class"] == PointDrawMapTool:
+            self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"])
+            self.maptool.drawn.connect(self.params["fn"])
+        elif self.params["class"] == LineDrawMapTool:
             self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"])
             self.maptool.drawn.connect(self.params["fn"])
         elif self.params["class"] == PolyDrawMapTool:
@@ -1822,12 +1860,12 @@ class PointDrawMapTool(QgsMapTool):
 class LineDrawMapTool(QgsMapTool):
     """Maptool do rysowania obiektów liniowych."""
     drawn = pyqtSignal(QgsGeometry)
-    move = pyqtSignal
 
-    def __init__(self, canvas, button):
+    def __init__(self, canvas, button, extra):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
         self._button = button
+        self.extra = extra
         if not self._button.isChecked():
             self._button.setChecked(True)
         self.begin = True
@@ -2339,16 +2377,36 @@ def parking_del(layer, feature):
 def marsz_add(geom):
     """Utworzenie nowego obiektu marszruty."""
     dlg.mt.init("multi_tool")
-    layer = dlg.proj.mapLayersByName("marsz")[0]
-    fields = layer.fields()
-    feature = QgsFeature()
-    feature.setFields(fields)
-    feature.setGeometry(geom)
-    feature.setAttribute('user_id', dlg.user_id)
-    layer.startEditing()
-    layer.addFeature(feature)
-    layer.commitChanges()
-    iface.actionDraw().trigger()
+    if not geom:
+        return
+    lyr_line = dlg.proj.mapLayersByName("marszruty")[0]
+    marsz_m = length_measure(geom)
+    marsz_t = length_time(marsz_m)
+    db = PgConn()
+    sql = f"INSERT INTO team_{dlg.team_i}.marsz(marsz_id, user_id, marsz_m, marsz_t, geom) SELECT nextval, {dlg.user_id}, {marsz_m}, {marsz_t}, ST_SetSRID(ST_GeomFromText('{geom.asWkt()}'), 2180) FROM (SELECT nextval(pg_get_serial_sequence('team_{dlg.team_i}.marsz', 'marsz_id')) nextval) q RETURNING marsz_id"
+    if db:
+        res = db.query_upd_ret(sql)
+        if not res:
+            print(f"Nie udało się stworzyć marszruty.")
+        else:
+            # Włączenie warstwy z marszrutami, jeśli jest wyłączona:
+            val = dlg.cfg.get_val("marszruty")
+            if val == 0:
+                dlg.cfg.set_val("marszruty", 1)
+    marsz_powiaty_change(res, geom, new=True)
+    dlg.obj.marsz_ids = get_marsz_ids()  # Aktualizacja listy marszrut w ObjectManager
+    marsz_layer_update()
+
+def length_measure(geom):
+    """Zwraca zaokrągloną wartość długości marszruty w metrach."""
+    length = geom.length()
+    length_rounded = int(length / 10) * 10 if length <= 1000 else int(length / 100) * 100
+    return length_rounded
+
+def length_time(length):
+    """Zwraca zaokrągloną wartość czasu przejścia marszruty w sekundach."""
+    time = length * 3600 / 4500
+    return int(round(time, 0))
 
 def marsz_del(layer, feature):
     """Usunięcie wybranego obiektu marszruty."""

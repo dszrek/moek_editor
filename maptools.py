@@ -10,7 +10,7 @@ from itertools import combinations
 
 from .classes import PgConn, CfgPars, threading_func
 from .viewnet import vn_change, vn_powsel, vn_polysel
-from .main import wyr_powiaty_change, marsz_powiaty_change, wyr_layer_update, parking_layer_update, marsz_layer_update, db_attr_change, get_wyr_ids, get_flag_ids, get_marsz_ids
+from .main import wyr_powiaty_change, marsz_powiaty_change, wyr_layer_update, parking_layer_update, marsz_layer_update, db_attr_change, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids
 
 dlg = None
 
@@ -510,7 +510,7 @@ class MapToolManager:
             {"name" : "wyr_edit", "class" : EditPolyMapTool, "button" : self.dlg.wyr_panel.wyr_edit, "lyr" : ["wyr_poly"], "fn" : wyr_poly_change},
             {"name" : "parking_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"], "fn" : parking_add, "extra" : []},
             {"name" : "parking_move", "class" : PointDrawMapTool, "button" : self.dlg.parking_panel.parking_tools.parking_move, "fn" : parking_move, "extra" : []},
-            {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : []}
+            {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : [(255, 255, 0, 255)]}
         ]
 
     def maptool_change(self, new_tool, old_tool):
@@ -1858,62 +1858,220 @@ class PointDrawMapTool(QgsMapTool):
 
 
 class LineDrawMapTool(QgsMapTool):
-    """Maptool do rysowania obiektów liniowych."""
-    drawn = pyqtSignal(QgsGeometry)
+    """Maptool do rysowania liniowego obiektu marszruty."""
+    drawn = pyqtSignal(object)
+    cursor_changed = pyqtSignal(str)
 
     def __init__(self, canvas, button, extra):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
         self._button = button
-        self.extra = extra
-        if not self._button.isChecked():
-            self._button.setChecked(True)
-        self.begin = True
-        self.rb = QgsRubberBand(canvas, QgsWkbTypes.LineGeometry)
-        self.rb.setColor(QColor(255, 0, 0, 128))
-        self.rb.setFillColor(QColor(255, 0, 0, 80))
-        self.rb.setWidth(1)
+        self.color = QColor(extra[0][0], extra[0][1], extra[0][2], extra[0][3])
+        self.rb = None
+        self.temp_rb = None
+        self.snap_marker = None
+        self.start_point = None
+        self.temp_point = None
+        self.drawing = False
+        self.dragging = False
+        self.layer = None
+        self.lyrs = ["marszruty", "parking_planowane", "parking_odwiedzone"]
+        self.cursor_changed.connect(self.cursor_change)
+        self.cursor = "cross"
+        self.rbs_create()
+
+    def rbs_create(self):
+        """Stworzenie rubberband'ów."""
+        self.snap_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
+        self.snap_marker.setIcon(QgsRubberBand.ICON_CIRCLE)
+        self.snap_marker.setColor(QColor(0, 0, 0, 255))
+        self.snap_marker.setFillColor(QColor(255, 255, 0, 255))
+        self.snap_marker.setIconSize(10)
+        self.snap_marker.addPoint(QgsPointXY(0, 0), False)
+        self.snap_marker.setVisible(False)
 
     def button(self):
         return self._button
 
-    def keyPressEvent(self, e):
-        # Funkcja undo - kasowanie ostatnio dodanego vertex'a po naciśnięciu ctrl+z
-        if e.matches(QKeySequence.Undo) and self.rb.numberOfVertices() > 1:
-            self.rb.removeLastPoint()
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "cursor":
+            self.cursor_changed.emit(val)
 
-    def canvasPressEvent(self, e):
-        if e.button() == Qt.LeftButton:
-            if self.begin:
-                self.rb.reset(QgsWkbTypes.LineGeometry)
-                self.begin = False
-            self.rb.addPoint(self.toMapCoordinates(e.pos()))
+    def cursor_change(self, cur_name):
+        """Zmiana cursora maptool'a."""
+        cursors = [
+                    ["cross", Qt.CrossCursor],
+                    ["open_hand", Qt.OpenHandCursor],
+                    ["closed_hand", Qt.ClosedHandCursor]
+                ]
+        for cursor in cursors:
+            if cursor[0] == cur_name:
+                self.setCursor(cursor[1])
+                break
+
+    def snap_to_layer(self, event, layer):
+        """Zwraca wyniki przyciągania do wierzchołków i krawędzi."""
+        self.canvas.snappingUtils().setCurrentLayer(layer)
+        v = self.canvas.snappingUtils().snapToCurrentLayer(event.pos(), QgsPointLocator.Vertex)
+        e = self.canvas.snappingUtils().snapToCurrentLayer(event.pos(), QgsPointLocator.Edge)
+        return v, e
+
+    @threading_func
+    def find_nearest_feature(self, pos):
+        pos = self.toLayerCoordinates(self.layer, pos)
+        scale = iface.mapCanvas().scale()
+        tolerance = scale / 250
+        search_rect = QgsRectangle(pos.x() - tolerance,
+                                  pos.y() - tolerance,
+                                  pos.x() + tolerance,
+                                  pos.y() + tolerance)
+        request = QgsFeatureRequest()
+        request.setFilterRect(search_rect)
+        request.setFlags(QgsFeatureRequest.ExactIntersect)
+        lyrs = self.get_lyrs()
+        if self.lyrs:
+            for lyr in lyrs:
+                for feat in lyr.getFeatures(request):
+                    return lyr
         else:
-            self.rb.removeLastPoint(0)
-            if self.rb.numberOfVertices() > 1:
-                self.begin = True
-                self.drawn.emit(self.rb.asGeometry())
-                self.reset()
+            return None
+
+    def get_lyrs(self):
+        """Zwraca listę włączonych warstw z obiektami."""
+        lyrs = []
+        for _list in dlg.lyr.lyr_vis:
+            if _list[1] and _list[0] in self.lyrs:
+                lyr = dlg.proj.mapLayersByName(_list[0])[0]
+                lyrs.append(lyr)
+        return lyrs
+
+    def canvasMoveEvent(self, event):
+        map_point = self.toMapCoordinates(event.pos())
+        if event.buttons() == Qt.LeftButton:
+            if self.drawing:
+                # Umożliwienie panningu mapy podczas rysowania:
+                dist = QgsGeometry().fromPointXY(self.start_point).distance(QgsGeometry().fromPointXY(map_point))
+                dist_scale = dist / self.canvas.scale() * 1000
+                if dist_scale > 6.0:
+                    self.dragging = True
+                    self.cursor = "closed_hand"
+                    self.canvas.panAction(event)
+            elif not self.drawing:
+                # Panning mapy:
+                self.dragging = True
+                self.cursor = "closed_hand"
+                self.canvas.panAction(event)
+        if event.buttons() == Qt.NoButton:
+            if self.cursor != "cross":
+                self.cursor = "cross"
+            th = self.find_nearest_feature(event.pos())
+            result = th.get()
+            snap_type = None
+            if result:
+                v, e = self.snap_to_layer(event, result)
+                snap_type = v.type() + e.type()
+                if snap_type == 1 or snap_type == 3:  # Kursor nad vertexem marszruty albo parkingu
+                    self.snap_marker.movePoint(v.point(), 0)
+                    self.temp_point = v.point()
+                    self.snap_marker.setVisible(True)
+                elif snap_type == 2:  # Kursor nad linią marszruty
+                    self.snap_marker.movePoint(e.point(), 0)
+                    self.temp_point = e.point()
+                    self.snap_marker.setVisible(True)
+                else:
+                    self.snap_marker.setVisible(False)
+                    self.temp_point = map_point
             else:
-                self.reset()
-        return None
+                self.snap_marker.setVisible(False)
+                self.temp_point = map_point
+            if self.temp_rb and self.drawing:
+                self.temp_rb.movePoint(self.temp_point)
 
-    def canvasMoveEvent(self, e):
-        if self.rb.numberOfVertices() > 0 and not self.begin:
-            self.rb.removeLastPoint(0)
-            self.rb.addPoint(self.toMapCoordinates(e.pos()))
-        return None
+    def canvasPressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.start_point = self.toMapCoordinates(event.pos())
 
-    def reset(self):
-        self.begin = True
-        self.clearMapCanvas()
+    def canvasReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            if self.dragging:  # Zakończenie panningu mapy
+                self.cursor = "cross"
+                self.canvas.panActionEnd(event.pos())
+                self.dragging = False
+                return
+            if not self.drawing:  # Rozpoczęcie rysowania
+                self.drawing_start()
+            self.vertex_add(event.pos())
+        elif event.button() == Qt.RightButton:
+            if self.rb.numberOfVertices() > 1:
+                self.drawn.emit(self.rb.asGeometry())
+                self.drawing_stop()
+            else:
+                self.drawing_stop()
+                self.drawn.emit(None)
+
+    def keyReleaseEvent(self, event):
+        if self.drawing and not self.dragging and event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
+            self.last_vertex_remove()
+            event.ignore()
+        if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            if self.rb.numberOfVertices() > 1:
+                self.drawn.emit(self.rb.asGeometry())
+                self.drawing_stop()
+            else:
+                self.drawing_stop()
+                self.drawn.emit(None)
+        if event.key() == Qt.Key_Escape:
+            # Przerwanie rysowania i wyłączenie maptool'a
+            self.drawing_stop()
+            self.drawn.emit(None)
+
+    def drawing_start(self):
+        self.rb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
+        self.rb.setWidth(3)
+        self.rb.setColor(self.color)
+        self.rb.setVisible(True)
+        self.temp_rb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
+        self.temp_rb.setWidth(3)
+        self.temp_rb.setColor(self.color)
+        self.temp_rb.setLineStyle(Qt.DotLine)
+        self.temp_rb.setVisible(True)
+        self.drawing = True
+
+    def drawing_stop(self):
+        if self.rb:
+            self.canvas.scene().removeItem(self.rb)
+            self.rb = None
+        if self.temp_rb:
+            self.canvas.scene().removeItem(self.temp_rb)
+            self.temp_rb = None
+            self.drawing = False
+            self.canvas.refresh()
+
+    def vertex_add(self, canvas_pt):
+        self.rb.addPoint(self.temp_point)
+        self.temp_rb.reset(QgsWkbTypes.LineGeometry)
+        self.temp_rb.addPoint(self.temp_point)
+
+    def last_vertex_remove(self):
+        if not self.drawing:
+            return
+        band_size = self.rb.numberOfVertices()
+        temp_band_size = self.temp_rb. numberOfVertices()
+        if band_size < 1:
+            return
+        self.rb.removePoint(-1)
+        if band_size > 1:
+            if temp_band_size > 1:
+                point = self.rb.getPoint(0, band_size - 2)
+                self.temp_rb.movePoint(temp_band_size - 2, point)
+        else:
+            self.temp_rb.reset(QgsWkbTypes.LineGeometry)
 
     def deactivate(self):
         super().deactivate()
-        self.clearMapCanvas()
-
-    def clearMapCanvas(self):
-        self.rb.reset(QgsWkbTypes.LineGeometry)
+        self.drawing_stop()
 
 
 class PolyDrawMapTool(QgsMapTool):
@@ -2124,7 +2282,6 @@ class PolyDrawMapTool(QgsMapTool):
         if self.area_painter:
             self.area_painter.reset(QgsWkbTypes.PolygonGeometry)
             self.area_painter = None
-
 
 # ========== Funkcje:
 

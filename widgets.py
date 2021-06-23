@@ -606,6 +606,58 @@ class ParkingCanvasPanel(QFrame):
         dlg.obj.parking = None
 
 
+class MarszCanvasPanel(QFrame):
+    """Widget menu przyborne dla marszrut."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setParent(iface.mapCanvas())
+        self.setCursor(Qt.ArrowCursor)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(112, 48)
+        self.setObjectName("main")
+        self.pointer = MoekPointer()
+        self.pointer.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.pointer.setFixedSize(12, 6)
+        self.pointer.setObjectName("pointer")
+        self.box = QFrame()
+        self.box.setObjectName("box")
+        self.box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    QFrame#box{background-color: rgba(0,0,0,0.6); border: none}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(0, 0, 0, 0)
+        vlay.setSpacing(0)
+        vlay.addWidget(self.pointer)
+        vlay.addWidget(self.box)
+        vlay.setAlignment(self.pointer, Qt.AlignCenter)
+        self.setLayout(vlay)
+        self.marsz_continue = MoekButton(name="line_continue", size=34)
+        self.marsz_edit = MoekButton(name="line_edit", size=34)
+        self.trash = MoekButton(name="trash", size=34)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(4, 4, 4, 4)
+        hlay.setSpacing(1)
+        hlay.addWidget(self.marsz_continue)
+        hlay.addWidget(self.marsz_edit)
+        hlay.addWidget(self.trash)
+        self.box.setLayout(hlay)
+        # self.flag_move.clicked.connect(self.init_move)
+        self.marsz_edit.clicked.connect(lambda: dlg.mt.init("marsz_edit"))
+        self.trash.clicked.connect(self.marsz_delete)
+
+    def marsz_delete(self):
+        """Usunięcie marszruty z bazy danych."""
+        db = PgConn()
+        sql = "DELETE FROM team_" + str(dlg.team_i) + ".marsz WHERE marsz_id = " + str(dlg.obj.marsz) + ";"
+        if db:
+            res = db.query_upd(sql)
+            if res:
+                dlg.obj.marsz = None
+        # Aktualizacja listy marszrut w ObjectManager:
+        dlg.obj.marsz_ids = get_marsz_ids(dlg.cfg.marsz_case())
+
 class WnCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi punktów WN_PNE."""
     def __init__(self):

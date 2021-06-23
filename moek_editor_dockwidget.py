@@ -37,7 +37,7 @@ from .layers import LayerManager
 from .maptools import MapToolManager, ObjectManager
 from .main import vn_mode_changed
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, WyrCanvasPanel, WnCanvasPanel
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel
 from .basemaps import MoekMapPanel, basemaps_load
 from .sequences import sequences_load, prev_map, next_map, seq
 
@@ -269,6 +269,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.flag_panel.hide()
         self.parking_panel = ParkingCanvasPanel()
         self.parking_panel.hide()
+        self.marsz_panel = MarszCanvasPanel()
+        self.marsz_panel.hide()
         self.wyr_panel = WyrCanvasPanel()
         self.wyr_panel.hide()
         self.wn_panel = WnCanvasPanel()
@@ -674,6 +676,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         try:
             self.canvas.children().remove(self.parking_panel)
             self.parking_panel.deleteLater()
+        except:
+            pass
+        try:
+            self.canvas.children().remove(self.marsz_panel)
+            self.marsz_panel.deleteLater()
         except:
             pass
         try:

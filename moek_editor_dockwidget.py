@@ -81,8 +81,21 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             self,
                             title="  Zespół:",
                             switch=None,
+                            custom_width=175,
+                            grouped=True,
                             bmargin=[2, 0, 0, 0],
-                            round=[16, 16, 6, 6])
+                            round=[16, 16, 0, 0],
+                            grey_void=True)
+        self.p_team_export = MoekBarPanel(
+                            self,
+                            switch=None,
+                            spacing=8,
+                            wmargin=0,
+                            custom_width=35,
+                            grouped=True,
+                            bmargin=[0, 0, 2, 0],
+                            round=[0, 0, 6, 6])
+        self.p_team_grp = MoekGroupPanel(self)
         self.p_pow = MoekBarPanel(
                             self,
                             title_off="Wszystkie powiaty",
@@ -138,6 +151,13 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         p_team_widgets = [
                     {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
                     ]
+        p_team_export_widgets = [
+                    {"item": "button", "name": "data_export", "size": 33,"checkable": False, "tooltip": u'eksport danych'}
+                    ]
+        p_team_grp_widgets = [
+                    {"item": "panel", "object": self.p_team},
+                    {"item": "panel", "object": self.p_team_export}
+                    ]
         p_pow_widgets = [
                     {"item": "combobox", "name": "pow_act", "height": 21, "border": 1, "b_round": "none"}
                     ]
@@ -192,8 +212,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj marszruty"}
                     ]
 
-        self.panels = [self.p_team, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
-        self.p_widgets = [p_team_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_komunikacja_widgets]
+        self.panels = [self.p_team, self.p_team_export, self.p_team_grp, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
+        self.p_widgets = [p_team_widgets, p_team_export_widgets, p_team_grp_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_komunikacja_widgets]
 
         # Wczytanie paneli i ich widgetów do dockwidget'u:
         for (panel, widgets) in zip(self.panels, self.p_widgets):

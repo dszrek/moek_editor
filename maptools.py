@@ -500,7 +500,7 @@ class MapToolManager:
         self.old_button = None
         self.feat_backup = None
         self.canvas.mapToolSet.connect(self.maptool_change)
-        self.tool_kinds = (MultiMapTool, IdentMapTool, PointDrawMapTool, LineDrawMapTool, PolyDrawMapTool, LineEditMapTool, PolyEditMapTool)
+        self.tool_kinds = (MultiMapTool, IdentMapTool, PointDrawMapTool, LineDrawMapTool, PolyDrawMapTool, LineEditMapTool, PolyEditMapTool, LineContinueMapTool)
         self.maptools = [
             # {"name" : "edit_poly", "class" : PolyEditMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_pne", "wyrobiska"], "fn" : obj_sel},
             {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"],"fn" : obj_sel},
@@ -515,7 +515,8 @@ class MapToolManager:
             {"name" : "parking_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"], "fn" : parking_add, "extra" : []},
             {"name" : "parking_move", "class" : PointDrawMapTool, "button" : self.dlg.parking_panel.parking_tools.parking_move, "fn" : parking_move, "extra" : []},
             {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : [[255, 255, 0, 255],["marszruty", "parking_planowane", "parking_odwiedzone"]]},
-            {"name" : "marsz_edit", "class" : LineEditMapTool, "button" : self.dlg.marsz_panel.marsz_edit, "lyr" : ["marszruty"], "fn" : marsz_line_change, "extra" : [["marsz_id"],["marszruty", "parking_planowane", "parking_odwiedzone"]]}
+            {"name" : "marsz_edit", "class" : LineEditMapTool, "button" : self.dlg.marsz_panel.marsz_edit, "lyr" : ["marszruty"], "fn" : marsz_line_change, "extra" : ["marsz_id",["marszruty", "parking_planowane", "parking_odwiedzone"]]},
+            {"name" : "marsz_continue", "class" : LineContinueMapTool, "button" : self.dlg.marsz_panel.marsz_continue, "lyr" : ["marszruty"], "fn" : marsz_line_continue, "extra" : ["marsz_id"]}
         ]
 
     def maptool_change(self, new_tool, old_tool):
@@ -523,10 +524,10 @@ class MapToolManager:
             # Jeśli wyłączany jest maptool o klasie QgsMapToolIdentify,
             # event jest puszczany dwukrotnie (pierwszy raz z wartościami None, None)
             return
-        # try:
-        #     dlg.obj.marsz_menu_hide()
-        # except:
-        #     pass
+        try:
+            dlg.marsz_panel.setVisible(False)
+        except:
+            pass
         if not isinstance(new_tool, (self.tool_kinds)) and self.mt_name:
             # Reset ustawień MapToolManager'a, jeśli został wybrany maptool spoza wtyczki
             self.maptool = None
@@ -542,21 +543,21 @@ class MapToolManager:
         except:
             self.old_button = None
 
-    def init(self, maptool):
+    def init(self, maptool, extra=None):
         """Zainicjowanie zmiany maptool'a."""
         if maptool == "multi_tool" and self.mt_name == "multi_tool":  # Zablokowanie próby wyłączenia multi_tool'a
             self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].setChecked(True)
             return
         if not self.mt_name:  # Nie ma obecnie uruchomionego maptool'a
-            self.tool_on(maptool)  # Włączenie maptool'a
+            self.tool_on(maptool, extra)  # Włączenie maptool'a
         else:
             mt_old = self.mt_name
             if mt_old != maptool:  # Inny maptool był włączony
-                self.tool_on(maptool)  # Włączenie nowego maptool'a
+                self.tool_on(maptool, extra)  # Włączenie nowego maptool'a
             else:
                 self.tool_on("multi_tool")
 
-    def tool_on(self, maptool):
+    def tool_on(self, maptool, extra=None):
         """Włączenie maptool'a."""
         self.params = self.dict_name(maptool)  # Wczytanie parametrów maptool'a
         if "lyr" in self.params:
@@ -573,16 +574,25 @@ class MapToolManager:
             self.maptool = self.params["class"](self.canvas, lyr[0], self.params["button"])
             self.maptool.ending.connect(self.params["fn"])
         elif self.params["class"] == LineEditMapTool:
-            geom = self.get_lyr_geom(lyr[0], self.params["extra"][0])
+            geom = self.get_lyr_geom(lyr[0], self.params["extra"])
             self.line_to_layers(geom)
             self.maptool = self.params["class"](self.canvas, lyr[0], self.params["button"], dlg.obj.marsz, self.params["extra"][1])
+            self.maptool.ending.connect(self.params["fn"])
+            dlg.obj.marsz = None
+        elif self.params["class"] == LineContinueMapTool:
+            geom = self.get_lyr_geom(lyr[0], self.params["extra"])
+            self.line_to_layers(geom)
+            self.maptool = self.params["class"](self.canvas, lyr[0], self.params["button"], dlg.obj.marsz)
             self.maptool.ending.connect(self.params["fn"])
             dlg.obj.marsz = None
         elif self.params["class"] == PointDrawMapTool:
             self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"])
             self.maptool.drawn.connect(self.params["fn"])
         elif self.params["class"] == LineDrawMapTool:
-            self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"])
+            if extra:
+                self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"], extra)
+            else:
+                self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"], None)
             self.maptool.drawn.connect(self.params["fn"])
         elif self.params["class"] == PolyDrawMapTool:
             self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"])
@@ -678,6 +688,228 @@ class DummyMapTool(QgsMapTool):
 
     def button(self):
         return self._button
+
+
+class LineContinueMapTool(QgsMapTool):
+    """Maptool do wyboru początku geometrii liniowej, której rysowanie będzie kontynuowane."""
+    cursor_changed = pyqtSignal(str)
+    ending = pyqtSignal(QgsVectorLayer, object, int, object, bool, bool)
+
+    def __init__(self, canvas, layer, button, _id):
+        QgsMapTool.__init__(self, canvas)
+        self.canvas = canvas
+        self._button = button
+        if not self._button.isChecked():
+            self._button.setChecked(True)
+        self.layer = layer
+        self.id = _id
+        self.geom = None
+        self.init_extent = self.canvas.extent()
+        self.dragging = False
+        self.accepted = False
+        self.canceled = False
+        self.lrb = None
+        self.vrb = None
+        self.node_hover = None
+        self.start_node = None
+        self.end_node = None
+        self.node_presel = None
+        self.node_idx = -1
+        self.prev_node = None
+        self.cursor_changed.connect(self.cursor_change)
+        self.cursor = "open_hand"
+        self.edit_layer = dlg.proj.mapLayersByName("edit_line")[0]
+        self.backup_layer = dlg.proj.mapLayersByName("backup_line")[0]
+        self.snap_settings()
+        self.rbs_create()
+        self.rbs_populate()
+        self.zoom_to_geom()  # Przybliżenie widoku mapy do geometrii
+
+    def zoom_to_geom(self):
+        """Przybliżenie widoku mapy do granic geometrii."""
+        # Określenie zasięgu warstwy:
+        box = None
+        for feat in self.edit_layer.getFeatures():
+            if not box:
+                box = feat.geometry().boundingBox()
+            else:
+                box.combineExtentWith(feat.geometry().boundingBox())
+        # Określenie nowego zasięgu widoku mapy:
+        w_off = box.width() * 0.4
+        h_off = box.height() * 0.4
+        ext = QgsRectangle(box.xMinimum() - w_off,
+                            box.yMinimum() - h_off,
+                            box.xMaximum() + w_off,
+                            box.yMaximum() + h_off
+                            )
+        self.canvas.setExtent(ext)
+
+    def snap_settings(self):
+        """Zmienia globalne ustawienia snappingu."""
+        s = QgsSettings()
+        s.setValue('/qgis/digitizing/default_snap_type', 'VertexAndSegment')
+        s.setValue('/qgis/digitizing/search_radius_vertex_edit', 12)
+        s.setValue('/qgis/digitizing/search_radius_vertex_edit_unit', 'Pixels')
+
+    def button(self):
+        return self._button
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "cursor":
+            self.cursor_changed.emit(val)
+
+    def cursor_change(self, cur_name):
+        """Zmiana cursora maptool'a."""
+        cursors = [
+                    ["open_hand", Qt.OpenHandCursor],
+                    ["closed_hand", Qt.ClosedHandCursor],
+                    ["arrow", Qt.CrossCursor]
+                ]
+        for cursor in cursors:
+            if cursor[0] == cur_name:
+                self.setCursor(cursor[1])
+                break
+
+    def rbs_create(self):
+        """Stworzenie rubberband'ów."""
+        self.vrb = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
+        self.vrb.setIcon(QgsRubberBand.ICON_CIRCLE)
+        self.vrb.setColor(QColor(0, 0, 0, 255))
+        self.vrb.setFillColor(QColor(255, 255, 0, 128))
+        self.vrb.setIconSize(10)
+        self.vrb.setVisible(False)
+
+        self.lrb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
+        self.lrb.setWidth(3)
+        self.lrb.setColor(QColor(255, 255, 0, 64))
+        self.lrb.setFillColor(QColor(255, 255, 0, 28))
+        self.lrb.setVisible(True)
+
+        self.node_hover = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
+        self.node_hover.setIcon(QgsRubberBand.ICON_CIRCLE)
+        self.node_hover.setColor(QColor(0, 0, 0, 255))
+        self.node_hover.setFillColor(QColor(255, 255, 0, 255))
+        self.node_hover.setIconSize(14)
+        self.node_hover.addPoint(QgsPointXY(0, 0), False)
+        self.node_hover.setVisible(False)
+
+    def rbs_populate(self):
+        """Załadowanie linii i punktów do rubberband'ów."""
+        feats = self.edit_layer.getFeatures()
+        for feat in feats:
+            geom = feat.geometry().asPolyline()
+            self.vrb.addPoint(geom[0])
+            self.vrb.addPoint(geom[-1])
+            self.start_node = geom[0]
+            self.end_node = geom[-1]
+            for part in geom:
+                self.lrb.addPoint(part)
+            break
+
+    def snap_to_layer(self, event, lyr):
+        """Zwraca wyniki przyciągania do wierzchołków i krawędzi."""
+        self.canvas.snappingUtils().setCurrentLayer(lyr)
+        v = self.canvas.snappingUtils().snapToCurrentLayer(event.pos(), QgsPointLocator.Vertex)
+        return v
+
+    def canvasMoveEvent(self, event):
+        map_point = self.toMapCoordinates(event.pos())
+        if event.buttons() == Qt.LeftButton:
+            # Panning mapy:
+            if not self.dragging:
+                self.dragging = True
+                self.cursor = "closed_hand"
+            self.canvas.panAction(event)
+        elif event.button() == Qt.NoButton:
+            v = self.snap_to_layer(event, self.edit_layer)
+            if v.type() == 1:  # Kursor nad punktem marszruty
+                if v.point() == self.start_node or v.point() == self.end_node:
+                    self.cursor = "arrow"
+                    self.node_hover.movePoint(v.point(), 0)
+                    self.node_hover.setVisible(True)
+                    self.node_presel = v.point()
+            else:
+                self.cursor = "open_hand"
+                self.node_presel = None
+                self.node_hover.setVisible(False)
+
+    def canvasReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            if not self.dragging:
+                if self.node_presel:
+                    self.accepted = True
+                    self.accept_changes()  # Zatwierdzenie wyboru końcówki linii
+            else:
+                # Zakończenie panningu mapy:
+                self.cursor = "open_hand"
+                self.canvas.panActionEnd(event.pos())
+                self.dragging = False
+
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.canceled = True
+            self.accept_changes(cancel=True)
+
+    def geom_update(self):
+        """Aktualizacja geometrii liniowej po wybraniu początkowego wierzchołka."""
+        if not self.lrb:  # Nie ma geometrii
+            return None
+        if self.node_presel == self.end_node:
+            return self.lrb.asGeometry()
+        elif self.node_presel == self.start_node:
+            geom = self.lrb.asGeometry()
+            nodes = geom.asPolyline()
+            nodes.reverse()
+            rev_geom = QgsGeometry.fromPolylineXY(nodes)
+            return rev_geom
+        else:
+            return None
+
+    def geom_from_backup(self):
+        """Zwraca geometrię z warstwy 'backup_line'."""
+        feat_cnt = self.backup_layer.featureCount()
+        if feat_cnt == 0:
+            return None
+        else:
+            feats = self.backup_layer.getFeatures()
+            for feat in feats:
+                geom = feat.geometry()
+                return geom
+
+    def rbs_clear(self):
+        """Wyczyszczenie zawartości i usunięcie rubberband'ów."""
+        if self.lrb:
+            self.canvas.scene().removeItem(self.lrb)
+            self.lrb = None
+        if self.vrb:
+            self.canvas.scene().removeItem(self.vrb)
+            self.vbr = None
+        if self.node_hover:
+            self.canvas.scene().removeItem(self.node_hover)
+            self.node_hover = None
+        self.canvas.refresh()
+
+    def accept_changes(self, cancel=False, deactivated=False):
+        """Zakończenie edycji geometrii i zaakceptowanie wprowadzonych zmian, albo przywrócenie stanu pierwotnego (cancel=True)."""
+        if not cancel:
+            self.geom = self.geom_update()
+        if cancel or not self.geom:
+            self.geom = self.geom_from_backup()
+            self.canvas.setExtent(self.init_extent)
+        self.rbs_clear()
+        self.edit_layer.dataProvider().truncate()
+        self.edit_layer.triggerRepaint()
+        self.backup_layer.dataProvider().truncate()
+        self.backup_layer.triggerRepaint()
+        self.ending.emit(self.layer, self.geom, self.id, self.init_extent, cancel, deactivated)
+
+    def deactivate(self):
+        """Zakończenie działania maptool'a."""
+        super().deactivate()
+        if not self.accepted:
+            self.accept_changes(deactivated=True)
 
 
 class LineEditMapTool(QgsMapTool):
@@ -799,13 +1031,13 @@ class LineEditMapTool(QgsMapTool):
         """Stworzenie rubberband'ów."""
         self.vrb = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
         self.vrb.setIcon(QgsRubberBand.ICON_CIRCLE)
-        self.vrb.setColor(QColor(255, 255, 0, 0))
-        self.vrb.setFillColor(QColor(255, 255, 0, 128))
-        self.vrb.setIconSize(6)
+        self.vrb.setColor(QColor(255, 255, 0, 255))
+        self.vrb.setFillColor(QColor(255, 255, 0, 255))
+        self.vrb.setIconSize(8)
         self.vrb.setVisible(False)
 
         self.lrb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
-        self.lrb.setWidth(1)
+        self.lrb.setWidth(2)
         self.lrb.setColor(QColor(255, 255, 0, 255))
         self.lrb.setFillColor(QColor(255, 255, 0, 28))
         self.lrb.setVisible(True)
@@ -827,8 +1059,8 @@ class LineEditMapTool(QgsMapTool):
         self.node_hover = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
         self.node_hover.setIcon(QgsRubberBand.ICON_CIRCLE)
         self.node_hover.setColor(QColor(0, 0, 0, 255))
-        self.node_hover.setFillColor(QColor(255, 255, 0, 128))
-        self.node_hover.setIconSize(10)
+        self.node_hover.setFillColor(QColor(255, 255, 0, 255))
+        self.node_hover.setIconSize(12)
         self.node_hover.addPoint(QgsPointXY(0, 0), False)
         self.node_hover.setVisible(False)
 
@@ -836,7 +1068,7 @@ class LineEditMapTool(QgsMapTool):
         self.node_selector.setIcon(QgsRubberBand.ICON_CIRCLE)
         self.node_selector.setColor(QColor(0, 0, 0, 255))
         self.node_selector.setFillColor(QColor(255, 255, 0, 255))
-        self.node_selector.setIconSize(12)
+        self.node_selector.setIconSize(14)
         self.node_selector.addPoint(QgsPointXY(0, 0), False)
         self.node_selector.setVisible(False)
 
@@ -2377,14 +2609,21 @@ class PointDrawMapTool(QgsMapTool):
 
 class LineDrawMapTool(QgsMapTool):
     """Maptool do rysowania liniowego obiektu marszruty."""
-    drawn = pyqtSignal(object)
+    drawn = pyqtSignal(object, object, bool, bool)
     cursor_changed = pyqtSignal(str)
 
-    def __init__(self, canvas, button, extra):
+    def __init__(self, canvas, button, extra, cont_list):
         QgsMapTool.__init__(self, canvas)
         self.canvas = canvas
         self._button = button
         self.color = QColor(extra[0][0], extra[0][1], extra[0][2], extra[0][3])
+        self.accepted = False
+        self.canceled = False
+        self.deactivated = False
+        self.geom = None
+        self.new = True
+        self.id = None
+        self.init_extent = None
         self.rb = None
         self.temp_rb = None
         self.snap_marker = None
@@ -2397,6 +2636,12 @@ class LineDrawMapTool(QgsMapTool):
         self.cursor_changed.connect(self.cursor_change)
         self.cursor = "cross"
         self.rbs_create()
+        if cont_list:  # Kontynuowanie rysowania
+            self.new = False
+            self.id = cont_list[0]
+            self.geom = cont_list[1]
+            self.init_extent = cont_list[2]
+            self.geom_load(self.geom)
 
     def rbs_create(self):
         """Stworzenie rubberband'ów."""
@@ -2524,11 +2769,11 @@ class LineDrawMapTool(QgsMapTool):
             self.vertex_add(event.pos())
         elif event.button() == Qt.RightButton:
             if self.rb.numberOfVertices() > 1:
-                self.drawn.emit(self.rb.asGeometry())
-                self.drawing_stop()
+                self.accepted = True
+                self.accept_changes()
             else:
-                self.drawing_stop()
-                self.drawn.emit(None)
+                self.canceled = True
+                self.accept_changes(cancel=True)
 
     def keyReleaseEvent(self, event):
         if self.drawing and not self.dragging and event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
@@ -2536,15 +2781,24 @@ class LineDrawMapTool(QgsMapTool):
             event.ignore()
         if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
             if self.rb.numberOfVertices() > 1:
-                self.drawn.emit(self.rb.asGeometry())
-                self.drawing_stop()
+                self.accepted = True
+                self.accept_changes()
             else:
-                self.drawing_stop()
-                self.drawn.emit(None)
+                self.canceled = True
+                self.accept_changes(cancel=True)
         if event.key() == Qt.Key_Escape:
-            # Przerwanie rysowania i wyłączenie maptool'a
-            self.drawing_stop()
-            self.drawn.emit(None)
+            self.canceled = True
+            self.accept_changes(cancel=True)
+
+    def geom_load(self, geom):
+        """Ładuje geometrię liniową do rubberband'ów."""
+        self.drawing_start()
+        p_list = list(geom.vertices())
+        for i in range(len(p_list)):
+            node = QgsPointXY(p_list[i].x(), p_list[i].y())
+            self.rb.addPoint(node)
+            if i == len(p_list) - 1:
+                self.temp_rb.addPoint(node)
 
     def drawing_start(self):
         """Inicjuje rubberband'y do rysowania linii."""
@@ -2567,8 +2821,11 @@ class LineDrawMapTool(QgsMapTool):
         if self.temp_rb:
             self.canvas.scene().removeItem(self.temp_rb)
             self.temp_rb = None
-            self.drawing = False
-            self.canvas.refresh()
+        if self.snap_marker:
+            self.canvas.scene().removeItem(self.snap_marker)
+            self.snap_marker = None
+        self.drawing = False
+        dlg.proj.mapLayersByName("marszruty")[0].triggerRepaint()
 
     def vertex_add(self, canvas_pt):
         """Dodaje wierzchołek do linii marszruty i aktualizuje rubberband'y."""
@@ -2592,10 +2849,22 @@ class LineDrawMapTool(QgsMapTool):
         else:
             self.temp_rb.reset(QgsWkbTypes.LineGeometry)
 
+    def accept_changes(self, cancel=False, deactivated=False):
+        """Zakończenie edycji geometrii i zaakceptowanie wprowadzonych zmian, albo przywrócenie stanu pierwotnego."""
+        if self.rb:
+            if self.rb.numberOfVertices() > 1 and not cancel and not deactivated:
+                self.geom = self.rb.asGeometry()
+        self.drawing_stop()
+        if self.init_extent:
+            self.canvas.setExtent(self.init_extent)
+        self.accepted = True
+        self.drawn.emit(self.geom, self.id, cancel, deactivated)
+
     def deactivate(self):
         """Zakończenie działania maptool'a."""
         super().deactivate()
-        self.drawing_stop()
+        if not self.accepted:
+            self.accept_changes(deactivated=True)
 
 
 class PolyDrawMapTool(QgsMapTool):
@@ -3040,12 +3309,17 @@ def parking_pow(point):
         if res:
             return res[0]
 
-def marsz_add(geom):
+def marsz_add(geom, _id, cancel, deactivated):
     """Utworzenie nowego obiektu marszruty."""
-    dlg.mt.init("multi_tool")
+    lyr_line = dlg.proj.mapLayersByName("marszruty")[0]
+    if _id:
+        # Linia marszruty była kontynuowana - trzeba ją zaktualizować, nie dodawać
+        marsz_line_change(lyr_line, geom, _id, deactivated)
+        return
+    if not deactivated:
+        dlg.mt.init("multi_tool")
     if not geom:
         return
-    lyr_line = dlg.proj.mapLayersByName("marszruty")[0]
     marsz_m = length_measure(geom)
     marsz_t = length_time(marsz_m)
     db = PgConn()
@@ -3144,3 +3418,9 @@ def marsz_line_change(lyr, geom, marsz_id, deactivated=False):
             return
     marsz_powiaty_change(marsz_id, geom)
     marsz_layer_update()
+
+def marsz_line_continue(lyr, geom, marsz_id, init_extent, cancel=False, deactivated=False):
+    if not cancel and not deactivated:
+        dlg.mt.init("marsz_add", [marsz_id, geom, init_extent])
+    else:
+        marsz_line_change(lyr, geom, marsz_id, deactivated)

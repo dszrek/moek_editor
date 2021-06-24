@@ -7,7 +7,7 @@ from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp
 from qgis.PyQt.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, wn_layer_update
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wn_layer_update
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
 from .classes import PgConn
 
@@ -643,7 +643,7 @@ class MarszCanvasPanel(QFrame):
         hlay.addWidget(self.marsz_edit)
         hlay.addWidget(self.trash)
         self.box.setLayout(hlay)
-        # self.flag_move.clicked.connect(self.init_move)
+        self.marsz_continue.clicked.connect(lambda: dlg.mt.init("marsz_continue"))
         self.marsz_edit.clicked.connect(lambda: dlg.mt.init("marsz_edit"))
         self.trash.clicked.connect(self.marsz_delete)
 
@@ -656,7 +656,8 @@ class MarszCanvasPanel(QFrame):
             if res:
                 dlg.obj.marsz = None
         # Aktualizacja listy marszrut w ObjectManager:
-        dlg.obj.marsz_ids = get_marsz_ids(dlg.cfg.marsz_case())
+        dlg.obj.marsz_ids = get_marsz_ids()
+        marsz_layer_update()
 
 class WnCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi punktów WN_PNE."""
@@ -979,8 +980,15 @@ class FlagTools(QFrame):
         bns = f" WHERE id = {dlg.obj.flag}"
         db_attr_change(tbl=table, attr="b_fieldcheck", val=not self.fchk, sql_bns=bns, user=False)
         self.fchk = not self.fchk
+        # Włączenie tego rodzaju flag, jeśli są wyłączone:
+        name = "flagi_z_teren" if self.fchk else "flagi_bez_teren"
+        val = dlg.cfg.get_val(name)
+        if val == 0:
+            dlg.cfg.set_val(name, 1)
         dlg.proj.mapLayersByName("flagi_bez_teren")[0].triggerRepaint()
         dlg.proj.mapLayersByName("flagi_z_teren")[0].triggerRepaint()
+        dlg.obj.flag_ids = get_flag_ids(dlg.cfg.flag_case())  # Aktualizacja listy flag w ObjectManager
+        dlg.obj.list_position_check("flag")  # Aktualizacja pozycji na liście obecnie wybranej flagi
 
     def flag_delete(self):
         """Usunięcie flagi z bazy danych."""
@@ -1037,6 +1045,13 @@ class ParkingTools(QFrame):
         bns = f" WHERE id = {dlg.obj.parking}"
         self.status = 0 if self.status == 1 else 1
         db_attr_change(tbl=table, attr="i_status", val=self.status, sql_bns=bns, user=False)
+        # Włączenie tego rodzaju parkingów, jeśli są wyłączone:
+        name = "parking_planowane" if self.status == 0 else "parking_odwiedzone"
+        val = dlg.cfg.get_val(name)
+        if val == 0:
+            dlg.cfg.set_val(name, 1)
+        dlg.obj.parking_ids = get_parking_ids(dlg.cfg.parking_case())  # Aktualizacja listy flag w ObjectManager
+        dlg.obj.list_position_check("parking")  # Aktualizacja pozycji na liście obecnie wybranego parkingu
         dlg.proj.mapLayersByName("parking_planowane")[0].triggerRepaint()
         dlg.proj.mapLayersByName("parking_odwiedzone")[0].triggerRepaint()
 

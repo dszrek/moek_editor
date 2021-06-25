@@ -7,7 +7,7 @@ from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp
 from qgis.PyQt.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wn_layer_update
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wn_layer_update, file_dialog
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
 from .classes import PgConn
 
@@ -776,6 +776,68 @@ class WnCanvasPanel(QFrame):
         """Dezaktywuje punkt WN_PNE przy wyłączeniu canvaspanel'u."""
         dlg.obj.wn = None
 
+
+class ExportCanvasPanel(QFrame):
+    """Zagnieżdżony w mapcanvas'ie panel do obsługi eksportu danych."""
+    path_changed = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+        self.setParent(iface.mapCanvas())
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setFixedWidth(500)
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        self.bar = CanvasPanelTitleBar(self, title="Eksport danych", width=self.width())
+        self.box = MoekVBox(self)
+        self.box.setObjectName("box")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(3, 3, 3, 3)
+        vlay.setSpacing(1)
+        vlay.addWidget(self.bar)
+        vlay.addWidget(self.box)
+        self.setLayout(vlay)
+        self.export_path = None
+        self.path_changed.connect(self.path_change)
+        self.path_box = CanvasHSubPanel(self, height=44, margins=[5, 5, 5, 5], spacing=5)
+        self.box.lay.addWidget(self.path_box)
+        self.path_pb = ParamBox(self, width=445, title_down="FOLDER EKSPORTU")
+        self.path_box.lay.addWidget(self.path_pb)
+        self.path_btn = MoekButton(self, name="export_path", size=34, checkable=False)
+        self.path_btn.clicked.connect(self.set_path)
+        self.path_box.lay.addWidget(self.path_btn)
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "export_path":
+            self.path_changed.emit(val)
+
+    def path_change(self, path):
+        """Zmiana ścieżki eksportu danych."""
+        if path and not os.path.isdir(path):
+            self.export_path = None
+            return
+        self.path_pb.value_change("value","") if not path else self.path_pb.value_change("value", path)
+        db_path = "Null" if not path else f"'{path}'"
+        table = f"public.team_users"
+        bns = f" WHERE team_id = {dlg.team_i} and user_id = {dlg.user_id}"
+        db_attr_change(tbl=table, attr="t_export_path", val=db_path, sql_bns=bns, user=False)
+
+    def set_path(self):
+        """Ustawia ścieżkę do folderu eksportu przez okno dialogowe menedżera plików."""
+        path = file_dialog(is_folder=True)
+        if path:
+            self.export_path = path
+
+    def exit_clicked(self):
+        """Dezaktywuje punkt WN_PNE przy wyłączeniu canvaspanel'u."""
+        dlg.export_panel.hide()
 
 class CanvasPanelTitleBar(QFrame):
     """Belka panelu z box'em."""

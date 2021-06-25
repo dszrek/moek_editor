@@ -35,9 +35,9 @@ from qgis.utils import iface
 from .classes import PgConn
 from .layers import LayerManager
 from .maptools import MapToolManager, ObjectManager
-from .main import vn_mode_changed
+from .main import vn_mode_changed, data_export_init
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
 from .basemaps import MoekMapPanel, basemaps_load
 from .sequences import sequences_load, prev_map, next_map, seq
 
@@ -295,6 +295,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.wyr_panel.hide()
         self.wn_panel = WnCanvasPanel()
         self.wn_panel.hide()
+        self.export_panel = ExportCanvasPanel()
+        self.export_panel.hide()
         self.mt = MapToolManager(dlg=self, canvas=self.canvas)
         self.obj = ObjectManager(dlg=self, canvas=self.canvas)
         self.lyr = LayerManager(dlg=self)
@@ -307,6 +309,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.wn_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
+        export_x = (self.canvas.width() / 2) - (self.export_panel.width() / 2)
+        export_y = (self.canvas.height() / 2) - (self.export_panel.height() / 2)
+        self.export_panel.move(export_x, export_y)
         splash_x = (self.canvas.width() / 2) - (self.splash_screen.width() / 2)
         splash_y = (self.canvas.height() / 2) - (self.splash_screen.height() / 2)
         self.splash_screen.move(splash_x, splash_y)
@@ -408,6 +413,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.wyr_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
+        export_x = (self.canvas.width() / 2) - (self.export_panel.width() / 2)
+        export_y = (self.canvas.height() / 2) - (self.export_panel.height() / 2)
+        self.export_panel.move(export_x, export_y)
         splash_x = (self.canvas.width() / 2) - (self.splash_screen.width() / 2)
         splash_y = (self.canvas.height() / 2) - (self.splash_screen.height() / 2)
         self.splash_screen.move(splash_x, splash_y)
@@ -602,6 +610,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
         self.p_pow_mask.box.widgets["btn_pow_mask"].clicked.connect(lambda: self.cfg.set_val(name="powiaty_mask", val=self.p_pow_mask.box.widgets["btn_pow_mask"].isChecked()))
+        self.p_team_export.box.widgets["btn_data_export"].clicked.connect(data_export_init)
         self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))
@@ -711,6 +720,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         try:
             self.canvas.children().remove(self.wn_panel)
             self.wn_panel.deleteLater()
+        except:
+            pass
+        try:
+            self.canvas.children().remove(self.export_panel)
+            self.export_panel.deleteLater()
         except:
             pass
         try:

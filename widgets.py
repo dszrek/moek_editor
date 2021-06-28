@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
-from qgis.core import QgsProject
+from qgis.core import QgsVectorLayer, QgsVectorFileWriter
 from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QFrame, QToolButton, QPushButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
 from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp
 from qgis.PyQt.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator
@@ -9,7 +9,7 @@ from qgis.utils import iface
 
 from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wn_layer_update, file_dialog
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
-from .classes import PgConn
+from .classes import PgConn, CfgPars
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 
@@ -659,6 +659,7 @@ class MarszCanvasPanel(QFrame):
         dlg.obj.marsz_ids = get_marsz_ids()
         marsz_layer_update()
 
+
 class WnCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi punktów WN_PNE."""
     def __init__(self):
@@ -802,8 +803,6 @@ class ExportCanvasPanel(QFrame):
         vlay.addWidget(self.bar)
         vlay.addWidget(self.box)
         self.setLayout(vlay)
-        self.export_path = None
-        self.path_changed.connect(self.path_change)
         self.path_box = CanvasHSubPanel(self, height=44, margins=[5, 5, 5, 5], spacing=5)
         self.box.lay.addWidget(self.path_box)
         self.path_pb = ParamBox(self, width=445, title_down="FOLDER EKSPORTU")
@@ -811,17 +810,49 @@ class ExportCanvasPanel(QFrame):
         self.path_btn = MoekButton(self, name="export_path", size=34, checkable=False)
         self.path_btn.clicked.connect(self.set_path)
         self.path_box.lay.addWidget(self.path_btn)
+        self.bottom_margin = CanvasHSubPanel(self, height=4)
+        self.box.lay.addWidget(self.bottom_margin)
+        self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        self.box.lay.addWidget(self.separator_1)
+        self.sp_ext = CanvasHSubPanel(self, height=44)
+        self.box.lay.addWidget(self.sp_ext)
+        self.export_btn = MoekButton(self, name="export", size=34, checkable=False, enabled=False)
+        self.export_btn.clicked.connect(self.layers_export)
+        self.export_selector = ExportSelector(self, width=445)
+        self.sp_ext.lay.addWidget(self.export_selector)
+        self.sp_ext.lay.addWidget(self.export_btn)
+        self.pow_bbox = None
+        self.pow_all = None
+        self.path_void = None
+        self.case_void = True
+        self.case = 0
+        self.export_path = None
+        self.path_changed.connect(self.path_change)
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "export_path":
             self.path_changed.emit(val)
+            self.path_void = False if val else True
+        if attr == "case":
+            self.case_void = False if val else True
+        if attr == "path_void" or attr == "case_void":
+            try:
+                self.export_btn.setEnabled(False) if self.path_void or self.case_void else self.export_btn.setEnabled(True)
+            except:
+                pass
+
+    def pow_reset(self):
+        """Kasuje zawartość zmiennych 'self.pow_bbox' i 'self.pow_all' po zmianie team'u."""
+        self.pow_bbox = None
+        self.pow_all = None
 
     def path_change(self, path):
         """Zmiana ścieżki eksportu danych."""
         if path and not os.path.isdir(path):
             self.export_path = None
+            self.path_void = True
             return
         self.path_pb.value_change("value","") if not path else self.path_pb.value_change("value", path)
         db_path = "Null" if not path else f"'{path}'"
@@ -836,8 +867,139 @@ class ExportCanvasPanel(QFrame):
             self.export_path = path
 
     def exit_clicked(self):
-        """Dezaktywuje punkt WN_PNE przy wyłączeniu canvaspanel'u."""
+        """Wyłączenie panelu po naciśnięciu na przycisk X."""
         dlg.export_panel.hide()
+
+    def layers_export(self):
+        """Eksport danych na dysk lokalny."""
+        with CfgPars() as cfg:
+            PARAMS = cfg.uri()
+        file_types = []
+        if self.case in [1, 3, 5, 7]:
+            file_types.append({'driver' : 'GPKG', 'folder' : 'geopackage', 'extension' : '.gpkg'})
+        if self.case in [2, 3, 6, 7]:
+            file_types.append({'driver' : 'KML', 'folder' : 'kml', 'extension' : '.kml'})
+        if self.case in [4, 5, 6, 7]:
+            file_types.append({'driver' : 'ESRI Shapefile', 'folder' : 'shapefiles', 'extension' : '.shp'})
+        lyrs = [
+            {'lyr_name' : 'midas_zloza', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_zloza', 'tbl_sql' : '"external"."midas_zloza"', 'key' : 'id', 'n_field' : 'id_zloza', 'd_field' : 'nazwa_zloz'},
+            {'lyr_name' : 'midas_wybilansowane', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_wybilansowane', 'tbl_sql' : '"external"."midas_wybilansowane"', 'key' : 'id1', 'n_field' : 'id', 'd_field' : 'nazwa'},
+            {'lyr_name' : 'midas_obszary', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_obszary', 'tbl_sql' : '"external"."midas_obszary"', 'key' : 'id', 'n_field' : 'id_zloz', 'd_field' : 'nazwa'},
+            {'lyr_name' : 'midas_tereny', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_tereny', 'tbl_sql' : '"external"."midas_tereny"', 'key' : 'id1', 'n_field' : 'id_zloz', 'd_field' : 'nazwa'},
+            {'lyr_name' : 'wn_pne', 'spatial_filter': 'id_all', 'tbl_name' : f'team_{dlg.team_i}.wn_pne', 'tbl_sql' : f'"external"."wn_pne"', 'key' : 'id_arkusz', 'n_field' : 'id_arkusz', 'd_field' : 'uwagi'},
+            {'lyr_name' : 'parking', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."parking" (geom) sql=', 'n_field' : 'id', 'd_field' : 'description', 'fields' : [0, 3]},
+            {'lyr_name' : 'marsz', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."marsz" (geom) sql=', 'n_field' : 'id', 'd_field' : 'i_status', 'fields' : [0, 2, 3]},
+            {'lyr_name' : 'wyr_point', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."wyrobiska" (centroid) sql=', 'n_field' : 'wyr_id', 'd_field' : 't_notatki', 'fields' : [0, 6, 13]},
+            {'lyr_name' : 'wyr_poly', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."wyr_geom" (geom) sql=', 'n_field' : 'wyr_id', 'd_field' : 'Description', 'fields' : [0]},
+            {'lyr_name' : 'flagi_z_teren', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."flagi" (geom) sql=b_fieldcheck = True', 'n_field' : 'id', 'd_field' : 't_notatki', 'fields' : [0, 3, 4]},
+            {'lyr_name' : 'flagi_bez_teren', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."flagi" (geom) sql=b_fieldcheck = False', 'n_field' : 'id', 'd_field' : 't_notatki', 'fields' : [0, 3, 4]}
+        ]
+        if not self.pow_bbox:
+            self.set_pow_bbox()
+            self.set_pow_all()
+        for ft in file_types:
+            self.folder_create(ft["folder"])
+            for l_dict in lyrs:
+                if l_dict["spatial_filter"] == "pow_all":
+                    ids = self.spatial_filtering(l_dict["tbl_name"], l_dict["key"])
+                    f_lyr = self.filtered_layer(l_dict["lyr_name"], l_dict["tbl_sql"], l_dict["key"], ids)
+                elif l_dict["spatial_filter"] == "id_all":
+                    ids = self.get_ids_from_table(l_dict["tbl_name"], l_dict["key"])
+                    f_lyr = self.filtered_layer(l_dict["lyr_name"], l_dict["tbl_sql"], l_dict["key"], ids)
+                elif not l_dict["spatial_filter"]:
+                    raw_uri = l_dict["uri"]
+                    uri = eval("f'{}'".format(raw_uri))
+                    f_lyr = QgsVectorLayer(uri, l_dict["lyr_name"], "postgres")
+                dest_path = f'{self.export_path}/{ft["folder"]}/{l_dict["lyr_name"]}{ft["extension"]}'
+                options = QgsVectorFileWriter.SaveVectorOptions()
+                options.driverName = ft["driver"]
+                options.fileEncoding = 'utf-8'
+                if "fields" in l_dict:
+                    options.attributes = l_dict["fields"]
+                options.datasourceOptions = [f"NameField={l_dict['n_field']}", f"DescriptionField={l_dict['d_field']}"]
+                QgsVectorFileWriter.writeAsVectorFormatV2(layer=f_lyr, fileName=dest_path, transformContext=dlg.proj.transformContext(), options=options)
+
+    def folder_create(self, folder):
+        """Tworzy folder o podanej nazwie, jeśli nie istnieje."""
+        if not os.path.isdir(f"{self.export_path}{os.path.sep}{folder}"):
+            os.makedirs(f"{self.export_path}{os.path.sep}{folder}")
+
+    def get_ids_from_table(self, tbl_name, key):
+        """Zwraca listę id z podanej tabeli."""
+        db = PgConn()
+        sql = f"SELECT {key} FROM {tbl_name} ORDER BY {key};"
+        if db:
+            res = db.query_sel(sql, True)
+            if res:
+                if len(res) > 1:
+                    return list(zip(*res))[0]
+                else:
+                    return list(res[0])
+            else:
+                return []
+
+    def filtered_layer(self, lyr_name, tbl_name, key, ids):
+        """Zwraca warstwę z obiektami na podstawie listy numerów ID."""
+        with CfgPars() as cfg:
+            params = cfg.uri()
+        sql = f"{key} IN ({str(ids)[1:-1]})"
+        uri = f'{params} table={tbl_name} (geom) sql={sql}'
+        lyr = QgsVectorLayer(uri, lyr_name, "postgres")
+        return lyr
+
+    def spatial_filtering(self, tbl_name, key):
+        """Zwraca listę z numerami ID obiektów z podanej tabeli, które występują w obrębie powiatów zespołu."""
+        f_list = []
+        with CfgPars() as cfg:
+            params = cfg.uri()
+        table = f'"(SELECT {key}, geom FROM {tbl_name})"'
+        _key = f'"{key}"'
+        sql = "ST_Intersects(ST_SetSRID(ST_GeomFromText('" + str(self.pow_bbox.asWkt()) + "'), 2180), geom)"
+        uri = f'{params} key={_key} table={table} (geom) sql={sql}'
+        lyr_pow = QgsVectorLayer(uri, "feat_bbox", "postgres")
+        feats = lyr_pow.getFeatures()
+        for feat in feats:
+            if feat.geometry().intersects(self.pow_all):
+                f_list.append(feat.attribute(key))
+        del lyr_pow
+        return f_list
+
+    def set_pow_bbox(self):
+        """Zwraca do zmiennej self.pow_bbox geometrię bbox powiatów zespołu."""
+        with CfgPars() as cfg:
+            params = cfg.uri()
+        table = f'(SELECT row_number() over () AS id, * FROM (select ST_Union(ST_Envelope(geom)) geom from team_{dlg.team_i}.powiaty) AS sq)'
+        key = "id"
+        uri = f'{params} key="{key}" table="{table}" (geom) sql='
+        lyr = QgsVectorLayer(uri, "temp_pow_bbox", "postgres")
+        if not lyr.isValid():
+            print(f"set_pow_bbox: warstwa z geometrią nie jest prawidłowa")
+            return
+        geom = None
+        feats = lyr.getFeatures()
+        for feat in feats:
+            geom = feat.geometry()
+        del lyr
+        self.pow_bbox = geom if geom.isGeosValid() else None
+
+    def set_pow_all(self):
+        """Zwraca do zmiennej self.pow_all złączoną geometrię powiatów zespołu."""
+        with CfgPars() as cfg:
+            params = cfg.uri()
+        table = f'(SELECT row_number() over () AS id, * FROM (select ST_Union(geom) geom from team_{dlg.team_i}.powiaty) AS sq)'
+        key = "id"
+        uri = f'{params} key="{key}" table="{table}" (geom) sql='
+        lyr = QgsVectorLayer(uri, "temp_pow_all", "postgres")
+        if not lyr.isValid():
+            print(f"set_pow_all: warstwa z geometrią nie jest prawidłowa")
+            return
+        geom = None
+        feats = lyr.getFeatures()
+        for feat in feats:
+            geom = feat.geometry()
+        del lyr
+        self.pow_all = geom if geom.isGeosValid() else None
+
 
 class CanvasPanelTitleBar(QFrame):
     """Belka panelu z box'em."""
@@ -997,6 +1159,90 @@ class PowSelectorItem(QPushButton):
                                 font-size: 11pt;
                            """)
         self.clicked.connect(lambda: self.parent().btn_clicked(self.id))
+
+
+class ExportSelector(QFrame):
+    """Belka wyboru typów danych do eksportu."""
+    def __init__(self, *args, width):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedHeight(34)
+        self.setFixedWidth(width)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(4)
+        self.setLayout(self.lay)
+        self.valid_check = False
+        self.itms = {}
+        self.file_types = [
+            {'name' : 'gpkg', 'multiplier' : 1},
+            {'name' : 'kml', 'multiplier' : 2},
+            {'name' : 'shp', 'multiplier' : 4}
+            ]
+        for file_type in self.file_types:
+            _itm = ExportSelectorItem(self, name=file_type["name"])
+            self.lay.addWidget(_itm)
+            itm_name = f'btn_{file_type["name"]}'
+            self.itms[itm_name] = _itm
+
+    def btn_clicked(self):
+        """Zmiana wartości 'case' po naciśnięciu przycisku."""
+        case = 0
+        for i_dict in self.file_types:
+            btn = self.itms[f'btn_{i_dict["name"]}']
+            val = 1 if btn.isChecked() else 0
+            case = case + (val * i_dict["multiplier"])
+        self.parent().parent().parent().case = case
+
+
+class ExportSelectorItem(QPushButton):
+    """Guzik do wyboru aktywnych typów danych do eksportu."""
+    # checked_changed = pyqtSignal(bool)
+
+    def __init__(self, *args, name):#, extension):
+        super().__init__(*args)
+        self.setCheckable(True)
+        self.setChecked(False)
+        self.name = name
+        # self.extension = extension
+        self.setText(self.name)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setStyleSheet("""
+                            QPushButton {
+                                border: 1px solid rgba(255, 255, 255, 0.4);
+                                background: rgba(255, 255, 255, 0.2);
+                                color: rgba(255, 255, 255, 1.0);
+                                font-size: 11pt;
+                            }
+                            QPushButton:hover {
+                                border: 1px solid rgba(255, 255, 255, 0.4);
+                                background: rgba(255, 255, 255, 0.4);
+                                color: rgba(255, 255, 255, 1.0);
+                                font-size: 11pt;
+                            }
+                            QPushButton:checked {
+                                border: 1px solid rgba(255, 255, 255, 0.8);
+                                background: rgba(255, 255, 255, 0.6);
+                                color: rgb(0, 0, 0);
+                                font-size: 11pt;
+                            }
+                            QPushButton:hover:checked {
+                                border: 1px solid rgba(255, 255, 255, 1.0);
+                                background: rgba(255, 255, 255, 1.0);
+                                color: rgb(0, 0, 0);
+                                font-size: 11pt;
+                            }
+                            QPushButton:disabled {
+                                border: 1px solid rgba(255, 255, 255, 1.0);
+                                background: rgba(255, 255, 255, 0.7);
+                                color: rgb(255, 255, 255);
+                                font-size: 11pt;
+                           """)
+        self.clicked.connect(self.parent().btn_clicked)
 
 
 class FlagTools(QFrame):

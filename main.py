@@ -92,6 +92,7 @@ def teams_cb_changed():
     # print("[teams_cb_changed]")
     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
     dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
+    dlg.export_panel.pow_reset()  # Wyczyszczenie zmiennych pow_bbox i pow_all
     t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Zapamiętanie aktualnego dlg.team_t
     list_srch = [t for t in dlg.teams if t_team_t in t]
     t_team_i = list_srch[0][0]  # Tymczasowy team_i

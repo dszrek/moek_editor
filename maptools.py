@@ -3244,26 +3244,14 @@ def wyr_point_lyrs_repaint():
     for lyr_name in lyrs_names:
         dlg.proj.mapLayersByName(lyr_name)[0].triggerRepaint()
 
-def wyr_del(layer, feature):
-    dlg.mt.init("multi_tool")
-    if layer:
-        fid = feature.attributes()[layer.fields().indexFromName('wyr_id')]
-    else:
-        return
-    db = PgConn()
-    sql = "DELETE FROM team_" + str(dlg.team_i) + ".wyrobiska WHERE wyr_id = " + str(fid) + ";"
-    if db:
-        res = db.query_upd(sql)
-        if not res:
-            print("Nie udało się usunąć wyrobiska")
-    dlg.proj.mapLayersByName("wyrobiska")[0].triggerRepaint()
-
 def parking_add(point, extra):
     """Utworzenie nowego obiektu parkingu."""
     dlg.mt.init("multi_tool")
     if not point:
         return
     p_pow = parking_pow(point)
+    if not p_pow:
+        p_pow = "Null"
     db = PgConn()
     sql = "INSERT INTO team_" + str(dlg.team_i) + ".parking(user_id, pow_grp, i_status, geom) VALUES (" + str(dlg.user_id) + ", " + str(p_pow) + ", 0, ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180))"
     if db:

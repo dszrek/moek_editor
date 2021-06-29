@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
 
-from qgis.core import QgsVectorLayer, QgsVectorFileWriter
+from qgis.core import QgsApplication, QgsVectorLayer, QgsVectorFileWriter
 from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QFrame, QToolButton, QPushButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
 from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp
 from qgis.PyQt.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wn_layer_update, file_dialog
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, file_dialog
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
 from .classes import PgConn, CfgPars
 
@@ -518,6 +518,7 @@ class WyrCanvasPanel(QFrame):
                 dlg.obj.wyr = None
         # Aktualizacja listy wyrobisk w ObjectManager:
         dlg.obj.wyr_ids = get_wyr_ids()
+        wyr_layer_update(False)
 
 
 class FlagCanvasPanel(QFrame):

@@ -352,16 +352,16 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             # Włączenie blokady:
             self.freeze = True
             if delay:
-                QTimer.singleShot(100, self.freeze_start)
+                QTimer.singleShot(300, self.freeze_start)
             else:
                 self.freeze_start()
         elif not val and self.changing and self.freeze:
-            QTimer.singleShot(1, self.changing_stop)
+            QTimer.singleShot(10, self.changing_stop)
         elif not val and not self.changing and not self.resizing:
             if delay:
-                QTimer.singleShot(100, self.freeze_end)
+                QTimer.singleShot(300, self.freeze_end)
             else:
-                QTimer.singleShot(1, self.freeze_end)
+                QTimer.singleShot(10, self.freeze_end)
 
     def changing_stop(self):
         """Zakończenie zmiany stanu / zawartości panelu, odpalone z pewnym opóźnieniem

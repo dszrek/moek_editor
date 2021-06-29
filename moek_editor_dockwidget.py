@@ -35,9 +35,9 @@ from qgis.utils import iface
 from .classes import PgConn
 from .layers import LayerManager
 from .maptools import MapToolManager, ObjectManager
-from .main import vn_mode_changed
+from .main import vn_mode_changed, data_export_init
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel
+from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
 from .basemaps import MoekMapPanel, basemaps_load
 from .sequences import sequences_load, prev_map, next_map, seq
 
@@ -81,8 +81,21 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             self,
                             title="  Zespół:",
                             switch=None,
+                            custom_width=175,
+                            grouped=True,
                             bmargin=[2, 0, 0, 0],
-                            round=[16, 16, 6, 6])
+                            round=[16, 16, 0, 0],
+                            grey_void=True)
+        self.p_team_export = MoekBarPanel(
+                            self,
+                            switch=None,
+                            spacing=8,
+                            wmargin=0,
+                            custom_width=35,
+                            grouped=True,
+                            bmargin=[0, 0, 2, 0],
+                            round=[0, 0, 6, 6])
+        self.p_team_grp = MoekGroupPanel(self)
         self.p_pow = MoekBarPanel(
                             self,
                             title_off="Wszystkie powiaty",
@@ -138,6 +151,13 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         p_team_widgets = [
                     {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
                     ]
+        p_team_export_widgets = [
+                    {"item": "button", "name": "data_export", "size": 33,"checkable": False, "tooltip": u'eksport danych'}
+                    ]
+        p_team_grp_widgets = [
+                    {"item": "panel", "object": self.p_team},
+                    {"item": "panel", "object": self.p_team_export}
+                    ]
         p_pow_widgets = [
                     {"item": "combobox", "name": "pow_act", "height": 21, "border": 1, "b_round": "none"}
                     ]
@@ -192,8 +212,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj marszruty"}
                     ]
 
-        self.panels = [self.p_team, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
-        self.p_widgets = [p_team_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_komunikacja_widgets]
+        self.panels = [self.p_team, self.p_team_export, self.p_team_grp, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
+        self.p_widgets = [p_team_widgets, p_team_export_widgets, p_team_grp_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_komunikacja_widgets]
 
         # Wczytanie paneli i ich widgetów do dockwidget'u:
         for (panel, widgets) in zip(self.panels, self.p_widgets):
@@ -275,6 +295,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.wyr_panel.hide()
         self.wn_panel = WnCanvasPanel()
         self.wn_panel.hide()
+        self.export_panel = ExportCanvasPanel()
+        self.export_panel.hide()
         self.mt = MapToolManager(dlg=self, canvas=self.canvas)
         self.obj = ObjectManager(dlg=self, canvas=self.canvas)
         self.lyr = LayerManager(dlg=self)
@@ -287,6 +309,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.wn_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
+        export_x = (self.canvas.width() / 2) - (self.export_panel.width() / 2)
+        export_y = (self.canvas.height() / 2) - (self.export_panel.height() / 2)
+        self.export_panel.move(export_x, export_y)
         splash_x = (self.canvas.width() / 2) - (self.splash_screen.width() / 2)
         splash_y = (self.canvas.height() / 2) - (self.splash_screen.height() / 2)
         self.splash_screen.move(splash_x, splash_y)
@@ -327,16 +352,16 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             # Włączenie blokady:
             self.freeze = True
             if delay:
-                QTimer.singleShot(100, self.freeze_start)
+                QTimer.singleShot(300, self.freeze_start)
             else:
                 self.freeze_start()
         elif not val and self.changing and self.freeze:
-            QTimer.singleShot(1, self.changing_stop)
+            QTimer.singleShot(10, self.changing_stop)
         elif not val and not self.changing and not self.resizing:
             if delay:
-                QTimer.singleShot(100, self.freeze_end)
+                QTimer.singleShot(300, self.freeze_end)
             else:
-                QTimer.singleShot(1, self.freeze_end)
+                QTimer.singleShot(10, self.freeze_end)
 
     def changing_stop(self):
         """Zakończenie zmiany stanu / zawartości panelu, odpalone z pewnym opóźnieniem
@@ -388,6 +413,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.wyr_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
+        export_x = (self.canvas.width() / 2) - (self.export_panel.width() / 2)
+        export_y = (self.canvas.height() / 2) - (self.export_panel.height() / 2)
+        self.export_panel.move(export_x, export_y)
         splash_x = (self.canvas.width() / 2) - (self.splash_screen.width() / 2)
         splash_y = (self.canvas.height() / 2) - (self.splash_screen.height() / 2)
         self.splash_screen.move(splash_x, splash_y)
@@ -582,6 +610,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
         self.p_pow_mask.box.widgets["btn_pow_mask"].clicked.connect(lambda: self.cfg.set_val(name="powiaty_mask", val=self.p_pow_mask.box.widgets["btn_pow_mask"].isChecked()))
+        self.p_team_export.box.widgets["btn_data_export"].clicked.connect(data_export_init)
         self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))
@@ -691,6 +720,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         try:
             self.canvas.children().remove(self.wn_panel)
             self.wn_panel.deleteLater()
+        except:
+            pass
+        try:
+            self.canvas.children().remove(self.export_panel)
+            self.export_panel.deleteLater()
         except:
             pass
         try:

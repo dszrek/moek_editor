@@ -2,8 +2,8 @@
 import os
 import time as tm
 
-from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
+from qgis.PyQt.QtCore import Qt, QDir
 from qgis.core import QgsApplication, QgsProject, QgsDataSourceUri, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
@@ -92,6 +92,7 @@ def teams_cb_changed():
     # print("[teams_cb_changed]")
     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
     dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
+    dlg.export_panel.pow_reset()  # Wyczyszczenie zmiennych pow_bbox i pow_all
     t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Zapamiętanie aktualnego dlg.team_t
     list_srch = [t for t in dlg.teams if t_team_t in t]
     t_team_i = list_srch[0][0]  # Tymczasowy team_i
@@ -1069,6 +1070,14 @@ def vn_layer_update():
 
     stage_refresh()  # Odświeżenie sceny
 
+def data_export_init():
+    """Odpalony po naciśnięciu przycisku 'data_export'."""
+    if dlg.export_panel.isVisible():
+        return
+    export_path = db_attr_check("t_export_path")
+    dlg.export_panel.export_path = export_path
+    dlg.export_panel.show()
+
 def db_attr_check(attr):
     """Zwraca parametr z db."""
     # print("[db_attr_check:", attr, "]")
@@ -1126,3 +1135,33 @@ def block_panels(_panel, value):
     for panel in dlg.panels:
         if panel != _panel and panel != dlg.p_map:
             panel.setEnabled(not value)
+
+def file_dialog(dir='', for_open=True, fmt='', is_folder=False):
+    """Dialog z eksploratorem Windows. Otwieranie/tworzenie folderów i plików."""
+    # options = QFileDialog.Options()
+    # options |= QFileDialog.DontUseNativeDialog
+    # options |= QFileDialog.DontUseCustomDirectoryIcons
+    dialog = QFileDialog()
+    # dialog.setOptions(options)
+    # dialog.setFilter(dialog.filter() | QDir.Hidden)
+    if is_folder:  # Otwieranie folderu
+        dialog.setFileMode(QFileDialog.DirectoryOnly)
+    else:  # Otwieranie pliku
+        dialog.setFileMode(QFileDialog.AnyFile)
+    # Otwieranie / zapisywanie:
+    dialog.setAcceptMode(QFileDialog.AcceptOpen) if for_open else dialog.setAcceptMode(QFileDialog.AcceptSave)
+    # Ustawienie filtrowania rozszerzeń plików:
+    if fmt != '' and not is_folder:
+        dialog.setDefaultSuffix(fmt)
+        dialog.setNameFilters([f'{fmt} (*.{fmt})'])
+    # Ścieżka startowa:
+    if dir != '':
+        dialog.setDirectory(str(dir))
+    else:
+        dialog.setDirectory(str(os.environ["HOMEPATH"]))
+    # Przekazanie ścieżki folderu/pliku:
+    if dialog.exec_() == QDialog.Accepted:
+        path = dialog.selectedFiles()[0]
+        return path
+    else:
+        return None

@@ -810,17 +810,23 @@ class ExportCanvasPanel(QFrame):
         self.path_btn = MoekButton(self, name="export_path", size=34, checkable=False)
         self.path_btn.clicked.connect(self.set_path)
         self.path_box.lay.addWidget(self.path_btn)
-        self.bottom_margin = CanvasHSubPanel(self, height=4)
-        self.box.lay.addWidget(self.bottom_margin)
-        self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
-        self.box.lay.addWidget(self.separator_1)
-        self.sp_ext = CanvasHSubPanel(self, height=44)
+        self.sp_ext = CanvasHSubPanel(self, height=46, margins=[0, 10, 0, 2])
         self.box.lay.addWidget(self.sp_ext)
         self.export_btn = MoekButton(self, name="export", size=34, checkable=False, enabled=False)
         self.export_btn.clicked.connect(self.layers_export)
         self.export_selector = ExportSelector(self, width=445)
         self.sp_ext.lay.addWidget(self.export_selector)
         self.sp_ext.lay.addWidget(self.export_btn)
+        self.sp_progress = CanvasHSubPanel(self, height=8, margins=[5, 2, 5, 0], spacing=8)
+        self.box.lay.addWidget(self.sp_progress)
+        self.p_bar = QProgressBar()
+        self.p_bar.setFixedHeight(6)
+        self.p_bar.setRange(0, 100)
+        self.p_bar.setTextVisible(False)
+        self.p_bar.setVisible(False)
+        self.sp_progress.lay.addWidget(self.p_bar)
+        self.bottom_margin = CanvasHSubPanel(self, height=4)
+        self.box.lay.addWidget(self.bottom_margin)
         self.pow_bbox = None
         self.pow_all = None
         self.path_void = None
@@ -894,22 +900,31 @@ class ExportCanvasPanel(QFrame):
             {'lyr_name' : 'flagi_z_teren', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."flagi" (geom) sql=b_fieldcheck = True', 'n_field' : 'id', 'd_field' : 't_notatki', 'fields' : [0, 3, 4]},
             {'lyr_name' : 'flagi_bez_teren', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."flagi" (geom) sql=b_fieldcheck = False', 'n_field' : 'id', 'd_field' : 't_notatki', 'fields' : [0, 3, 4]}
         ]
+        i_max = len(lyrs) * len(file_types) + 1
+        self.p_bar.setVisible(True)
+        i = 1
+        self.p_bar.setValue(i * 100 / i_max)
+        QgsApplication.processEvents()
         if not self.pow_bbox:
             self.set_pow_bbox()
             self.set_pow_all()
+        i += 1
+        self.p_bar.setValue(i * 100 / i_max)
+        QgsApplication.processEvents()
         for ft in file_types:
             self.folder_create(ft["folder"])
-            for l_dict in lyrs:
-                if l_dict["spatial_filter"] == "pow_all":
-                    ids = self.spatial_filtering(l_dict["tbl_name"], l_dict["key"])
-                    f_lyr = self.filtered_layer(l_dict["lyr_name"], l_dict["tbl_sql"], l_dict["key"], ids)
-                elif l_dict["spatial_filter"] == "id_all":
-                    ids = self.get_ids_from_table(l_dict["tbl_name"], l_dict["key"])
-                    f_lyr = self.filtered_layer(l_dict["lyr_name"], l_dict["tbl_sql"], l_dict["key"], ids)
-                elif not l_dict["spatial_filter"]:
-                    raw_uri = l_dict["uri"]
-                    uri = eval("f'{}'".format(raw_uri))
-                    f_lyr = QgsVectorLayer(uri, l_dict["lyr_name"], "postgres")
+        for l_dict in lyrs:
+            if l_dict["spatial_filter"] == "pow_all":
+                ids = self.spatial_filtering(l_dict["tbl_name"], l_dict["key"])
+                f_lyr = self.filtered_layer(l_dict["lyr_name"], l_dict["tbl_sql"], l_dict["key"], ids)
+            elif l_dict["spatial_filter"] == "id_all":
+                ids = self.get_ids_from_table(l_dict["tbl_name"], l_dict["key"])
+                f_lyr = self.filtered_layer(l_dict["lyr_name"], l_dict["tbl_sql"], l_dict["key"], ids)
+            elif not l_dict["spatial_filter"]:
+                raw_uri = l_dict["uri"]
+                uri = eval("f'{}'".format(raw_uri))
+                f_lyr = QgsVectorLayer(uri, l_dict["lyr_name"], "postgres")
+            for ft in file_types:
                 dest_path = f'{self.export_path}/{ft["folder"]}/{l_dict["lyr_name"]}{ft["extension"]}'
                 options = QgsVectorFileWriter.SaveVectorOptions()
                 options.driverName = ft["driver"]
@@ -918,6 +933,10 @@ class ExportCanvasPanel(QFrame):
                     options.attributes = l_dict["fields"]
                 options.datasourceOptions = [f"NameField={l_dict['n_field']}", f"DescriptionField={l_dict['d_field']}"]
                 QgsVectorFileWriter.writeAsVectorFormatV2(layer=f_lyr, fileName=dest_path, transformContext=dlg.proj.transformContext(), options=options)
+                i += 1
+                self.p_bar.setValue(i * 100 / i_max)
+                QgsApplication.processEvents()
+        self.p_bar.setVisible(False)
 
     def folder_create(self, folder):
         """Tworzy folder o podanej nazwie, jeśli nie istnieje."""

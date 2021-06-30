@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, QVariant
 from qgis.utils import iface
 
 from .classes import CfgPars, PgConn
-from .main import flag_layer_update, wyr_layer_update
+from .main import flag_layer_update, wyr_layer_update, parking_layer_update, marsz_layer_update
 
 # Zmienne globalne:
 dlg = None
@@ -30,6 +30,7 @@ class LayerManager:
             {'level': 0, 'layers': ['wn_pne', 'powiaty', 'arkusze', 'powiaty_mask']},
             {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_poly']},
             {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
+            {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone', 'marszruty']},
             {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
             {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wybilansowane', 'midas_obszary', 'midas_tereny']},
             {'name': 'MGSP', 'level': 1, 'layers': ['mgsp_pkt_kop', 'mgsp_zloza_p', 'mgsp_zloza_a', 'mgsp_zloza_wb_p', 'mgsp_zloza_wb_a']},
@@ -45,15 +46,18 @@ class LayerManager:
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
             {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
-            {"source": "postgres", "name": "wn_pne", "root": True, "pos": 2, "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
-            {"source": "postgres", "name": "powiaty", "root": True, "pos": 3, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
-            {"source": "postgres", "name": "arkusze", "root": True, "pos": 4, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
+            {"source": "postgres", "name": "parking_planowane", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
+            {"source": "postgres", "name": "parking_odwiedzone", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
+            {"source": "postgres", "name": "marszruty", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."marsz" (geom) sql='},
+            {"source": "postgres", "name": "wn_pne", "root": True, "pos": 3, "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
+            {"source": "postgres", "name": "powiaty", "root": True, "pos": 4, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
+            {"source": "postgres", "name": "arkusze", "root": True, "pos": 5, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
             {"source": "postgres", "name": "vn_sel", "root": False, "parent": "vn", "visible": True, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
             {"source": "postgres", "name": "vn_user", "root": False, "parent": "vn", "visible": True, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
             {"source": "postgres", "name": "vn_other", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
             {"source": "postgres", "name": "vn_null", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
             {"source": "postgres", "name": "vn_all", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
-            {"source": "virtual", "name": "powiaty_mask", "root": True, "pos": 6, "visible": True, "uri": '?query=Select%20st_union(geometry)%20from%20powiaty'},
+            {"source": "virtual", "name": "powiaty_mask", "root": True, "pos": 7, "visible": True, "uri": '?query=Select%20st_union(geometry)%20from%20powiaty'},
             {"source": "postgres", "name": "midas_zloza", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_zloza" (geom) sql='},
             {"source": "postgres", "name": "midas_wybilansowane", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_wybilansowane" (geom) sql='},
             {"source": "postgres", "name": "midas_obszary", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} table="external"."midas_obszary" (geom) sql='},
@@ -63,7 +67,7 @@ class LayerManager:
             {"source": "postgres", "name": "mgsp_zloza_a", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_a" (geom) sql='},
             {"source": "postgres", "name": "mgsp_zloza_wb_p", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_wb_p" (geom) sql='},
             {"source": "postgres", "name": "mgsp_zloza_wb_a", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_zloza_wb_a" (geom) sql='},
-            {"source": "postgres", "name": "smgp_wyrobiska", "root": True, "pos": 9, "visible": True, "uri": '{PARAMS} table="external"."smgp_wyrobiska" (geom) sql='},
+            {"source": "postgres", "name": "smgp_wyrobiska", "root": True, "pos": 10, "visible": True, "uri": '{PARAMS} table="external"."smgp_wyrobiska" (geom) sql='},
             {"source": "wms", "name": "Google Satellite", "root": False, "parent": "sat", "visible": True, "uri": 'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=18&zmin=0'},
             {"source": "wms", "name": "Google Hybrid", "root": False, "parent": "sat", "visible": False, "uri": 'crs=EPSG:3857&format&tilePixelRatio=2&type=xyz&url=http://mt0.google.com/vt/lyrs%3Dy%26hl%3Dpl%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=18&zmin=0'},
             {"source": "wms", "name": "Geoportal", "root": False, "parent": "sat", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ORTOFOTOMAPA&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMTS/StandardResolution?service%3DWMTS%26request%3DgetCapabilities'},
@@ -77,9 +81,11 @@ class LayerManager:
             {"source": "wms", "name": "ISOK", "root": False, "parent": "basemaps", "pos": 0, "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ISOK_Cien&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WMTS/ShadedRelief?service%3DWMTS%26request%3DgetCapabilities'},
             {"source": "postgres", "name": "wyr_point", "root": False, "parent": "temp", "visible": False, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
-            {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]}
+            {"source": "memory", "name": "backup_poly", "root": False, "parent": "temp", "visible": False, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
+            {"source": "memory", "name": "edit_line", "root": False, "parent": "temp", "visible": True, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
+            {"source": "memory", "name": "backup_line", "root": False, "parent": "temp", "visible": False, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]}
             ]
-        self.lyr_vis = [["wyr_point", None], ["flagi_z_teren", None], ["flagi_bez_teren", None], ["wn_pne", None]]
+        self.lyr_vis = [["wyr_point", True], ["flagi_z_teren", None], ["flagi_bez_teren", None], ["parking_planowane", None], ["parking_odwiedzone", None], ["marszruty", None], ["wn_pne", None]]
         self.lyr_cnt = len(self.lyrs)
         self.lyrs_names = [i for s in [[v for k, v in d.items() if k == "name"] for d in self.lyrs] for i in s]
 
@@ -237,9 +243,9 @@ class LayerManager:
                         missing.append(lyr_name)
                         continue
                 lyr = dlg.proj.mapLayersByName(lyr_name)[0]
-                if not lyr.isValid():
-                    dlg.proj.removeMapLayer(lyr)
-                    missing.append(lyr_name)
+                # if not lyr.isValid():
+                #     dlg.proj.removeMapLayer(lyr)
+                #     missing.append(lyr_name)
         if missing:
             print(f"layer/structure_check - lista brakujących warstw:")
             print(missing)
@@ -279,24 +285,38 @@ class LayerManager:
         parent.removeChildNode(lyr)
         return True
 
-    def vis_change(self, grp_name, val):
-        """Zmiana parametru widoczności warstwy dla MultiMapTool."""
+    def grp_vis_change(self, grp_name, val):
+        """Zmiana parametru widoczności warstw z podanej grupy dla MultiMapTool."""
         if grp_name == "flagi":
             if not val:
                 dlg.obj.flag = None
             lyr_names = ["flagi_z_teren", "flagi_bez_teren"]
+        elif grp_name == "komunikacja":
+            if not val:
+                dlg.obj.parking = None
+                dlg.obj.marsz = None
+            lyr_names = ["parking_planowane", "parking_odwiedzone", "marszruty"]
         elif grp_name == "wyrobiska":
             if not val:
                 dlg.obj.wyr = None
-            lyr_names = ["wyr_point"]
+            for _list in self.lyr_vis:
+                if _list[0] == "wyr_point":
+                    _list[1] = False if not val else True
+                    return
         elif grp_name == "wn_pne":
             if not val:
                 dlg.obj.wn = None
             lyr_names = ["wn_pne"]
         for lyr_name in lyr_names:
             for _list in self.lyr_vis:
-                if _list[0] == lyr_name and _list[1] != val:
-                    _list[1] = val
+                if _list[0] == lyr_name:
+                    _list[1] = False if not val else dlg.cfg.get_val(_list[0])
+
+    def lyr_vis_change(self, lyr_name, val):
+        """Zmiana parametru widoczności warstwy dla MultiMapTool."""
+        for _list in self.lyr_vis:
+            if _list[0] == lyr_name:
+                _list[1] = val
 
 class PanelManager:
     """Menedżer ustawień (widoczność, rozwinięcie itp.) paneli."""
@@ -331,7 +351,12 @@ class PanelManager:
             {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
             {'name': 'wyr_przed_teren', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
             {'name': 'wyr_potwierdzone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
-            {'name': 'wyr_odrzucone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None}
+            {'name': 'wyr_odrzucone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
+            {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},
+            {'name': 'komunikacja_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'self.komunikacja_layers_update()', 'cb_void': True, 'value': None},
+            {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'parking_odwiedzone', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_after_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
+            {'name': 'marszruty', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_marsz_vis"], 'callback': 'marsz_layer_update()', 'cb_void': True, 'value': None}
                         ]
         self.cfg_dicts_cnt = len(self.cfg_dicts)
         self.cfg_vals = []
@@ -359,6 +384,9 @@ class PanelManager:
                     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
                     self.cfg_dicts[i]["value"] = self.cfg_vals[i]
                     self.update_action(self.cfg_dicts[i]["action"], self.cfg_dicts[i]["name"], self.cfg_dicts[i]["btn"], self.cfg_dicts[i]["value"], self.cfg_dicts[i]["callback"], self.cfg_dicts[i]["cb_void"])
+                    if any(l[0] == self.cfg_dicts[i]["name"] for l in dlg.lyr.lyr_vis):
+                        # Aktualizacja wartości na liście lyr_vis dla multitool'a:
+                        dlg.lyr.lyr_vis_change(self.cfg_dicts[i]["name"], bool(self.cfg_dicts[i]["value"]))
             self.old_cfg_vals = self.cfg_vals.copy()
             if self.callback_void:
                 self.callback_void = False
@@ -371,9 +399,9 @@ class PanelManager:
             dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(name)[0].id()).setItemVisibilityChecked(val_out)
         elif action == "grp_vis":
             dlg.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(val_out)
-        if name == "flagi" or name == "wyrobiska" or name == "wn_pne":
-            # Zmiana parametru widoczności dla MultiMapTool:
-            dlg.lyr.vis_change(name, val_out)
+        if name == "flagi" or name == "komunikacja" or name == "wyrobiska" or name == "wn_pne":
+            # Zmiana parametru widoczności wszystkich warstw z określonej grupy dla MultiMapTool:
+            dlg.lyr.grp_vis_change(name, val_out)
         if btn:
             btn.setChecked(val_out)
         if cb and (not self.callback_void or not cb_void):
@@ -395,6 +423,9 @@ class PanelManager:
             if c_dict["name"] == name:
                 # Aktualizacja wartości w zmienianym słowniku:
                 c_dict["value"] = val
+                if any(l[0] == c_dict["name"] for l in dlg.lyr.lyr_vis):
+                    # Aktualizacja wartości na liście lyr_vis dla multitool'a:
+                    dlg.lyr.lyr_vis_change(c_dict["name"], bool(val))
             if c_dict["value"] in range(0, 3):
                 new_vals.append(c_dict["value"])
             else:
@@ -446,6 +477,32 @@ class PanelManager:
         case_val = wyr_vals[0] + (wyr_vals[1] * 2) + (wyr_vals[2] * 4) + (wyr_vals[3] * 8)
         return case_val
 
+    def parking_case(self):
+        """Zwraca liczbę wskazującą, które warstwy parkingów są włączone."""
+        parking_vals = [0, 0, 0, 0]
+        for c_dict in self.cfg_dicts:
+            if c_dict["name"] == "parking_planowane" and c_dict["value"] in range(0, 2):
+                parking_vals[0] = c_dict["value"]
+            elif c_dict["name"] == "parking_odwiedzone" and c_dict["value"] in range(0, 2):
+                parking_vals[1] = c_dict["value"]
+            elif c_dict["name"] == "komunikacja_user" and c_dict["value"] in range(0, 2):
+                parking_vals[2] = c_dict["value"]
+        parking_vals[3] = 1 if dlg.p_pow.is_active() else 0
+        case_val = parking_vals[0] + (parking_vals[1] * 2) + (parking_vals[2] * 4) + (parking_vals[3] * 8)
+        return case_val
+
+    def marsz_case(self):
+        """Zwraca liczbę wskazującą, które warstwy parkingów są włączone."""
+        marsz_vals = [0, 0, 0]
+        for c_dict in self.cfg_dicts:
+            if c_dict["name"] == "marszruty" and c_dict["value"] in range(0, 2):
+                marsz_vals[0] = c_dict["value"]
+            elif c_dict["name"] == "komunikacja_user" and c_dict["value"] in range(0, 2):
+                marsz_vals[1] = c_dict["value"]
+        marsz_vals[2] = 1 if dlg.p_pow.is_active() else 0
+        case_val = marsz_vals[0] + (marsz_vals[1] * 2) + (marsz_vals[2] * 4)
+        return case_val
+
     def cfg_vals_read(self):
         """Wczytanie z bazy danych ustawień paneli do self.cfg_vals."""
         self.cfg_vals = []
@@ -456,7 +513,7 @@ class PanelManager:
             if res:
                 self.cfg_vals[:0] = res[0]
             else:
-                self.cfg_vals[:0] = '101211111111111111211121111'
+                self.cfg_vals[:0] = '1012111111111111112111211112111'
         if len(self.old_cfg_vals) > 0:
             self.old_cfg_vals = []
             self.old_cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry
@@ -488,3 +545,8 @@ class PanelManager:
                 # Przywrócenie pierwotnych ustawień warstw:
                 self.set_val(lyr[0], lyr[1], db=False)
             self.cfg_mem = []  # Wyczyszczenie listy
+
+    def komunikacja_layers_update(self):
+        """Aktualizacja warstw parkingów i marszrut."""
+        parking_layer_update()
+        marsz_layer_update()

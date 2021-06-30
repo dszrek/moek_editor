@@ -2,8 +2,8 @@
 import os
 import time as tm
 
-from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
+from qgis.PyQt.QtCore import Qt, QDir
 from qgis.core import QgsApplication, QgsProject, QgsDataSourceUri, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
@@ -13,7 +13,7 @@ from .viewnet import vn_set_gvars, stage_refresh
 
 # Stałe globalne:
 SQL_1 = " WHERE user_id = "
-PLUGIN_VER = "0.3.0"
+PLUGIN_VER = "0.4.0"
 USER = ""
 
 # Zmienne globalne:
@@ -92,6 +92,7 @@ def teams_cb_changed():
     # print("[teams_cb_changed]")
     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
     dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
+    dlg.export_panel.pow_reset()  # Wyczyszczenie zmiennych pow_bbox i pow_all
     t_team_t = dlg.p_team.box.widgets["cmb_team_act"].currentText()  # Zapamiętanie aktualnego dlg.team_t
     list_srch = [t for t in dlg.teams if t_team_t in t]
     t_team_i = list_srch[0][0]  # Tymczasowy team_i
@@ -225,8 +226,8 @@ def pow_layer_update():
     flag_layer_update()  # Aktualizacja warstw z flagami
     wyr_layer_update()  # Aktualizacja warstw z wyrobiskami
     wn_layer_update()  # Aktualizacja warstwy z wn_pne
-    # auto_layer_update()  # Aktualizacja warstwy z parkingami
-    # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
+    parking_layer_update()  # Aktualizacja warstwy z parkingami
+    marsz_layer_update()  # Aktualizacja warstwy z marszrutami
     # zloza_layer_update()  # Aktualizacja warstwy ze złożami
     layer_zoom(layer)  # Przybliżenie widoku mapy do wybranego powiatu/powiatów
     stage_refresh()  # Odświeżenie sceny
@@ -297,11 +298,11 @@ def flag_layer_update():
 
 def wyr_layer_update(check=True):
     """Aktualizacja warstw z wyrobiskami."""
+    QgsApplication.setOverrideCursor(Qt.WaitCursor)
     if check:
     # Sprawdzenie, czy wszystkie wyrobiska mają przypisane powiaty
     # i dokonanie aktualizacji, jeśli występują braki:
         wyr_powiaty_check()
-    QgsApplication.setOverrideCursor(Qt.WaitCursor)
     # Stworzenie listy wyrobisk z aktywnych powiatów:
     dlg.obj.wyr_ids = get_wyr_ids()
     with CfgPars() as cfg:
@@ -620,23 +621,260 @@ def get_wn_ids_with_pows(pows=None):
         else:
             return None
 
-def auto_layer_update():
+def parking_layer_update():
     """Aktualizacja warstwy parking."""
     # print("[parking_layer_update]")
+    QgsApplication.setOverrideCursor(Qt.WaitCursor)
+    # Określenie, które rodzaje parkingów są włączone:
+    case = dlg.cfg.parking_case()
+    # Aktualizacja listy flag w ObjectManager:
+    dlg.obj.parking_ids = get_parking_ids(case)
+    # Utworzenie listy z id parkingów, których rodzaje są włączone:
+    sql_cases = [
+        {'value': 0, 'sql_1': "user_id = 0", 'sql_2': "user_id = 0"},
+        {'value': 1, 'sql_1': "user_id = {dlg.user_id} AND i_status = 0", 'sql_2': "user_id = 0"},
+        {'value': 2, 'sql_1': "user_id = 0", 'sql_2': " user_id = {dlg.user_id} AND i_status = 1"},
+        {'value': 3, 'sql_1': "user_id = {dlg.user_id} AND i_status = 0", 'sql_2': "user_id = {dlg.user_id} AND i_status = 1"},
+        {'value': 4, 'sql_1': "user_id = 0", 'sql_2': "user_id = 0"},
+        {'value': 5, 'sql_1': "i_status = 0", 'sql_2': "user_id = 0"},
+        {'value': 6, 'sql_1': "user_id = 0", 'sql_2': "i_status = 1"},
+        {'value': 7, 'sql_1': "i_status = 0", 'sql_2': "i_status = 1"},
+        {'value': 8, 'sql_1': "user_id = 0", 'sql_2': "user_id = 0"},
+        {'value': 9, 'sql_1': "pow_grp = '{dlg.powiat_i}' AND user_id = {dlg.user_id} AND i_status = 0", 'sql_2': "user_id = 0"},
+        {'value': 10, 'sql_1': "user_id = 0", 'sql_2': "pow_grp = '{dlg.powiat_i}' AND user_id = {dlg.user_id} AND i_status = 1"},
+        {'value': 11, 'sql_1': "pow_grp = '{dlg.powiat_i}' AND user_id = {dlg.user_id} AND i_status = 0", 'sql_2': "pow_grp = '{dlg.powiat_i}' AND user_id = {dlg.user_id} AND i_status = 1"},
+        {'value': 12, 'sql_1': "user_id = 0", 'sql_2': "user_id = 0"},
+        {'value': 13, 'sql_1': "pow_grp = '{dlg.powiat_i}' AND i_status = 0", 'sql_2': "user_id = 0"},
+        {'value': 14, 'sql_1': "user_id = 0", 'sql_2': "pow_grp = '{dlg.powiat_i}' AND i_status = 1"},
+        {'value': 15, 'sql_1': "pow_grp = '{dlg.powiat_i}' AND i_status = 0", 'sql_2': "pow_grp = '{dlg.powiat_i}' AND i_status = 1"}
+                ]
+    sql_1 = ""
+    sql_2 = ""
+    for e_dict in sql_cases:
+        if e_dict["value"] == case:
+            raw_sql_1 = e_dict["sql_1"]
+            sql_1 = eval('f"{}"'.format(raw_sql_1))
+            raw_sql_2 = e_dict["sql_2"]
+            sql_2 = eval('f"{}"'.format(raw_sql_2))
+            break
     with CfgPars() as cfg:
         params = cfg.uri()
-    uri = params + 'table="team_' + str(dlg.team_i) + '"."auto" (geom)'
-    layer = dlg.proj.mapLayersByName("parking")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy parking
+    uri_1 = params + 'table="team_' + str(dlg.team_i) + '"."parking" (geom) sql=' + sql_1
+    uri_2 = params + 'table="team_' + str(dlg.team_i) + '"."parking" (geom) sql=' + sql_2
+    # Zmiana zawartości warstw z parkingami:
+    l_tuples = [
+        ("parking_planowane", uri_1),
+        ("parking_odwiedzone", uri_2)
+        ]
+    for l_tuple in l_tuples:
+        lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
+        pg_layer_change(l_tuple[1], lyr)
+        lyr.triggerRepaint()
+    dlg.komunikacja_visibility()  # Aktualizacja widoczności warstw
+    QgsApplication.restoreOverrideCursor()
 
-def marsz_layer_update():
-    """Aktualizacja warstwy marsz."""
-    # print("[marsz_layer_update]")
+def get_parking_ids(case):
+    """Zwraca listę wyfiltrowanych id parkingów i sql filtru."""
+    if case == 0 or case == 4 or case == 8 or case == 12:
+        # Wszystkie rodzaje parkingów są wyłączone - brak parkingów do wyświetlenia:
+        return []
+    # Utworzenie listy z id parkingów, których rodzaje są włączone:
+    filter_cases = [
+        {'value': 1, 'sql': " WHERE user_id = {dlg.user_id} AND i_status = 0 "},
+        {'value': 2, 'sql': " WHERE user_id = {dlg.user_id} AND i_status = 1 "},
+        {'value': 3, 'sql': " WHERE user_id = {dlg.user_id} "},
+        {'value': 5, 'sql': " WHERE i_status = 0 "},
+        {'value': 6, 'sql': " WHERE i_status = 1 "},
+        {'value': 7, 'sql': ""},
+        {'value': 9, 'sql': " WHERE user_id = {dlg.user_id} AND pow_grp = '{dlg.powiat_i}' AND i_status = 0 "},
+        {'value': 10, 'sql': " WHERE user_id = {dlg.user_id} AND pow_grp = '{dlg.powiat_i}' AND i_status = 1 "},
+        {'value': 11, 'sql': " WHERE user_id = {dlg.user_id} AND pow_grp = '{dlg.powiat_i}' "},
+        {'value': 13, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' AND i_status = 0 "},
+        {'value': 14, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' AND i_status = 1 "},
+        {'value': 15, 'sql': " WHERE pow_grp = '{dlg.powiat_i}' "}
+                ]
+    filter = ""
+    for e_dict in filter_cases:
+        if e_dict["value"] == case:
+            raw_sql = e_dict["sql"]
+            filter = eval('f"{}"'.format(raw_sql))
+            break
+    db = PgConn()
+    sql = "SELECT id FROM team_" + str(dlg.team_i) + ".parking" + filter + " ORDER BY id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return None
+
+def marsz_layer_update(check=True):
+    """Aktualizacja warstwy z marszrutami."""
+    QgsApplication.setOverrideCursor(Qt.WaitCursor)
+    if check:
+    # Sprawdzenie, czy wszystkie marszruty mają przypisane powiaty
+    # i dokonanie aktualizacji, jeśli występują braki:
+        marsz_powiaty_check()
+    # Stworzenie listy marszrut z aktywnych powiatów:
+    dlg.obj.marsz_ids = get_marsz_ids()
     with CfgPars() as cfg:
         params = cfg.uri()
-    uri = params + 'table="team_' + str(dlg.team_i) + '"."marsz" (geom)'
-    layer = dlg.proj.mapLayersByName("marsz")[0]
-    pg_layer_change(uri, layer)  # Zmiana zawartości warstwy mnarsz
+    if dlg.obj.marsz_ids:
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."marsz" (geom) sql=marsz_id IN (' + str(dlg.obj.marsz_ids)[1:-1] + ')'
+    else:
+        uri = params + 'table="team_' + str(dlg.team_i) + '"."marsz" (geom) sql=marsz_id = 0'
+    # Zmiana zawartości warstw z wyrobiskami:
+    l_tuples = [
+        ("marszruty", uri)
+        ]
+    for l_tuple in l_tuples:
+        lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
+        pg_layer_change(l_tuple[1], lyr)
+        lyr.triggerRepaint()
+    dlg.komunikacja_visibility()  # Aktualizacja widoczności warstw
+    QgsApplication.restoreOverrideCursor()
+
+def get_marsz_ids():
+    """Zwraca listę unkalnych marsz_id zgodnych z aktualnymi filtrami."""
+    # Określenie, które rodzaje wyrobisk są włączone:
+    case = dlg.cfg.marsz_case()
+    if case == 0 or case == 2 or case == 4 or case == 6:
+        # Warstwa z marszrutami jest wyłączona - brak marszrut do wyświetlenia
+        return []
+    # Utworzenie listy z marsz_id marszrut, które należą do aktywnych powiatów:
+    pows = active_pow_listed()
+    marsz_ids_from_pows = get_marsz_ids_with_pows("marsz_pow", pows)
+    if not marsz_ids_from_pows:
+        # Brak wyrobisk w aktywnych powiatach
+        return []
+    if case == 7:
+        # Wszystkie marszruty są włączone - brak filtrowania
+        return marsz_ids_from_pows
+    # Utworzenie listy z marsz_id wyrobisk, których rodzaje są włączone:
+    filter_cases = [
+        {'value': 1, 'sql': " WHERE user_id = {dlg.user_id}"}
+                ]
+    filter = ""
+    for e_dict in filter_cases:
+        if e_dict["value"] == case:
+            raw_sql = e_dict["sql"]
+            filter = eval("f'{}'".format(raw_sql))
+            break
+    marsz_ids_from_filter = get_marsz_ids_with_filter(filter)
+    if not marsz_ids_from_filter:
+        # Wszystkie marszruty zostały wyfiltrowane
+        return []
+    # Zwrócenie listy marsz_id marszrut, które znajdują się w obu listach:
+    result = sorted(set(marsz_ids_from_pows).intersection(marsz_ids_from_filter))
+    return result
+
+def get_marsz_ids_with_filter(filter):
+    """Zwraca listę marsz_id z użyciem podanego filtru sql."""
+    db = PgConn()
+    sql = "SELECT marsz_id FROM team_" + str(dlg.team_i) + ".marsz" + filter + " ORDER BY marsz_id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return []
+
+def marsz_powiaty_check():
+    """Sprawdza, czy wszystkie marszruty zespołu mają wpisy w tabeli 'marsz_pow'.
+    Jeśli nie, to przypisuje je na podstawie geometrii liniowej."""
+    marsz_ids = get_marsz_ids_with_pows("marsz")
+    marsz_pow_ids = get_marsz_ids_with_pows("marsz_pow")
+    marsz_pow_to_add = list_diff(marsz_ids, marsz_pow_ids)
+    if not marsz_pow_to_add:
+        return
+    print(f"marsz_pow_to_add: {marsz_pow_to_add}")
+    # Uzupełnienie brakujących rekordów w tabeli 'marsz_pow':
+    marsz_lines = get_lines_from_ids(marsz_pow_to_add)
+    for marsz_line in marsz_lines:
+        marsz_powiaty_change(marsz_line[0], marsz_line[1])
+
+def get_marsz_ids_with_pows(table, pows=None):
+    """Zwraca listę unikalnych marsz_id z podanej tabeli w obrębie podanych powiatów."""
+    db = PgConn()
+    extras = f" WHERE pow_id IN ({str(pows)[1:-1]})" if pows else ""
+    sql = "SELECT DISTINCT marsz_id FROM team_" + str(dlg.team_i) + "." + table + extras + " ORDER BY marsz_id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            if len(res) > 1:
+                return list(zip(*res))[0]
+            else:
+                return list(res[0])
+        else:
+            return None
+
+def get_lines_from_ids(marsz_ids):
+    """Zwraca listę z geometriami liniowymi marszrut na podstawie ich id."""
+    marsz_lines = []
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    table = '"team_' + str(dlg.team_i) + '"."marsz"'
+    sql = "marsz_id IN (" + str(marsz_ids)[1:-1] + ")"
+    uri = f'{params} table={table} (geom) sql={sql}'
+    lyr_line = QgsVectorLayer(uri, "temp_marsz_line", "postgres")
+    feats = lyr_line.getFeatures()
+    for feat in feats:
+        marsz_lines.append((feat.attribute("marsz_id"), feat.geometry()))
+    del lyr_line
+    return marsz_lines
+
+def marsz_powiaty_change(marsz_id, geom, new=False):
+    """Aktualizuje tabelę 'marsz_pow' po zmianie geometrii marszruty."""
+    if not new:
+        # Usunięcie poprzednich wpisów z tabeli 'marsz_pow':
+        marsz_powiaty_delete(marsz_id)
+    # Stworzenie listy z aktualnymi powiatami dla marszruty:
+    p_list = marsz_powiaty_listed(marsz_id, geom)
+    if not p_list:  # Brak powiatów
+        print(f"marsz_powiaty_change: Nie udało się stworzyć listy powiatów dla marszruty {marsz_id}")
+        return
+    # Wstawienie nowych rekordów do tabeli 'marsz_pow':
+    marsz_powiaty_update(p_list)
+
+def marsz_powiaty_delete(marsz_id):
+    """Usunięcie z tabeli 'marsz_pow' rekordów odnoszących się do marsz_id."""
+    db = PgConn()
+    sql = "DELETE FROM team_" + str(dlg.team_i) + ".marsz_pow WHERE marsz_id = " + str(marsz_id) + ";"
+    if db:
+        res = db.query_upd(sql)
+        if not res:
+            print(f"marsz_powiaty_delete: brak rekordów dla marszruty {marsz_id}")
+
+def marsz_powiaty_listed(marsz_id, geom):
+    """Zwraca listę powiatów, w obrębie których leży geometria marszruty."""
+    p_list = []
+    bbox = geom.makeValid().boundingBox().asWktPolygon()
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    table = '"(SELECT pow_id, geom FROM public.powiaty)"'
+    key = '"pow_id"'
+    sql = "ST_Intersects(ST_SetSRID(ST_GeomFromText('" + str(bbox) + "'), 2180), geom)"
+    uri = f'{params} key={key} table={table} (geom) sql={sql}'
+    lyr_pow = QgsVectorLayer(uri, "powiaty_bbox", "postgres")
+    feats = lyr_pow.getFeatures()
+    for feat in feats:
+        if geom.makeValid().intersects(feat.geometry()):
+            p_list.append((marsz_id, feat.attribute("pow_id")))
+    del lyr_pow
+    return p_list
+
+def marsz_powiaty_update(p_list):
+    """Wstawienie do tabeli 'marsz_pow' aktualnych numerów powiatów dla marszruty."""
+    db = PgConn()
+    sql = "INSERT INTO team_" + str(dlg.team_i) + ".marsz_pow(marsz_id, pow_id) VALUES %s"
+    if db:
+        db.query_exeval(sql, p_list)
 
 def zloza_layer_update():
     """Aktualizacja warstwy zloza."""
@@ -716,6 +954,9 @@ def user_has_vn():
 
 def vn_cfg(seq=0):
     """Wejście lub wyjście z odpowiedniego trybu konfiguracyjnego panelu viewnet (vn_setup lub sekwencje podkładów mapowych)."""
+    if not dlg.cfg.get_val("vn"):
+        # Zablokowanie wchodzenia do setupu, gdy panel jest wyłączony, a funkcja odpalona jest przez skrót klawiszowy
+        return
     dlg.freeze_set(True, delay=True)  # Zablokowanie odświeżania dockwidget'u
     if dlg.p_vn.bar.cfg_btn.isChecked():  # Przycisk konfiguracyjny został wciśnięty
         dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
@@ -832,6 +1073,14 @@ def vn_layer_update():
 
     stage_refresh()  # Odświeżenie sceny
 
+def data_export_init():
+    """Odpalony po naciśnięciu przycisku 'data_export'."""
+    if dlg.export_panel.isVisible():
+        return
+    export_path = db_attr_check("t_export_path")
+    dlg.export_panel.export_path = export_path
+    dlg.export_panel.show()
+
 def db_attr_check(attr):
     """Zwraca parametr z db."""
     # print("[db_attr_check:", attr, "]")
@@ -889,3 +1138,33 @@ def block_panels(_panel, value):
     for panel in dlg.panels:
         if panel != _panel and panel != dlg.p_map:
             panel.setEnabled(not value)
+
+def file_dialog(dir='', for_open=True, fmt='', is_folder=False):
+    """Dialog z eksploratorem Windows. Otwieranie/tworzenie folderów i plików."""
+    # options = QFileDialog.Options()
+    # options |= QFileDialog.DontUseNativeDialog
+    # options |= QFileDialog.DontUseCustomDirectoryIcons
+    dialog = QFileDialog()
+    # dialog.setOptions(options)
+    # dialog.setFilter(dialog.filter() | QDir.Hidden)
+    if is_folder:  # Otwieranie folderu
+        dialog.setFileMode(QFileDialog.DirectoryOnly)
+    else:  # Otwieranie pliku
+        dialog.setFileMode(QFileDialog.AnyFile)
+    # Otwieranie / zapisywanie:
+    dialog.setAcceptMode(QFileDialog.AcceptOpen) if for_open else dialog.setAcceptMode(QFileDialog.AcceptSave)
+    # Ustawienie filtrowania rozszerzeń plików:
+    if fmt != '' and not is_folder:
+        dialog.setDefaultSuffix(fmt)
+        dialog.setNameFilters([f'{fmt} (*.{fmt})'])
+    # Ścieżka startowa:
+    if dir != '':
+        dialog.setDirectory(str(dir))
+    else:
+        dialog.setDirectory(str(os.environ["HOMEPATH"]))
+    # Przekazanie ścieżki folderu/pliku:
+    if dialog.exec_() == QDialog.Accepted:
+        path = dialog.selectedFiles()[0]
+        return path
+    else:
+        return None

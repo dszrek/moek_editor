@@ -13,7 +13,7 @@ from .viewnet import vn_set_gvars, stage_refresh
 
 # Stałe globalne:
 SQL_1 = " WHERE user_id = "
-PLUGIN_VER = "0.3.0"
+PLUGIN_VER = "0.4.0"
 USER = ""
 
 # Zmienne globalne:
@@ -954,6 +954,9 @@ def user_has_vn():
 
 def vn_cfg(seq=0):
     """Wejście lub wyjście z odpowiedniego trybu konfiguracyjnego panelu viewnet (vn_setup lub sekwencje podkładów mapowych)."""
+    if not dlg.cfg.get_val("vn"):
+        # Zablokowanie wchodzenia do setupu, gdy panel jest wyłączony, a funkcja odpalona jest przez skrót klawiszowy
+        return
     dlg.freeze_set(True, delay=True)  # Zablokowanie odświeżania dockwidget'u
     if dlg.p_vn.bar.cfg_btn.isChecked():  # Przycisk konfiguracyjny został wciśnięty
         dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE

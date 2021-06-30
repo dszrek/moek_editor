@@ -1,5 +1,14 @@
 # Changelog (dziennik zmian):
 
+## [0.4.0] - 2021-06-30
+### Dodano
+- Wprowadzono nowe obiekty - miejsca parkowania i marszruty. Ułatwiają one planowanie tras kontroli terenowych oraz umożliwiają ich sprawną realizację (przy wykorzystaniu aplikacji mobilnej na tablet/smartfon).
+- Do głównego okna wtyczki dodano panel "Komunikacja" do włączania/wyłączania oraz filtrowania parkingów i marszrut.
+- Dodano moduł eksportu danych z serwera na dysk lokalny. Możliwy jest zapis danych w postaci plików typu: geopackage, kml i shapefile.
+
+### Poprawiono
+- Wiele drobnych błędów.
+
 ## [0.3.0] - 2021-04-20
 ### Dodano
 - Uruchamianie wtyczki z otwartym "własnym" plikiem projektowym (możliwość korzystania z dodatkowych warstw danych).

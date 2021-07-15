@@ -63,8 +63,10 @@ class SelVN:
     def l_chg(self, val):
         """Włączenie lub wyłączenie przycisków vn w zależności od atrybutu l."""
         if val > 0:
-            # Włączenie/wyłączenie skrótów klawiszowych
-            dlg.hk_vn = False if val == 1 else True
+            # Włączenie/wyłączenie skrótów klawiszowych:
+            if dlg.seq_dock.box.currentIndex() == 0 and dlg.p_vn.box.currentIndex() == 0:
+                # Nie może być włączony setup vn lub seq
+                dlg.hk_vn = False if val == 1 else True
             if val == 1:
                 vn_btn_enable(False)  # Wyłączenie przycisków
             elif val == 2:

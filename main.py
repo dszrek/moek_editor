@@ -952,11 +952,8 @@ def user_has_vn():
     else:
         return False
 
-def vn_cfg(seq=0):
-    """Wejście lub wyjście z odpowiedniego trybu konfiguracyjnego panelu viewnet (vn_setup lub sekwencje podkładów mapowych)."""
-    if not dlg.cfg.get_val("vn"):
-        # Zablokowanie wchodzenia do setupu, gdy panel jest wyłączony, a funkcja odpalona jest przez skrót klawiszowy
-        return
+def vn_cfg():
+    """Wejście lub wyjście z trybu konfiguracyjnego viewnet."""
     dlg.freeze_set(True, delay=True)  # Zablokowanie odświeżania dockwidget'u
     if dlg.p_vn.bar.cfg_btn.isChecked():  # Przycisk konfiguracyjny został wciśnięty
         dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
@@ -964,26 +961,14 @@ def vn_cfg(seq=0):
         dlg.cfg.switch_lyrs_on_setup(off=True)
         block_panels(dlg.p_vn, True)  # Zablokowanie pozostałych paneli
         dlg.side_dock.hide()  # Schowanie bocznego dock'u
-        if dlg.hk_vn:  # Skróty klawiszowe vn włączone
-            dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
-        dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
-        if seq == 0:  # Włączenie trybu vn_setup
-            vn_setup_mode(True)
-        else:  # Włączenie ustawień którejś z sekwencji
-            dlg.p_vn.widgets["sqb_seq"].enter_setup(seq)
+        vn_setup_mode(True)
         dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
     else:  # Przycisk konfiguracyjny został wyciśnięty
         # Włączenie warstw flag, wyrobisk i external'i:
         dlg.cfg.switch_lyrs_on_setup(off=False)
         block_panels(dlg.p_vn, False)  # Odblokowanie pozostałych paneli
         dlg.side_dock.show()  # Odkrycie bocznego dock'u
-        if dlg.t_hk_vn:  # Przed włączeniem trybu vn_setup były aktywne skróty klawiszowe
-            dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
-            dlg.t_hk_vn = False
-        if dlg.p_vn.box.currentIndex() == 4:  # Wychodzenie z trybu vn_setup
-            vn_setup_mode(False)
-        else:  # Wychodzenie z ustawień któreś z sekwencji
-            dlg.p_vn.widgets["sqb_seq"].exit_setup()
+        vn_setup_mode(False)
         dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
 
 def vn_setup_mode(b_flag):
@@ -1002,7 +987,11 @@ def vn_setup_mode(b_flag):
         except TypeError:
             print("Obiekt nie jest jeszcze podłączony.")
         teamusers_load()  # Wczytanie użytkowników do cmb_teamusers
-        dlg.p_vn.box.setCurrentIndex(4)  # zmiana strony p_vn
+        dlg.p_vn.box.setCurrentIndex(1)  # zmiana strony p_vn
+        if dlg.seq_dock.box.currentIndex() == 0:  # Nie jest włączony seq_setup
+            if dlg.hk_vn:  # Skróty klawiszowe vn włączone
+                dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
+            dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
     else:  # Wyłączenie trybu ustawień vn przez wyciśnięcie cfg_btn w p_vn
         vn_setup = False
         dlg.proj.mapLayersByName("vn_all")[0].removeSelection()
@@ -1015,6 +1004,10 @@ def vn_setup_mode(b_flag):
             print("Obiekt nie jest jeszcze podłączony.")
         dlg.p_vn.box.setCurrentIndex(0)  # zmiana strony p_vn
         vn_mode_changed(False)
+        if dlg.seq_dock.box.currentIndex() == 0:  # Nie jest włączony seq_setup
+            if dlg.t_hk_vn:  # Przed włączeniem trybu konfiguracyjnego były aktywne skróty klawiszowe
+                dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
+                dlg.t_hk_vn = False
     pow_layer_update()
     vn_layer_update()
 

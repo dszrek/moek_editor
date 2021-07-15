@@ -9,7 +9,6 @@ from qgis.PyQt.QtWidgets import QWidget, QFrame, QSpinBox, QComboBox, QToolButto
 from qgis.utils import iface
 
 from .viewnet import vn_zoom
-from .main import vn_cfg
 from .classes import PgConn
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
@@ -150,26 +149,28 @@ class MoekSeqBox(QFrame):
 
     def enter_setup(self, seq):
         """Przejście do strony ustawień którejś sekwencji."""
-        dlg.p_vn.widgets["sab_seq" + str(seq)].combobox_update(seq)  # Aktualizacja combobox'a
-        dlg.p_vn.box.setCurrentIndex(seq)  # Przełączenie panelu na stronę ustawień sekwencji
+        dlg.seq_dock.widgets["sab_seq" + str(seq)].combobox_update(seq)  # Aktualizacja combobox'a
+        dlg.seq_dock.box.setCurrentIndex(seq)  # Przełączenie panelu na stronę ustawień sekwencji
+        if dlg.p_vn.box.currentIndex() == 0:  # Nie jest włączony vn_setup
+            if dlg.hk_vn:  # Skróty klawiszowe vn włączone
+                dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
+            dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
+        dlg.hk_seq = False  # Wyłączenie skrótów klawiszowych do obsługi sekwencji
 
     def exit_setup(self):
         """Zamknięcie strony ustawień dla którejś sekwencji."""
-        sid = dlg.p_vn.box.currentIndex()
-        scb = dlg.p_vn.widgets["scg_seq" + str(sid)]  # Referencja seqcfgbox'a
+        sid = dlg.seq_dock.box.currentIndex()
+        scb = dlg.seq_dock.widgets["scg_seq" + str(sid)]  # Referencja seqcfgbox'a
         if scb.cnt == 1:  # Nie może być tylko jednego podkładu mapowego w sekwencji
             m_text = "Aby zapisać zmiany w sekwencji, należy wybrać conajmniej 2 podkłady. Naciśnięcie Tak spowoduje wyjście z ustawień bez zapisania zmian."
             reply = QMessageBox.question(iface.mainWindow(), "Kontynuować?", m_text, QMessageBox.Yes, QMessageBox.No)
             if reply == QMessageBox.No:
-                dlg.p_vn.bar.cfg_btn.setChecked(True)
                 return
             else:
-                sequences_load()  # Przeładowanie ustawień sekwencji
-                dlg.p_vn.widgets["sqb_seq"].num = 0  # Deaktywacja sekwencji
-                dlg.p_vn.box.setCurrentIndex(0)  # Przejście do strony głównej panelu
+                self.post_setup()
                 return
         # Utworzenie listy z ustawieniami sekwencji:
-        scgs = dlg.p_vn.widgets["scg_seq" + str(sid)].findChildren(MoekSeqCfg)  # Referencje do seqcfg'ów
+        scgs = dlg.seq_dock.widgets["scg_seq" + str(sid)].findChildren(MoekSeqCfg)  # Referencje do seqcfg'ów
         m_list = []
         order = 0
         for scg in scgs:
@@ -178,9 +179,18 @@ class MoekSeqBox(QFrame):
                 order += 1
         # Aktualizacja sekwencji w db:
         db_sequence_update(sid, m_list)
-        sequences_load()
-        dlg.p_vn.widgets["sqb_seq"].num = 0  # Deaktywacja sekwencji
-        dlg.p_vn.box.setCurrentIndex(0)  # Przejście do strony głównej panelu
+        self.post_setup()
+
+    def post_setup(self):
+        """Wykonywane przy wyjściu z trybu konfiguracyjnego sekwencji."""
+        sequences_load()  # Przeładowanie ustawień sekwencji
+        dlg.seq_dock.widgets["sqb_seq"].num = 0  # Deaktywacja sekwencji
+        dlg.seq_dock.box.setCurrentIndex(0)  # Przejście do strony głównej panelu
+        if dlg.p_vn.box.currentIndex() == 0:  # Nie jest włączony vn_setup
+            if dlg.t_hk_vn:  # Przed włączeniem trybu konfiguracyjnego były aktywne skróty klawiszowe
+                dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
+                dlg.t_hk_vn = False
+        dlg.hk_seq = True  # Wyłączenie skrótów klawiszowych do obsługi sekwencji
 
     def i_change(self):
         """Zmiana bieżącego podkładu mapowego w aktywnej sekwencji."""
@@ -206,7 +216,7 @@ class MoekSeqBox(QFrame):
 
     def player(self):
         """Odtwarzanie sekwencyjnego wczytywania podkładów mapowych."""
-        print(f"[player]")
+        # print(f"[player]")
         # Przerwanie poprzedniego sekwencyjnego wczytywania, jeśli jeszcze trwa:
         try:
             self.timer.stop()

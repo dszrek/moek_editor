@@ -589,7 +589,6 @@ class MoekSeqCfgBox(QFrame):
         self.cnt = int()
         self.cnt_changed.connect(self.cnt_change)
 
-
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
@@ -807,7 +806,6 @@ class MoekSeqSpinBox(QFrame):
 
 class MoekSpinner(QFrame):
     """Przycisk-kontrolka wiget'u obsługującego sekwencyjne wczytywanie podkładów mapowych."""
-
     def __init__(self, *args, size="S"):
         super().__init__(*args)
         self.setFixedSize(12, 24)

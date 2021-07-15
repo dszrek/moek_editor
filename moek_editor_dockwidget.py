@@ -239,13 +239,13 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.frm_main.setLayout(self.vl_main)
 
         # Utworzenie bocznego docker'u z toolbox'ami:
-        self.side_dock = MoekSideDock()
+        self.side_dock = MoekSideDock(self.canvas)
         self.side_dock.hide()
         # Utworzenie dolnego docker'u z toolbox'ami:
-        self.bottom_dock = MoekBottomDock()
+        self.bottom_dock = MoekBottomDock(self.canvas)
         self.bottom_dock.hide()
         # Utworzenie splashscreen'u widocznego przy wczytywaniu wtyczki:
-        self.splash_screen = SplashScreen()
+        self.splash_screen = SplashScreen(self.canvas)
         self.splash_screen.show()
 
         tb_multi_tool_widgets = [
@@ -287,15 +287,15 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
         self.flag_panel = FlagCanvasPanel()
         self.flag_panel.hide()
-        self.parking_panel = ParkingCanvasPanel()
+        self.parking_panel = ParkingCanvasPanel(self.canvas)
         self.parking_panel.hide()
-        self.marsz_panel = MarszCanvasPanel()
+        self.marsz_panel = MarszCanvasPanel(self.canvas)
         self.marsz_panel.hide()
-        self.wyr_panel = WyrCanvasPanel()
+        self.wyr_panel = WyrCanvasPanel(self.canvas)
         self.wyr_panel.hide()
-        self.wn_panel = WnCanvasPanel()
+        self.wn_panel = WnCanvasPanel(self.canvas)
         self.wn_panel.hide()
-        self.export_panel = ExportCanvasPanel()
+        self.export_panel = ExportCanvasPanel(self.canvas)
         self.export_panel.hide()
         self.mt = MapToolManager(dlg=self, canvas=self.canvas)
         self.obj = ObjectManager(dlg=self, canvas=self.canvas)

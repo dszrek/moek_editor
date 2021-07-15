@@ -287,7 +287,6 @@ class MoekBarPanel(QFrame):
                 self.l_title.setText(self.title_off) if self.title_off else self.l_title.setText(alt_text)
                 self.l_title.setVisible(True) if self.title_off or (not self.title_off and len(alt_text) > 0) else self.l_title.setVisible(False)
 
-
     def cfg_change(self):
         """Wysyła do PanelManager'a informację o aktualnej wartości int oznaczającej stan active panelu."""
         cur_state = 1 if self.active else 0
@@ -422,17 +421,16 @@ class MoekBar(QFrame):
 
 class SplashScreen(QFrame):
     """Ekran ładowania wtyczki."""
-    def __init__(self):
-        super().__init__()
-        self.setParent(iface.mapCanvas())
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("main")
         shadow_1 = QGraphicsDropShadowEffect(blurRadius=24, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
         shadow_2 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(140, 140, 140), xOffset=0, yOffset=0)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(300, 240)
-        self.logo = MoekButton(name="splash_logo", size=120, checkable=False, enabled=False)
+        self.logo = MoekButton(self, name="splash_logo", size=120, checkable=False, enabled=False)
         self.logo.setGraphicsEffect(shadow_1)
-        self.p_bar = QProgressBar()
+        self.p_bar = QProgressBar(self)
         self.p_bar.setGraphicsEffect(shadow_2)
         self.p_bar.setFixedWidth(100)
         self.p_bar.setRange(0, 100)
@@ -454,9 +452,8 @@ class SplashScreen(QFrame):
 
 class WyrCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi wyrobisk."""
-    def __init__(self):
-        super().__init__()
-        self.setParent(iface.mapCanvas())
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
         self.setFixedWidth(350)
@@ -478,14 +475,14 @@ class WyrCanvasPanel(QFrame):
         self.sp_main = CanvasHSubPanel(self, height=34)
         self.box.lay.addWidget(self.sp_main)
         self.id_box = IdSpinBox(self, _obj="wyr")
-        self.id_label = PanelLabel(text="  Id:", size=12)
+        self.id_label = PanelLabel(self, text="  Id:", size=12)
         self.sp_main.lay.addWidget(self.id_label)
         self.sp_main.lay.addWidget(self.id_box)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_main.lay.addItem(spacer)
         # self.sp_area = CanvasHSubPanel(self, height=34)
         # self.box.lay.addWidget(self.sp_area)
-        self.area_label = PanelLabel(text="", size=12)
+        self.area_label = PanelLabel(self, text="", size=12)
         self.sp_main.lay.addWidget(self.area_label)
         # spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         # self.sp_area.box.lay.addItem(spacer)
@@ -523,9 +520,8 @@ class WyrCanvasPanel(QFrame):
 
 class FlagCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi flag."""
-    def __init__(self):
-        super().__init__()
-        self.setParent(iface.mapCanvas())
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
         self.setFixedWidth(350)
@@ -546,7 +542,7 @@ class FlagCanvasPanel(QFrame):
         self.setLayout(vlay)
         self.sp_tools = CanvasHSubPanel(self, height=34)
         self.box.lay.addWidget(self.sp_tools)
-        self.id_label = PanelLabel(text="  Id:", size=12)
+        self.id_label = PanelLabel(self, text="  Id:", size=12)
         self.sp_tools.lay.addWidget(self.id_label)
         self.id_box = IdSpinBox(self, _obj="flag")
         self.sp_tools.lay.addWidget(self.id_box)
@@ -566,9 +562,8 @@ class FlagCanvasPanel(QFrame):
 
 class ParkingCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi parkingów."""
-    def __init__(self):
-        super().__init__()
-        self.setParent(iface.mapCanvas())
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
         self.setFixedWidth(350)
@@ -589,7 +584,7 @@ class ParkingCanvasPanel(QFrame):
         self.setLayout(vlay)
         self.sp_tools = CanvasHSubPanel(self, height=34)
         self.box.lay.addWidget(self.sp_tools)
-        self.id_label = PanelLabel(text="  Id:", size=12)
+        self.id_label = PanelLabel(self, text="  Id:", size=12)
         self.sp_tools.lay.addWidget(self.id_label)
         self.id_box = IdSpinBox(self, _obj="parking")
         self.sp_tools.lay.addWidget(self.id_box)
@@ -611,12 +606,11 @@ class MarszCanvasPanel(QFrame):
     """Widget menu przyborne dla marszrut."""
     def __init__(self, *args):
         super().__init__(*args)
-        self.setParent(iface.mapCanvas())
         self.setCursor(Qt.ArrowCursor)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(112, 48)
         self.setObjectName("main")
-        self.pointer = MoekPointer()
+        self.pointer = MoekPointer(self)
         self.pointer.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.pointer.setFixedSize(12, 6)
         self.pointer.setObjectName("pointer")
@@ -634,9 +628,9 @@ class MarszCanvasPanel(QFrame):
         vlay.addWidget(self.box)
         vlay.setAlignment(self.pointer, Qt.AlignCenter)
         self.setLayout(vlay)
-        self.marsz_continue = MoekButton(name="line_continue", size=34)
-        self.marsz_edit = MoekButton(name="line_edit", size=34)
-        self.trash = MoekButton(name="trash", size=34)
+        self.marsz_continue = MoekButton(self, name="line_continue", size=34)
+        self.marsz_edit = MoekButton(self, name="line_edit", size=34)
+        self.trash = MoekButton(self, name="trash", size=34)
         hlay = QHBoxLayout()
         hlay.setContentsMargins(4, 4, 4, 4)
         hlay.setSpacing(1)
@@ -663,9 +657,8 @@ class MarszCanvasPanel(QFrame):
 
 class WnCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi punktów WN_PNE."""
-    def __init__(self):
-        super().__init__()
-        self.setParent(iface.mapCanvas())
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self.setFixedWidth(350)
@@ -690,7 +683,7 @@ class WnCanvasPanel(QFrame):
         self.box.lay.addWidget(self.separator_1)
         self.top_margin = CanvasHSubPanel(self, height=8)
         self.box.lay.addWidget(self.top_margin)
-        self.id_label = PanelLabel(text="   Id_arkusz:", size=11)
+        self.id_label = PanelLabel(self, text="   Id_arkusz:", size=11)
         self.sp_id.lay.addWidget(self.id_label)
         self.id_box = IdSpinBox(self, _obj="wn", width=125, max_len=8, validator="id_arkusz")
         self.sp_id.lay.addWidget(self.id_box)
@@ -783,9 +776,8 @@ class ExportCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi eksportu danych."""
     path_changed = pyqtSignal(str)
 
-    def __init__(self):
-        super().__init__()
-        self.setParent(iface.mapCanvas())
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self.setFixedWidth(500)
@@ -1223,12 +1215,11 @@ class ExportSelectorItem(QPushButton):
     """Guzik do wyboru aktywnych typów danych do eksportu."""
     # checked_changed = pyqtSignal(bool)
 
-    def __init__(self, *args, name):#, extension):
+    def __init__(self, *args, name):
         super().__init__(*args)
         self.setCheckable(True)
         self.setChecked(False)
         self.name = name
-        # self.extension = extension
         self.setText(self.name)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setStyleSheet("""
@@ -1409,9 +1400,9 @@ class ParamBox(QFrame):
         self.vlay.setContentsMargins(0, 0, 0, 0)
         self.vlay.setSpacing(0)
         self.setLayout(self.vlay)
-        self.upper_box = MoekHBox()
+        self.upper_box = MoekHBox(self)
         self.vlay.addWidget(self.upper_box)
-        self.line = MoekHLine()
+        self.line = MoekHLine(self)
         self.vlay.addWidget(self.line)
         if title_left:
             _width = self.width - self.val_width
@@ -1426,7 +1417,7 @@ class ParamBox(QFrame):
             self.valbox_2 = TextItemLabel(self, height=self.height, width=val_width_2, bgr_alpha=0.15, text=value_2)
             self.upper_box.lay.addWidget(self.valbox_2)
         if title_down:
-            self.lower_box = MoekHBox()
+            self.lower_box = MoekHBox(self)
             self.vlay.addWidget(self.lower_box)
             if title_left:
                 self.lower_left = TextItemLabel(self, height=10, width=self.width - self.val_width, font_size=6, font_weight="bold", font_alpha=0.6, text="")
@@ -1463,7 +1454,7 @@ class ParamTextBox(QFrame):
         self.setLayout(self.vlay)
         self.txtbox = TextViewer(self, height=self.height, width=self.width)
         self.vlay.addWidget(self.txtbox)
-        self.line = MoekHLine()
+        self.line = MoekHLine(self)
         self.vlay.addWidget(self.line)
         if title:
             self.titlebox = TextItemLabel(self, height=10, width=self.width, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title)
@@ -1699,9 +1690,8 @@ class TextPad(QPlainTextEdit):
 
 class MoekSideDock(QFrame):
     """Boczny panel zagnieżdżony w mapcanvas'ie, do którego ładowane są toolboxy."""
-    def __init__(self):
-        super().__init__()
-        self.setParent(iface.mapCanvas())
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self.setFixedWidth(51)
@@ -1738,9 +1728,8 @@ class MoekSideDock(QFrame):
 
 class MoekBottomDock(QFrame):
     """Dolny panel zagnieżdżony w mapcanvas'ie, do którego ładowane są toolboxy."""
-    def __init__(self):
-        super().__init__()
-        self.setParent(iface.mapCanvas())
+    def __init__(self, *args):
+        super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setFixedHeight(51)
@@ -2087,7 +2076,6 @@ class MoekLineEdit(QLineEdit):
                             QLineEdit:read-only {
                                 background: white;
                             }
-
                            """)
 
 

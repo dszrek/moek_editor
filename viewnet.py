@@ -234,8 +234,8 @@ def vn_forward():
             print("vn_forward error!")
             return
     vn_set_sel(*new_vn)  # Zmieniamy na vn'a o ustalonych parametrach
-    if dlg.p_vn.widgets["sqb_seq"].num > 0:  # Włączony tryb sekwencyjnego wczytywania podkładów mapowych
-        dlg.p_vn.widgets["sqb_seq"].player()
+    if dlg.seq_dock.widgets["sqb_seq"].num > 0:  # Włączony tryb sekwencyjnego wczytywania podkładów mapowych
+        dlg.seq_dock.widgets["sqb_seq"].player()
     else:
         vn_zoom()
         stage_refresh()

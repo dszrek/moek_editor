@@ -9,7 +9,6 @@ from qgis.PyQt.QtWidgets import QWidget, QFrame, QSpinBox, QComboBox, QToolButto
 from qgis.utils import iface
 
 from .viewnet import vn_zoom
-from .main import vn_cfg
 from .classes import PgConn
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
@@ -27,34 +26,36 @@ def sequences_load():
         seq = db_seq(s)  # Pobranie danych sekwencji
         if seq:  # Sekwencja nie jest pusta
             # Ustawienie parametru empty w przycisku sekwencji:
-            dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].empty = False
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].empty = False
             # Aktualizacja ilości podkładów sekwencji seqcfgbox'ie:
-            dlg.p_vn.widgets["scg_seq" + str(s)].cnt = len(seq)
+            dlg.seq_dock.widgets["scg_seq" + str(s)].cnt = len(seq)
         else:  # Sekwencja jest pusta
             # Ustawienie parametru empty w przycisku sekwencji:
-            dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].empty = True
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].empty = True
             # Aktualizacja ilości podkładów sekwencji seqcfgbox'ie:
-            dlg.p_vn.widgets["scg_seq" + str(s)].cnt = 0
+            dlg.seq_dock.widgets["scg_seq" + str(s)].cnt = 0
             seq = [(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)]
         # Czyszczenie przycisku sekwencji z danych sekwencji:
-        dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].maps.clear()
+        dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].maps.clear()
         # Aktualizacja seqcfg'ów:
         m = 0
         for map in seq:
             # Wczytanie danych do przycisku sekwencji:
             if map[0] > 0:  # Pominięcie w przycisku pustych podkładów
-                dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].maps.append([map[0], map[1]])
+                dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].maps.append([map[0], map[1]])
             # Ustawienie w sekwencji atrybute ge (czy w sekwencji jest Google Earth Pro):
             if map[0] == 6 or map[0] == 11:
-                dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].ge = True
+                dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].ge = True
             # Wczytanie danych do seqcfg'ów (obiektów przechowujących ustawienia podkładów mapowych z sekwencji):
-            dlg.p_vn.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].spinbox.value = map[1]  # Opóźnienie
-            dlg.p_vn.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].map = map[0]  # Id mapy
+            dlg.seq_dock.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].spinbox.value = map[1]  # Opóźnienie
+            dlg.seq_dock.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].map = map[0]  # Id mapy
             m += 1
+        # Odkrycie seq_dock'u:
+        if not dlg.seq_dock.isVisible():
+            dlg.seq_dock.show()
 
 def db_seq(num):
     """Sprawdzenie, czy w tabeli basemaps z aktywnego teamu dla zalogowanego użytkownika są ustawienia dla sekwencji."""
-    # print("[db_seq]")
     db = PgConn()
     sql = "SELECT map_id, i_delay_" + str(num) + " FROM team_" + str(dlg.team_i) + ".basemaps WHERE user_id = " + str(dlg.user_id) + " AND i_order_" + str(num) + " IS NOT NULL ORDER BY i_order_" + str(num) + " ASC;"
     if db:
@@ -94,24 +95,24 @@ def db_sequence_reset(seq):
 
 def next_map():
     """Przejście do następnej mapy w aktywnej sekwencji. Funkcja pod skrót klawiszowy."""
-    if dlg.p_vn.widgets["sqb_seq"].num > 0:
-        dlg.p_vn.widgets["sqb_seq"].next_map()
+    if dlg.seq_dock.widgets["sqb_seq"].num > 0:
+        dlg.seq_dock.widgets["sqb_seq"].next_map()
 
 def prev_map():
     """Przejście do następnej mapy w aktywnej sekwencji. Funkcja pod skrót klawiszowy."""
-    if dlg.p_vn.widgets["sqb_seq"].num > 0:
-        dlg.p_vn.widgets["sqb_seq"].prev_map()
+    if dlg.seq_dock.widgets["sqb_seq"].num > 0:
+        dlg.seq_dock.widgets["sqb_seq"].prev_map()
 
 def seq(_num):
     """Aktywowanie wybranej sekwencji lub jej deaktywacja, jeśli już jest aktywna. Funkcja pod skrót klawiszowy."""
-    if dlg.p_vn.widgets["sqb_seq"].num == _num:  # Sekwencja jest aktywna, następuje deaktywacja
-        dlg.p_vn.widgets["sqb_seq"].num = 0
+    if dlg.seq_dock.widgets["sqb_seq"].num == _num:  # Sekwencja jest aktywna, następuje deaktywacja
+        dlg.seq_dock.widgets["sqb_seq"].num = 0
     else:  # Sekwencja zostaje aktywowana
-        if dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].empty:  # Sekwencja jest pusta, przejście do ustawień
-            dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].button.setChecked(False)
-            dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].cfg_clicked()
+        if dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].empty:  # Sekwencja jest pusta, przejście do ustawień
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].button.setChecked(False)
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].cfg_clicked()
         else:  # Sekwencja nie jest pusta, następuje jej aktywacja
-            dlg.p_vn.widgets["sqb_seq"].num = _num
+            dlg.seq_dock.widgets["sqb_seq"].num = _num
 
 
 class MoekSeqBox(QFrame):
@@ -124,12 +125,12 @@ class MoekSeqBox(QFrame):
         self.seq_ctrl = MoekSeqCtrlButton(self)
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(0, 0, 0, 0)
-        self.hlay.setSpacing(0)
+        self.hlay.setSpacing(4)
         self.hlay.addWidget(self.seq_ctrl)
         self.sqb_btns = {}
         for r in range(1, 4):
             _sqb = MoekSeqButton(self, num=r)
-            exec('self.hlay.addWidget(_sqb)')
+            self.hlay.addWidget(_sqb)
             sqb_name = f'sqb_{r}'
             self.sqb_btns[sqb_name] = _sqb
         self.setLayout(self.hlay)
@@ -148,26 +149,28 @@ class MoekSeqBox(QFrame):
 
     def enter_setup(self, seq):
         """Przejście do strony ustawień którejś sekwencji."""
-        dlg.p_vn.widgets["sab_seq" + str(seq)].combobox_update(seq)  # Aktualizacja combobox'a
-        dlg.p_vn.box.setCurrentIndex(seq)  # Przełączenie panelu na stronę ustawień sekwencji
+        dlg.seq_dock.widgets["sab_seq" + str(seq)].combobox_update(seq)  # Aktualizacja combobox'a
+        dlg.seq_dock.box.setCurrentIndex(seq)  # Przełączenie panelu na stronę ustawień sekwencji
+        if dlg.p_vn.box.currentIndex() == 0:  # Nie jest włączony vn_setup
+            if dlg.hk_vn:  # Skróty klawiszowe vn włączone
+                dlg.t_hk_vn = True  # Zapamiętanie stanu hk_vn
+            dlg.hk_vn = False  # Wyłączenie skrótów klawiszowych do obsługi vn
+        dlg.hk_seq = False  # Wyłączenie skrótów klawiszowych do obsługi sekwencji
 
     def exit_setup(self):
         """Zamknięcie strony ustawień dla którejś sekwencji."""
-        sid = dlg.p_vn.box.currentIndex()
-        scb = dlg.p_vn.widgets["scg_seq" + str(sid)]  # Referencja seqcfgbox'a
+        sid = dlg.seq_dock.box.currentIndex()
+        scb = dlg.seq_dock.widgets["scg_seq" + str(sid)]  # Referencja seqcfgbox'a
         if scb.cnt == 1:  # Nie może być tylko jednego podkładu mapowego w sekwencji
             m_text = "Aby zapisać zmiany w sekwencji, należy wybrać conajmniej 2 podkłady. Naciśnięcie Tak spowoduje wyjście z ustawień bez zapisania zmian."
             reply = QMessageBox.question(iface.mainWindow(), "Kontynuować?", m_text, QMessageBox.Yes, QMessageBox.No)
             if reply == QMessageBox.No:
-                dlg.p_vn.bar.cfg_btn.setChecked(True)
                 return
             else:
-                sequences_load()  # Przeładowanie ustawień sekwencji
-                dlg.p_vn.widgets["sqb_seq"].num = 0  # Deaktywacja sekwencji
-                dlg.p_vn.box.setCurrentIndex(0)  # Przejście do strony głównej panelu
+                self.post_setup()
                 return
         # Utworzenie listy z ustawieniami sekwencji:
-        scgs = dlg.p_vn.widgets["scg_seq" + str(sid)].findChildren(MoekSeqCfg)  # Referencje do seqcfg'ów
+        scgs = dlg.seq_dock.widgets["scg_seq" + str(sid)].findChildren(MoekSeqCfg)  # Referencje do seqcfg'ów
         m_list = []
         order = 0
         for scg in scgs:
@@ -176,9 +179,18 @@ class MoekSeqBox(QFrame):
                 order += 1
         # Aktualizacja sekwencji w db:
         db_sequence_update(sid, m_list)
-        sequences_load()
-        dlg.p_vn.widgets["sqb_seq"].num = 0  # Deaktywacja sekwencji
-        dlg.p_vn.box.setCurrentIndex(0)  # Przejście do strony głównej panelu
+        self.post_setup()
+
+    def post_setup(self):
+        """Wykonywane przy wyjściu z trybu konfiguracyjnego sekwencji."""
+        sequences_load()  # Przeładowanie ustawień sekwencji
+        dlg.seq_dock.widgets["sqb_seq"].num = 0  # Deaktywacja sekwencji
+        dlg.seq_dock.box.setCurrentIndex(0)  # Przejście do strony głównej panelu
+        if dlg.p_vn.box.currentIndex() == 0:  # Nie jest włączony vn_setup
+            if dlg.t_hk_vn:  # Przed włączeniem trybu konfiguracyjnego były aktywne skróty klawiszowe
+                dlg.hk_vn = True  # Ponowne włączenie skrótów klawiszowych do obsługi vn
+                dlg.t_hk_vn = False
+        dlg.hk_seq = True  # Wyłączenie skrótów klawiszowych do obsługi sekwencji
 
     def i_change(self):
         """Zmiana bieżącego podkładu mapowego w aktywnej sekwencji."""
@@ -204,7 +216,7 @@ class MoekSeqBox(QFrame):
 
     def player(self):
         """Odtwarzanie sekwencyjnego wczytywania podkładów mapowych."""
-        print(f"[player]")
+        # print(f"[player]")
         # Przerwanie poprzedniego sekwencyjnego wczytywania, jeśli jeszcze trwa:
         try:
             self.timer.stop()
@@ -285,13 +297,13 @@ class MoekSeqCtrlButton(QFrame):
     """Przycisk-kontrolka sterujący sekwencją podkładów mapowych."""
     def __init__(self, *args):
         super().__init__(*args)
-        self.setFixedSize(50, 50)
+        self.setFixedSize(60, 60)
         self.seq_dial = MoekSeqDial(self)
-        self.seq_prev = MoekButton(self, hsize=50, name="seq_prev")
-        self.seq_next = MoekButton(self, hsize=50, name="seq_next")
-        self.seq_dial.setGeometry(0, 0, 50, 50)
-        self.seq_prev.setGeometry(0, 0, 25, 50)
-        self.seq_next.setGeometry(25, 0, 25, 50)
+        self.seq_prev = MoekButton(self, size=30, hsize=60, name="seq_prev")
+        self.seq_next = MoekButton(self, size=30, hsize=60, name="seq_next")
+        self.seq_dial.setGeometry(0, 0, 60, 60)
+        self.seq_prev.setGeometry(0, 0, 30, 60)
+        self.seq_next.setGeometry(30, 0, 30, 60)
         self.seq_prev.clicked.connect(self.prev_clicked)
         self.seq_next.clicked.connect(self.next_clicked)
 
@@ -317,6 +329,7 @@ class MoekSeqButton(QFrame):
         super().__init__(*args)
         self.num = num
         self.empty = None
+        self.setFixedSize(50, 50)
         self.progbar = MoekSeqProgressBar(self)
         self.progbar.setGeometry(0, 0, 50, 50)
         self.button = MoekButton(self, name="seq" + str(num), checkable=True)
@@ -324,8 +337,8 @@ class MoekSeqButton(QFrame):
         self.button.setGeometry(12.5, 12.5, 25, 25)
         self.button.clicked.connect(self.btn_clicked)
         self.cfg_btn = MoekButton(self, name="seq_cfg", icon="seqcfg", checkable=False)
-        self.cfg_btn.setFixedSize(19, 19)
-        self.cfg_btn.setGeometry(15.5, 32, 19, 19)
+        self.cfg_btn.setFixedSize(17, 17)
+        self.cfg_btn.setGeometry(16, 33, 17, 17)
         self.maps = []
         self.ge = False
         self.empty_changed.connect(self.empty_change)
@@ -381,8 +394,7 @@ class MoekSeqButton(QFrame):
 
     def cfg_clicked(self):
         """Wejście do trybu ustawień sekwencji."""
-        dlg.p_vn.bar.cfg_btn.setChecked(True)
-        vn_cfg(seq=self.num)
+        dlg.seq_dock.widgets["sqb_seq"].enter_setup(self.num)
 
 class MoekSeqDial(QWidget):
     """Wskaźnik kolejności i ilości podkładów mapowych w sekwencji."""
@@ -391,26 +403,25 @@ class MoekSeqDial(QWidget):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.setFixedSize(50, 50)
+        self.setFixedSize(60, 60)
         self.active_changed.connect(self.dial_change)
         self.all_changed.connect(self.dial_change)
         self.active = 0
         self.all = 0
         self.modified = False
         self.pixmap = QPixmap()
-
         self.r = [
                     [
-                    [20, 4], [26, 4]
+                    [24, 4], [32, 4]
                     ],
                     [
-                    [16, 4], [23, 4], [30, 4]
+                    [21, 4], [28, 4], [35, 4]
                     ],
                     [
-                    [16, 3], [21, 3], [26, 3], [31, 3]
+                    [21, 3], [26, 3], [31, 3], [36, 3]
                     ],
                     [
-                    [16, 2], [20, 2], [24, 2], [28, 2], [32, 2]
+                    [21, 2], [25, 2], [29, 2], [33, 2], [37, 2]
                     ]
                 ]
 
@@ -431,18 +442,18 @@ class MoekSeqDial(QWidget):
         """Funkcja rysująca."""
         if self.modified:
             _pixmap = QPixmap(self.size())
-            _pixmap.fill(QColor(255, 255, 255))
+            _pixmap.fill(Qt.transparent)
             painter = QPainter(_pixmap)
             brush = QBrush()
-            brush.setColor(QColor(255, 192, 0))
+            brush.setColor(QColor(255, 255, 255, 128))
             brush.setStyle(Qt.SolidPattern)
             for r in range(self.all):
                 _list = self.r[self.all - 2][r]
-                _rect = QRect(_list[0], 21, _list[1], 8)
+                _rect = QRect(_list[0], 24, _list[1], 12)
                 painter.fillRect(_rect, brush)
-            brush.setColor(QColor(52, 132, 240))
+            brush.setColor(QColor(255, 192, 0, 255))
             _list = self.r[self.all - 2][self.active]
-            _rect = QRect(_list[0], 21, _list[1], 8)
+            _rect = QRect(_list[0], 24, _list[1], 12)
             painter.fillRect(_rect, brush)
             self.pixmap = _pixmap
             self.modified = False
@@ -480,8 +491,8 @@ class MoekSeqProgressBar(QWidget):
 
     def active_change(self, value):
         """Zmiana trybu active."""
-        self.bg_color = QColor(52, 132, 240, 77) if value else QColor(255, 192, 0, 77)
-        self.pg_color = QColor(52, 132, 240) if value else QColor(255, 192, 0)
+        self.bg_color = QColor(255, 192, 0, 77) if value else QColor(255, 255, 255, 77)
+        self.pg_color = QColor(255, 192, 0) if value else QColor(255, 255, 255)
         self.repaint()
 
     def paintEvent(self, e):
@@ -521,22 +532,26 @@ class MoekSeqAddBox(QFrame):
     def __init__(self, *args, id):
         super().__init__(*args)
         self.id = id
-        self.setFixedHeight(32)
-        self.combobox = MoekComboBox(height=24, border=1)
-        self.add_btn = MoekButton(self, name="add")
+        self.setFixedHeight(34)
+        self.setObjectName("main")
+        self.combobox = MoekComboBox(self, height=24, border=1)
+        self.add_btn = MoekButton(self, name="add", size=26)
         self.hlay = QHBoxLayout()
-        self.hlay.setContentsMargins(8, 4, 2, 4)
-        self.hlay.setSpacing(6)
+        self.hlay.setContentsMargins(4, 4, 4, 4)
+        self.hlay.setSpacing(4)
         self.hlay.addWidget(self.combobox, 10)
         self.hlay.addWidget(self.add_btn, 1)
         self.setLayout(self.hlay)
         self.maps = []
         self.add_btn.clicked.connect(self.add_basemap)
+        self.setStyleSheet("""
+                        QFrame#main {background-color: rgba(0, 0, 0, 0.8); border: none}
+                        """)
 
     def combobox_update(self, _id):
         """Aktualizacja combobox'a o listę dostępnych i jeszcze nieaktywnych podkładów mapowych."""
         # print(f"combobox_update: {_id}")
-        scg = dlg.p_vn.widgets["scg_seq" + str(_id)].findChildren(MoekSeqCfg)  # Referencje seqcfg'ów
+        scg = dlg.seq_dock.widgets["scg_seq" + str(_id)].findChildren(MoekSeqCfg)  # Referencje seqcfg'ów
         # Lista wszystkich włączonych podkładów mapowych:
         maps = [map["id"] for map in dlg.p_map.all if map["enabled"]]
         # Lista numerów podkładów, które już są dodane do sekwencji:
@@ -548,19 +563,19 @@ class MoekSeqAddBox(QFrame):
         self.combobox.clear()
         # Populacja combobox'a:
         for m in cmb_list:
-            self.combobox.addItem(m[1], m[0])
+            self.combobox.addItem("   " + m[1], m[0])
 
     def add_basemap(self):
         """Dodanie wybranego w combobox'ie podkładu mapowego do pojemnika ustawień sekwencji."""
         map_id = self.combobox.currentData(Qt.UserRole)
-        scb = dlg.p_vn.widgets["scg_seq" + str(self.id)]  # Referencja seqcfgbox'a
+        scb = dlg.seq_dock.widgets["scg_seq" + str(self.id)]  # Referencja seqcfgbox'a
         sid = scb.cnt  # Numer seqcfg'a, który będzie populowany
         scg = scb.scgs["scg_" + str(sid)]  # Referencja seqcfg'a
         scg.spinbox.value = 1  # Ustalenie opóźnienia nowoaktywowanego seqcfg'a
         scg.map = map_id  # Ustalenie mapy dla nowoaktywowanego seqcfg'a
         scb.cnt += 1  # Dodanie do aktywnych jednego seqcfg'a z puli seqcfbox'a
         # Wczytanie danych do przycisku sekwencji:
-        dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_" + str(self.id)].maps.append([scg.map, scg.spinbox.value])
+        dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(self.id)].maps.append([scg.map, scg.spinbox.value])
 
 
 class MoekSeqCfgBox(QFrame):
@@ -570,25 +585,18 @@ class MoekSeqCfgBox(QFrame):
     def __init__(self, *args, _id):
         super().__init__(*args)
         self.id = _id
-        self.height = int()
         self.vlay = QVBoxLayout()
-        self.vlay.setContentsMargins(0, 6, 0, 6)
-        self.vlay.setSpacing(6)
+        self.vlay.setContentsMargins(0, 0, 0, 0)
+        self.vlay.setSpacing(0)
         self.scgs = {}
-        self.lns = {}
         for c in range(5):
-            _ln = MoekHLine()
-            self.vlay.addWidget(_ln)
-            ln_name = f'ln_{c}'
-            self.lns[ln_name] = _ln
-            _scg = MoekSeqCfg(_id=c)
+            _scg = MoekSeqCfg(self, _id=c)
             self.vlay.addWidget(_scg)
             scg_name = f'scg_{c}'
             self.scgs[scg_name] = _scg
         self.setLayout(self.vlay)
         self.cnt = int()
         self.cnt_changed.connect(self.cnt_change)
-
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -598,29 +606,24 @@ class MoekSeqCfgBox(QFrame):
 
     def cnt_change(self):
         """Zmiana ilości aktywnych seqcfg'ów w seqcfgbox'ie."""
-        dlg.freeze_set(True, delay=True)  # Zablokowanie odświeżania dockwidget'u
-        # Obejście problemów z sizePolicy przy zmianie ilości widocznych seqcfg'ów:
-        # self.height = 83+38*(self.cnt - 1)  # Obliczenie wysokości pojemnika
-        # Ustawienie odpowiedniej wysokości pojemnika:
-        if self.size().height() != 480:  # Pominięcie zmiany przy starcie plugin'u
-            self.parent().parent().setMinimumHeight(self.height)
-            self.parent().parent().setMaximumHeight(self.height)
+        # Ustalenie wysokości seq_dock w zależności od ilości widocznych seqcfg'ów:
+        height = 76 + 36 * self.cnt
+        dlg.seq_dock.heights[self.id] = height
+        dlg.seq_dock.height_change()
         c = 0
         for scg in self.scgs:
-            # Wyświetlenie odpowiedniej liczby seqcfg'ów i linii separacyjnych:
+            # Wyświetlenie odpowiedniej liczby seqcfg'ów:
             self.scgs["scg_" + str(c)].setVisible(True) if c < self.cnt else self.scgs["scg_" + str(c)].setVisible(False)
-            self.lns["ln_" + str(c)].setVisible(True) if c < self.cnt else self.lns["ln_" + str(c)].setVisible(False)
             # Ustawienie atrybutu last na ostatnim aktywnym seqcfg'u:
             if c == self.cnt - 1:
                 self.scgs["scg_" + str(c)].last = True
             else:
                 self.scgs["scg_" + str(c)].last = False
             c += 1
-        sab = dlg.p_vn.widgets["sab_seq" + str(self.id)]  # Referencja seqaddbox'a
+        sab = dlg.seq_dock.widgets["sab_seq" + str(self.id)]  # Referencja seqaddbox'a
         sab.combobox_update(self.id)  # Aktualizacja combobox'a
         # Uniemożliwienie dodania do sekwencji więcej niż 5 podkładów mapowych:
         sab.add_btn.setEnabled(False) if self.cnt == 5 else sab.add_btn.setEnabled(True)
-        dlg.freeze_set(False, delay=True)  # Odblokowanie odświeżania dockwidget'u
 
 
 class MoekSeqCfg(QFrame):
@@ -633,9 +636,9 @@ class MoekSeqCfg(QFrame):
         self.id = _id
         self.setObjectName("box")
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-        self.setFixedHeight(25)
+        self.setFixedHeight(36)
         self.hlay = QHBoxLayout()
-        self.hlay.setContentsMargins(3, 0, 2, 0)
+        self.hlay.setContentsMargins(3, 0, 5, 0)
         self.hlay.setSpacing(4)
         self.order = MoekOrder(self)
         self.label = MoekSeqLabel(self)
@@ -653,8 +656,8 @@ class MoekSeqCfg(QFrame):
         self.map_changed.connect(self.map_change)
         self.last_changed.connect(self.last_change)
         self.setStyleSheet("""
-                               QFrame#box {background-color: white; border: none; border-top-left-radius: 0px; border-bottom-left-radius: 0px; border-top-right-radius: 0px; border-bottom-right-radius: 0px}
-                               QFrame#lbl {color: rgb(52, 132, 240); qproperty-alignment: AlignCenter}
+                               QFrame#box {background-color: rgba(0, 0, 0, 0.8); border: none}
+                               QFrame#lbl {color: rgb(255, 255, 255); qproperty-alignment: AlignCenter}
                                """)
 
     def __setattr__(self, attr, val):
@@ -678,7 +681,6 @@ class MoekSeqCfg(QFrame):
 
     def del_clicked(self):
         """Wyczyszczenie wybranego seqcfg'u."""
-        # bid = self.parent().parent().id  # Numer seqcfgbox'a
         seqcfgs = []  # Lista z danymi z pozostałych po kasowaniu seqcfg'ów
         # Zapamiętanie danych z pozostałych po kasowaniu seqcfg'ów:
         for scg in self.parent().findChildren(MoekSeqCfg):
@@ -692,7 +694,6 @@ class MoekSeqCfg(QFrame):
             self.parent().scgs["scg_" + str(i)].spinbox.value = seqcfgs[i][1]
             self.parent().scgs["scg_" + str(i)].map = seqcfgs[i][0]
         self.parent().cnt -= 1  # Aktualizacja ilości aktywnych seqcfg'ów
-        # dlg.p_vn.widgets["sab_seq" + str(self.parent().id)].combobox_update(self.parent().id)  # Aktualizacja combobox'a
 
     def last_change(self):
         """Dostosowanie przycisków zmiany kolejności."""
@@ -745,14 +746,14 @@ class MoekOrder(QFrame):
         bid = self.parent().parent().id
         id_1 = self.parent().id
         id_2 = id_1 - 1 if way == "up" else id_1 + 1
-        map_1 = dlg.p_vn.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_1)].map
-        delay_1 = dlg.p_vn.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_1)].spinbox.value
-        map_2 = dlg.p_vn.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_2)].map
-        delay_2 = dlg.p_vn.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_2)].spinbox.value
-        dlg.p_vn.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_1)].spinbox.value = delay_2
-        dlg.p_vn.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_2)].spinbox.value = delay_1
-        dlg.p_vn.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_1)].map = map_2
-        dlg.p_vn.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_2)].map = map_1
+        map_1 = dlg.seq_dock.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_1)].map
+        delay_1 = dlg.seq_dock.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_1)].spinbox.value
+        map_2 = dlg.seq_dock.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_2)].map
+        delay_2 = dlg.seq_dock.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_2)].spinbox.value
+        dlg.seq_dock.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_1)].spinbox.value = delay_2
+        dlg.seq_dock.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_2)].spinbox.value = delay_1
+        dlg.seq_dock.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_1)].map = map_2
+        dlg.seq_dock.widgets["scg_seq" + str(bid)].scgs["scg_" + str(id_2)].map = map_1
 
 
 class MoekSeqSpinBox(QFrame):
@@ -791,8 +792,8 @@ class MoekSeqSpinBox(QFrame):
         if value:
             self.setStyleSheet("""
                     QFrame#frm {border: none; border-radius: 0px}
-                    QFrame#lbl {color: rgb(52, 132, 240); font-size: 10pt; font-weight: normal; qproperty-alignment: AlignCenter}
-                    """)#QFrame#frm {border: 1px solid rgb(52, 132, 240); border-radius: 0px}
+                    QFrame#lbl {color: rgb(255, 255, 255); font-size: 10pt; font-weight: normal; qproperty-alignment: AlignCenter}
+                    """)
         else:
             self.setStyleSheet("""
                     QFrame#frm {border: none; border-radius: 0px}
@@ -807,7 +808,6 @@ class MoekSeqSpinBox(QFrame):
 
 class MoekSpinner(QFrame):
     """Przycisk-kontrolka wiget'u obsługującego sekwencyjne wczytywanie podkładów mapowych."""
-
     def __init__(self, *args, size="S"):
         super().__init__(*args)
         self.setFixedSize(12, 24)
@@ -916,7 +916,7 @@ class MoekHLine(QFrame):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setFixedHeight(px)
-        self.setStyleSheet("QFrame {background-color: rgba(52, 132, 240, 77)}")
+        self.setStyleSheet("QFrame {background-color: rgba(255, 255, 255, 77)}")
 
 
 class MoekComboBox(QComboBox):
@@ -932,12 +932,13 @@ class MoekComboBox(QComboBox):
 
         self.setStyleSheet("""
                             QComboBox {
-                                border: """ + str(border) + """px solid rgb(52, 132, 240);
+                                border: """ + str(border) + """px solid rgb(255, 255, 255);
                                 """ + B_CSS + """
                                 padding: 0px 5px 0px 5px;
                                 min-width: 1px;
                                 min-height: """ + str(height) + """px;
-                                color: rgb(52, 132, 240);
+                                color: white;
+                                background-color: rgba(255, 255, 255, 0.2);
                                 font-size: 8pt;
                             }
                             QComboBox:disabled {
@@ -956,19 +957,21 @@ class MoekComboBox(QComboBox):
                                 selection-color:transparent;
                             }
                             QComboBox::item:selected {
+                                min-height: 34px;
                                 padding-left: 0px;
-                                background-color: rgb(52, 132, 240);
-                                color: white;
+                                background-color: rgba(255, 255, 255, 0.8);
+                                color: black;
                             }
                             QComboBox::item:!selected {
-                                background-color: white;
-                                color: rgb(52, 132, 240);
+                                min-height: 34px;
+                                background-color: rgba(255, 255, 255, 0.2);
+                                color: white;
                             }
                             QComboBox:on {
                                 padding-top: 3px;
                                 padding-left: 4px;
-                                background-color: rgb(52, 132, 240);
-                                color: white;
+                                background-color: rgba(255, 255, 255, 0.2);
+                                color: black;
                             }
                             QComboBox::drop-down {
                                 subcontrol-origin: padding;
@@ -977,23 +980,20 @@ class MoekComboBox(QComboBox):
                                 right: 5px;
                                 border: none;
                                 background: transparent;
+                                background-color: transparent;
                             }
                             QComboBox::down-arrow {
-                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow.png');
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow_dark.png');
                             }
                             QComboBox::down-arrow:disabled {
-                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow_dis.png');
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow__dark_dis.png');
                             }
                             QComboBox QAbstractItemView {
-                                border: """ + str(border) + """px solid rgb(52, 132, 240);
-                                background-color: white;
-                            }
-                            QComboBox QAbstractItemView::item {
-                                padding-top: 3px;
-                                padding-left: 4px;
-                                border: """ + str(border) + """px solid rgb(52, 132, 240);
-                                background-color: white;
+                                border: """ + str(border) + """px solid rgb(255, 255, 255);
+                                background-color: transparent;
+                                box-shadow: transparent;
                             }
                            """)
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
-        self.setAttribute(Qt.WA_NoSystemBackground | Qt.WA_TranslucentBackground | Qt.WA_PaintOnScreen)
+        self.view().window().setStyleSheet("background-color: rgba(0, 0, 0, 0.0)")
+        self.view().window().setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.view().window().setAttribute(Qt.WA_NoSystemBackground | Qt.WA_TranslucentBackground | Qt.WA_PaintOnScreen | Qt.WA_OpaquePaintEvent)

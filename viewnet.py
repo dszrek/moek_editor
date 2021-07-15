@@ -63,8 +63,10 @@ class SelVN:
     def l_chg(self, val):
         """Włączenie lub wyłączenie przycisków vn w zależności od atrybutu l."""
         if val > 0:
-            # Włączenie/wyłączenie skrótów klawiszowych
-            dlg.hk_vn = False if val == 1 else True
+            # Włączenie/wyłączenie skrótów klawiszowych:
+            if dlg.seq_dock.box.currentIndex() == 0 and dlg.p_vn.box.currentIndex() == 0:
+                # Nie może być włączony setup vn lub seq
+                dlg.hk_vn = False if val == 1 else True
             if val == 1:
                 vn_btn_enable(False)  # Wyłączenie przycisków
             elif val == 2:
@@ -234,8 +236,8 @@ def vn_forward():
             print("vn_forward error!")
             return
     vn_set_sel(*new_vn)  # Zmieniamy na vn'a o ustalonych parametrach
-    if dlg.p_vn.widgets["sqb_seq"].num > 0:  # Włączony tryb sekwencyjnego wczytywania podkładów mapowych
-        dlg.p_vn.widgets["sqb_seq"].player()
+    if dlg.seq_dock.widgets["sqb_seq"].num > 0:  # Włączony tryb sekwencyjnego wczytywania podkładów mapowych
+        dlg.seq_dock.widgets["sqb_seq"].player()
     else:
         vn_zoom()
         stage_refresh()

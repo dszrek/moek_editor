@@ -533,7 +533,7 @@ class PanelManager:
         """Włączenie/wyłączenie warstw przy wychodzeniu/wchodzeniu do trybu ustawień."""
         if off:
             # Wyłączanie warstw:
-            lyrs = [5, 6, 11, 17, 18, 22]
+            lyrs = [5, 6, 11, 17, 18, 22, 27]
             for lyr in lyrs:
                 # Zapamiętanie ustawień warstwy:
                 self.cfg_mem.append([self.cfg_dicts[lyr]["name"], self.cfg_dicts[lyr]["value"]])

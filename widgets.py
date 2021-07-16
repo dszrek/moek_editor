@@ -1259,7 +1259,7 @@ class WyrStatusIndicator(QLabel):
         self.setStyleSheet("""
                     QLabel {
                         border: none;
-                        background: rgba(""" + color + """, 0.6);
+                        background: rgba(""" + color + """, 0.8);
                         color: black;
                         font-size: 8pt;
                         font-weight: bold;
@@ -1276,9 +1276,7 @@ class WyrStatusSelector(QFrame):
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedHeight(28)
         self.setFixedWidth(60)
-        self.setStyleSheet("""
-                    QFrame#main{background-color: transparent; border: none}
-                    """)
+        self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
         self.lay = QHBoxLayout()
         self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(4)
@@ -1286,9 +1284,9 @@ class WyrStatusSelector(QFrame):
         self.valid_check = False
         self.itms = {}
         self.statuses = [
-            {'id' : 1, 'name' : 'wyr_green_status', 'text' : 'WYROBISKO POTWIERDZONE', 'color' : '40, 170, 40', 'after_fchk' : True, 'confirmed' : True},
-            {'id' : 2, 'name' : 'wyr_red_status', 'text' : 'WYROBISKO ODRZUCONE', 'color' : '224, 0, 0', 'after_fchk' : True, 'confirmed' : False},
-            {'id' : 0, 'name' : 'wyr_grey_status', 'text' : 'WYROBISKO PRZED KONTROLĄ', 'color' : '153, 153, 153', 'after_fchk' : False, 'confirmed' : False}
+            {'id' : 1, 'name' : 'wyr_green_status', 'text' : 'WYROBISKO POTWIERDZONE', 'layer': 'wyr_potwierdzone', 'color' : '40, 170, 40', 'after_fchk' : True, 'confirmed' : True},
+            {'id' : 2, 'name' : 'wyr_red_status', 'text' : 'WYROBISKO ODRZUCONE', 'layer': 'wyr_odrzucone', 'color' : '224, 0, 0', 'after_fchk' : True, 'confirmed' : False},
+            {'id' : 0, 'name' : 'wyr_grey_status', 'text' : 'WYROBISKO PRZED KONTROLĄ', 'layer': 'wyr_przed_teren', 'color' : '153, 153, 153', 'after_fchk' : False, 'confirmed' : False}
             ]
         for status in self.statuses:
             _itm = WyrStatusSelectorItem(self, name=status["name"], size=28, checkable=False, id=status["id"])
@@ -1302,6 +1300,26 @@ class WyrStatusSelector(QFrame):
         if attr == "case":
             self.case_change()
 
+    def set_case(self, after_fchk, confirmed):
+        """Ustala 'case' na podstawie atrybutów wyrobiska."""
+        if not after_fchk:
+            self.case = 0
+        else:
+            self.case = 1 if confirmed else 2
+
+    def db_update(self, after_fchk, confirmed):
+        """Aktualizacja atrybutów wyrobiska w db po zmianie statusu."""
+        db = PgConn()
+        sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET b_after_fchk = {after_fchk}, b_confirmed = {confirmed} WHERE wyr_id = {dlg.obj.wyr}"
+        if db:
+            res = db.query_upd(sql)
+            if res:
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def case_change(self):
         """Dostosowanie widoczności przycisków do aktualnego statusu wyrobiska."""
         for itm in self.itms.values():
@@ -1311,8 +1329,20 @@ class WyrStatusSelector(QFrame):
                 dlg.wyr_panel.status_indicator.set_case(status["text"], status["color"])
 
     def btn_clicked(self, id):
-        """Zmiana wartości 'case' po naciśnięciu przycisku."""
+        """Zmiana wartości 'case' i aktualizacja db po naciśnięciu przycisku."""
         self.case = id
+        for status in self.statuses:
+            if status["id"] == self.case:
+                result = self.db_update(status["after_fchk"], status["confirmed"])
+                if result:
+                    self.vis_check(status["layer"])
+                    dlg.obj.wyr = dlg.obj.wyr
+
+    def vis_check(self, lyr_name):
+        """Włącza dany typ wyrobisk, jeśli nie jest włączony."""
+        val = dlg.cfg.get_val(lyr_name)
+        if val == 0:
+            dlg.cfg.set_val(lyr_name, 1)
 
 
 class WyrStatusSelectorItem(QToolButton):

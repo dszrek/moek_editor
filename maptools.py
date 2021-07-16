@@ -92,9 +92,10 @@ class ObjectManager:
             if val:
                 self.wyr_data = self.wyr_update()
                 self.list_position_check("wyr")
-                area_txt = f"  {self.wyr_data[1]} m\u00b2  "
+                area_txt = f"  {self.wyr_data[3]} m\u00b2  "
                 self.dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
-                self.dlg.wyr_panel.notepad_box.set_text(self.wyr_data[2])  # Aktualizacja tekstu notatki
+                self.dlg.wyr_panel.notepad_box.set_text(self.wyr_data[4])  # Aktualizacja tekstu notatki
+                self.dlg.wyr_panel.status_selector.set_case(self.wyr_data[1], self.wyr_data[2])  # Aktualizacja statusu wyrobiska
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
         elif attr == "wyr_ids":
@@ -322,7 +323,7 @@ class ObjectManager:
     def wyr_update(self):
         """Zwraca dane wyrobiska."""
         db = PgConn()
-        sql = "SELECT wyr_id, i_area_m2, t_notatki FROM team_" + str(dlg.team_i) + ".wyrobiska WHERE wyr_id = " + str(self.wyr) + ";"
+        sql = "SELECT wyr_id, b_after_fchk, b_confirmed, i_area_m2, t_notatki FROM team_" + str(dlg.team_i) + ".wyrobiska WHERE wyr_id = " + str(self.wyr) + ";"
         if db:
             res = db.query_sel(sql, False)
             if not res:

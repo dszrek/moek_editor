@@ -459,18 +459,24 @@ class WyrCanvasPanel(QFrame):
         self.sp_main.lay.addWidget(self.id_box)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_main.lay.addItem(spacer)
-        # self.sp_area = CanvasHSubPanel(self, height=34)
-        # self.box.lay.addWidget(self.sp_area)
         self.area_label = PanelLabel(self, text="", size=12)
         self.sp_main.lay.addWidget(self.area_label)
-        # spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
-        # self.sp_area.box.lay.addItem(spacer)
         self.wyr_edit = MoekButton(self, name="wyr_edit", size=34, checkable=False)
         self.wyr_edit.clicked.connect(lambda: dlg.mt.init("wyr_edit"))
         self.sp_main.lay.addWidget(self.wyr_edit)
         self.wyr_del = MoekButton(self, name="trash", size=34, checkable=False)
         self.wyr_del.clicked.connect(self.wyr_delete)
         self.sp_main.lay.addWidget(self.wyr_del)
+        # self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        # self.box.lay.addWidget(self.separator_1)
+        self.sp_status = CanvasHSubPanel(self, height=34, margins=[4, 2, 4, 4], spacing=4)
+        self.box.lay.addWidget(self.sp_status)
+        self.status_indicator = WyrStatusIndicator(self)
+        self.sp_status.lay.addWidget(self.status_indicator)
+        self.status_selector = WyrStatusSelector(self, width=68)
+        self.sp_status.lay.addWidget(self.status_selector)
+        self.separator_2 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        self.box.lay.addWidget(self.separator_2)
         self.sp_notepad = CanvasHSubPanel(self, height=110)
         self.box.lay.addWidget(self.sp_notepad)
         self.notepad_box = TextPadBox(self, height=110, obj="wyr")
@@ -1238,6 +1244,114 @@ class ExportSelectorItem(QPushButton):
                                 font-size: 11pt;
                            """)
         self.clicked.connect(self.parent().btn_clicked)
+
+
+class WyrStatusIndicator(QLabel):
+    """Wyświetla status aktywnego wyrobiska."""
+    def __init__(self, *args, text="WYROBISKO PRZED KONTROLĄ", color="153, 153, 153"):
+        super().__init__(*args)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setAlignment(Qt.AlignCenter)
+        self.set_case(text, color)
+
+    def set_case(self, text, color):
+        """Ustala tekst i kolor kontrolki."""
+        self.setStyleSheet("""
+                    QLabel {
+                        border: none;
+                        background: rgba(""" + color + """, 0.6);
+                        color: black;
+                        font-size: 8pt;
+                        font-weight: bold;
+                    }
+                    """)
+        self.setText(text)
+
+
+class WyrStatusSelector(QFrame):
+    """Belka zmiany statusu wyrobiska."""
+    def __init__(self, *args, width):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedHeight(28)
+        self.setFixedWidth(60)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(4)
+        self.setLayout(self.lay)
+        self.valid_check = False
+        self.itms = {}
+        self.statuses = [
+            {'id' : 1, 'name' : 'wyr_green_status', 'text' : 'WYROBISKO POTWIERDZONE', 'color' : '40, 170, 40', 'after_fchk' : True, 'confirmed' : True},
+            {'id' : 2, 'name' : 'wyr_red_status', 'text' : 'WYROBISKO ODRZUCONE', 'color' : '224, 0, 0', 'after_fchk' : True, 'confirmed' : False},
+            {'id' : 0, 'name' : 'wyr_grey_status', 'text' : 'WYROBISKO PRZED KONTROLĄ', 'color' : '153, 153, 153', 'after_fchk' : False, 'confirmed' : False}
+            ]
+        for status in self.statuses:
+            _itm = WyrStatusSelectorItem(self, name=status["name"], size=28, checkable=False, id=status["id"])
+            self.lay.addWidget(_itm)
+            itm_name = f'btn_{status["name"]}'
+            self.itms[itm_name] = _itm
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "case":
+            self.case_change()
+
+    def case_change(self):
+        """Dostosowanie widoczności przycisków do aktualnego statusu wyrobiska."""
+        for itm in self.itms.values():
+            itm.setVisible(False) if itm.id == self.case else itm.setVisible(True)
+        for status in self.statuses:
+            if status["id"] == self.case:
+                dlg.wyr_panel.status_indicator.set_case(status["text"], status["color"])
+
+    def btn_clicked(self, id):
+        """Zmiana wartości 'case' po naciśnięciu przycisku."""
+        self.case = id
+
+
+class WyrStatusSelectorItem(QToolButton):
+    """Guzik do wyboru statusu wyrobiska."""
+    def __init__(self, *args, id, size=25, hsize=0, name="", icon="", visible=True, enabled=True, checkable=False, tooltip=""):
+        super().__init__(*args)
+        self.setCheckable(False)
+        self.id = id
+        name = icon if len(icon) > 0 else name
+        self.shown = visible  # Dubluje setVisible() - .isVisible() może zależeć od rodzica
+        self.setVisible(visible)
+        self.setEnabled(enabled)
+        self.setCheckable(checkable)
+        self.setToolTip(tooltip)
+        self.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        self.setAutoRaise(True)
+        self.setStyleSheet("QToolButton {border: none}")
+        self.set_icon(name, size, hsize)
+        self.setMouseTracking(True)
+        self.clicked.connect(lambda: self.parent().btn_clicked(self.id))
+
+    def set_icon(self, name, size=25, hsize=0):
+        """Ładowanie ikon do guzika."""
+        if hsize == 0:
+            wsize, hsize = size, size
+        else:
+            wsize = size
+        self.setFixedSize(wsize, hsize)
+        self.setIconSize(QSize(wsize, hsize))
+        icon = QIcon()
+        icon.addFile(ICON_PATH + name + "_0.png", size=QSize(wsize, hsize), mode=QIcon.Normal, state=QIcon.Off)
+        icon.addFile(ICON_PATH + name + "_0_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.Off)
+        icon.addFile(ICON_PATH + name + "_0.png", size=QSize(wsize, hsize), mode=QIcon.Selected, state=QIcon.Off)
+        icon.addFile(ICON_PATH + name + "_dis.png", size=QSize(wsize, hsize), mode=QIcon.Disabled, state=QIcon.Off)
+        if self.isCheckable():
+            icon.addFile(ICON_PATH + name + "_1.png", size=QSize(wsize, hsize), mode=QIcon.Normal, state=QIcon.On)
+            icon.addFile(ICON_PATH + name + "_1_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.On)
+            icon.addFile(ICON_PATH + name + "_1.png", size=QSize(wsize, hsize), mode=QIcon.Selected, state=QIcon.On)
+        self.setIcon(icon)
 
 
 class FlagTools(QFrame):

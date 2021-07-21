@@ -11,21 +11,23 @@ import win32process
 import tempfile
 import codecs
 import time
+import pandas as pd
+import numpy as np
 
+from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
+from qgis.core import QgsProject, QgsGeometry, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsPointXY
+from qgis.PyQt.QtCore import Qt, pyqtSlot, pyqtProperty, QTimer, QAbstractTableModel, QVariant, QModelIndex, QRect
+from qgis.PyQt.QtWidgets import QMessageBox, QHeaderView, QStyledItemDelegate, QItemDelegate, QStyle
+from qgis.PyQt.QtGui import QColor, QKeySequence, QFont, QLinearGradient, QBrush, QPen, QPixmap, QPainter, QIcon
+from qgis.utils import iface
 from threading import Thread
 from PIL import Image
 from win32com.client import GetObject
-from qgis.PyQt.QtWidgets import QMessageBox
 from configparser import ConfigParser
-from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
-from qgis.core import QgsProject, QgsGeometry, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsPointXY
-from qgis.PyQt.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QKeySequence
-from PyQt5.QtCore import QTimer
-from qgis.utils import iface
 
 DB_SOURCE = "MOEK"
 TEMP_PATH = tempfile.gettempdir()
+ValueRole = Qt.UserRole + 1
 
 
 class PgConn:
@@ -74,6 +76,20 @@ class PgConn:
             return
         else:
             return result
+        finally:
+            self.close()
+
+    def query_pd(self, query, col_names):
+        """Wykonanie kwerendy SELECT i zwrócenie dataframe'u."""
+        try:
+            self.cursor.execute(query)
+            result = self.cursor.fetchall()
+        except Exception as error:
+            self.__error_msg("query", error, query)
+            return None
+        else:
+            df = pd.DataFrame(result, columns=col_names)
+            return df
         finally:
             self.close()
 
@@ -495,6 +511,199 @@ class GESync:
         iface.mainWindow().blockSignals(False)
         iface.actionDraw().trigger()
         iface.mapCanvas().refresh()
+
+
+class DataFrameModel(QAbstractTableModel):
+    """Podstawowy model tabeli zasilany przez pandas dataframe."""
+    DtypeRole = Qt.UserRole + 1000
+    ValueRole = Qt.UserRole + 1001
+
+    def __init__(self, df=pd.DataFrame(), tv=None, col_names=[], parent=None):
+        super(DataFrameModel, self).__init__(parent)
+        self._dataframe = df
+        self.col_names = col_names
+        self.tv = tv  # Referencja do tableview
+        self.tv.setModel(self)
+        self.tv.selectionModel().selectionChanged.connect(lambda: self.layoutChanged.emit())
+        self.tv.horizontalHeader().setSortIndicatorShown(False)
+        self.tv.horizontalHeader().setSortIndicator(-1, 0)
+        self.sort_col = -1
+        self.sort_ord = 0
+
+    def col_names(self, df, col_names):
+        """Nadanie nazw kolumn tableview'u."""
+        df.columns = col_names
+        return df
+
+    def sort_reset(self):
+        """Wyłącza sortowanie po kolumnie."""
+        self.tv.horizontalHeader().setSortIndicator(-1, 0)
+        self.sort_col = -1
+        self.sort_ord = 0
+
+    def setDataFrame(self, dataframe):
+        self.beginResetModel()
+        self._dataframe = dataframe.copy()
+        self.endResetModel()
+
+    def dataFrame(self):
+        return self._dataframe
+
+    dataFrame = pyqtProperty(pd.DataFrame, fget=dataFrame, fset=setDataFrame)
+
+    @pyqtSlot(int, Qt.Orientation, result=str)
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                if self.col_names:
+                    try:
+                        return self.col_names[section]  # type: ignore
+                    except:
+                        pass
+                return self._dataframe.columns[section]
+            else:
+                return str(self._dataframe.index[section])
+        return QVariant()
+
+    def rowCount(self, parent=QModelIndex()):
+        if parent.isValid():
+            return 0
+        return len(self._dataframe.index)
+
+    def columnCount(self, parent=QModelIndex()):
+        if parent.isValid():
+            return 0
+        return self._dataframe.columns.size
+
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < self.rowCount() \
+            and 0 <= index.column() < self.columnCount()):
+            return QVariant()
+        row = self._dataframe.index[index.row()]
+        col = self._dataframe.columns[index.column()]
+        dt = self._dataframe[col].dtype
+        try:
+            val = self._dataframe.iloc[row][col]
+        except:
+            return QVariant()
+        if role == DataFrameModel.ValueRole:
+            return val
+        if role == DataFrameModel.DtypeRole:
+            return dt
+        return QVariant()
+
+    def roleNames(self):
+        roles = {
+            Qt.DisplayRole: b'display',
+            DataFrameModel.DtypeRole: b'dtype',
+            DataFrameModel.ValueRole: b'value'
+        }
+        return roles
+
+
+class WDfModel(DataFrameModel):
+    """Subklasa dataframemodel dla tableview wyświetlającą wdf."""
+
+    def __init__(self, df=pd.DataFrame(), tv=None, col_widths=[], col_names=[], parent=None):
+        super().__init__(df, tv, col_names)
+        self.tv = tv  # Referencja do tableview
+        de = WDfDelegate()
+        self.tv.setItemDelegate(de)
+        self.col_format(col_widths)
+
+    def col_format(self, col_widths):
+        """Formatowanie szerokości kolumn tableview'u."""
+        cols = list(enumerate(col_widths, 0))
+        for col in cols:
+            self.tv.setColumnWidth(col[0], col[1])
+        h_header = self.tv.horizontalHeader()
+        h_header.setMinimumSectionSize(1)
+        h_header.setSectionResizeMode(QHeaderView.Fixed)
+        h_header.resizeSection(0, 10)
+        v_header = self.tv.verticalHeader()
+        v_header.setDefaultSectionSize(24)
+
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < self.rowCount() \
+            and 0 <= index.column() < self.columnCount()):
+            return QVariant()
+        row = self._dataframe.index[index.row()]
+        col = self._dataframe.columns[index.column()]
+        dt = self._dataframe[col].dtype
+        val = self._dataframe.iloc[row][col]
+        if role == Qt.DisplayRole:
+            if index.column() == 0:
+                return QVariant()
+            else:
+                return str(val)
+        elif role == Qt.FontRole:
+            font = QFont()
+            font.setPointSize(11)
+            return font
+        elif role == Qt.ForegroundRole:
+            if index.row() == self.tv.currentIndex().row():
+                return QColor(Qt.white)
+            else:
+                return QColor(Qt.black)
+        elif role == Qt.BackgroundRole:
+            if index.row() == self.tv.currentIndex().row():
+                gradient = QLinearGradient(0, 0, 66, 0)
+                gradient.setColorAt(0, QColor(0, 0, 0, 128))
+                gradient.setColorAt(1, QColor(0, 0, 0, 0))
+                if index.column() == 0:
+                    return QColor(0, 0, 0, 128)
+                else:
+                    return QBrush(gradient)
+        if role == ValueRole:
+            return val
+        if role == DataFrameModel.DtypeRole:
+            return dt
+        return QVariant()
+
+
+class WDfDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None, *args):
+        QStyledItemDelegate.__init__(self, parent, *args)
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        selected = option.state & QStyle.State_Selected
+        if index.column() == 0:
+            s_data = index.data(ValueRole)
+            if s_data == 0:
+                color = QColor(123, 123, 123)
+            elif s_data == 1:
+                color = QColor(224, 0, 0)
+            elif s_data == 2:
+                color = QColor(40, 140, 40)
+            painter.save()
+            painter.setRenderHint(QPainter.Antialiasing)
+            pen = painter.pen()
+            pen.setStyle(Qt.NoPen)
+            painter.setPen(pen)
+            painter.setBrush(color)
+            rect_1 = QRect(option.rect)
+            rect_1.adjust(2, 2, -3, -2)
+            painter.drawRoundedRect(rect_1, 2, 2)
+            painter.restore()
+        if selected:
+            gradient = QLinearGradient(0, 0, 66, 0)
+            gradient.setColorAt(0, QColor(0, 0, 0, 255))
+            gradient.setColorAt(1, QColor(0, 0, 0, 0))
+            painter.setPen(QPen(gradient, 1))
+            rect_2 = QRect(option.rect)
+            painter.drawLine(rect_2.topLeft(), rect_2.topRight())
+            painter.drawLine(rect_2.bottomLeft(), rect_2.bottomRight())
+
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        selected = option.state & QStyle.State_Selected
+        focused = option.state & QStyle.State_HasFocus
+        if selected:
+            option.state = option.state & ~QStyle.State_Selected
+        if focused:
+            option.state = option.state & ~QStyle.State_HasFocus
+
 
 def threading_func(f):
     """Dekorator dla funkcji zwracającej wartość i działającej poza głównym wątkiem QGIS'a."""

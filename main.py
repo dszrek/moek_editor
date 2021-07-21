@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import os
 import time as tm
+import pandas as pd
+import numpy as np
 
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
 from qgis.PyQt.QtCore import Qt, QDir
@@ -300,11 +302,13 @@ def wyr_layer_update(check=True):
     """Aktualizacja warstw z wyrobiskami."""
     QgsApplication.setOverrideCursor(Qt.WaitCursor)
     if check:
-    # Sprawdzenie, czy wszystkie wyrobiska mają przypisane powiaty
-    # i dokonanie aktualizacji, jeśli występują braki:
+        # Sprawdzenie, czy wszystkie wyrobiska mają przypisane powiaty
+        # i dokonanie aktualizacji, jeśli występują braki:
         wyr_powiaty_check()
     # Stworzenie listy wyrobisk z aktywnych powiatów:
     dlg.obj.wyr_ids = get_wyr_ids()
+    # Aktualizacja wdf:
+    wdf_update()
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.obj.wyr_ids:
@@ -333,6 +337,38 @@ def wyr_layer_update(check=True):
         lyr.triggerRepaint()
     dlg.wyr_visibility()  # Aktualizacja widoczności warstw
     QgsApplication.restoreOverrideCursor()
+
+def wdf_update():
+    """Aktualizacja dataframe'u wdf."""
+    # Załadowanie danych o wyrobiskach do dataframe'u:
+    wdf_load()
+    # Aktualizacja tableview:
+    dlg.wyr_panel.wdf_mdl.setDataFrame(dlg.wyr_panel.wdf)
+
+def wdf_load():
+    """Załadowanie danych o wyrobiskach z db do dataframe'u wdf."""
+    db = PgConn()
+    extras = f" WHERE wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})"
+    sql = "SELECT wyr_id, b_after_fchk, b_confirmed FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
+    if db:
+        temp_df = db.query_pd(sql, ["wyr_id", "fchk", "cnfrm"])
+        if len(temp_df) > 0:
+            wdf = wyr_status_determine(temp_df)
+            dlg.wyr_panel.wdf = wdf
+        else:
+            return None
+
+def wyr_status_determine(temp_df):
+    """Ustala status wyrobiska na podstawie atrybutów: 'fchk' i 'cnfrm', następnie zwraca gotową wersję wdf."""
+    conditions = [temp_df['fchk'].eq(False),
+                temp_df['fchk'].eq(True) & temp_df['cnfrm'].eq(False),
+                temp_df['fchk'].eq(True) & temp_df['cnfrm'].eq(True)]
+    choices = [0, 1, 2]
+    temp_df['status'] = np.select(conditions, choices, default=0)
+    temp_df.drop(['fchk', 'cnfrm'], axis=1, inplace=True)
+    temp_df = temp_df[['status', 'wyr_id']]
+    print(temp_df)
+    return temp_df
 
 def wyr_powiaty_check():
     """Sprawdza, czy wszystkie wyrobiska zespołu mają wpisy w tabeli 'wyr_pow'.

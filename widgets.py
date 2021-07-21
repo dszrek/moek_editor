@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 import os
+import pandas as pd
 
 from qgis.core import QgsApplication, QgsVectorLayer, QgsVectorFileWriter
-from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QFrame, QToolButton, QPushButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect
+from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QFrame, QToolButton, QPushButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect, QTableView, QAbstractItemView
 from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp
 from qgis.PyQt.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, file_dialog
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, file_dialog, wdf_update
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
-from .classes import PgConn, CfgPars
+from .classes import PgConn, CfgPars, WDfModel
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 
@@ -434,29 +435,47 @@ class WyrCanvasPanel(QFrame):
     def __init__(self, *args):
         super().__init__(*args)
         self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
-        self.setFixedWidth(350)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedWidth(500)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
+        self.list_box = MoekVBox(self, spacing=1)
+        self.list_box.setFixedWidth(90)
+        self.sp_id = CanvasHSubPanel(self, height=34, margins=[0, 0, 0, 0], color="255, 255, 255", alpha=0.8)
+        self.list_box.lay.addWidget(self.sp_id)
+        self.id_box = IdSpinBox(self, _obj="wyr", theme="light")
+        # self.id_label = PanelLabel(self, text="Id:", color="0, 0, 0", size=12)
+        # self.sp_id.lay.addWidget(self.id_label)
+        self.sp_id.lay.addWidget(self.id_box)
+        self.tv_wdf = MoekTableView(self)
+        self.tv_wdf.setFixedWidth(90)
+        self.list_box.lay.addWidget(self.tv_wdf)
+        tv_wdf_widths = [10, 66]
+        tv_wdf_headers = ['status', 'ID']
+        self.wdf = pd.DataFrame({'status': [1], 'wyr_id': [1]})  # Dataframe z danymi o wyrobiskach
+        self.wdf_mdl = WDfModel(df=self.wdf, tv=self.tv_wdf, col_widths=tv_wdf_widths, col_names=tv_wdf_headers)
+        self.tv_wdf.selectionModel().selectionChanged.connect(self.wdf_sel_change)
         self.box = MoekVBox(self)
         self.box.setObjectName("box")
         self.setStyleSheet("""
                     QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
                     QFrame#box{background-color: transparent; border: none}
                     """)
-        vlay = QVBoxLayout()
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(2)
+        hlay.addWidget(self.list_box)
+        hlay.addWidget(self.box)
+        hlay.setAlignment(self.box, Qt.AlignTop)
+        vlay = QVBoxLayout(self)
         vlay.setContentsMargins(3, 3, 3, 3)
-        vlay.setSpacing(1)
+        vlay.setSpacing(2)
         vlay.addWidget(self.bar)
-        vlay.addWidget(self.box)
+        vlay.addLayout(hlay)
         self.setLayout(vlay)
         self.sp_main = CanvasHSubPanel(self, height=34)
         self.box.lay.addWidget(self.sp_main)
-        self.id_box = IdSpinBox(self, _obj="wyr")
-        self.id_label = PanelLabel(self, text="  Id:", size=12)
-        self.sp_main.lay.addWidget(self.id_label)
-        self.sp_main.lay.addWidget(self.id_box)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_main.lay.addItem(spacer)
         self.area_label = PanelLabel(self, text="", size=12)
@@ -467,20 +486,71 @@ class WyrCanvasPanel(QFrame):
         self.wyr_del = MoekButton(self, name="trash", size=34, checkable=False)
         self.wyr_del.clicked.connect(self.wyr_delete)
         self.sp_main.lay.addWidget(self.wyr_del)
-        # self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
-        # self.box.lay.addWidget(self.separator_1)
         self.sp_status = CanvasHSubPanel(self, height=34, margins=[4, 2, 4, 4], spacing=4)
         self.box.lay.addWidget(self.sp_status)
         self.status_indicator = WyrStatusIndicator(self)
         self.sp_status.lay.addWidget(self.status_indicator)
         self.status_selector = WyrStatusSelector(self, width=68)
         self.sp_status.lay.addWidget(self.status_selector)
+        self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        self.box.lay.addWidget(self.separator_1)
+        self.sb = MoekStackedBox(self)
+        self.pages = {}
+        for p in range(4):
+            _page = MoekGridBox(self, margins=[3, 3, 3, 3], spacing=1)
+            page_id = f'page_{p}'
+            self.pages[page_id] = _page
+            self.sb.addWidget(_page)
+        self.sb.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.cur_page = int()
+        self.sb.currentChanged.connect(self.page_change)
+        self.widgets = {}
+        self.heights = [300, 280, 220]
         self.separator_2 = CanvasHSubPanel(self, height=1, alpha=0.0)
         self.box.lay.addWidget(self.separator_2)
         self.sp_notepad = CanvasHSubPanel(self, height=110)
         self.box.lay.addWidget(self.sp_notepad)
         self.notepad_box = TextPadBox(self, height=110, obj="wyr")
         self.sp_notepad.lay.addWidget(self.notepad_box)
+
+    def wdf_sel_change(self):
+        """Zmiana zaznaczonego wiersza w tv_wdf."""
+        print("wdf_sel_change")
+        sel_tv = self.tv_wdf.selectionModel()
+        index = sel_tv.currentIndex()
+        if index.row() == -1:
+            # Nie ma zaznaczonego wiersza w tv_wdf
+            return
+        else:
+            id = int(index.sibling(index.row(), 1).data())
+            if id in dlg.obj.wyr_ids:
+                if dlg.obj.wyr != id:
+                    dlg.obj.wyr = id
+            else:
+                dlg.obj.wyr = None
+
+    def wdf_sel_update(self):
+        """Aktualizacja zaznaczenia wiersza w tv_wdf."""
+        print("wdf_sel_update")
+        index = self.tv_wdf.model().match(self.tv_wdf.model().index(0, 1), Qt.DisplayRole, str(dlg.obj.wyr))
+        if index:
+            self.tv_wdf.scrollTo(index[0])
+            self.tv_wdf.setCurrentIndex(index[0])
+        else:
+            sel_tv = self.tv_wdf.selectionModel()
+            sel_tv.clearCurrentIndex()
+            sel_tv.clearSelection()
+            self.tv_wdf.scrollToTop()
+
+    def page_change(self, index):
+        """Zmiana aktywnej strony stackedbox'a."""
+        self.cur_page = index
+        self.height_change()  # Aktualizacja wysokości dock'u
+
+    def height_change(self):
+        """Zmiana wysokości dock'u i aktualizacja pozycji na mapcanvas'ie."""
+        print("height_change")
+        self.setFixedHeight(self.heights[self.cur_page])
 
     def exit_clicked(self):
         """Zmiana trybu active po kliknięciu na przycisk io."""
@@ -1031,20 +1101,30 @@ class CanvasPanelTitleBar(QFrame):
 
 
 class CanvasHSubPanel(QFrame):
-    """Belka panelu z box'em."""
-    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, alpha=0.8):
+    """Belka canvaspanel'u z box'em."""
+    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, color="0, 0, 0", alpha=0.8):
         super().__init__(*args)
         self.setObjectName("main")
         self.setFixedHeight(height)
         self.setStyleSheet("""
-                    QFrame#main{background-color: rgba(0, 0, 0, """ + str(alpha) + """); border: none}
-                    QFrame#box{background-color: transparent; border: none}
+                    QFrame#main{background-color: rgba(""" + color + """, """ + str(alpha) + """); border: none}
                     """)
         self.lay = QHBoxLayout()
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)
         self.setLayout(self.lay)
 
+
+class CanvasStackedSubPanel(QStackedWidget):
+    """Subpanel ze stronami."""
+    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, alpha=0.8):
+        super().__init__(*args)
+        self.setObjectName("main")
+
+        def minimumSizeHint(self):
+            self.setMinimumHeight(self.currentWidget().minimumSizeHint().height())
+            self.setMaximumHeight(self.currentWidget().minimumSizeHint().height())
+            return self.currentWidget().minimumSizeHint()
 
 class WnPowSelector(QFrame):
     """Belka wyboru aktywnych powiatów dla punktu WN_PNE."""
@@ -1327,6 +1407,7 @@ class WyrStatusSelector(QFrame):
         for status in self.statuses:
             if status["id"] == self.case:
                 dlg.wyr_panel.status_indicator.set_case(status["text"], status["color"])
+                dlg.wyr_panel.sb.setCurrentIndex(status["id"])
 
     def btn_clicked(self, id):
         """Zmiana wartości 'case' i aktualizacja db po naciśnięciu przycisku."""
@@ -1336,6 +1417,7 @@ class WyrStatusSelector(QFrame):
                 result = self.db_update(status["after_fchk"], status["confirmed"])
                 if result:
                     self.vis_check(status["layer"])
+                    wdf_update()
                     dlg.obj.wyr = dlg.obj.wyr
 
     def vis_check(self, lyr_name):
@@ -1631,7 +1713,7 @@ class MoekHLine(QFrame):
 
 class IdSpinBox(QFrame):
     """Widget z centralnie umieszczonym labelem i przyciskami zmiany po jego obu stronach."""
-    def __init__(self, *args, _obj, width=90, height=34, max_len=4, validator="id"):
+    def __init__(self, *args, _obj, width=90, height=34, max_len=4, validator="id", theme="dark"):
         super().__init__(*args)
         self.obj = _obj
         self.max_len = max_len
@@ -1639,11 +1721,11 @@ class IdSpinBox(QFrame):
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
-        self.prev_btn = MoekButton(self, name="id_prev", size=22, hsize=34, checkable=False)
+        self.prev_btn = MoekButton(self, name=f"id_prev_{theme}", size=22, hsize=34, checkable=False)
         self.prev_btn.clicked.connect(self.prev_clicked)
-        self.next_btn = MoekButton(self, name="id_next", size=22, hsize=34, checkable=False)
+        self.next_btn = MoekButton(self, name=f"id_next_{theme}", size=22, hsize=34, checkable=False)
         self.next_btn.clicked.connect(self.next_clicked)
-        self.idbox = IdLineEdit(self, width=self.width() - 44, height=self.height() - 4, max_len=self.max_len, validator=self.validator)
+        self.idbox = IdLineEdit(self, width=self.width() - 44, height=self.height() - 4, max_len=self.max_len, validator=self.validator, theme=theme)
         self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(0, 0, 0, 0)
@@ -1671,7 +1753,7 @@ class IdSpinBox(QFrame):
 
 class IdLineEdit(QLineEdit):
     """Lineedit dla zarządzania id."""
-    def __init__(self, *args, width, height, max_len, validator):
+    def __init__(self, *args, width, height, max_len, validator, theme):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
@@ -1682,15 +1764,16 @@ class IdLineEdit(QLineEdit):
             self.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]*") ))
         elif validator == "id_arkusz":
             self.setValidator(QRegExpValidator(QRegExp("[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9]") ))
+        self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
         self.hover_on(False)
         self.focused = False
 
     def hover_on(self, value):
         """Modyfikacja stylesheet przy hoveringu."""
         if value:
-            self.setStyleSheet("QLineEdit {background-color: rgba(255, 255, 255, 0.2); color: white; font-size: 12pt; padding: 0px 0px 0px 2px; qproperty-alignment: AlignCenter}")
+            self.setStyleSheet("QLineEdit {background-color: rgba(" + self.color + ", 0.3); color: rgb(" + self.color + "); font-size: 12pt; padding: 0px 0px 0px 2px; qproperty-alignment: AlignCenter}")
         else:
-            self.setStyleSheet("QLineEdit {background-color: rgba(255, 255, 255, 0.1); color: white; font-size: 12pt; padding: 0px 0px 0px 2px; qproperty-alignment: AlignCenter}")
+            self.setStyleSheet("QLineEdit {background-color: rgba(" + self.color + ", 0.2); color: rgb(" + self.color + "); font-size: 12pt; padding: 0px 0px 0px 2px; qproperty-alignment: AlignCenter}")
 
     def enterEvent(self, event):
         self.hover_on(True)
@@ -2078,6 +2161,51 @@ class MoekCfgHSpinBox(QFrame):
         self.findChildren(MoekSpinLabel)[0].label_update()
 
 
+class MoekTableView(QTableView):
+    """Widget obsługujący dane tabelaryczne."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setFixedWidth(100)
+        self.setStyleSheet("""
+                            QTableView {
+                                selection-background-color: transparent;
+                                background-color: rgba(255, 255, 255, 0.6);
+                            }
+                            QScrollBar:vertical {
+                                border: 0px solid #999999;
+                                background: transparent;
+                                width: 14px;
+                                margin: 4px 3px 4px 3px;
+                            }
+                            QScrollBar::handle:vertical {
+                                min-height: 30px;
+                                border: 0px solid red;
+                                border-radius: 4px;
+                                background-color: rgba(0, 0, 0, 0.6);
+                            }
+                            QScrollBar::add-line:vertical {
+                                height: 0px;
+                                subcontrol-position: bottom;
+                                subcontrol-origin: margin;
+                            }
+                            QScrollBar::sub-line:vertical {
+                                height: 0 px;
+                                subcontrol-position: top;
+                                subcontrol-origin: margin;
+                            }
+                        """)
+        self.setShowGrid(False)
+        self.setFrameShape(QFrame.NoFrame)
+        self.setFocusPolicy(Qt.NoFocus)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.verticalHeader().hide()
+        self.horizontalHeader().hide()
+        self.horizontalHeader().setStretchLastSection(True)
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+
+
 class MoekGridBox(QFrame):
     """Zawartość panelu w kompozycji QGridLayout."""
     def __init__(self, *args, margins=[4, 2, 4, 4], spacing=0):
@@ -2336,10 +2464,10 @@ class MoekCheckBox(QCheckBox):
 
 class PanelLabel(QLabel):
     """Fabryka napisów do canvpaneli."""
-    def __init__(self, *args, text="", size=10):
+    def __init__(self, *args, text="", color="255, 255, 255", size=10):
         super().__init__(*args)
         self.setWordWrap(False)
-        self.setStyleSheet("QLabel {color: rgb(255, 255, 255); font-size: " + str(size) + "pt; qproperty-alignment: AlignCenter}")
+        self.setStyleSheet("QLabel {color: rgb(" + color + "); font-size: " + str(size) + "pt; qproperty-alignment: AlignCenter}")
         self.setText(text)
 
 

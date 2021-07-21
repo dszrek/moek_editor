@@ -96,6 +96,7 @@ class ObjectManager:
                 self.dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
                 self.dlg.wyr_panel.notepad_box.set_text(self.wyr_data[4])  # Aktualizacja tekstu notatki
                 self.dlg.wyr_panel.status_selector.set_case(self.wyr_data[1], self.wyr_data[2])  # Aktualizacja statusu wyrobiska
+                self.dlg.wyr_panel.wdf_sel_update()  # Aktualizacja zaznaczenia wiersza w tv_wdf
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
         elif attr == "wyr_ids":

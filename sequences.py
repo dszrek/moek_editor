@@ -208,6 +208,7 @@ class MoekSeqBox(QFrame):
         for seqbtn in seqbtns:
             seqbtn.active = True if seqbtn.num == self.num else False
         self.seq_ctrl.setEnabled(False) if self.num == 0 else self.seq_ctrl.setEnabled(True)
+        self.progbar_reset()
 
     def change_map(self):
         """Zmiana podkładu mapowego."""
@@ -254,13 +255,12 @@ class MoekSeqBox(QFrame):
         # print(f"[run_timer]")
         self.lasted += self.tick
         self.tack += 1
-        # if self.tack == 5:
-        #     iface.mapCanvas().refresh()
         # Odświeżenie progressbar'a:
         try:
             self.sqb_btns["sqb_" + str(self.num)].progbar.value = self.tack
         except:
-            pass
+            self.lasted = self.period
+            self.progbar_reset()
         if self.lasted >= self.period:  # Czas dobiegł końca
             # Kasowanie licznika:
             try:
@@ -271,8 +271,10 @@ class MoekSeqBox(QFrame):
             dlg.ge.player = False  # Przekazanie do GESync informacji o uruchomieniu player'a
             if self.num > 0:
                 self.sqb_btns["sqb_" + str(self.num)].progbar.value = 0
-            if self.i < len(self.sqb_btns["sqb_" + str(self.num)].maps) - 1:
-                self.next_map(player=True)  # Wczytanie kolejnego podkładu
+                if self.i < len(self.sqb_btns["sqb_" + str(self.num)].maps) - 1:
+                    self.next_map(player=True)  # Wczytanie kolejnego podkładu
+            else:
+                self.progbar_reset()
 
     def prev_map(self):
         """Wczytanie poprzedniego podkładu mapowego z sekwencji."""
@@ -291,6 +293,11 @@ class MoekSeqBox(QFrame):
                 self.set_timer(delay)  # Odpalenie stopera
         else:  # Powrót do początku sekwencji
             self.i = 0
+
+    def progbar_reset(self):
+        """Powrót do wartości zerowych progbar'ów na wypadek zawieszenia player'a."""
+        for i in range(1, 4):
+            self.sqb_btns["sqb_" + str(i)].progbar.value = 0
 
 
 class MoekSeqCtrlButton(QFrame):

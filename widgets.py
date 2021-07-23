@@ -445,8 +445,6 @@ class WyrCanvasPanel(QFrame):
         self.sp_id = CanvasHSubPanel(self, height=34, margins=[0, 0, 0, 0], color="255, 255, 255", alpha=0.8)
         self.list_box.lay.addWidget(self.sp_id)
         self.id_box = IdSpinBox(self, _obj="wyr", theme="light")
-        # self.id_label = PanelLabel(self, text="Id:", color="0, 0, 0", size=12)
-        # self.sp_id.lay.addWidget(self.id_label)
         self.sp_id.lay.addWidget(self.id_box)
         self.tv_wdf = MoekTableView(self)
         self.tv_wdf.setFixedWidth(90)
@@ -474,10 +472,14 @@ class WyrCanvasPanel(QFrame):
         vlay.addWidget(self.bar)
         vlay.addLayout(hlay)
         self.setLayout(vlay)
-        self.sp_main = CanvasHSubPanel(self, height=34)
+        self.sp_main = CanvasHSubPanel(self, margins=[4, 0, 0, 0], height=34)
         self.box.lay.addWidget(self.sp_main)
+        self.wn_picker = WyrWnPicker(self)
+        self.sp_main.lay.addWidget(self.wn_picker)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_main.lay.addItem(spacer)
+        self.area_icon = MoekButton(self, name="wyr_area", size=34, checkable=False, enabled=False)
+        self.sp_main.lay.addWidget(self.area_icon)
         self.area_label = PanelLabel(self, text="", size=12)
         self.sp_main.lay.addWidget(self.area_label)
         self.wyr_edit = MoekButton(self, name="wyr_edit", size=34, checkable=False)
@@ -740,7 +742,7 @@ class WnCanvasPanel(QFrame):
         self.box.lay.addWidget(self.top_margin)
         self.id_label = PanelLabel(self, text="   Id_arkusz:", size=11)
         self.sp_id.lay.addWidget(self.id_label)
-        self.id_box = IdSpinBox(self, _obj="wn", width=125, max_len=8, validator="id_arkusz")
+        self.id_box = IdSpinBox(self, _obj="wn", width=134, max_len=8, validator="id_arkusz")
         self.sp_id.lay.addWidget(self.id_box)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_id.lay.addItem(spacer)
@@ -1348,6 +1350,55 @@ class WyrStatusIndicator(QLabel):
         self.setText(text)
 
 
+class WyrWnPicker(QFrame):
+    """Belka przydziału WN_PNE dla wyrobiska."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedHeight(30)
+        self.setFixedWidth(123)
+        self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(3)
+        self.setLayout(self.lay)
+        self.wn_picker_empty = MoekButton(self, name="wyr_wn_empty", size=30, checkable=True)
+        self.lay.addWidget(self.wn_picker_empty)
+        self.wn_picker_empty.clicked.connect(lambda: dlg.mt.init("wn_pick"))
+        self.wn_picker_eraser = MoekButton(self, name="wyr_wn", size=30, checkable=False)
+        self.lay.addWidget(self.wn_picker_eraser)
+        self.wn_picker_eraser.clicked.connect(lambda: self.wn_id_update(None))
+        self.idbox = IdLineEdit(self, width=90, height=30, max_len=8, validator="id_arkusz", theme="dark", fn="dlg.wyr_panel.wn_picker.wn_id_update(self.text())", placeholder="0001_001")
+        self.lay.addWidget(self.idbox)
+        self.wn_id = None
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "wn_id":
+            self.idbox.setText(val) if val else self.idbox.setText("")
+            self.wn_picker_empty.setVisible(False) if val else self.wn_picker_empty.setVisible(True)
+            self.wn_picker_eraser.setVisible(True) if val else self.wn_picker_eraser.setVisible(False)
+            self.idbox.id_changed()
+
+    def wn_id_update(self, id):
+        """Sprawdza istnienie wn_id na liście wn_ids i aktualizuje t_wn_id w db, jeśli potrzeba."""
+        if id in dlg.obj.wn_ids or not id:
+            self.db_update(id)  # Aktualizacja wn_id w db
+        dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych w wyr_panel
+
+    def db_update(self, id):
+        """Aktualizacja atrybutu 't_wn_id' w db."""
+        db = PgConn()
+        if id:
+            sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET t_wn_id = '{id}' WHERE wyr_id = {dlg.obj.wyr}"
+        else:
+            sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET t_wn_id = Null WHERE wyr_id = {dlg.obj.wyr}"
+        if db:
+            res = db.query_upd(sql)
+
+
 class WyrStatusSelector(QFrame):
     """Belka zmiany statusu wyrobiska."""
     def __init__(self, *args, width):
@@ -1741,6 +1792,7 @@ class IdSpinBox(QFrame):
         super().__setattr__(attr, val)
         if attr == "id":
             self.idbox.setText(str(val)) if val else self.idbox.setText("")
+            self.idbox.id_changed()
 
     def prev_clicked(self):
         """Uruchomienie funkcji po kliknięciu na przycisk prev_btn."""
@@ -1753,7 +1805,7 @@ class IdSpinBox(QFrame):
 
 class IdLineEdit(QLineEdit):
     """Lineedit dla zarządzania id."""
-    def __init__(self, *args, width, height, max_len, validator, theme):
+    def __init__(self, *args, width, height, max_len, validator, theme, fn=None, placeholder=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
@@ -1763,23 +1815,50 @@ class IdLineEdit(QLineEdit):
         if validator == "id":
             self.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]*") ))
         elif validator == "id_arkusz":
-            self.setValidator(QRegExpValidator(QRegExp("[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9]") ))
+            self.setValidator(QRegExpValidator(QRegExp("[0-1]([0-9]|[_])*") ))
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
-        self.hover_on(False)
+        self.fn = fn
+        self.placeholder = placeholder
+        self.hover = False
         self.focused = False
+        self.temp_id = None
+        self.pressed = False
 
-    def hover_on(self, value):
-        """Modyfikacja stylesheet przy hoveringu."""
-        if value:
-            self.setStyleSheet("QLineEdit {background-color: rgba(" + self.color + ", 0.3); color: rgb(" + self.color + "); font-size: 12pt; padding: 0px 0px 0px 2px; qproperty-alignment: AlignCenter}")
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "hover":
+            self.set_style()
+
+    def id_changed(self):
+        """Sygnał zmiany id."""
+        if self.placeholder and len(self.text()) == 0:
+            self.setText(self.placeholder)
+        self.set_style()
+
+    def set_style(self):
+        """Modyfikacja stylesheet przy hoveringu lub zmianie tekstu."""
+        alpha = 0.3 if self.hover else 0.2
+        if self.placeholder:
+            font_color = "0, 0, 0, 0.3" if self.text() == self.placeholder and not self.focused else self.color
         else:
-            self.setStyleSheet("QLineEdit {background-color: rgba(" + self.color + ", 0.2); color: rgb(" + self.color + "); font-size: 12pt; padding: 0px 0px 0px 2px; qproperty-alignment: AlignCenter}")
+            font_color = self.color
+        self.setStyleSheet("""
+                    QLineEdit {
+                        background-color: rgba(""" + self.color + """, """ + str(alpha) + """);
+                        color: rgba(""" + font_color + """);
+                        font-size: 12pt;
+                        border: none;
+                        padding: 0px 0px 0px 2px;
+                        qproperty-alignment: AlignCenter;
+                        }
+                    """)
 
     def enterEvent(self, event):
-        self.hover_on(True)
+        self.hover = True
 
     def leaveEvent(self, event):
-        self.hover_on(False)
+        self.hover = False
 
     def focusInEvent(self, event):
         if not self.focused:
@@ -1787,21 +1866,46 @@ class IdLineEdit(QLineEdit):
         else:
             super().focusInEvent(event)
 
+    def focusOutEvent(self, event):
+        super().focusOutEvent(event)
+        if self.pressed:
+            self.pressed = False
+            return
+        if self.placeholder and not self.temp_id:
+            self.setText(self.placeholder)
+        else:
+            self.setText(self.temp_id)
+        self.temp_id = None
+        self.set_style()
+
     def mousePressEvent(self, event):
         if not self.focused:
             super().mousePressEvent(event)
             return
         else:
-            self.selectAll()
+            if self.placeholder and self.text() == self.placeholder:
+                self.setText("")
+                self.set_style()
+            else:
+                self.selectAll()
+            self.temp_id = self.text()
             self.focused = False
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
-            dlg.obj.set_object_from_input(self.text(), self.parent().obj)
+            self.pressed = True
+            self.id_change()
+            self.temp_id = None
             self.clearFocus()
         else:
             super().keyPressEvent(event)
 
+    def id_change(self):
+        """Próba zmiany wartości wn_id."""
+        if not self.fn:
+            dlg.obj.set_object_from_input(self.text(), self.parent().obj)
+        else:
+            exec(self.fn)
 
 class TextPadBox(QFrame):
     """Moduł notatnika."""

@@ -89,13 +89,16 @@ class ObjectManager:
             QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'wyr_sel', val)
             wyr_point_lyrs_repaint()
             dlg.proj.mapLayersByName("wyr_poly")[0].triggerRepaint()
+            if dlg.mt.mt_name == "wn_pick":
+                dlg.mt.init("multi_tool")
             if val:
                 self.wyr_data = self.wyr_update()
                 self.list_position_check("wyr")
-                area_txt = f"  {self.wyr_data[3]} m\u00b2  "
+                area_txt = f"{self.wyr_data[4]} m\u00b2 "
                 self.dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
-                self.dlg.wyr_panel.notepad_box.set_text(self.wyr_data[4])  # Aktualizacja tekstu notatki
+                self.dlg.wyr_panel.notepad_box.set_text(self.wyr_data[5])  # Aktualizacja tekstu notatki
                 self.dlg.wyr_panel.status_selector.set_case(self.wyr_data[1], self.wyr_data[2])  # Aktualizacja statusu wyrobiska
+                self.dlg.wyr_panel.wn_picker.wn_id = self.wyr_data[3]  # Aktualizacja wn_id
                 self.dlg.wyr_panel.wdf_sel_update()  # Aktualizacja zaznaczenia wiersza w tv_wdf
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
@@ -324,7 +327,7 @@ class ObjectManager:
     def wyr_update(self):
         """Zwraca dane wyrobiska."""
         db = PgConn()
-        sql = "SELECT wyr_id, b_after_fchk, b_confirmed, i_area_m2, t_notatki FROM team_" + str(dlg.team_i) + ".wyrobiska WHERE wyr_id = " + str(self.wyr) + ";"
+        sql = "SELECT wyr_id, b_after_fchk, b_confirmed, t_wn_id, i_area_m2, t_notatki FROM team_" + str(dlg.team_i) + ".wyrobiska WHERE wyr_id = " + str(self.wyr) + ";"
         if db:
             res = db.query_sel(sql, False)
             if not res:
@@ -502,7 +505,7 @@ class MapToolManager:
         self.old_button = None
         self.feat_backup = None
         self.canvas.mapToolSet.connect(self.maptool_change)
-        self.tool_kinds = (MultiMapTool, IdentMapTool, PointDrawMapTool, LineDrawMapTool, PolyDrawMapTool, LineEditMapTool, PolyEditMapTool, LineContinueMapTool)
+        self.tool_kinds = (MultiMapTool, IdentMapTool, PointPickerMapTool, PointDrawMapTool, LineDrawMapTool, PolyDrawMapTool, LineEditMapTool, PolyEditMapTool, LineContinueMapTool)
         self.maptools = [
             # {"name" : "edit_poly", "class" : PolyEditMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_pne", "wyrobiska"], "fn" : obj_sel},
             {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"],"fn" : obj_sel},
@@ -514,6 +517,7 @@ class MapToolManager:
             {"name" : "flag_move", "class" : PointDrawMapTool, "button" : self.dlg.flag_panel.flag_tools.flag_move, "fn" : flag_move, "extra" : []},
             {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly, "extra" : [(0, 255, 0, 128), (0, 255, 0, 80)]},
             {"name" : "wyr_edit", "class" : PolyEditMapTool, "button" : self.dlg.wyr_panel.wyr_edit, "lyr" : ["wyr_poly"], "fn" : wyr_poly_change, "extra" : ["wyr_id"]},
+            {"name" : "wn_pick", "class" : PointPickerMapTool, "button" : self.dlg.wyr_panel.wn_picker.wn_picker_empty, "lyr" : ["wn_pne"], "fn" : wn_pick, "extra" : [["wn_pne"]]},
             {"name" : "parking_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"], "fn" : parking_add, "extra" : []},
             {"name" : "parking_move", "class" : PointDrawMapTool, "button" : self.dlg.parking_panel.parking_tools.parking_move, "fn" : parking_move, "extra" : []},
             {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : [[255, 255, 0, 255],["marszruty", "parking_planowane", "parking_odwiedzone"]]},
@@ -570,6 +574,9 @@ class MapToolManager:
         elif self.params["class"] == IdentMapTool:
             self.maptool = self.params["class"](self.canvas, lyr, self.params["button"])
             self.maptool.identified.connect(self.params["fn"])
+        elif self.params["class"] == PointPickerMapTool:
+            self.maptool = self.params["class"](self.canvas, lyr, self.params["button"], self.params["extra"][0])
+            self.maptool.picked.connect(self.params["fn"])
         elif self.params["class"] == PolyEditMapTool:
             geom = self.get_lyr_geom(lyr[0], self.params["extra"])
             self.poly_to_layers(geom)
@@ -2581,6 +2588,161 @@ class IdentMapTool(QgsMapToolIdentify):
             self.identified.emit(None, None)
 
 
+class PointPickerMapTool(QgsMapToolIdentify):
+    """Maptool do wspomaganego wybierania obiektu z wybranej warstwy."""
+    picked = pyqtSignal(object, object)
+    cursor_changed = pyqtSignal(str)
+
+    def __init__(self, canvas, layer, button, extra):
+        QgsMapToolIdentify.__init__(self, canvas)
+        self.canvas = canvas
+        self._button = button
+        if not self._button.isChecked():
+            self._button.setChecked(True)
+        self.dragging = False
+        self.accepted = False
+        self.canceled = False
+        self.deactivated = False
+        self.lyrs = layer
+        self.lyr_names = extra
+        self.temp_point = None
+        self.cursor_changed.connect(self.cursor_change)
+        self.cursor = "cross"
+        self.marker = None
+        self.rbs_create()
+
+    def button(self):
+        return self._button
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "cursor":
+            self.cursor_changed.emit(val)
+
+    def cursor_change(self, cur_name):
+        """Zmiana cursora maptool'a."""
+        cursors = [
+                    ["cross", Qt.CrossCursor],
+                    ["closed_hand", Qt.ClosedHandCursor]
+                ]
+        for cursor in cursors:
+            if cursor[0] == cur_name:
+                self.setCursor(cursor[1])
+                break
+
+    def rbs_create(self):
+        """Stworzenie rubberband'ów."""
+        self.marker = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
+        self.marker.setIcon(QgsRubberBand.ICON_CIRCLE)
+        self.marker.setColor(QColor(255, 255, 255, 255))
+        self.marker.setFillColor(QColor(0, 0, 0, 32))
+        self.marker.setIconSize(30)
+        self.marker.addPoint(QgsPointXY(0, 0), False)
+        self.marker.setVisible(False)
+
+    def snap_to_layer(self, event, layer):
+        """Zwraca wyniki przyciągania do wierzchołków i krawędzi."""
+        self.canvas.snappingUtils().setCurrentLayer(layer)
+        v = self.canvas.snappingUtils().snapToCurrentLayer(event.pos(), QgsPointLocator.Vertex)
+        return v
+
+    @threading_func
+    def find_nearest_feature(self, pos):
+        """Zwraca najbliższy od kursora obiekt na wybranych warstwach."""
+        pos = self.toLayerCoordinates(self.lyrs[0], pos)
+        scale = iface.mapCanvas().scale()
+        tolerance = scale / 250
+        search_rect = QgsRectangle(pos.x() - tolerance,
+                                  pos.y() - tolerance,
+                                  pos.x() + tolerance,
+                                  pos.y() + tolerance)
+        request = QgsFeatureRequest()
+        request.setFilterRect(search_rect)
+        request.setFlags(QgsFeatureRequest.ExactIntersect)
+        lyrs = self.get_lyrs()
+        if self.lyr_names:
+            for lyr in lyrs:
+                for feat in lyr.getFeatures(request):
+                    return lyr
+        else:
+            return None
+
+    def get_lyrs(self):
+        """Zwraca listę włączonych warstw z obiektami."""
+        lyrs = []
+        for _list in dlg.lyr.lyr_vis:
+            if _list[1] and _list[0] in self.lyr_names:
+                lyr = dlg.proj.mapLayersByName(_list[0])[0]
+                lyrs.append(lyr)
+        return lyrs
+
+    def canvasMoveEvent(self, event):
+        map_point = self.toMapCoordinates(event.pos())
+        if event.buttons() == Qt.LeftButton:
+            self.dragging = True
+            self.cursor = "closed_hand"
+            self.canvas.panAction(event)
+        if event.buttons() == Qt.NoButton:
+            if self.cursor != "cross":
+                self.cursor = "cross"
+            th = self.find_nearest_feature(event.pos())
+            result = th.get()
+            snap_type = None
+            if result:
+                v = self.snap_to_layer(event, result)
+                snap_type = v.type()
+                if snap_type == 1:  # Kursor nad vertexem
+                    self.marker.movePoint(v.point(), 0)
+                    self.temp_point = v.point()
+                    self.marker.setVisible(True)
+                else:
+                    self.marker.setVisible(False)
+                    self.temp_point = map_point
+            else:
+                self.marker.setVisible(False)
+                self.temp_point = map_point
+
+    def canvasReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            if self.dragging:  # Zakończenie panningu mapy
+                self.cursor = "cross"
+                self.canvas.panActionEnd(event.pos())
+                self.dragging = False
+                return
+            self.accepted = True
+            result = self.identify(event.x(), event.y(), self.TopDownStopAtFirst, self.lyrs, self.VectorLayer)
+            self.accept_changes(result)
+        elif event.button() == Qt.RightButton:
+            self.canceled = True
+            self.accept_changes(cancel=True)
+
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.canceled = True
+            self.accept_changes(cancel=True)
+
+    def accept_changes(self, result=None, cancel=False, deactivated=False):
+        """Zakończenie wybierania obiektu punktowego."""
+        if not cancel and not deactivated:
+            if len(result) > 0:
+                self.picked.emit(result[0].mLayer, result[0].mFeature)
+            else:
+                self.picked.emit(None, None)
+        else:
+            self.picked.emit(None, None)
+        if self.marker:
+            self.canvas.scene().removeItem(self.marker)
+            self.marker = None
+
+    def deactivate(self):
+        """Zakończenie działania maptool'a."""
+        super().deactivate()
+        print("deactivated")
+        if not self.canceled and not self.accepted:
+            self.accept_changes(deactivated=True)
+
+
 class PointDrawMapTool(QgsMapTool):
     """Maptool do rysowania obiektów punktowych."""
     drawn = pyqtSignal(object, object)
@@ -3414,3 +3576,9 @@ def marsz_line_continue(lyr, geom, marsz_id, init_extent, cancel=False, deactiva
         dlg.mt.init("marsz_add", [marsz_id, geom, init_extent])
     else:
         marsz_line_change(lyr, geom, marsz_id, deactivated)
+
+def wn_pick(layer, feature):
+    dlg.mt.init("multi_tool")
+    if not feature:
+        return
+    dlg.wyr_panel.wn_picker.wn_id_update(feature["id_arkusz"])

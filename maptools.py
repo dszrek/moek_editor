@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import pandas as pd
 
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
@@ -10,7 +11,7 @@ from itertools import combinations
 
 from .classes import PgConn, CfgPars, threading_func
 from .viewnet import vn_change, vn_powsel, vn_polysel
-from .main import wyr_powiaty_change, marsz_powiaty_change, wyr_layer_update, parking_layer_update, marsz_layer_update, db_attr_change, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids
+from .main import wyr_powiaty_change, marsz_powiaty_change, wyr_layer_update, parking_layer_update, marsz_layer_update, db_attr_change, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wdf_update
 
 dlg = None
 
@@ -89,6 +90,7 @@ class ObjectManager:
             QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'wyr_sel', val)
             wyr_point_lyrs_repaint()
             dlg.proj.mapLayersByName("wyr_poly")[0].triggerRepaint()
+            wdf_update()
             if dlg.mt.mt_name == "wn_pick":
                 dlg.mt.init("multi_tool")
             if val:
@@ -3400,6 +3402,7 @@ def wyr_point_update(wyr_id, geom):
     wyr_point_lyrs_repaint()
     if temp_lyr:
         del lyr_point
+    dlg.wyr_panel.wn_df = pd.DataFrame(columns=dlg.wyr_panel.wn_df.columns)  # Wyczyszczenie dataframe'a z połączeniami wyrobiska-wn_pne
     dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych wyrobiska
 
 def wyr_point_lyrs_repaint():

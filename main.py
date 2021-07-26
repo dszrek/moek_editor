@@ -6,7 +6,7 @@ import numpy as np
 
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
 from qgis.PyQt.QtCore import Qt, QDir
-from qgis.core import QgsApplication, QgsProject, QgsDataSourceUri, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext
+from qgis.core import QgsApplication, QgsProject, QgsDataSourceUri, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext, QgsFeature, QgsGeometry, QgsPointXY, edit
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
@@ -349,14 +349,63 @@ def wdf_load():
     """Załadowanie danych o wyrobiskach z db do dataframe'u wdf."""
     db = PgConn()
     extras = f" WHERE wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})"
-    sql = "SELECT wyr_id, b_after_fchk, b_confirmed FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
+    sql = "SELECT wyr_id, b_after_fchk, b_confirmed, t_wn_id FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
     if db:
-        temp_df = db.query_pd(sql, ["wyr_id", "fchk", "cnfrm"])
+        temp_df = db.query_pd(sql, ['wyr_id', 'fchk', 'cnfrm', 'wn_id'])
         if len(temp_df) > 0:
+            wn_df = temp_df.copy()
+            wn_df.drop(['fchk', 'cnfrm'], axis=1, inplace=True)
+            wn_check(wn_df)
             wdf = wyr_status_determine(temp_df)
             dlg.wyr_panel.wdf = wdf
         else:
+            dlg.wyr_panel.wdf = pd.DataFrame(columns=dlg.wyr_panel.wn_df.columns)  # Wyczyszczenie dataframe'a z połączeniami wyrobiska-wn_pne
             return None
+
+def wn_check(wn_df):
+    """Kontrola zmian w połączeniach wyrobisk z WN_PNE."""
+    wn_df_new = wn_df[~wn_df['wn_id'].isna()].reset_index(drop=True)
+    wn_df_old = dlg.wyr_panel.wn_df.copy()
+    wn_df_old = wn_df_old[['wyr_id', 'wn_id']]
+    if not wn_df_new.equals(wn_df_old):
+        dlg.wyr_panel.wn_df = wn_df_new
+        wn_update(wn_df_new)
+
+def wn_update(wn_df):
+    """Aktualizacja danych dla warstwy wn_link."""
+    if len(dlg.wyr_panel.wn_df) == 0:
+        return
+    # Pobranie geometrii punktowych wybranych wyrobisk:
+    wyr_ids = wn_df['wyr_id'].tolist()
+    table = f'"team_{dlg.team_i}"."wyrobiska"'
+    wyr_pts = get_point_from_ids(wyr_ids, table, "wyr_id", "centroid")
+    # Pobranie geometrii punktowych wybranych WN_PNE:
+    wn_ids = wn_df['wn_id'].tolist()
+    table = f'"external"."wn_pne"'
+    wn_pts = get_point_from_ids(wn_ids, table, "id_arkusz", "geom")
+    # Stworzenie linii łączących wyrobiska i punkty WN_PNE:
+    lyr = dlg.proj.mapLayersByName("wn_link")[0]
+    pr = lyr.dataProvider()
+    pr.truncate()
+    i = 0
+    with edit(lyr):
+        for index in dlg.wyr_panel.wn_df.to_records():
+            wyr_id = index[1]
+            wyr_pnt = get_geom_from_id(wyr_id, wyr_pts)
+            wn_id = index[2]
+            wn_pnt = get_geom_from_id(wn_id, wn_pts)
+            ft = QgsFeature()
+            attrs = [i, int(wyr_id), str(wn_id)]
+            ft.setAttributes(attrs)
+            ft.setGeometry(QgsGeometry.fromPolylineXY([wyr_pnt.asPoint(), wn_pnt.asPoint()]))
+            pr.addFeature(ft)
+            i += 1
+
+def get_geom_from_id(id, ids):
+    """Zwraca geometrię punktową z listy na podstawie id."""
+    for item in ids:
+        if id == item[0]:
+            return item[1]
 
 def wyr_status_determine(temp_df):
     """Ustala status wyrobiska na podstawie atrybutów: 'fchk' i 'cnfrm', następnie zwraca gotową wersję wdf."""
@@ -367,7 +416,6 @@ def wyr_status_determine(temp_df):
     temp_df['status'] = np.select(conditions, choices, default=0)
     temp_df.drop(['fchk', 'cnfrm'], axis=1, inplace=True)
     temp_df = temp_df[['status', 'wyr_id']]
-    print(temp_df)
     return temp_df
 
 def wyr_powiaty_check():
@@ -391,7 +439,8 @@ def wyr_powiaty_check():
             wyr_powiaty_change(wyr_poly[0], wyr_poly[1])
     if wyr_point_ids:
         # Pozyskanie informacji o powiatach z geometrii punktowej:
-        wyr_pts = get_point_from_ids(wyr_point_ids)
+        table = f'"team_{dlg.team_i}"."wyrobiska"'
+        wyr_pts = get_point_from_ids(wyr_point_ids, table, "wyr_id", "centroid")
         for wyr_pt in wyr_pts:
             wyr_powiaty_change(wyr_pt[0], wyr_pt[1])
 
@@ -410,20 +459,19 @@ def get_poly_from_ids(wyr_ids):
     del lyr_poly
     return wyr_polys
 
-def get_point_from_ids(wyr_ids):
+def get_point_from_ids(ids, table, id_col, geom_col):
     """Zwraca listę z geometriami punktowymi wyrobisk na podstawie ich id."""
-    wyr_pts = []
+    pts = []
     with CfgPars() as cfg:
         params = cfg.uri()
-    table = '"team_' + str(dlg.team_i) + '"."wyrobiska"'
-    sql = "wyr_id IN (" + str(wyr_ids)[1:-1] + ")"
-    uri = f'{params} table={table} (centroid) sql={sql}'
-    lyr_pt = QgsVectorLayer(uri, "temp_wyr_pt", "postgres")
+    sql = f"{id_col} IN ({str(ids)[1:-1]})"
+    uri = f'{params} table={table} ({geom_col}) sql={sql}'
+    lyr_pt = QgsVectorLayer(uri, "temp_pt", "postgres")
     feats = lyr_pt.getFeatures()
     for feat in feats:
-        wyr_pts.append((feat.attribute("wyr_id"), feat.geometry()))
+        pts.append((feat.attribute(id_col), feat.geometry()))
     del lyr_pt
-    return wyr_pts
+    return pts
 
 def wyr_poly_exist(wyr_id):
     """Zwraca geometrię poligonalną wyrobiska."""

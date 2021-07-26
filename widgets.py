@@ -8,7 +8,7 @@ from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp
 from qgis.PyQt.QtGui import QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, file_dialog, wdf_update
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, file_dialog
 from .sequences import MoekSeqBox, MoekSeqAddBox, MoekSeqCfgBox
 from .classes import PgConn, CfgPars, WDfModel
 
@@ -451,6 +451,7 @@ class WyrCanvasPanel(QFrame):
         self.list_box.lay.addWidget(self.tv_wdf)
         tv_wdf_widths = [10, 66]
         tv_wdf_headers = ['status', 'ID']
+        self.wn_df = pd.DataFrame({'wyr_id': [1], 'wn_id': ['A']})  # Dataframe z połaczeniami wyrobisk z WN_PNE
         self.wdf = pd.DataFrame({'status': [1], 'wyr_id': [1]})  # Dataframe z danymi o wyrobiskach
         self.wdf_mdl = WDfModel(df=self.wdf, tv=self.tv_wdf, col_widths=tv_wdf_widths, col_names=tv_wdf_headers)
         self.tv_wdf.selectionModel().selectionChanged.connect(self.wdf_sel_change)
@@ -1153,7 +1154,6 @@ class WnPowSelector(QFrame):
 
     def pow_update(self, _list):
         """Aktualizacja danych dotyczących aktywnych powiatów."""
-        print(_list)
         self.all_cnt = len(_list)
         self.act_cnt = 0
         for i in range(4):
@@ -1468,7 +1468,6 @@ class WyrStatusSelector(QFrame):
                 result = self.db_update(status["after_fchk"], status["confirmed"])
                 if result:
                     self.vis_check(status["layer"])
-                    wdf_update()
                     dlg.obj.wyr = dlg.obj.wyr
 
     def vis_check(self, lyr_name):

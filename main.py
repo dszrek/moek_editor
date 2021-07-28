@@ -302,9 +302,10 @@ def wyr_layer_update(check=True):
     """Aktualizacja warstw z wyrobiskami."""
     QgsApplication.setOverrideCursor(Qt.WaitCursor)
     if check:
-        # Sprawdzenie, czy wszystkie wyrobiska mają przypisane powiaty
-        # i dokonanie aktualizacji, jeśli występują braki:
+        # Sprawdzenie, czy wszystkie wyrobiska mają przypisane powiaty i dane
+        # oraz dokonanie aktualizacji, jeśli występują braki:
         wyr_powiaty_check()
+        wyr_dane_check()
     # Stworzenie listy wyrobisk z aktywnych powiatów:
     dlg.obj.wyr_ids = get_wyr_ids()
     # Aktualizacja wdf:
@@ -443,6 +444,19 @@ def wyr_powiaty_check():
         wyr_pts = get_point_from_ids(wyr_point_ids, table, "wyr_id", "centroid")
         for wyr_pt in wyr_pts:
             wyr_powiaty_change(wyr_pt[0], wyr_pt[1])
+
+def wyr_dane_check():
+    """Sprawdza, czy wszystkie wyrobiska zespołu mają wpisy w tabeli 'wyr_dane'.
+    Jeśli nie, to tworzy odpowiednie wpisy."""
+    wyr_ids = get_wyr_ids_with_pows("wyrobiska")
+    wyr_dane_ids = get_wyr_ids_with_pows("wyr_dane")
+    # wyr_dane_to_add = ()
+    wyr_dane_to_add = list(zip((list_diff(wyr_ids, wyr_dane_ids))))
+    if not wyr_dane_to_add:
+        return
+    print(f"wyr_dane_to_add: {wyr_dane_to_add}")
+    # Uzupełnienie brakujących rekordów w tabeli 'wyr_dane':
+    wyr_dane_update(wyr_dane_to_add)
 
 def get_poly_from_ids(wyr_ids):
     """Zwraca listę z geometriami poligonalnymi wyrobisk na podstawie ich id."""
@@ -648,6 +662,13 @@ def wyr_powiaty_update(p_list):
     """Wstawienie do tabeli 'wyr_pow' aktualnych numerów powiatów dla wyrobiska."""
     db = PgConn()
     sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyr_pow(wyr_id, pow_id) VALUES %s"
+    if db:
+        db.query_exeval(sql, p_list)
+
+def wyr_dane_update(p_list):
+    """Wstawienie do tabeli 'wyr_dane' rekordów dla brakujących numerów wyr_id."""
+    db = PgConn()
+    sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyr_dane(wyr_id) VALUES %s"
     if db:
         db.query_exeval(sql, p_list)
 
@@ -1169,15 +1190,16 @@ def db_attr_check(attr):
         if res:
             return res[0]
 
-def db_attr_change(tbl, attr, val, sql_bns, user=True):
+def db_attr_change(tbl, attr, val, sql_bns, user=True, quotes=False):
     """Zmiana atrybutu w db."""
     # print("[db_attr_change(", tbl, ",", attr, "):", val, "]")
     db = PgConn()
     # Aktualizacja atrybutu (attr) w tabeli (tbl) na wartość (val):
+    val = f"'{val}'" if quotes else val
     if user:
-        sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + SQL_1 + str(dlg.user_id) + sql_bns + ";"
+        sql = f"UPDATE {tbl} SET {attr} = {val}{SQL_1} {dlg.user_id}{sql_bns};"
     else:
-        sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + sql_bns + ";"
+        sql = f"UPDATE {tbl} SET {attr} = {val}{sql_bns};"
     if db:
         res = db.query_upd(sql)
         if res:

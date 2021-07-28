@@ -329,7 +329,7 @@ class ObjectManager:
     def wyr_update(self):
         """Zwraca dane wyrobiska."""
         db = PgConn()
-        sql = "SELECT wyr_id, b_after_fchk, b_confirmed, t_wn_id, i_area_m2, t_notatki FROM team_" + str(dlg.team_i) + ".wyrobiska WHERE wyr_id = " + str(self.wyr) + ";"
+        sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, w.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki FROM team_" + str(dlg.team_i) + ".wyr_dane AS d INNER JOIN team_" + str(dlg.team_i) + ".wyrobiska AS w USING(wyr_id) WHERE wyr_id = '" + str(self.wyr) + "';"
         if db:
             res = db.query_sel(sql, False)
             if not res:
@@ -397,21 +397,21 @@ class ObjectManager:
     def set_object_text(self, _obj):
         """Zmiana tekstu w notepadzie."""
         if _obj == "flag":
-            panel = self.dlg.flag_panel
+            widget = self.dlg.flag_panel.notepad_box
             table = f"team_{str(dlg.team_i)}.flagi"
             bns = f" WHERE id = {self.flag}"
             upd = "self.flag = self.flag"
         elif _obj == "wyr":
-            panel = self.dlg.wyr_panel
+            widget = self.dlg.wyr_panel.get_notepad()
             table = f"team_{str(dlg.team_i)}.wyrobiska"
             bns = f" WHERE wyr_id = {self.wyr}"
             upd = "self.wyr = self.wyr"
         elif _obj == "wn":
-            panel = self.dlg.wn_panel
+            widget = self.dlg.wn_panel.notepad_box
             table = f"external.wn_pne"
             bns = f" WHERE id_arkusz = '{self.wn}'"
             upd = "self.wn = self.wn"
-        raw_text = panel.notepad_box.get_text()
+        raw_text = widget.get_text()
         if not raw_text:
             text = "NULL"
         else:

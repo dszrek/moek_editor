@@ -3289,10 +3289,15 @@ def flag_move(point, extra):
         return
     table = f"team_{str(dlg.team_i)}.flagi"
     bns = f" WHERE id = {dlg.obj.flag}"
+    p_pow = point_pow(point)
+    pow = f"'{p_pow}'" if p_pow else "Null"
     geom = f"ST_SetSRID(ST_MakePoint({str(point.x())}, {str(point.y())}), 2180)"
     attr_chg = db_attr_change(tbl=table, attr="geom", val=geom, sql_bns=bns, user=False)
     if not attr_chg:
         print("Nie zmieniono lokalizacji flagi")
+    attr_chg = db_attr_change(tbl=table, attr="pow_grp", val=pow, sql_bns=bns, user=False)
+    if not attr_chg:
+        print("Nie zaktualizowano powiatu flagi")
     dlg.obj.flag_hide(False)
 
 def fl_valid(point):
@@ -3441,7 +3446,7 @@ def parking_move(point, extra):
     if not point:
         dlg.obj.parking_hide(False)
         return
-    p_pow = parking_pow(point)
+    p_pow = point_pow(point)
     table = f"team_{str(dlg.team_i)}.parking"
     bns = f" WHERE id = {dlg.obj.parking}"
     geom = f"ST_SetSRID(ST_MakePoint({str(point.x())}, {str(point.y())}), 2180)"
@@ -3455,8 +3460,8 @@ def parking_move(point, extra):
     dlg.obj.parking_hide(False)
     parking_layer_update()
 
-def parking_pow(point):
-    """Zwraca numer powiatu, na którym występuje parking."""
+def point_pow(point):
+    """Zwraca numer powiatu, na którym występuje obiekt."""
     db = PgConn()
     sql = "SELECT p.pow_grp FROM team_" + str(dlg.team_i) + ".powiaty AS p WHERE ST_Intersects(ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180), p.geom);"
     if db:

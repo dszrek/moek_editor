@@ -122,6 +122,11 @@ class MoekSeqBox(QFrame):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self.timer = None
+        self.period = 0  # Całkowity czas
+        self.lasted = 0  # Upłynięty czas
+        self.tick = 0  # Interwał odświeżania progressbar'a
+        self.tack = 0  # Wartość dla progressbar'a
         self.seq_ctrl = MoekSeqCtrlButton(self)
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(0, 0, 0, 0)
@@ -149,6 +154,7 @@ class MoekSeqBox(QFrame):
 
     def enter_setup(self, seq):
         """Przejście do strony ustawień którejś sekwencji."""
+        self.player_reset()  # Wyłączenie player'a, jeśli działa
         dlg.seq_dock.widgets["sab_seq" + str(seq)].combobox_update(seq)  # Aktualizacja combobox'a
         dlg.seq_dock.box.setCurrentIndex(seq)  # Przełączenie panelu na stronę ustawień sekwencji
         if dlg.p_vn.box.currentIndex() == 0:  # Nie jest włączony vn_setup
@@ -208,7 +214,7 @@ class MoekSeqBox(QFrame):
         for seqbtn in seqbtns:
             seqbtn.active = True if seqbtn.num == self.num else False
         self.seq_ctrl.setEnabled(False) if self.num == 0 else self.seq_ctrl.setEnabled(True)
-        self.progbar_reset()
+        self.player_reset()
 
     def change_map(self):
         """Zmiana podkładu mapowego."""
@@ -218,13 +224,18 @@ class MoekSeqBox(QFrame):
     def player(self):
         """Odtwarzanie sekwencyjnego wczytywania podkładów mapowych."""
         # print(f"[player]")
+        if self.num == 0:
+            # Brak aktywnej sekwencji
+            self.player_reset()
+            return
         # Przerwanie poprzedniego sekwencyjnego wczytywania, jeśli jeszcze trwa:
-        try:
+        if self.timer:
             self.timer.stop()
-            self.timer.deleteLater()
+            self.timer = None
+        try:
             self.sqb_btns["sqb_" + str(self.num)].progbar.value = 0
-        except (AttributeError, RuntimeError):
-            pass
+        except Exception as err:
+            print(f"player: {err}")
         vn_zoom(player=True)  # Przybliżenie widoku mapy do nowego vn'a
         print(f'seq_ge: {self.sqb_btns["sqb_" + str(self.num)].ge}, is_ge: {dlg.ge.is_ge}')
         if self.sqb_btns["sqb_" + str(self.num)].ge:  # W sekwencji jest Google Earth Pro
@@ -253,28 +264,27 @@ class MoekSeqBox(QFrame):
     def run_timer(self):
         """Funkcja odmierzająca czas."""
         # print(f"[run_timer]")
+        if self.num == 0:
+            # Brak aktywnej sekwencji
+            self.player_reset()
+            return
         self.lasted += self.tick
         self.tack += 1
         # Odświeżenie progressbar'a:
         try:
             self.sqb_btns["sqb_" + str(self.num)].progbar.value = self.tack
         except:
-            self.lasted = self.period
-            self.progbar_reset()
+            self.player_reset()
+            return
         if self.lasted >= self.period:  # Czas dobiegł końca
-            # Kasowanie licznika:
-            try:
+            if self.timer:
+                # Kasowanie licznika:
                 self.timer.stop()
-                self.timer.deleteLater()
-            except:
-                pass
-            dlg.ge.player = False  # Przekazanie do GESync informacji o uruchomieniu player'a
-            if self.num > 0:
-                self.sqb_btns["sqb_" + str(self.num)].progbar.value = 0
-                if self.i < len(self.sqb_btns["sqb_" + str(self.num)].maps) - 1:
-                    self.next_map(player=True)  # Wczytanie kolejnego podkładu
-            else:
-                self.progbar_reset()
+                self.timer = None
+            dlg.ge.player = False  # Przekazanie do GESync informacji o wyłączeniu player'a
+            self.sqb_btns["sqb_" + str(self.num)].progbar.value = 0
+            if self.i < len(self.sqb_btns["sqb_" + str(self.num)].maps) - 1:
+                self.next_map(player=True)  # Wczytanie kolejnego podkładu
 
     def prev_map(self):
         """Wczytanie poprzedniego podkładu mapowego z sekwencji."""
@@ -294,10 +304,17 @@ class MoekSeqBox(QFrame):
         else:  # Powrót do początku sekwencji
             self.i = 0
 
-    def progbar_reset(self):
+    def player_reset(self):
         """Powrót do wartości zerowych progbar'ów na wypadek zawieszenia player'a."""
         for i in range(1, 4):
             self.sqb_btns["sqb_" + str(i)].progbar.value = 0
+        if self.timer:
+            self.timer.stop()
+            self.timer = None
+        self.period = 0  # Całkowity czas
+        self.lasted = 0  # Upłynięty czas
+        self.tick = 0  # Interwał odświeżania progressbar'a
+        self.tack = 0  # Wartość dla progressbar'a
 
 
 class MoekSeqCtrlButton(QFrame):

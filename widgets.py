@@ -1421,7 +1421,7 @@ class WyrWnPicker(QFrame):
             self.idbox.setText(val) if val else self.idbox.setText("")
             self.wn_picker_empty.setVisible(False) if val else self.wn_picker_empty.setVisible(True)
             self.wn_picker_eraser.setVisible(True) if val else self.wn_picker_eraser.setVisible(False)
-            self.idbox.val_changed()
+            self.idbox.text_changed()
 
     def wn_id_update(self, id):
         """Sprawdza istnienie wn_id na liście wn_ids i aktualizuje t_wn_id w db, jeśli potrzeba."""
@@ -1688,67 +1688,116 @@ class ParkingTools(QFrame):
 
 
 class ParamBox(QFrame):
-    """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem)."""
-    def __init__(self, *args, margins=False, width=160, height=24, item="label", val_width=40, val_width_2=40, value="", value_2=None, title_down=None, title_down_2=None, title_left=None, fn=None):
+    """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem).
+    item: label, line_edit, ruler."""
+    def __init__(self, *args, margins=False, width=160, height=24, item="label", val_width=40, val_width_2=40, value="", value_2=None, max_len=None, validator=None, placeholder=None, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.item = item
         self.width = width
         self.height = height if not margins else height + 8
         self.height_1 = height if not margins else height
-        self.val_width = val_width + val_width_2 + 23 if value_2 else val_width
+        self.val_width = val_width + val_width_2 + 19 if value_2 else val_width
+        self.val_width_1 = val_width if title_left or icon else self.width
         _height = self.height + 10 if title_down else self.height
         self.setFixedSize(width, _height)
-        self.vlay = QVBoxLayout()
-        if margins:
-            self.vlay.setContentsMargins(0, 4, 0, 4)
-        else:
-            self.vlay.setContentsMargins(0, 0, 0, 0)
-        self.vlay.setSpacing(0)
-        self.setLayout(self.vlay)
-        self.upper_box = MoekHBox(self)
-        self.vlay.addWidget(self.upper_box)
-        self.line = MoekHLine(self)
-        self.vlay.addWidget(self.line)
-        if title_left:
-            _width = self.width - self.val_width
-            self.title_left = TextItemLabel(self, height=self.height_1, width=_width, font_size=8, text=title_left)
-            self.upper_box.lay.addWidget(self.title_left)
-        val_width_1 = val_width if title_left else self.width
-        if self.item == "label":
-            self.valbox_1 = TextItemLabel(self, height=self.height, width=val_width_1, bgr_alpha=0.15, text=value)
-        elif self.item == "line_edit":
-            self.valbox_1 = CanvasLineEdit(self, width=val_width_1, height=self.height, font_size=8, fn=fn[0])
-        self.upper_box.lay.addWidget(self.valbox_1)
-        if value_2:
-            self.upper_sep = TextItemLabel(self, height=self.height_1, width=23, text="–")
-            self.upper_box.lay.addWidget(self.upper_sep)
-            if self.item == "label":
-                self.valbox_2 = TextItemLabel(self, height=self.height_1, width=val_width_2, bgr_alpha=0.15, text=value_2)
-            elif self.item == "line_edit":
-                self.valbox_2 = CanvasLineEdit(self, width=val_width_1, height=self.height, font_size=8, fn=fn[1])
-            self.upper_box.lay.addWidget(self.valbox_2)
-        if title_down:
-            self.lower_box = MoekHBox(self)
-            self.vlay.addWidget(self.lower_box)
-            if title_left:
-                self.lower_left = TextItemLabel(self, height=10, width=self.width - self.val_width, font_size=6, font_weight="bold", font_alpha=0.6, text="")
-                self.lower_box.lay.addWidget(self.lower_left)
-            self.titlebox_1 = TextItemLabel(self, height=10, width=val_width_1, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title_down)
-            self.lower_box.lay.addWidget(self.titlebox_1)
-            if value_2:
-                self.lower_sep = TextItemLabel(self, height=10, width=23, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=" ")
-                self.lower_box.lay.addWidget(self.lower_sep)
-                self.titlebox_2 = TextItemLabel(self, height=10, align="left", width=val_width_2, font_size=6, font_weight="bold", font_alpha=0.6, text=title_down_2)
-                self.lower_box.lay.addWidget(self.titlebox_2)
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
+        lay = QVBoxLayout()
+        self.box = MoekGridBox(self, margins=[0, 0, 0, 0], spacing=0) # if margins else MoekGridBox(self, margins=[0, 0, 0, 0], spacing=0)
+        lay.addWidget(self.box)
+        lay.setContentsMargins(0, 4, 0, 4) if margins else lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        self.setLayout(lay)
+        self.widgets = self.compositor(title_left, value_2, title_down, icon)
+        for widget in self.widgets:
+            if widget["item"] == "title_left":
+                _width = self.width - self.val_width
+                self.title_left = TextItemLabel(self, height=self.height_1, width=_width, font_size=8, text=title_left)
+                self.box.glay.addWidget(self.title_left, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
+            elif widget["item"] == "icon":
+                self.icon = MoekButton(self, name=icon, size=34, checkable=False, enabled=False, tooltip=tooltip)
+                self.box.glay.addWidget(self.icon, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
+            elif widget["item"] == "valbox_1":
+                if self.item == "label":
+                    self.valbox_1 = TextItemLabel(self, height=self.height, width=self.val_width_1, bgr_alpha=0.15, text=value)
+                elif self.item == "line_edit":
+                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, fn=fn[0])
+                elif self.item == "ruler":
+                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, fn=fn[0])
+                self.box.glay.addWidget(self.valbox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
+            elif widget["item"] == "valbox_2":
+                if self.item == "label":
+                    self.valbox_2 = TextItemLabel(self, height=self.height, width=self.val_width_1, bgr_alpha=0.15, text=value)
+                elif self.item == "line_edit":
+                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, fn=fn[1])
+                elif self.item == "ruler":
+                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, fn=fn[1])
+                self.box.glay.addWidget(self.valbox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
+            elif widget["item"] == "separator":
+                self.separator = TextItemLabel(self, height=self.height_1, width=17, text="–")
+                self.box.glay.addWidget(self.separator, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
+            elif widget["item"] == "line":
+                self.line = MoekHLine(self)
+                self.box.glay.addWidget(self.line, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
+            elif widget["item"] == "titlebox_1":
+                self.titlebox_1 = TextItemLabel(self, height=10, width=self.val_width_1, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title_down)
+                self.box.glay.addWidget(self.titlebox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
+            elif widget["item"] == "titlebox_2":
+                self.titlebox_2 = TextItemLabel(self, height=10, align="left", width=val_width_2, font_size=6, font_weight="bold", font_alpha=0.6, text=title_down_2)
+                self.box.glay.addWidget(self.titlebox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
+
+    def compositor(self, title_left, value_2, title_down, icon):
+        """Zwraca listę z ustawieniami kompozycji widgetów, w zależności od parametrów."""
+        comp_val = 0
+        comp_val = comp_val + 1 if title_left else comp_val
+        comp_val = comp_val + 2 if value_2 else comp_val
+        comp_val = comp_val + 4 if title_down else comp_val
+        comp_val = comp_val + 8 if icon else comp_val
+        if comp_val == 4:
+            widgets = [
+                {"row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "valbox_1"},
+                {"row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "line"},
+                {"row": 2, "col": 0, "r_span": 1, "c_span": 1, "item": "titlebox_1"}
+            ]
+        elif comp_val == 1:
+            widgets = [
+                {"row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "title_left"},
+                {"row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "valbox_1"},
+                {"row": 1, "col": 0, "r_span": 1, "c_span": 2, "item": "line"}
+            ]
+        elif comp_val == 7:
+            widgets = [
+                {"row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "title_left"},
+                {"row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "valbox_1"},
+                {"row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "separator"},
+                {"row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "valbox_2"},
+                {"row": 1, "col": 0, "r_span": 1, "c_span": 4, "item": "line"},
+                {"row": 2, "col": 1, "r_span": 1, "c_span": 1, "item": "titlebox_1"},
+                {"row": 2, "col": 3, "r_span": 1, "c_span": 1, "item": "titlebox_2"}
+            ]
+        elif comp_val == 14:
+            widgets = [
+                {"row": 0, "col": 0, "r_span": 3, "c_span": 1, "item": "icon"},
+                {"row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "valbox_1"},
+                {"row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "separator"},
+                {"row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "valbox_2"},
+                {"row": 1, "col": 1, "r_span": 1, "c_span": 3, "item": "line"},
+                {"row": 2, "col": 1, "r_span": 1, "c_span": 1, "item": "titlebox_1"},
+                {"row": 2, "col": 3, "r_span": 1, "c_span": 1, "item": "titlebox_2"}
+            ]
+        return widgets
 
     def value_change(self, attrib, value):
         """Zmienia wyświetlaną wartość parametru."""
         if attrib == "value":
-            self.valbox_1.setText(str(value))
+            self.valbox_1.setText(str(value)) if value else self.valbox_1.setText("")
+            if isinstance(self.valbox_1, CanvasLineEdit):
+                self.valbox_1.text_changed()
         elif attrib == "value_2":
-            self.valbox_2.setText(str(value))
+            self.valbox_2.setText(str(value)) if value else self.valbox_2.setText("")
+            if isinstance(self.valbox_2, CanvasLineEdit):
+                self.valbox_2.text_changed()
+
 
 class ParamTextBox(QFrame):
     """Widget do wyświetlania parametru tekstowego (np. uwagi) wraz z nagłówkiem."""
@@ -1843,7 +1892,7 @@ class IdSpinBox(QFrame):
         super().__setattr__(attr, val)
         if attr == "id":
             self.idbox.setText(str(val)) if val else self.idbox.setText("")
-            self.idbox.val_changed()
+            self.idbox.text_changed()
 
     def prev_clicked(self):
         """Uruchomienie funkcji po kliknięciu na przycisk prev_btn."""
@@ -1856,25 +1905,40 @@ class IdSpinBox(QFrame):
 
 class CanvasLineEdit(QLineEdit):
     """Lineedit z odpalaniem funkcji po zatwierdzeniu zmian tekstu."""
-    def __init__(self, *args, width, height, font_size=12, max_len=None, validator=None, theme="dark", fn=None, placeholder=None):
+    def __init__(self, *args, width, height, r_widget=None, font_size=12, max_len=None, validator=None, placeholder=None, theme="dark", fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
         self.setFrame(False)
         self.font_size = font_size
+        self.r_widget = r_widget
+        if self.r_widget == "ruler":
+            self.r_widget = MoekSlideButton(self, name="ruler", size=13, hsize=20, checkable=True)
         if max_len:
             self.setMaxLength(max_len)
-        if validator == "id":
+        self.validator = validator
+        if self.validator == "id":
             self.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]*") ))
-        elif validator == "id_arkusz":
+        elif self.validator == "id_arkusz":
             self.setValidator(QRegExpValidator(QRegExp("[0-1]([0-9]|[_])*") ))
+        elif self.validator == "000":
+            self.setValidator(QRegExpValidator(QRegExp("[0-9]*") ))
+        elif self.validator == "00.0":
+            self.setValidator(QRegExpValidator(QRegExp("([0-9]|[,]|[.])*") ))
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
         self.fn = fn
         self.placeholder = placeholder
-        self.hover = False
         self.focused = False
-        self.temp_id = None
+        self.hover = False
+        self.temp_val = None
         self.pressed = False
+
+    def resizeEvent(self, event):
+        """Ustawienie lokalizacji doadtkowych przycisków po zmianie rozmiaru lineedit'u."""
+        if self.r_widget:
+            offset = 10 if self.r_widget.slided or self.r_widget.isChecked() else 0
+            self.r_widget.setGeometry(self.width() - 4 - offset, (self.height()/2) - (self.r_widget.height()/2), self.r_widget.width(), self.r_widget.height())
+        super().resizeEvent(event)
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -1882,8 +1946,8 @@ class CanvasLineEdit(QLineEdit):
         if attr == "hover":
             self.set_style()
 
-    def val_changed(self):
-        """Sygnał zmiany id."""
+    def text_changed(self):
+        """Sygnał zmiany wartości."""
         if self.placeholder and len(self.text()) == 0:
             self.setText(self.placeholder)
         self.set_style()
@@ -1895,68 +1959,70 @@ class CanvasLineEdit(QLineEdit):
             font_color = "0, 0, 0, 0.3" if self.text() == self.placeholder and not self.focused else self.color
         else:
             font_color = self.color
-        pad = 0 if self.font_size == 12 else 10
         self.setStyleSheet("""
                     QLineEdit {
                         background-color: rgba(""" + self.color + """, """ + str(alpha) + """);
                         color: rgba(""" + font_color + """);
                         font-size: """ + str(self.font_size) + """pt;
                         border: none;
-                        padding: 0px 0px """ + str(pad) + """px 2px;
+                        padding: 0px 0px 2px 2px;
                         qproperty-alignment: AlignCenter;
                         }
                     """)
 
     def enterEvent(self, event):
+        super().enterEvent(event)
         self.hover = True
 
     def leaveEvent(self, event):
+        super().leaveEvent(event)
         self.hover = False
 
     def focusInEvent(self, event):
-        if not self.focused:
-            self.focused = True
+        super().focusInEvent(event)
+        if self.placeholder and self.text() == self.placeholder:
+                self.setText("")
+                self.set_style()
         else:
-            super().focusInEvent(event)
+            self.selectAll()
+        self.temp_val = self.text()
+        self.focused = True
 
     def focusOutEvent(self, event):
         super().focusOutEvent(event)
-        if self.pressed:
-            self.pressed = False
-            return
-        if self.placeholder and not self.temp_id:
-            self.setText(self.placeholder)
-        else:
-            self.setText(self.temp_id)
-        self.temp_id = None
-        self.set_style()
+        if self.validator == '00.0' and len(self.text()) > 0:
+            val = self.numeric_formater()
+            self.setText(str(val)) if val else self.setText(self.temp_val)
+        self.val_change()
+        self.text_changed()
+        self.temp_val = None
 
     def mousePressEvent(self, event):
-        if not self.focused:
-            super().mousePressEvent(event)
-            return
-        else:
-            if self.placeholder and self.text() == self.placeholder:
-                self.setText("")
-                self.set_style()
-            else:
-                self.selectAll()
-            self.temp_id = self.text()
+        if self.focused:
             self.focused = False
+        else:
+            super().mousePressEvent(event)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
-            self.pressed = True
-            self.val_change()
-            self.temp_id = None
             self.clearFocus()
         else:
             super().keyPressEvent(event)
+
+    def numeric_formater(self):
+        """Zamienia znak decymalny na kropkę i zaokrągla liczbę."""
+        text = self.text().replace(",", ".")
+        try:
+            val = float(text)
+        except ValueError:
+            return None
+        return round(val, 1)
 
     def val_change(self, val=None):
         """Próba zmiany wartości przez odpalenie właściwej funkcji."""
         if self.fn:
             exec(eval("f'{}'".format(self.fn)))
+
 
 class TextPadBox(QFrame):
     """Moduł notatnika."""
@@ -2426,6 +2492,7 @@ class MoekButton(QToolButton):
         self.setStyleSheet("QToolButton {border: none}")
         self.set_icon(name, size, hsize)
         self.setMouseTracking(True)
+        self.setCursor(Qt.ArrowCursor)
 
     def set_icon(self, name, size=25, hsize=0):
         """Ładowanie ikon do guzika."""
@@ -2445,6 +2512,34 @@ class MoekButton(QToolButton):
             icon.addFile(ICON_PATH + name + "_1_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.On)
             icon.addFile(ICON_PATH + name + "_1.png", size=QSize(wsize, hsize), mode=QIcon.Selected, state=QIcon.On)
         self.setIcon(icon)
+
+
+class MoekSlideButton(MoekButton):
+    """Guzik wysuwający się przy hoveringu."""
+    def __init__(self, *args, size=25, hsize=0, name="", icon="", visible=True, enabled=True, checkable=False, tooltip=""):
+        super().__init__(*args, size=size, hsize=hsize, name=name, icon=icon, visible=visible, enabled=enabled, checkable=checkable, tooltip=tooltip)
+        self.slided = False
+        self.toggled.connect(self.toggle_change)
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "slided":
+            self.sliding()
+
+    def sliding(self):
+        offset = 10 if self.slided or self.isChecked() else 0
+        self.setGeometry(self.parent().width() - 4 - offset, (self.parent().height()/2) - (self.height()/2), self.width(), self.height())
+
+    def enterEvent(self, event):
+        self.slided = True
+
+    def leaveEvent(self, event):
+        self.slided = False
+
+    def toggle_change(self, checked):
+        if checked:
+            self.parent().clearFocus()
 
 
 class MoekDummy(QFrame):

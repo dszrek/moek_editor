@@ -594,6 +594,7 @@ class WyrCanvasPanel(QFrame):
             if id in dlg.obj.wyr_ids:
                 if dlg.obj.wyr != id:
                     dlg.obj.wyr = id
+                    dlg.obj.pan_to_object("wyr")
             else:
                 dlg.obj.wyr = None
 

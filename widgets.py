@@ -439,7 +439,7 @@ class WyrCanvasPanel(QFrame):
         self.setFixedWidth(500)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
-        self.heights = [268, 280, 225]
+        self.heights = [268, 400, 225]
         self.cur_page = int()
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
         self.list_box = MoekVBox(self, spacing=1)
@@ -481,7 +481,7 @@ class WyrCanvasPanel(QFrame):
         self.sp_main.lay.addWidget(self.wn_picker)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_main.lay.addItem(spacer)
-        self.area_icon = MoekButton(self, name="wyr_area", size=34, checkable=False, enabled=False)
+        self.area_icon = MoekButton(self, name="wyr_area", size=34, checkable=False, enabled=False, tooltip="powierzchnia wyrobiska")
         self.sp_main.lay.addWidget(self.area_icon)
         self.area_label = PanelLabel(self, text="", size=12)
         self.sp_main.lay.addWidget(self.area_label)
@@ -513,18 +513,35 @@ class WyrCanvasPanel(QFrame):
         self.sb.currentChanged.connect(self.page_change)
         self.height_change()  # Wstępne ustalenie wysokości panelu
         self.dicts = [
-                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "item": "text_2", "name": "okres_eksp_0", "width": 386, "val_width": 120, "val_width_2": 120, "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']},
-                    {"page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "item": "notepad", "name": "notepad_0"},
-                    {"page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "item": "notepad", "name": "notepad_1"},
-                    {"page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "item": "notepad", "name": "notepad_2"}
+                    {"name": "okres_eksp_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "width": 386, "val_width": 120, "val_width_2": 120, "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']},
+
+                    {"name": "notepad_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"},
+
+
+                    {"name": "okres_eksp_1", "page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "width": 386, "val_width": 120, "val_width_2": 120, "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']},
+
+                    {"name": "dlug_1", "page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "szer_1", "page": 1, "row": 1, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "wys_1", "page": 1, "row": 1, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "nadkl_1", "page": 1, "row": 2, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "miaz_1", "page": 1, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "notepad_1", "page": 1, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"},
+
+
+                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"}
                     ]
         for dict in self.dicts:
-            if dict["item"] == "text_2":
-                _txt2 = ParamBox(self, margins=True, item="line_edit", width=dict["width"], value_2=" ", val_width=dict["val_width"], val_width_2=dict["val_width_2"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], fn=dict["fn"])
+            if dict["type"] == "text_2":
+                _txt2 = ParamBox(self, margins=True, item=dict["item"], max_len=dict["max_len"], validator=dict["validator"], placeholder=dict["placeholder"], width=dict["width"], value_2=" ", val_width=dict["val_width"], val_width_2=dict["val_width_2"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], icon=dict["icon"], tooltip=dict["tooltip"], fn=dict["fn"])
                 exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_txt2, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 txt2_name = f'txt2_{dict["name"]}'
                 self.widgets[txt2_name] = _txt2
-            elif dict["item"] == "notepad":
+            elif dict["type"] == "notepad":
                 _np = TextPadBox(self, height=110, obj="wyr", width=392)
                 exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_np, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 np_name = f'np_{dict["name"]}'
@@ -534,7 +551,12 @@ class WyrCanvasPanel(QFrame):
         """Aktualizuje wartości parametrów."""
         params = [
             {'type': 'notepad', 'value': _dict[7], 'pages': [0, 1, 2]},
-            {'type': 'text_2', 'name': 'okres_eksp', 'value': _dict[5], 'value_2': _dict[6], 'pages': [0, 1]}
+            {'type': 'text_2', 'name': 'okres_eksp', 'value': _dict[5], 'value_2': _dict[6], 'pages': [0, 1]},
+            {'type': 'text_2', 'name': 'dlug', 'value': _dict[8], 'value_2': _dict[9], 'pages': [1]},
+            {'type': 'text_2', 'name': 'szer', 'value': _dict[10], 'value_2': _dict[11], 'pages': [1]},
+            {'type': 'text_2', 'name': 'wys', 'value': _dict[12], 'value_2': _dict[13], 'pages': [1]},
+            {'type': 'text_2', 'name': 'nadkl', 'value': _dict[14], 'value_2': _dict[15], 'pages': [1]},
+            {'type': 'text_2', 'name': 'miaz', 'value': _dict[16], 'value_2': _dict[17], 'pages': [1]}
         ]
         for param in params:
             if not self.cur_page in param["pages"]:

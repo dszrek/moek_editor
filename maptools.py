@@ -329,7 +329,7 @@ class ObjectManager:
     def wyr_update(self):
         """Zwraca dane wyrobiska."""
         db = PgConn()
-        sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, w.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki FROM team_" + str(dlg.team_i) + ".wyr_dane AS d INNER JOIN team_" + str(dlg.team_i) + ".wyrobiska AS w USING(wyr_id) WHERE wyr_id = '" + str(self.wyr) + "';"
+        sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max FROM team_" + str(dlg.team_i) + ".wyr_dane AS d INNER JOIN team_" + str(dlg.team_i) + ".wyrobiska AS w USING(wyr_id) WHERE wyr_id = '" + str(self.wyr) + "';"
         if db:
             res = db.query_sel(sql, False)
             if not res:

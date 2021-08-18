@@ -349,7 +349,7 @@ def wdf_update():
 def wdf_load():
     """Załadowanie danych o wyrobiskach z db do dataframe'u wdf."""
     db = PgConn()
-    extras = f" WHERE wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})"
+    extras = f" WHERE wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})" if dlg.obj.wyr_ids else f" WHERE wyr_id = 0"
     sql = "SELECT wyr_id, b_after_fchk, b_confirmed, t_wn_id FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
     if db:
         temp_df = db.query_pd(sql, ['wyr_id', 'fchk', 'cnfrm', 'wn_id'])
@@ -380,10 +380,14 @@ def wn_update(wn_df):
     wyr_ids = wn_df['wyr_id'].tolist()
     table = f'"team_{dlg.team_i}"."wyrobiska"'
     wyr_pts = get_point_from_ids(wyr_ids, table, "wyr_id", "centroid")
+    if len(wyr_pts) == 0:
+        return
     # Pobranie geometrii punktowych wybranych WN_PNE:
     wn_ids = wn_df['wn_id'].tolist()
     table = f'"external"."wn_pne"'
     wn_pts = get_point_from_ids(wn_ids, table, "id_arkusz", "geom")
+    if len(wn_pts) == 0:
+        return
     # Stworzenie linii łączących wyrobiska i punkty WN_PNE:
     lyr = dlg.proj.mapLayersByName("wn_link")[0]
     pr = lyr.dataProvider()
@@ -1195,7 +1199,10 @@ def db_attr_change(tbl, attr, val, sql_bns, user=True, quotes=False):
     # print("[db_attr_change(", tbl, ",", attr, "):", val, "]")
     db = PgConn()
     # Aktualizacja atrybutu (attr) w tabeli (tbl) na wartość (val):
-    val = f"'{val}'" if quotes else val
+    if len(str(val)) == 0:
+        val = 'Null'
+    else:
+        val = f"'{val}'" if quotes else val
     if user:
         sql = f"UPDATE {tbl} SET {attr} = {val}{SQL_1} {dlg.user_id}{sql_bns};"
     else:

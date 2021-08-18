@@ -3363,9 +3363,19 @@ def wyr_add_poly(geom, wyr_id=None):
             return
     lyr_poly.triggerRepaint()
     wyr_powiaty_change(wyr_id, geom, new=True)
+    wyr_add_dane(wyr_id)
     wyr_point_update(wyr_id, geom)
     dlg.obj.wyr_ids = get_wyr_ids()  # Aktualizacja listy wyrobisk w ObjectManager
     dlg.obj.list_position_check("wyr")  # Aktualizacja pozycji na liście obecnie wybranego wyrobiska
+
+def wyr_add_dane(wyr_id):
+    """Tworzy rekord dla nowego wyrobiska w tabeli 'wyr_dane' i uzupełnia atrybut i_area_m2."""
+    db = PgConn()
+    sql = f"INSERT INTO team_{dlg.team_i}.wyr_dane(wyr_id) VALUES ({wyr_id})"
+    if db:
+        res = db.query_upd(sql)
+        if not res:
+            print("Nie udało się dodać rekordu w tabeli 'wyr_dane'.")
 
 def wyr_point_update(wyr_id, geom):
     """Aktualizacja punktowego obiektu wyrobiska."""
@@ -3398,12 +3408,12 @@ def wyr_point_update(wyr_id, geom):
             del lyr_point
             return
     with edit(lyr_point):
-        feat.setAttribute('i_area_m2', area)
         feat.setGeometry(geom.centroid())
         try:
             lyr_point.updateFeature(feat)
         except Exception as err:
             print(f"maptools/wyr_point_update[2]: {err}")
+    db_attr_change(tbl=f"team_{dlg.team_i}.wyr_dane", attr="i_area_m2", val=area, sql_bns=f" WHERE wyr_id = {wyr_id}", user=False)
     wyr_point_lyrs_repaint()
     if temp_lyr:
         del lyr_point

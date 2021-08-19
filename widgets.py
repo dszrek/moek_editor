@@ -440,6 +440,7 @@ class WyrCanvasPanel(QFrame):
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
         self.heights = [268, 400, 225]
+        self.mt_enabled = False
         self.cur_page = int()
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
         self.list_box = MoekVBox(self, spacing=1)
@@ -1259,7 +1260,6 @@ class WnPowSelector(QFrame):
         id_arkusz = dlg.obj.wn
         pow_id = btn.text()
         b_active = 'true' if btn.isChecked() else 'false'
-        print(f"WN: {id_arkusz}, pow: {pow_id}, b_active: {b_active}")
         db = PgConn()
         sql = f"UPDATE external.wn_pne_pow SET b_active = {b_active} WHERE id_arkusz = '{id_arkusz}' and pow_id = '{pow_id}';"
         if db:
@@ -1936,7 +1936,7 @@ class CanvasLineEdit(QLineEdit):
         self.font_size = font_size
         self.r_widget = r_widget
         if self.r_widget == "ruler":
-            self.r_widget = MoekSlideButton(self, name="ruler", size=13, hsize=20, checkable=True)
+            self.r_widget = MoekSlideButton(self, name="ruler", size=24, checkable=True)
         if max_len:
             self.setMaxLength(max_len)
         self.validator = validator
@@ -1951,6 +1951,7 @@ class CanvasLineEdit(QLineEdit):
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
         self.fn = fn
         self.placeholder = placeholder
+        self.mt_enabled = False
         self.focused = False
         self.hover = False
         self.temp_val = None
@@ -1959,8 +1960,8 @@ class CanvasLineEdit(QLineEdit):
     def resizeEvent(self, event):
         """Ustawienie lokalizacji doadtkowych przycisków po zmianie rozmiaru lineedit'u."""
         if self.r_widget:
-            offset = 10 if self.r_widget.slided or self.r_widget.isChecked() else 0
-            self.r_widget.setGeometry(self.width() - 4 - offset, (self.height()/2) - (self.r_widget.height()/2), self.r_widget.width(), self.r_widget.height())
+            offset = 18 if self.r_widget.slided or self.r_widget.isChecked() else 0
+            self.r_widget.setGeometry(self.width() - 6 - offset, (self.height()/2) - (self.r_widget.height()/2), self.r_widget.width(), self.r_widget.height())
         super().resizeEvent(event)
 
     def __setattr__(self, attr, val):
@@ -1979,7 +1980,7 @@ class CanvasLineEdit(QLineEdit):
         """Modyfikacja stylesheet przy hoveringu lub zmianie tekstu."""
         alpha = 0.3 if self.hover else 0.2
         if self.placeholder:
-            font_color = "0, 0, 0, 0.3" if self.text() == self.placeholder and not self.focused else self.color
+            font_color = "0, 0, 0, 0.3" if self.text() == self.placeholder and (not self.focused or self.mt_enabled) else self.color
         else:
             font_color = self.color
         self.setStyleSheet("""
@@ -2013,10 +2014,14 @@ class CanvasLineEdit(QLineEdit):
 
     def focusOutEvent(self, event):
         super().focusOutEvent(event)
+        self.focused = False
         if self.validator == '00.0' and len(self.text()) > 0:
             val = self.numeric_formater()
             self.setText(str(val)) if val else self.setText(self.temp_val)
         self.val_change()
+
+    def val_change(self):
+        self.run_fn()
         self.text_changed()
         self.temp_val = None
 
@@ -2041,7 +2046,7 @@ class CanvasLineEdit(QLineEdit):
             return None
         return round(val, 1)
 
-    def val_change(self, val=None):
+    def run_fn(self):
         """Próba zmiany wartości przez odpalenie właściwej funkcji."""
         if self.fn:
             exec(eval("f'{}'".format(self.fn)))
@@ -2542,7 +2547,6 @@ class MoekSlideButton(MoekButton):
     def __init__(self, *args, size=25, hsize=0, name="", icon="", visible=True, enabled=True, checkable=False, tooltip=""):
         super().__init__(*args, size=size, hsize=hsize, name=name, icon=icon, visible=visible, enabled=enabled, checkable=checkable, tooltip=tooltip)
         self.slided = False
-        self.toggled.connect(self.toggle_change)
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -2550,19 +2554,15 @@ class MoekSlideButton(MoekButton):
         if attr == "slided":
             self.sliding()
 
-    def sliding(self):
-        offset = 10 if self.slided or self.isChecked() else 0
-        self.setGeometry(self.parent().width() - 4 - offset, (self.parent().height()/2) - (self.height()/2), self.width(), self.height())
+    def sliding(self, deactivate=False):
+        offset = 18 if self.slided or (self.isChecked() and not deactivate) else 0
+        self.setGeometry(self.parent().width() - 6 - offset, (self.parent().height()/2) - (self.height()/2), self.width(), self.height())
 
     def enterEvent(self, event):
         self.slided = True
 
     def leaveEvent(self, event):
         self.slided = False
-
-    def toggle_change(self, checked):
-        if checked:
-            self.parent().clearFocus()
 
 
 class MoekDummy(QFrame):

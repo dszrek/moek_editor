@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import pandas as pd
+import math
 
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
@@ -91,7 +92,7 @@ class ObjectManager:
             wyr_point_lyrs_repaint()
             dlg.proj.mapLayersByName("wyr_poly")[0].triggerRepaint()
             wdf_update()
-            if dlg.mt.mt_name == "wn_pick":
+            if dlg.mt.mt_name == "wn_pick" or dlg.wyr_panel.mt_enabled:
                 dlg.mt.init("multi_tool")
             if val:
                 self.wyr_data = self.wyr_update()
@@ -507,7 +508,7 @@ class MapToolManager:
         self.old_button = None
         self.feat_backup = None
         self.canvas.mapToolSet.connect(self.maptool_change)
-        self.tool_kinds = (MultiMapTool, IdentMapTool, PointPickerMapTool, PointDrawMapTool, LineDrawMapTool, PolyDrawMapTool, LineEditMapTool, PolyEditMapTool, LineContinueMapTool)
+        self.tool_kinds = (MultiMapTool, IdentMapTool, PointPickerMapTool, PointDrawMapTool, LineDrawMapTool, PolyDrawMapTool, LineEditMapTool, PolyEditMapTool, LineContinueMapTool, RulerMapTool)
         self.maptools = [
             # {"name" : "edit_poly", "class" : PolyEditMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_pne", "wyrobiska"], "fn" : obj_sel},
             {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"],"fn" : obj_sel},
@@ -524,7 +525,11 @@ class MapToolManager:
             {"name" : "parking_move", "class" : PointDrawMapTool, "button" : self.dlg.parking_panel.parking_tools.parking_move, "fn" : parking_move, "extra" : []},
             {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : [[255, 255, 0, 255],["marszruty", "parking_planowane", "parking_odwiedzone"]]},
             {"name" : "marsz_edit", "class" : LineEditMapTool, "button" : self.dlg.marsz_panel.marsz_edit, "lyr" : ["marszruty"], "fn" : marsz_line_change, "extra" : ["marsz_id",["marszruty", "parking_planowane", "parking_odwiedzone"]]},
-            {"name" : "marsz_continue", "class" : LineContinueMapTool, "button" : self.dlg.marsz_panel.marsz_continue, "lyr" : ["marszruty"], "fn" : marsz_line_continue, "extra" : ["marsz_id"]}
+            {"name" : "marsz_continue", "class" : LineContinueMapTool, "button" : self.dlg.marsz_panel.marsz_continue, "lyr" : ["marszruty"], "fn" : marsz_line_continue, "extra" : ["marsz_id"]},
+            {"name" : "dlug_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_1"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
+            {"name" : "dlug_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_1"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
+            {"name" : "szer_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_1"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
+            {"name" : "szer_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_1"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas}
         ]
 
     def maptool_change(self, new_tool, old_tool):
@@ -605,6 +610,9 @@ class MapToolManager:
             else:
                 self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"], None)
             self.maptool.drawn.connect(self.params["fn"])
+        elif self.params["class"] == RulerMapTool:
+            self.maptool = self.params["class"](self.canvas, self.params["lyr"], self.params["button"])
+            self.maptool.measured.connect(self.params["fn"])
         elif self.params["class"] == PolyDrawMapTool:
             self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"])
             self.maptool.drawn.connect(self.params["fn"])
@@ -3242,6 +3250,217 @@ class PolyDrawMapTool(QgsMapTool):
             self.area_painter.reset(QgsWkbTypes.PolygonGeometry)
             self.area_painter = None
 
+
+class RulerMapTool(QgsMapTool):
+    """Maptool do odmierzania odległości."""
+    measured = pyqtSignal(int, object)
+    cursor_changed = pyqtSignal(str)
+
+    def __init__(self, canvas, lyr, button):
+        QgsMapTool.__init__(self, canvas)
+        dlg.wyr_panel.mt_enabled = True
+        self.canvas = canvas
+        self._button = button
+        self.accepted = False
+        self.canceled = False
+        self.deactivated = False
+        self.rb_point = None
+        self.rb_line = None
+        self.rb_halo = None
+        self.pan_point = None
+        self.temp_point = None
+        self.drawing = False
+        self.dragging = False
+        self.layer = dlg.proj.mapLayersByName(lyr[0])[0]
+        self.cursor_changed.connect(self.cursor_change)
+        self.cursor = "cross"
+        self.rbs_create()
+
+    def rbs_create(self):
+        """Stworzenie rubberband'ów."""
+        self.rb_point = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
+        self.rb_point.setIcon(QgsRubberBand.ICON_CIRCLE)
+        self.rb_point.setColor(QColor(255, 255, 255, 255))
+        self.rb_point.setFillColor(QColor(0, 0, 255, 255))
+        self.rb_point.setIconSize(8)
+        self.rb_point.addPoint(QgsPointXY(0, 0), False)
+        self.rb_point.setVisible(True)
+
+    def button(self):
+        return self._button
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "cursor":
+            self.cursor_changed.emit(val)
+
+    def cursor_change(self, cur_name):
+        """Zmiana cursora maptool'a."""
+        cursors = [
+                    ["cross", Qt.CrossCursor],
+                    ["open_hand", Qt.OpenHandCursor],
+                    ["closed_hand", Qt.ClosedHandCursor]
+                ]
+        for cursor in cursors:
+            if cursor[0] == cur_name:
+                self.setCursor(cursor[1])
+                break
+
+    def snap_to_layer(self, event, layer):
+        """Zwraca wyniki przyciągania do wierzchołków i krawędzi."""
+        self.canvas.snappingUtils().setCurrentLayer(layer)
+        e = self.canvas.snappingUtils().snapToCurrentLayer(event.pos(), QgsPointLocator.Edge)
+        return e
+
+    @threading_func
+    def find_nearest_feature(self, pos):
+        """Zwraca najbliższy od kursora obiekt na wybranych warstwach."""
+        pos = self.toLayerCoordinates(self.layer, pos)
+        scale = iface.mapCanvas().scale()
+        tolerance = scale / 250
+        search_rect = QgsRectangle(pos.x() - tolerance,
+                                  pos.y() - tolerance,
+                                  pos.x() + tolerance,
+                                  pos.y() + tolerance)
+        request = QgsFeatureRequest()
+        request.setFilterRect(search_rect)
+        request.setFlags(QgsFeatureRequest.ExactIntersect)
+        for feat in self.layer.getFeatures(request):
+            return self.layer
+
+    def canvasMoveEvent(self, event):
+        map_point = self.toMapCoordinates(event.pos())
+        if event.buttons() == Qt.LeftButton:
+            if self.drawing:
+                # Umożliwienie panningu mapy podczas rysowania:
+                dist = QgsGeometry().fromPointXY(self.pan_point).distance(QgsGeometry().fromPointXY(map_point))
+                dist_scale = dist / self.canvas.scale() * 1000
+                if dist_scale > 6.0:
+                    self.dragging = True
+                    self.cursor = "closed_hand"
+                    self.canvas.panAction(event)
+            elif not self.drawing:
+                # Panning mapy:
+                self.dragging = True
+                self.cursor = "closed_hand"
+                self.canvas.panAction(event)
+        if event.buttons() == Qt.NoButton:
+            if self.cursor != "cross":
+                self.cursor = "cross"
+            th = self.find_nearest_feature(event.pos())
+            result = th.get()
+            snap_type = None
+            if result:
+                e = self.snap_to_layer(event, result)
+                snap_type = e.type()
+                if snap_type == 2:  # Kursor nad linią marszruty
+                    self.temp_point = e.point()
+                else:
+                    self.temp_point = map_point
+                if self.rb_point:
+                    self.rb_point.movePoint(self.temp_point)
+            else:
+                self.temp_point = map_point
+                if self.rb_point:
+                    self.rb_point.movePoint(self.temp_point)
+            if self.rb_line and self.drawing:
+                self.rb_line.movePoint(self.temp_point)
+                self.rb_halo.movePoint(self.temp_point)
+
+    def canvasPressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.pan_point = self.toMapCoordinates(event.pos())
+
+    def canvasReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            if self.dragging:  # Zakończenie panningu mapy
+                self.cursor = "cross"
+                self.canvas.panActionEnd(event.pos())
+                self.dragging = False
+                return
+            if not self.drawing:  # Rozpoczęcie rysowania
+                self.drawing_start()
+                self.vertex_add()
+            else:
+                self.accepted = True
+                self.accept_changes()
+
+    def keyReleaseEvent(self, event):
+        if self.drawing and not self.dragging and event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
+            self.last_vertex_remove()
+        if event.key() == Qt.Key_Escape:
+            self.canceled = True
+            self.accept_changes(cancel=True)
+
+    def drawing_start(self):
+        """Inicjuje rubberband'y do rysowania linii i punktów."""
+        self.rb_halo = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
+        self.rb_halo.setWidth(3)
+        self.rb_halo.setColor(QColor(255, 255, 255, 255))
+        self.rb_halo.setVisible(True)
+        self.rb_line = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
+        self.rb_line.setWidth(2)
+        self.rb_line.setLineStyle(Qt.DotLine)
+        self.rb_line.setColor(QColor(0, 0, 255, 255))
+        self.rb_line.setVisible(True)
+        if self.rb_point:
+            self.canvas.scene().removeItem(self.rb_point)
+            self.rb_point = None
+        self.rbs_create()
+        self.rb_point.addPoint(self.temp_point)
+        self.drawing = True
+
+    def drawing_stop(self):
+        """Usuwa rubberband'y ze sceny."""
+        if self.rb_point:
+            self.canvas.scene().removeItem(self.rb_point)
+            self.rb_point = None
+        if self.rb_line:
+            self.canvas.scene().removeItem(self.rb_line)
+            self.rb_line = None
+        if self.rb_halo:
+            self.canvas.scene().removeItem(self.rb_halo)
+            self.rb_halo = None
+        self.drawing = False
+
+    def vertex_add(self):
+        """Dodaje wierzchołek do linii i aktualizuje rubberband'y."""
+        self.rb_point.addPoint(self.temp_point)
+        self.rb_line.addPoint(self.temp_point)
+        self.rb_halo.addPoint(self.temp_point)
+
+    def last_vertex_remove(self):
+        """Kasuje ostatnio dodany wierzchołek linii i aktualizuje rubberband'y."""
+        if not self.drawing:
+            return
+        self.rb_point.removePoint(-1)
+        self.rb_point.movePoint(self.temp_point)
+        self.rb_line.removePoint(-1)
+        self.rb_halo.removePoint(-1)
+        self.drawing = False
+
+    def accept_changes(self, cancel=False, deactivated=False):
+        """Zakończenie edycji geometrii i zaakceptowanie wprowadzonych zmian, albo przywrócenie stanu pierwotnego."""
+        length = 0
+        if self.rb_line:
+            if self.rb_line.numberOfVertices() == 2 and not cancel and not deactivated:
+                length = int(self.rb_line.asGeometry().length())
+        self.drawing_stop()
+        self.accepted = True
+        if not deactivated:
+            dlg.wyr_panel.mt_enabled = False
+            self.measured.emit(length, self._button)
+
+    def deactivate(self):
+        """Zakończenie działania maptool'a."""
+        super().deactivate()
+        if not self.accepted:
+            dlg.wyr_panel.mt_enabled = False
+            self.accept_changes(deactivated=True)
+            self._button.sliding(deactivate=True)
+
+
 # ========== Funkcje:
 
 def obj_sel(layer, feature, loc):
@@ -3600,3 +3819,17 @@ def wn_pick(layer, feature):
     if not feature:
         return
     dlg.wyr_panel.wn_picker.wn_id_update(feature["id_arkusz"])
+
+def ruler_meas(length, button):
+    dlg.mt.init("multi_tool")
+    button.sliding()
+    if length == 0:
+        return
+    elif length <= 10:
+        length_rounded = length
+    elif length < 50:  # Zaokrąglanie co 5
+        length_rounded = int(math.floor((length + 2.5) / 5) * 5)
+    else:
+        length_rounded = int(round(length / 10, 0) * 10)
+    button.parent().setText(str(length_rounded))
+    button.parent().val_change()

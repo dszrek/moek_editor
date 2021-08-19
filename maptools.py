@@ -3538,7 +3538,7 @@ def area_measure(geom):
     except Exception as err:
         print(f"Nie udało się obliczyć powierzchni wyrobiska: {err}")
         return 0
-    area_rounded = int(area / 10) * 10 if area <= 1000 else int(area / 100) * 100
+    area_rounded = int(round(area / 10, 0) * 10) if area <= 1000 else int(round(area / 100, 0) * 100)
     return area_rounded
 
 def wyr_point_add(point):
@@ -3729,7 +3729,7 @@ def marsz_add(geom, _id, cancel, deactivated):
 def length_measure(geom):
     """Zwraca zaokrągloną wartość długości marszruty w metrach."""
     length = geom.length()
-    length_rounded = int(length / 10) * 10 if length <= 1000 else int(length / 100) * 100
+    length_rounded = int(round(length / 10, 0)) * 10 if length <= 1000 else int(round(length / 100, 0) * 100)
     return length_rounded
 
 def length_time(length):

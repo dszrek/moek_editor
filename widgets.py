@@ -514,22 +514,22 @@ class WyrCanvasPanel(QFrame):
         self.sb.currentChanged.connect(self.page_change)
         self.height_change()  # Wstępne ustalenie wysokości panelu
         self.dicts = [
-                    {"name": "okres_eksp_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "width": 386, "val_width": 120, "val_width_2": 120, "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']},
+                    {"name": "okres_eksp_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 386, "val_width": 120, "val_width_2": 120, "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
 
                     {"name": "notepad_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"},
 
 
-                    {"name": "okres_eksp_1", "page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "width": 386, "val_width": 120, "val_width_2": 120, "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']},
+                    {"name": "okres_eksp_1", "page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 386, "val_width": 120, "val_width_2": 120, "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
 
-                    {"name": "dlug_1", "page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "dlug_1", "page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "szer_1", "page": 1, "row": 1, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "szer_1", "page": 1, "row": 1, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "wys_1", "page": 1, "row": 1, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "wys_1", "page": 1, "row": 1, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
 
-                    {"name": "nadkl_1", "page": 1, "row": 2, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "nadkl_1", "page": 1, "row": 2, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
 
-                    {"name": "miaz_1", "page": 1, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "miaz_1", "page": 1, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 123, "val_width": 34, "val_width_2": 34, "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
                     {"name": "notepad_1", "page": 1, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"},
 
@@ -538,7 +538,7 @@ class WyrCanvasPanel(QFrame):
                     ]
         for dict in self.dicts:
             if dict["type"] == "text_2":
-                _txt2 = ParamBox(self, margins=True, item=dict["item"], max_len=dict["max_len"], validator=dict["validator"], placeholder=dict["placeholder"], width=dict["width"], value_2=" ", val_width=dict["val_width"], val_width_2=dict["val_width_2"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], icon=dict["icon"], tooltip=dict["tooltip"], fn=dict["fn"])
+                _txt2 = ParamBox(self, margins=True, item=dict["item"], max_len=dict["max_len"], validator=dict["validator"], placeholder=dict["placeholder"], zero_allowed=dict["zero_allowed"], width=dict["width"], value_2=" ", val_width=dict["val_width"], val_width_2=dict["val_width_2"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], icon=dict["icon"], tooltip=dict["tooltip"], fn=dict["fn"])
                 exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_txt2, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 txt2_name = f'txt2_{dict["name"]}'
                 self.widgets[txt2_name] = _txt2
@@ -574,9 +574,9 @@ class WyrCanvasPanel(QFrame):
     def param_parser(self, val, quote=False):
         """Zwraca wartość przerobioną na tekst (pusty, jeśli None)."""
         if quote:
-            txt = f'"{val}"' if val else f'""'
+            txt = f'"{val}"' if val != None else f'""'
         else:
-            txt = f'{val}' if val else f''
+            txt = f'{val}' if val != None else f''
         return txt
 
     def get_notepad(self):
@@ -1433,7 +1433,7 @@ class WyrWnPicker(QFrame):
         self.wn_picker_eraser = MoekButton(self, name="wyr_wn", size=30, checkable=False)
         self.lay.addWidget(self.wn_picker_eraser)
         self.wn_picker_eraser.clicked.connect(lambda: self.wn_id_update(None))
-        self.idbox = CanvasLineEdit(self, width=90, height=30, max_len=8, validator="id_arkusz", theme="dark", fn="dlg.wyr_panel.wn_picker.wn_id_update(self.text())", placeholder="0001_001")
+        self.idbox = CanvasLineEdit(self, width=90, height=30, max_len=8, validator="id_arkusz", theme="dark", fn=["dlg.wyr_panel.wn_picker.wn_id_update(self.text())"], placeholder="0001_001")
         self.lay.addWidget(self.idbox)
         self.wn_id = None
 
@@ -1441,10 +1441,9 @@ class WyrWnPicker(QFrame):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "wn_id":
-            self.idbox.setText(val) if val else self.idbox.setText("")
+            self.idbox.set_value(val)
             self.wn_picker_empty.setVisible(False) if val else self.wn_picker_empty.setVisible(True)
             self.wn_picker_eraser.setVisible(True) if val else self.wn_picker_eraser.setVisible(False)
-            self.idbox.text_changed()
 
     def wn_id_update(self, id):
         """Sprawdza istnienie wn_id na liście wn_ids i aktualizuje t_wn_id w db, jeśli potrzeba."""
@@ -1713,7 +1712,7 @@ class ParkingTools(QFrame):
 class ParamBox(QFrame):
     """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem).
     item: label, line_edit, ruler."""
-    def __init__(self, *args, margins=False, width=160, height=24, item="label", val_width=40, val_width_2=40, value="", value_2=None, max_len=None, validator=None, placeholder=None, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", fn=None):
+    def __init__(self, *args, margins=False, width=160, height=24, item="label", val_width=40, val_width_2=40, value="", value_2=None, max_len=None, validator=None, placeholder=None, zero_allowed=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.item = item
@@ -1726,7 +1725,7 @@ class ParamBox(QFrame):
         self.setFixedSize(width, _height)
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
         lay = QVBoxLayout()
-        self.box = MoekGridBox(self, margins=[0, 0, 0, 0], spacing=0) # if margins else MoekGridBox(self, margins=[0, 0, 0, 0], spacing=0)
+        self.box = MoekGridBox(self, margins=[0, 0, 0, 0], spacing=0)
         lay.addWidget(self.box)
         lay.setContentsMargins(0, 4, 0, 4) if margins else lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
@@ -1744,17 +1743,17 @@ class ParamBox(QFrame):
                 if self.item == "label":
                     self.valbox_1 = TextItemLabel(self, height=self.height, width=self.val_width_1, bgr_alpha=0.15, text=value)
                 elif self.item == "line_edit":
-                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, fn=fn[0])
+                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
                 elif self.item == "ruler":
-                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, fn=fn[0])
+                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
                 self.box.glay.addWidget(self.valbox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "valbox_2":
                 if self.item == "label":
                     self.valbox_2 = TextItemLabel(self, height=self.height, width=self.val_width_1, bgr_alpha=0.15, text=value)
                 elif self.item == "line_edit":
-                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, fn=fn[1])
+                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
                 elif self.item == "ruler":
-                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, fn=fn[1])
+                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
                 self.box.glay.addWidget(self.valbox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "separator":
                 self.separator = TextItemLabel(self, height=self.height_1, width=17, text="–")
@@ -1810,16 +1809,18 @@ class ParamBox(QFrame):
             ]
         return widgets
 
-    def value_change(self, attrib, value):
+    def value_change(self, attrib, val):
         """Zmienia wyświetlaną wartość parametru."""
         if attrib == "value":
-            self.valbox_1.setText(str(value)) if value else self.valbox_1.setText("")
             if isinstance(self.valbox_1, CanvasLineEdit):
-                self.valbox_1.text_changed()
+                self.valbox_1.set_value(val)
+            else:
+                self.valbox_1.setText(str(val)) if val else self.valbox_1.setText("")
         elif attrib == "value_2":
-            self.valbox_2.setText(str(value)) if value else self.valbox_2.setText("")
             if isinstance(self.valbox_2, CanvasLineEdit):
-                self.valbox_2.text_changed()
+                self.valbox_2.set_value(val)
+            else:
+                self.valbox_2.setText(str(val)) if val else self.valbox_2.setText("")
 
 
 class ParamTextBox(QFrame):
@@ -1898,8 +1899,8 @@ class IdSpinBox(QFrame):
         self.prev_btn.clicked.connect(self.prev_clicked)
         self.next_btn = MoekButton(self, name=f"id_next_{theme}", size=22, hsize=34, checkable=False)
         self.next_btn.clicked.connect(self.next_clicked)
-        fn = 'dlg.obj.set_object_from_input(self.text(), self.parent().obj)'
-        self.idbox = CanvasLineEdit(self, width=self.width() - 44, height=self.height() - 4, max_len=self.max_len, validator=self.validator, fn=fn, theme=theme)
+        fn = ['dlg.obj.set_object_from_input(self.text(), self.parent().obj)']
+        self.idbox = CanvasLineEdit(self, width=self.width() - 44, height=self.height() - 4, max_len=self.max_len, validator=self.validator, null_allowed=False, fn=fn, theme=theme)
         self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(0, 0, 0, 0)
@@ -1914,8 +1915,7 @@ class IdSpinBox(QFrame):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "id":
-            self.idbox.setText(str(val)) if val else self.idbox.setText("")
-            self.idbox.text_changed()
+            self.idbox.set_value(str(val))
 
     def prev_clicked(self):
         """Uruchomienie funkcji po kliknięciu na przycisk prev_btn."""
@@ -1928,7 +1928,7 @@ class IdSpinBox(QFrame):
 
 class CanvasLineEdit(QLineEdit):
     """Lineedit z odpalaniem funkcji po zatwierdzeniu zmian tekstu."""
-    def __init__(self, *args, width, height, r_widget=None, font_size=12, max_len=None, validator=None, placeholder=None, theme="dark", fn=None):
+    def __init__(self, *args, width, height, r_widget=None, font_size=12, max_len=None, validator=None, placeholder=None, zero_allowed=False, null_allowed=True, theme="dark", fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
@@ -1937,6 +1937,7 @@ class CanvasLineEdit(QLineEdit):
         self.r_widget = r_widget
         if self.r_widget == "ruler":
             self.r_widget = MoekSlideButton(self, name="ruler", size=24, checkable=True)
+        self.max_len = max_len
         if max_len:
             self.setMaxLength(max_len)
         self.validator = validator
@@ -1951,11 +1952,16 @@ class CanvasLineEdit(QLineEdit):
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
         self.fn = fn
         self.placeholder = placeholder
+        self.zero_allowed = zero_allowed
+        self.null_allowed = null_allowed
         self.mt_enabled = False
         self.focused = False
         self.hover = False
         self.temp_val = None
         self.pressed = False
+        self.grey = False
+        self.numerical = False
+        self.cur_val = None
 
     def resizeEvent(self, event):
         """Ustawienie lokalizacji doadtkowych przycisków po zmianie rozmiaru lineedit'u."""
@@ -1968,19 +1974,59 @@ class CanvasLineEdit(QLineEdit):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "hover":
-            self.set_style()
+            if hasattr(self, "grey"):
+                self.set_style()
+        if attr == "grey":
+            if hasattr(self, "hover"):
+                self.set_style()
+        if attr == "cur_val":
+            if val == None:
+                self.numerical = False
+            self.value_changed()
 
-    def text_changed(self):
-        """Sygnał zmiany wartości."""
-        if self.placeholder and len(self.text()) == 0:
-            self.setText(self.placeholder)
-        self.set_style()
+    def set_value(self, val):
+        """Próba zmiany wartości."""
+        if len(str(val)) == 0:  # Wartość Null
+            self.cur_val = None if self.null_allowed else self.cur_val
+            return
+        if self.validator == '00.0' or self.validator == '000':
+            # Próba konwersji tekstu na wartość float:
+            num_val = self.numeric_formater(val)
+            self.numerical = True if num_val != -1 else False
+            if num_val != -1:
+                self.cur_val = str(num_val)
+            else:
+                self.cur_val = self.cur_val
+        else:
+            self.cur_val = val
+
+    def value_changed(self):
+        """Aktualizacja tekstu lineedit'u po zmianie wartości."""
+        self.set_grey()
+        self.setText(self.placeholder) if self.placeholder and self.cur_val == None else self.setText(self.cur_val)
+
+    def set_grey(self):
+        """Ustalenie, czy wartość powinna zostać wyszarzona."""
+        if not self.placeholder:
+            self.grey = False
+            return
+        if self.cur_val:
+            self.grey = False
+            return
+        # Wartość jest równa placeholder'owi:
+        if self.focused:# and not self.mt_enabled:
+            self.grey = False
+            return
+        if self.numerical and int(self.cur_val) == 0 and self.zero_allowed:
+            self.grey = False
+            return
+        self.grey = True
 
     def set_style(self):
         """Modyfikacja stylesheet przy hoveringu lub zmianie tekstu."""
         alpha = 0.3 if self.hover else 0.2
         if self.placeholder:
-            font_color = "0, 0, 0, 0.3" if self.text() == self.placeholder and (not self.focused or self.mt_enabled) else self.color
+            font_color = "0, 0, 0, 0.3" if self.grey else self.color
         else:
             font_color = self.color
         self.setStyleSheet("""
@@ -2004,26 +2050,19 @@ class CanvasLineEdit(QLineEdit):
 
     def focusInEvent(self, event):
         super().focusInEvent(event)
-        if self.placeholder and self.text() == self.placeholder:
+        self.focused = True
+        if self.grey:
                 self.setText("")
-                self.set_style()
+                self.grey = False
         else:
             self.selectAll()
-        self.temp_val = self.text()
-        self.focused = True
 
     def focusOutEvent(self, event):
         super().focusOutEvent(event)
         self.focused = False
-        if self.validator == '00.0' and len(self.text()) > 0:
-            val = self.numeric_formater()
-            self.setText(str(val)) if val else self.setText(self.temp_val)
-        self.val_change()
-
-    def val_change(self):
-        self.run_fn()
-        self.text_changed()
-        self.temp_val = None
+        self.set_value(self.text())
+        if self.fn:
+            self.run_fn()
 
     def mousePressEvent(self, event):
         if self.focused:
@@ -2037,19 +2076,33 @@ class CanvasLineEdit(QLineEdit):
         else:
             super().keyPressEvent(event)
 
-    def numeric_formater(self):
-        """Zamienia znak decymalny na kropkę i zaokrągla liczbę."""
-        text = self.text().replace(",", ".")
+    def numeric_formater(self, val):
+        """Zwraca liczbę przekonwertowaną z wartości tekstowej. Jeśli tekst nie spełnia wymagań, to zwraca -1."""
+        if val == None:
+            return -1
+        text = val.replace(",", ".")
         try:
-            val = float(text)
+            num_val = float(text)
         except ValueError:
-            return None
-        return round(val, 1)
+            return -1
+        if self.validator == "00.0" and ((self.max_len == 3 and num_val >= 10) or (self.max_len == 4 and num_val >= 100)):
+            # Przepełnienie pola liczbowego:
+            return -1
+        if num_val == 0 and not self.zero_allowed:
+            # Wartość nie może być zerem
+            return -1
+        if self.validator == "000":
+            return int(num_val)
+        elif self.validator == "00.0":
+            return round(num_val, 1)
 
     def run_fn(self):
-        """Próba zmiany wartości przez odpalenie właściwej funkcji."""
-        if self.fn:
-            exec(eval("f'{}'".format(self.fn)))
+        """Odpalenie funkcji po zmianie wartości."""
+        for fn in self.fn:
+            try:
+                exec(eval("f'{}'".format(fn)))
+            except Exception as err:
+                print(f"[run_fn] Błąd zmiany wartości: {err}")
 
 
 class TextPadBox(QFrame):

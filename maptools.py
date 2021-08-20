@@ -3831,5 +3831,4 @@ def ruler_meas(length, button):
         length_rounded = int(math.floor((length + 2.5) / 5) * 5)
     else:
         length_rounded = int(round(length / 10, 0) * 10)
-    button.parent().setText(str(length_rounded))
-    button.parent().val_change()
+    button.parent().set_value(str(length_rounded))

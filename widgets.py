@@ -599,6 +599,24 @@ class WyrCanvasPanel(QFrame):
             else:
                 dlg.obj.wyr = None
 
+    def miaz_fill(self, min_max):
+        """Uzupełnia wartość miąższości kopaliny jako różnicy wysokości i nadkładu."""
+        wys_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_1.text() if min_max == "min" else dlg.wyr_panel.widgets["txt2_wys_1"].valbox_2.text()
+        nadkl_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.cur_val if min_max == "min" else dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_2.cur_val
+        if wys_txt == None or nadkl_txt == None:
+            miaz_val = ""
+        else:
+            wys_val = float(wys_txt)
+            nadkl_val = float(nadkl_txt)
+            miaz_val = wys_val - nadkl_val
+            if miaz_val < 0.0:
+                miaz_val = ""
+            else:
+                miaz_val = str(miaz_val)
+        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.set_value(miaz_val) if min_max == "min" else dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.set_value(miaz_val)
+        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.run_fn() if min_max == "min" else dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.run_fn()
+
+
     def wdf_sel_update(self):
         """Aktualizacja zaznaczenia wiersza w tv_wdf."""
         index = self.tv_wdf.model().match(self.tv_wdf.model().index(0, 1), Qt.DisplayRole, str(dlg.obj.wyr))

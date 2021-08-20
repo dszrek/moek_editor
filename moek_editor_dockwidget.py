@@ -35,11 +35,10 @@ from qgis.utils import iface
 from .classes import PgConn
 from .layers import LayerManager
 from .maptools import MapToolManager, ObjectManager
-from .main import vn_mode_changed, data_export_init
+from .main import vn_mode_changed, data_export_init, sequences_load, prev_map, next_map, seq
 from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
 from .basemaps import MoekMapPanel, basemaps_load
-from .sequences import sequences_load, prev_map, next_map, seq
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -541,7 +540,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             self.close()
 
     def basemaps_and_sequences_load(self):
-        """Odpala basemaps_load() z basemaps.py i sequences_load() z sequences.py."""
+        """Odpala basemaps_load() z basemaps.py i sequences_load() z main.py."""
         basemaps_load()
         sequences_load()
 

@@ -38,7 +38,6 @@ from .layers import dlg_layers, PanelManager
 from .maptools import dlg_maptools
 from .viewnet import dlg_viewnet
 from .basemaps import dlg_basemaps
-from .sequences import dlg_sequences
 from .classes import GESync
 
 # Import the code for the DockWidget
@@ -269,7 +268,6 @@ class MoekEditor:
                 dlg_maptools(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do maptools.py
                 dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
                 dlg_basemaps(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
-                dlg_sequences(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do sequences.py
                 self.dockwidget.cfg = PanelManager(dlg=self.dockwidget)  # Utworzenie menedżera ustawień paneli i warstw
 
             # connect to provide cleanup on closing of dockwidget

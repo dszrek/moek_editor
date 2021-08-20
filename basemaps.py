@@ -6,9 +6,8 @@ from qgis.core import QgsProject
 from qgis.utils import iface
 
 from .classes import PgConn
-from .main import block_panels
+from .main import block_panels, db_sequence_reset, sequences_load
 from .widgets import MoekButton, MoekCheckBox, MoekStackedBox, MoekCfgHSpinBox
-from .sequences import db_sequence_reset, sequences_load
 
 dlg = None
 

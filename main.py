@@ -1274,3 +1274,98 @@ def file_dialog(dir='', for_open=True, fmt='', is_folder=False):
         return path
     else:
         return None
+
+def sequences_load():
+    """Załadowanie z db ustawień użytkownika, dotyczących sekwencyjnego wczytywania podkładów mapowych."""
+    # print("[sequences_load]")
+    for s in range(1, 4):
+        seq = db_seq(s)  # Pobranie danych sekwencji
+        if seq:  # Sekwencja nie jest pusta
+            # Ustawienie parametru empty w przycisku sekwencji:
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].empty = False
+            # Aktualizacja ilości podkładów sekwencji seqcfgbox'ie:
+            dlg.seq_dock.widgets["scg_seq" + str(s)].cnt = len(seq)
+        else:  # Sekwencja jest pusta
+            # Ustawienie parametru empty w przycisku sekwencji:
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].empty = True
+            # Aktualizacja ilości podkładów sekwencji seqcfgbox'ie:
+            dlg.seq_dock.widgets["scg_seq" + str(s)].cnt = 0
+            seq = [(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)]
+        # Czyszczenie przycisku sekwencji z danych sekwencji:
+        dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].maps.clear()
+        # Aktualizacja seqcfg'ów:
+        m = 0
+        for map in seq:
+            # Wczytanie danych do przycisku sekwencji:
+            if map[0] > 0:  # Pominięcie w przycisku pustych podkładów
+                dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].maps.append([map[0], map[1]])
+            # Ustawienie w sekwencji atrybute ge (czy w sekwencji jest Google Earth Pro):
+            if map[0] == 6 or map[0] == 11:
+                dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].ge = True
+            # Wczytanie danych do seqcfg'ów (obiektów przechowujących ustawienia podkładów mapowych z sekwencji):
+            dlg.seq_dock.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].spinbox.value = map[1]  # Opóźnienie
+            dlg.seq_dock.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].map = map[0]  # Id mapy
+            m += 1
+        # Odkrycie seq_dock'u:
+        if not dlg.seq_dock.isVisible():
+            dlg.seq_dock.show()
+
+def db_seq(num):
+    """Sprawdzenie, czy w tabeli basemaps z aktywnego teamu dla zalogowanego użytkownika są ustawienia dla sekwencji."""
+    db = PgConn()
+    sql = "SELECT map_id, i_delay_" + str(num) + " FROM team_" + str(dlg.team_i) + ".basemaps WHERE user_id = " + str(dlg.user_id) + " AND i_order_" + str(num) + " IS NOT NULL ORDER BY i_order_" + str(num) + " ASC;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            return res
+        else:
+            return False
+
+def db_sequence_update(seq, list):
+    """Aktualizacja sekwencji w db."""
+    # print("[db_sequence_update]")
+    if db_sequence_reset(seq):
+        print("Wyczyszczono sekwencję w db.")
+    else:
+        print("Nie udało się wyczyścić sekwencji!")
+        return
+    db = PgConn()
+    sql = "UPDATE team_" + str(dlg.team_i) + ".basemaps AS bm SET i_order_" + str(seq) + " = d.i_order_" + str(seq) + ", i_delay_" + str(seq) + " = d.i_delay_" + str(seq) + " FROM (VALUES %s) AS d (map_id, i_order_" + str(seq) + ", i_delay_" + str(seq) + ") WHERE bm.map_id = d.map_id AND bm.user_id = " + str(dlg.user_id) + ";"
+    if db:
+        db.query_exeval(sql, list)
+
+def db_sequence_reset(seq):
+    """Wyczyszczenie w db dotychczasowych ustawień sekwencji."""
+    # print(f"[db_sequence_reset]: {seq}")
+    db = PgConn()
+    # Aktualizacja i_order_[seq] = NULL i i_delay)[seq] dla użytkownika w tabeli 'basemaps':
+    sql = "UPDATE team_" + str(dlg.team_i) + ".basemaps SET i_order_" + str(seq) + " = NULL, i_delay_" + str(seq) + " = NULL WHERE user_id = " + str(dlg.user_id) + ";"
+    if db:
+        res = db.query_upd(sql)
+        if res:
+            return True
+        else:
+            return False
+    else:
+        return False
+
+def next_map():
+    """Przejście do następnej mapy w aktywnej sekwencji. Funkcja pod skrót klawiszowy."""
+    if dlg.seq_dock.widgets["sqb_seq"].num > 0:
+        dlg.seq_dock.widgets["sqb_seq"].next_map()
+
+def prev_map():
+    """Przejście do następnej mapy w aktywnej sekwencji. Funkcja pod skrót klawiszowy."""
+    if dlg.seq_dock.widgets["sqb_seq"].num > 0:
+        dlg.seq_dock.widgets["sqb_seq"].prev_map()
+
+def seq(_num):
+    """Aktywowanie wybranej sekwencji lub jej deaktywacja, jeśli już jest aktywna. Funkcja pod skrót klawiszowy."""
+    if dlg.seq_dock.widgets["sqb_seq"].num == _num:  # Sekwencja jest aktywna, następuje deaktywacja
+        dlg.seq_dock.widgets["sqb_seq"].num = 0
+    else:  # Sekwencja zostaje aktywowana
+        if dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].empty:  # Sekwencja jest pusta, przejście do ustawień
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].button.setChecked(False)
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].cfg_clicked()
+        else:  # Sekwencja nie jest pusta, następuje jej aktywacja
+            dlg.seq_dock.widgets["sqb_seq"].num = _num

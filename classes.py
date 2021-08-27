@@ -705,6 +705,23 @@ class WDfDelegate(QStyledItemDelegate):
             option.state = option.state & ~QStyle.State_HasFocus
 
 
+class CmbDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None, *args):
+        QStyledItemDelegate.__init__(self, parent, *args)
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        if index.data(Qt.AccessibleDescriptionRole) == "separator":
+            painter.setPen(Qt.white)
+            painter.drawLine(option.rect.left() + 10, option.rect.center().y(), option.rect.right() - 7 , option.rect.center().y())
+
+    def sizeHint(self, option, index):
+        s = QStyledItemDelegate.sizeHint(self, option, index)
+        if index.data(Qt.AccessibleDescriptionRole) == "separator":
+            s.setHeight(11)
+        return s
+
+
 def threading_func(f):
     """Dekorator dla funkcji zwracającej wartość i działającej poza głównym wątkiem QGIS'a."""
     def start(*args, **kwargs):

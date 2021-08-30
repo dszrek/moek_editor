@@ -439,7 +439,7 @@ class WyrCanvasPanel(QFrame):
         self.setFixedWidth(500)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
-        self.heights = [268, 400, 225]
+        self.heights = [268, 460, 225]
         self.mt_enabled = False
         self.cur_page = int()
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
@@ -458,8 +458,6 @@ class WyrCanvasPanel(QFrame):
         self.wdf = pd.DataFrame({'status': [1], 'wyr_id': [1]})  # Dataframe z danymi o wyrobiskach
         self.wdf_mdl = WDfModel(df=self.wdf, tv=self.tv_wdf, col_widths=tv_wdf_widths, col_names=tv_wdf_headers)
         self.tv_wdf.selectionModel().selectionChanged.connect(self.wdf_sel_change)
-        self.df_kopalina = self.sl_pd_load("sl_kopalina")
-        self.df_wiek = self.sl_pd_load("sl_wiek")
         self.box = MoekVBox(self)
         self.box.setObjectName("box")
         self.setStyleSheet("""
@@ -520,9 +518,7 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "notepad_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"},
 
-                    {"name": "kopalina_1", "page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 6, "type": "combo_tv", "width": 192, "title_down": "KOPALINA", "tbl_name": "sl_kopalina", "attr_name": "kopalina", "val_display": False, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_kopalina", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
-
-                    {"name": "wiek_1", "page": 1, "row": 0, "col": 6, "r_span": 1, "c_span": 2, "type": "combo_tv", "width": 60, "title_down": "WIEK", "tbl_name": "sl_wiek", "attr_name": "wiek", "val_display": True, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wiek", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "kopalina_wiek_1", "page": 1, "row": 0, "col": 0, "r_span": 2, "c_span": 8, "type": "kop_wiek"},
 
                     {"name": "okres_eksp_1", "page": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 386, "val_width": 120, "val_width_2": 120, "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
 
@@ -556,11 +552,6 @@ class WyrCanvasPanel(QFrame):
                 cmb_name = f'cmb_{dict["name"]}'
                 self.widgets[cmb_name] = _cmb
                 self.sl_load(dict["tbl_name"], self.widgets[cmb_name].valbox_1)
-            if dict["type"] == "combo_tv":
-                _cmb = ParamBox(self, margins=True, item="combo_tv", width=dict["width"], val_width=dict["width"], title_down=dict["title_down"], val_display=dict["val_display"], fn=dict["fn"])
-                exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_cmb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
-                cmb_name = f'cmb_{dict["name"]}'
-                self.widgets[cmb_name] = _cmb
             if dict["type"] == "text_2":
                 _txt2 = ParamBox(self, margins=True, item=dict["item"], max_len=dict["max_len"], validator=dict["validator"], placeholder=dict["placeholder"], zero_allowed=dict["zero_allowed"], width=dict["width"], value_2=" ", val_width=dict["val_width"], val_width_2=dict["val_width_2"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], icon=dict["icon"], tooltip=dict["tooltip"], fn=dict["fn"])
                 exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_txt2, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
@@ -571,13 +562,11 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_np, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 np_name = f'np_{dict["name"]}'
                 self.widgets[np_name] = _np
-
-    def sl_update(self, attr_name):
-        """Aktualizacja wartości słownikowych combobox'a."""
-        for dict in self.dicts:
-            if dict["type"] == "combo_tv" and dict["attr_name"] == attr_name:
-                cmb_name = f'cmb_{dict["name"]}'
-                self.sl_load_ranked(dict["tbl_name"], dict["attr_name"], self.widgets[cmb_name].valbox_1)
+            if dict["type"] == "kop_wiek":
+                _kw = KopalinaWiekBox(self)
+                exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_kw, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                kw_name = 'kw_1'
+                self.widgets[kw_name] = _kw
 
     def sl_load(self, tbl_name, cmb):
         """Załadowanie wartości słownikowych z db do combobox'a."""
@@ -590,58 +579,6 @@ class WyrCanvasPanel(QFrame):
                 for r in res:
                     cmb.addItem(f"  {r[1]}  ", r[0])
 
-    def sl_pd_load(self, tbl_name):
-        """Zwraca wartości słownikowe do dataframe'u."""
-        db = PgConn()
-        sql = f"SELECT t_val, t_desc FROM public.{tbl_name};"
-        if db:
-            df = db.query_pd(sql, ['t_val' ,'t_desc'])
-            if len(df) > 0:
-                return df
-            else:
-                return pd.Dataframe(columns=['t_val' ,'t_desc'])
-
-    def sl_load_ranked(self, tbl_name, attr_name, cmb):
-        """Załadowanie wartości słownikowych z db do combobox'a."""
-        c1_df, c2_df = self.get_pd_ranked(tbl_name, attr_name)
-        cmb.clear()
-        cmb.addItem(f"", None)
-        if len(c1_df) > 0:
-            c1_list = c1_df[['t_val', 't_desc']].to_records(index=False).tolist()
-            for item in c1_list:
-                cmb.addItem(f"  {item[1]}  ", item[0])
-        cmb.insertSeparator(cmb.count())
-        if len(c2_df) > 0:
-            c2_list = c2_df[['t_val', 't_desc']].to_records(index=False).tolist()
-            for item in c2_list:
-                cmb.addItem(f"  {item[1]}  ", item[0])
-
-    def get_pd_ranked(self, tbl_name, attr_name):
-        """Załadowanie wartości słownikowych z db do dataframe'ów."""
-        a1_df = self.get_attr_vals(tbl_name, f"t_{attr_name}")
-        a2_df = self.get_attr_vals(tbl_name, f"t_{attr_name}_2")
-        a12_df = pd.concat([a1_df,a2_df]).reset_index(drop=True)
-        a12_df = a12_df['t_val'].value_counts().rename_axis('t_val').reset_index(name='cnt')
-        a12_df.set_index('t_val', inplace=True)
-        b_df = self.df_kopalina.copy() if attr_name == "kopalina" else self.df_wiek.copy()
-        b_df.set_index('t_val', inplace=True)
-        c_df = b_df.join(a12_df, how='left').reset_index()
-        c_df['cnt'] = c_df['cnt'].fillna(0.0)
-        c_df['temp'] = c_df['t_desc'].str.replace('ł', 'l').str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
-        c_df = c_df.rename_axis('t_val').sort_values(by=['cnt', 'temp'], ascending=[False, True]).reset_index(drop=True)
-        c_df = c_df.drop(['temp'], axis=1)
-        c1_df = c_df[c_df['cnt'] > 0]
-        c2_df = c_df[c_df['cnt'] == 0]
-        return c1_df, c2_df
-
-    def get_attr_vals(self, tbl_name, attr_name):
-        """Zwraca wartości atrybutu z db."""
-        db = PgConn()
-        sql = f"SELECT {attr_name} FROM team_{dlg.team_i}.wyr_dane;"
-        if db:
-            temp_df = db.query_pd(sql, ['t_val'])
-            return temp_df
-
     def values_update(self, _dict):
         """Aktualizuje wartości parametrów."""
         params = [
@@ -652,8 +589,7 @@ class WyrCanvasPanel(QFrame):
             {'type': 'text_2', 'name': 'wys', 'value': _dict[12], 'value_2': _dict[13], 'pages': [1]},
             {'type': 'text_2', 'name': 'nadkl', 'value': _dict[14], 'value_2': _dict[15], 'pages': [1]},
             {'type': 'text_2', 'name': 'miaz', 'value': _dict[16], 'value_2': _dict[17], 'pages': [1]},
-            {'type': 'combo_tv', 'name': 'kopalina', 'value': _dict[36], 'pages': [1]},
-            {'type': 'combo_tv', 'name': 'wiek', 'value': _dict[38], 'pages': [1]},
+            {'type': 'kw','values': [_dict[36], _dict[37], _dict[38], _dict[39]], 'pages': [1]},
             {'type': 'combo', 'name': 'droga', 'value': _dict[31], 'pages': [1]},
             {'type': 'combo', 'name': 'hydro', 'value': _dict[19], 'pages': [1]},
             {'type': 'combo', 'name': 'stan', 'value': _dict[35], 'pages': [1]},
@@ -673,10 +609,8 @@ class WyrCanvasPanel(QFrame):
             if param["type"] == "combo":
                 param_val = self.param_parser(param["value"])
                 exec(f'self.widgets["cmb_{param["name"]}_{self.cur_page}"].value_change("value", param_val)')
-            if param["type"] == "combo_tv":
-                self.sl_update(param["name"])
-                param_val = self.param_parser(param["value"])
-                exec(f'self.widgets["cmb_{param["name"]}_{self.cur_page}"].value_change("value", param_val)')
+            if param["type"] == "kw":
+                exec(f'self.widgets["kw_1"].set_values({param["values"]})')
 
     def param_parser(self, val, quote=False):
         """Zwraca wartość przerobioną na tekst (pusty, jeśli None)."""
@@ -1704,6 +1638,201 @@ class WyrStatusSelectorItem(QToolButton):
         self.setIcon(icon)
 
 
+class KopalinaWiekBox(QFrame):
+    """Widget ustalania dla wyrobiska kopalin i ich wieku."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(264, 62)
+        self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
+        self.df_kopalina = self.sl_pd_load("sl_kopalina")
+        self.df_wiek = self.sl_pd_load("sl_wiek")
+        self.plus_btn = MoekButton(self, name="kw_plus", size=17)
+        self.plus_btn.clicked.connect(self.plus_clicked)
+        self.minus_btn = MoekButton(self, name="kw_minus", size=17)
+        self.minus_btn.clicked.connect(self.minus_clicked)
+        self.dicts = [
+                    {"name": "self.kopalina_1", "width": 165, "attr": "kopalina", "title_down": None, "val_display": False},
+                    {"name": "self.kopalina_2", "width": 165, "attr": "kopalina_2", "title_down": None, "val_display": False},
+                    {"name": "self.wiek_1", "width": 60, "attr": "wiek", "title_down": None, "val_display": True},
+                    {"name": "self.wiek_2", "width": 60, "attr": "wiek_2", "title_down": None, "val_display": True},
+                    {"name": "self.kopalina_title", "width": 165, "attr": None, "title_down": "KOPALINA", "val_display": None},
+                    {"name": "self.wiek_title", "width": 60, "attr": None, "title_down": "WIEK", "val_display": None},
+                    ]
+        for dict in self.dicts:
+            if dict["attr"]:
+                fn = ['dlg.wyr_panel.widgets["kw_1"].val_changed()']
+                height = 23
+                value = " "
+            else:
+                fn = None
+                height = 1
+                value = None
+            _cmb = ParamBox(self, item="combo_tv", height=height, width=dict["width"], value=value, val_width=dict["width"], title_down=dict["title_down"], val_display=dict["val_display"], fn=fn)
+            exec(f'{dict["name"]} = _cmb')
+        self.val_void = True
+        self.k1_val = None
+        self.k2_val = None
+        self.w1_val = None
+        self.w2_val = None
+        self.val_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "k1_val" and not self.val_void:
+            self.kopalina_1.valbox_1.set_value(val)
+        if attr == "k2_val" and not self.val_void:
+            self.kopalina_2.valbox_1.set_value(val)
+        if attr == "w1_val" and not self.val_void:
+            self.wiek_1.valbox_1.set_value(val)
+        if attr == "w2_val" and not self.val_void:
+            self.wiek_2.valbox_1.set_value(val)
+
+    def val_changed(self):
+        """Zmieniono wartość jednego z combobox'ów."""
+        cmb_vals = [
+            ["self.k1_val", self.k1_val, self.kopalina_1.valbox_1.data_val, "t_kopalina"],
+            ["self.k2_val", self.k2_val, self.kopalina_2.valbox_1.data_val, "t_kopalina_2"],
+            ["self.w1_val", self.w1_val, self.wiek_1.valbox_1.data_val, "t_wiek"],
+            ["self.w2_val", self.w2_val, self.wiek_2.valbox_1.data_val, "t_wiek_2"]
+        ]
+        for cmb_val in cmb_vals:
+            new_val = None if cmb_val[2] == 'Null' else cmb_val[2][1:-1]
+            if cmb_val[1] != new_val:
+                print(f"{cmb_val[0]}: {cmb_val[1]} -> {cmb_val[2]}")
+                exec(f'{cmb_val[0]} = new_val')
+                val_sql = self.sql_parser(new_val)
+                db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr=cmb_val[3], val=val_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+                self.composer()
+                return
+
+    def sql_parser(self, val):
+        """Zwraca wartość prawidłową dla formuły sql."""
+        return f"'{val}'" if val else 'Null'
+
+    def set_values(self, val_list):
+        """Ustawienie wartości combobox'ów i słowników przy wczytywaniu danych wyrobiska."""
+        # Aktualizacja wartości słownikowych combobox'ów:
+        sl_list = ["kopalina", "wiek"]
+        for sl in sl_list:
+            self.sl_update(sl)
+        # Ustalenie aktualnych wartości combobox'ów:
+        obj_list = ["self.k1_val", "self.k2_val", "self.w1_val", "self.w2_val"]
+        for i in range(4):
+            obj = obj_list[i]
+            val = val_list[i]
+            exec(f'{obj} = val')
+        # Ustalenie kompozycji widget'ów w zależności od wartości combobox'ów:
+        self.composer()
+
+    def sl_update(self, attr_name):
+        """Aktualizacja wartości słownikowych combobox'a."""
+        for dict in self.dicts:
+            if dict["attr"] == attr_name:
+                tbl_name = f'sl_{dict["attr"]}'
+                self.sl_load_ranked(tbl_name, attr_name)
+
+    def sl_pd_load(self, tbl_name):
+        """Zwraca wartości słownikowe do dataframe'u."""
+        db = PgConn()
+        sql = f"SELECT t_val, t_desc FROM public.{tbl_name};"
+        if db:
+            df = db.query_pd(sql, ['t_val' ,'t_desc'])
+            if len(df) > 0:
+                return df
+            else:
+                return pd.Dataframe(columns=['t_val' ,'t_desc'])
+
+    def sl_load_ranked(self, tbl_name, attr_name):
+        """Załadowanie wartości słownikowych z db do combobox'a."""
+        c1_df, c2_df = self.get_pd_ranked(tbl_name, attr_name)
+        self.cmb_populate(attr_name, c1_df, c2_df)
+
+    def cmb_populate(self, attr_name, c1_df, c2_df):
+        """Załadowanie wartości słownikowych do odpowiednich combobox'ów."""
+        if attr_name == "kopalina":
+            cmbs = [self.kopalina_1.valbox_1, self.kopalina_2.valbox_1]
+        else:
+            cmbs = [self.wiek_1.valbox_1, self.wiek_2.valbox_1]
+        for cmb in cmbs:
+            cmb.signal_off()
+            cmb.clear()
+            cmb.addItem(f"", None)
+            if len(c1_df) > 0:
+                c1_list = c1_df[['t_val', 't_desc']].to_records(index=False).tolist()
+                for item in c1_list:
+                    cmb.addItem(f"  {item[1]}  ", item[0])
+            cmb.insertSeparator(cmb.count())
+            if len(c2_df) > 0:
+                c2_list = c2_df[['t_val', 't_desc']].to_records(index=False).tolist()
+                for item in c2_list:
+                    cmb.addItem(f"  {item[1]}  ", item[0])
+
+    def get_pd_ranked(self, tbl_name, attr_name):
+        """Załadowanie wartości słownikowych z db do dataframe'ów."""
+        a1_df = self.get_attr_vals(tbl_name, f"t_{attr_name}")
+        a2_df = self.get_attr_vals(tbl_name, f"t_{attr_name}_2")
+        a12_df = pd.concat([a1_df,a2_df]).reset_index(drop=True)
+        a12_df = a12_df['t_val'].value_counts().rename_axis('t_val').reset_index(name='cnt')
+        a12_df.set_index('t_val', inplace=True)
+        b_df = self.df_kopalina.copy() if attr_name == "kopalina" else self.df_wiek.copy()
+        b_df.set_index('t_val', inplace=True)
+        c_df = b_df.join(a12_df, how='left').reset_index()
+        c_df['cnt'] = c_df['cnt'].fillna(0.0)
+        c_df['temp'] = c_df['t_desc'].str.replace('ł', 'l').str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
+        c_df = c_df.rename_axis('t_val').sort_values(by=['cnt', 'temp'], ascending=[False, True]).reset_index(drop=True)
+        c_df = c_df.drop(['temp'], axis=1)
+        c1_df = c_df[c_df['cnt'] > 0]
+        c2_df = c_df[c_df['cnt'] == 0]
+        return c1_df, c2_df
+
+    def get_attr_vals(self, tbl_name, attr_name):
+        """Zwraca wartości atrybutu z db."""
+        db = PgConn()
+        sql = f"SELECT {attr_name} FROM team_{dlg.team_i}.wyr_dane;"
+        if db:
+            temp_df = db.query_pd(sql, ['t_val'])
+            return temp_df
+
+    def plus_clicked(self):
+        """Akcja po naciśnięciu przycisku 'plus_btn'."""
+        self.composer(add_second=True)
+
+    def minus_clicked(self):
+        """Akcja po naciśnięciu przycisku 'minus_btn'."""
+        self.k2_val = None
+        self.w2_val = None
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr='t_kopalina_2', val='Null', sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr='t_wiek_2', val='Null', sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        self.composer()
+
+    def composer(self, add_second=False):
+        """Ustalenie rozmieszczenia i widoczności widget'ów."""
+        if self.k2_val or self.w2_val or add_second:  # Druga kopalina (lub wiek) jest ustalona albo przycisk plusa został naciśnięty
+            self.kopalina_1.setGeometry(0, 0, self.kopalina_1.width(), self.kopalina_1.height())
+            self.wiek_1.setGeometry(166, 0, self.wiek_1.width(), self.wiek_1.height())
+            self.kopalina_2.setGeometry(0, 24, self.kopalina_2.width(), self.kopalina_2.height())
+            self.wiek_2.setGeometry(166, 24, self.wiek_2.width(), self.wiek_2.height())
+            self.kopalina_title.setGeometry(0, 47, self.kopalina_title.width(), self.kopalina_title.height())
+            self.wiek_title.setGeometry(166, 47, self.wiek_title.width(), self.wiek_title.height())
+            self.minus_btn.setGeometry(229, 27, self.minus_btn.width(), self.minus_btn.height())
+            self.kopalina_2.setVisible(True)
+            self.wiek_2.setVisible(True)
+            self.plus_btn.setVisible(False)
+            self.minus_btn.setVisible(True)
+        else:
+            self.kopalina_1.setGeometry(0, 14, self.kopalina_1.width(), self.kopalina_1.height())
+            self.wiek_1.setGeometry(166, 14, self.wiek_1.width(), self.wiek_1.height())
+            self.kopalina_title.setGeometry(0, 37, self.kopalina_title.width(), self.kopalina_title.height())
+            self.wiek_title.setGeometry(166, 37, self.wiek_title.width(), self.wiek_title.height())
+            self.plus_btn.setGeometry(229, 17, self.plus_btn.width(), self.plus_btn.height())
+            self.kopalina_2.setVisible(False)
+            self.wiek_2.setVisible(False)
+            self.plus_btn.setVisible(True) if self.k1_val else self.plus_btn.setVisible(False)
+            self.minus_btn.setVisible(False)
+
 class FlagTools(QFrame):
     """Menu przyborne dla flag."""
     def __init__(self, *args):
@@ -1837,16 +1966,16 @@ class ParkingTools(QFrame):
 class ParamBox(QFrame):
     """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem).
     item: label, line_edit, ruler."""
-    def __init__(self, *args, margins=False, width=160, height=24, item="label", val_width=40, val_width_2=40, value="", value_2=None, max_len=None, validator=None, placeholder=None, zero_allowed=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, fn=None):
+    def __init__(self, *args, margins=False, width=160, height=24, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, max_len=None, validator=None, placeholder=None, zero_allowed=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.item = item
-        self.width = width
-        self.height = height if not margins else height + 8
+        self._width = width
+        self._height = height if not margins else height + 8
         self.height_1 = height if not margins else height
         self.val_width = val_width + val_width_2 + 19 if value_2 else val_width
-        self.val_width_1 = val_width if title_left or icon else self.width
-        _height = self.height + 10 if title_down else self.height
+        self.val_width_1 = val_width if title_left or icon else self._width
+        _height = self._height + 10 if title_down else self._height
         self.setFixedSize(width, _height)
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
         lay = QVBoxLayout()
@@ -1855,10 +1984,10 @@ class ParamBox(QFrame):
         lay.setContentsMargins(0, 4, 0, 4) if margins else lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
         self.setLayout(lay)
-        self.widgets = self.compositor(title_left, value_2, title_down, icon)
+        self.widgets = self.composer(value, value_2, title_left, title_down, icon)
         for widget in self.widgets:
             if widget["item"] == "title_left":
-                _width = self.width - self.val_width
+                _width = self._width - self.val_width
                 self.title_left = TextItemLabel(self, height=self.height_1, width=_width, font_size=8, text=title_left)
                 self.box.glay.addWidget(self.title_left, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "icon":
@@ -1866,7 +1995,7 @@ class ParamBox(QFrame):
                 self.box.glay.addWidget(self.icon, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "valbox_1":
                 if self.item == "label":
-                    self.valbox_1 = TextItemLabel(self, height=self.height, width=self.val_width_1, bgr_alpha=0.15, text=value)
+                    self.valbox_1 = TextItemLabel(self, height=self._height, width=self.val_width_1, bgr_alpha=0.15, text=value)
                 elif self.item == "line_edit":
                     self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
                 elif self.item == "ruler":
@@ -1878,7 +2007,7 @@ class ParamBox(QFrame):
                 self.box.glay.addWidget(self.valbox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "valbox_2":
                 if self.item == "label":
-                    self.valbox_2 = TextItemLabel(self, height=self.height, width=self.val_width_1, bgr_alpha=0.15, text=value)
+                    self.valbox_2 = TextItemLabel(self, height=self._height, width=self.val_width_1, bgr_alpha=0.15, text=value)
                 elif self.item == "line_edit":
                     self.valbox_2 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
                 elif self.item == "ruler":
@@ -1897,26 +2026,27 @@ class ParamBox(QFrame):
                 self.titlebox_2 = TextItemLabel(self, height=10, align="left", width=val_width_2, font_size=6, font_weight="bold", font_alpha=0.6, text=title_down_2)
                 self.box.glay.addWidget(self.titlebox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
 
-    def compositor(self, title_left, value_2, title_down, icon):
+    def composer(self, value, value_2, title_left, title_down, icon):
         """Zwraca listę z ustawieniami kompozycji widgetów, w zależności od parametrów."""
         comp_val = 0
-        comp_val = comp_val + 1 if title_left else comp_val
+        comp_val = comp_val + 1 if value else comp_val
         comp_val = comp_val + 2 if value_2 else comp_val
-        comp_val = comp_val + 4 if title_down else comp_val
-        comp_val = comp_val + 8 if icon else comp_val
-        if comp_val == 4:
+        comp_val = comp_val + 4 if title_left else comp_val
+        comp_val = comp_val + 8 if title_down else comp_val
+        comp_val = comp_val + 16 if icon else comp_val
+        if comp_val == 9:  # 1
             widgets = [
                 {"row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "valbox_1"},
                 {"row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "line"},
                 {"row": 2, "col": 0, "r_span": 1, "c_span": 1, "item": "titlebox_1"}
             ]
-        elif comp_val == 1:
+        elif comp_val == 5:  # 2
             widgets = [
                 {"row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "title_left"},
                 {"row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "valbox_1"},
                 {"row": 1, "col": 0, "r_span": 1, "c_span": 2, "item": "line"}
             ]
-        elif comp_val == 7:
+        elif comp_val == 15:  # 3
             widgets = [
                 {"row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "title_left"},
                 {"row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "valbox_1"},
@@ -1926,7 +2056,7 @@ class ParamBox(QFrame):
                 {"row": 2, "col": 1, "r_span": 1, "c_span": 1, "item": "titlebox_1"},
                 {"row": 2, "col": 3, "r_span": 1, "c_span": 1, "item": "titlebox_2"}
             ]
-        elif comp_val == 14:
+        elif comp_val == 27:  # 4
             widgets = [
                 {"row": 0, "col": 0, "r_span": 3, "c_span": 1, "item": "icon"},
                 {"row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "valbox_1"},
@@ -1935,6 +2065,15 @@ class ParamBox(QFrame):
                 {"row": 1, "col": 1, "r_span": 1, "c_span": 3, "item": "line"},
                 {"row": 2, "col": 1, "r_span": 1, "c_span": 1, "item": "titlebox_1"},
                 {"row": 2, "col": 3, "r_span": 1, "c_span": 1, "item": "titlebox_2"}
+            ]
+        elif comp_val == 1:  # 5
+            widgets = [
+                {"row": 0, "col": 0, "r_span": 3, "c_span": 4, "item": "valbox_1"}
+            ]
+        elif comp_val == 8:  # 6
+            widgets = [
+                {"row": 0, "col": 0, "r_span": 1, "c_span": 4, "item": "line"},
+                {"row": 1, "col": 0, "r_span": 2, "c_span": 4, "item": "titlebox_1"}
             ]
         return widgets
 
@@ -3820,26 +3959,31 @@ class CanvasArrowlessComboBox(QComboBox):
     def set_value(self, val):
         """Ustawienie aktualnej wartości z db."""
         # Próba (bo może być jeszcze nie podłączony) odłączenia sygnału zmiany aktualnego indeksu combobox'a:
-        try:
-            self.currentIndexChanged.disconnect(self.index_changed)
-        except TypeError:
-            pass
-        if len(val) == 0:  # Wartość Null
+        self.signal_off()
+        if val and len(val) == 0:  # Wartość Null
             val = None
         idx = self.findData(val, flags=Qt.MatchExactly)
         if idx >= 0:
             self.setCurrentIndex(idx)
+            self.index_changed(idx, True)
         # Ponowne podpięcie sygnału zmiany indeksu:
         self.currentIndexChanged.connect(self.index_changed)
 
-    def index_changed(self, index):
+    def index_changed(self, index, fn_void=False):
         """Zmiana wartości przez użytkownika."""
         if self.itemData(index) == None:
             self.data_val = "Null"
         else:
             self.data_val = f"'{self.itemData(index)}'"
-        if self.fn:
+        if self.fn and not fn_void:
             self.run_fn()
+
+    def signal_off(self):
+        """Wyłączenie sygnału zmiany indeksu."""
+        try:
+            self.currentIndexChanged.disconnect(self.index_changed)
+        except TypeError:
+            pass
 
     def run_fn(self):
         """Odpalenie funkcji po zmianie wartości."""

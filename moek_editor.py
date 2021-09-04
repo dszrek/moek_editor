@@ -32,12 +32,7 @@ from qgis.utils import iface
 
 from .resources import resources
 
-from .main import dlg_main, db_login, teams_load, teams_cb_changed
-from .widgets import dlg_widgets
-from .layers import dlg_layers, PanelManager
-from .maptools import dlg_maptools
-from .viewnet import dlg_viewnet
-from .basemaps import dlg_basemaps
+from .main import db_login, teams_load, teams_cb_changed
 from .classes import GESync
 
 # Import the code for the DockWidget
@@ -247,28 +242,7 @@ class MoekEditor:
             #    removed on close (see self.onClosePlugin method)
             if self.dockwidget == None:
                 # Create the dockwidget (after translation) and keep reference
-                self.dockwidget = MoekEditorDockWidget()
-
-                # Zmienne globalne:
-                self.dockwidget.user_id = user_id
-                self.dockwidget.user_name = user_name
-                self.dockwidget.t_user_id = int()
-                self.dockwidget.t_user_name = ""
-                self.dockwidget.powiaty = []
-                self.dockwidget.powiat_i = int()
-                self.dockwidget.powiat_t = ""
-                self.dockwidget.team_users = []
-                self.dockwidget.teams = []
-                self.dockwidget.team_i = team_i
-                self.dockwidget.team_t = ""
-
-                dlg_widgets(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do widgets.py
-                dlg_main(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do main.py
-                dlg_layers(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do layers.py
-                dlg_maptools(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do maptools.py
-                dlg_viewnet(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
-                dlg_basemaps(self.dockwidget)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
-                self.dockwidget.cfg = PanelManager(dlg=self.dockwidget)  # Utworzenie menedżera ustawień paneli i warstw
+                self.dockwidget = MoekEditorDockWidget(user_id, user_name, team_i)
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)

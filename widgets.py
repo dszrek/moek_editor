@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import pandas as pd
+import datetime
 
 from qgis.core import QgsApplication, QgsVectorLayer, QgsVectorFileWriter
 from qgis.PyQt.QtWidgets import QApplication, QWidget, QSpinBox, QMessageBox, QFrame, QToolButton, QPushButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect, QTableView, QAbstractItemView, QStyle, QStyleOptionComboBox
@@ -518,29 +519,31 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "notepad_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"},
 
-                    {"name": "kopalina_wiek_1", "page": 1, "row": 0, "col": 4, "r_span": 2, "c_span": 8, "type": "kop_wiek"},
+                    {"name": "termin_1", "page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 8, "type": "termin"},
 
-                    {"name": "okres_eksp_1", "page": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 130, "val_width_2": 130, "sep_width": 6, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
+                    {"name": "kopalina_wiek_1", "page": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "kop_wiek"},
 
-                    {"name": "dlug_1", "page": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_eksp_1", "page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 130, "val_width_2": 130, "sep_width": 6, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
 
-                    {"name": "szer_1", "page": 1, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "dlug_1", "page": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "wys_1", "page": 1, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
+                    {"name": "szer_1", "page": 1, "row": 2, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "nadkl_1", "page": 1, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
+                    {"name": "wys_1", "page": 1, "row": 2, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
 
-                    {"name": "miaz_1", "page": 1, "row": 5, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "nadkl_1", "page": 1, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
 
-                    {"name": "droga_1", "page": 1, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "miaz_1", "page": 1, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "rodz_wyr_1", "page": 1, "row": 5, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "droga_1", "page": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "hydro_1", "page": 1, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "rodz_wyr_1", "page": 1, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "stan_1", "page": 1, "row": 5, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "hydro_1", "page": 1, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "notepad_1", "page": 1, "row": 6, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"},
+                    {"name": "stan_1", "page": 1, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "notepad_1", "page": 1, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"},
 
                     {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"}
                     ]
@@ -558,7 +561,7 @@ class WyrCanvasPanel(QFrame):
                 txt2_name = f'txt2_{dict["name"]}'
                 self.widgets[txt2_name] = _txt2
             if dict["type"] == "notepad":
-                _np = TextPadBox(self, height=110, obj="wyr", width=392)
+                _np = TextPadBox(self, height=110, obj="wyr", width=408)
                 exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_np, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 np_name = f'np_{dict["name"]}'
                 self.widgets[np_name] = _np
@@ -567,6 +570,11 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_kw, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 kw_name = 'kw_1'
                 self.widgets[kw_name] = _kw
+            if dict["type"] == "termin":
+                _gd = TerminBox(self)
+                exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_gd, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                gd_name = 'gd_1'
+                self.widgets[gd_name] = _gd
 
     def sl_load(self, tbl_name, cmb):
         """Załadowanie wartości słownikowych z db do combobox'a."""
@@ -590,6 +598,7 @@ class WyrCanvasPanel(QFrame):
             {'type': 'text_2', 'name': 'nadkl', 'value': _dict[14], 'value_2': _dict[15], 'pages': [1]},
             {'type': 'text_2', 'name': 'miaz', 'value': _dict[16], 'value_2': _dict[17], 'pages': [1]},
             {'type': 'kw','values': [_dict[36], _dict[37], _dict[38], _dict[39]], 'pages': [1]},
+            {'type': 'gd','values': [_dict[40], _dict[41], _dict[42]], 'pages': [1]},
             {'type': 'combo', 'name': 'droga', 'value': _dict[31], 'pages': [1]},
             {'type': 'combo', 'name': 'hydro', 'value': _dict[19], 'pages': [1]},
             {'type': 'combo', 'name': 'stan', 'value': _dict[35], 'pages': [1]},
@@ -611,6 +620,8 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.widgets["cmb_{param["name"]}_{self.cur_page}"].value_change("value", param_val)')
             if param["type"] == "kw":
                 exec(f'self.widgets["kw_1"].set_values({param["values"]})')
+            if param["type"] == "gd":
+                exec(f'self.widgets["gd_1"].set_values({param["values"]})')
 
     def param_parser(self, val, quote=False):
         """Zwraca wartość przerobioną na tekst (pusty, jeśli None)."""
@@ -1701,7 +1712,6 @@ class KopalinaWiekBox(QFrame):
         for cmb_val in cmb_vals:
             new_val = None if cmb_val[2] == 'Null' else cmb_val[2][1:-1]
             if cmb_val[1] != new_val:
-                print(f"{cmb_val[0]}: {cmb_val[1]} -> {cmb_val[2]}")
                 exec(f'{cmb_val[0]} = new_val')
                 val_sql = self.sql_parser(new_val)
                 db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr=cmb_val[3], val=val_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
@@ -1835,6 +1845,327 @@ class KopalinaWiekBox(QFrame):
             self.wiek_2.setVisible(False)
             self.plus_btn.setVisible(True) if self.k1_val else self.plus_btn.setVisible(False)
             self.minus_btn.setVisible(False)
+
+
+class TerminBox(QFrame):
+    """Widget ustalania dla wyrobiska godziny i daty kontroli terenowej, albo oznaczenia braku kontroli terenowej."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(130, 62)
+        self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
+        self.clock = MoekButton(self, name="clock", size=27, tooltip="godzina rozpoczęcia kontroli terenowej")
+        self.calendar = MoekButton(self, name="calendar", size=27, tooltip="data przeprowadzenia kontroli terenowej")
+        self.fchk = MoekButton(self, name="fchk", size=34, hsize=26, checkable=True, tooltip="nie przeprowadzono kontroli terenowej", tooltip_on="przeprowadzono kontrolę terenową")
+        self.fchk.clicked.connect(self.fchk_clicked)
+        self.dicts = [
+                    {"name": "self.th", "width": 28, "title_down": "GG", "max_len": 2, "validator": "hours"},
+                    {"name": "self.tm", "width": 28, "title_down": "MM", "max_len": 2, "validator": "minutes"},
+                    {"name": "self.dd", "width": 28, "title_down": "DD", "max_len": 2, "validator": "days"},
+                    {"name": "self.dm", "width": 28, "title_down": "MM", "max_len": 2, "validator": "months"},
+                    {"name": "self.dy", "width": 36, "title_down": "RRRR", "max_len": 4, "validator": "years"}
+                    ]
+        for dict in self.dicts:
+            fn = [['dlg.wyr_panel.widgets["gd_1"].val_changed()']]
+            _txt2 = ParamBox(self, item="line_edit", max_len=dict["max_len"], validator=dict["validator"], height=19, width=dict["width"], value=" ", val_width=dict["width"], title_down=dict["title_down"], fn=fn)
+            exec(f'{dict["name"]} = _txt2')
+        self.drawer = TerminDrawer(self)
+        self.composer()
+        self.val_void = True
+        self.t_val = None
+        self.d_val = None
+        self.th_val = None
+        self.tm_val = None
+        self.dd_val = None
+        self.dm_val = None
+        self.dy_val = None
+        self.fchk_val = False
+        self.val_void = False
+        self.d_copy = self.date_load()
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "th_val" and not self.val_void:
+            self.th.valbox_1.set_value(val)
+        if attr == "tm_val" and not self.val_void:
+            self.tm.valbox_1.set_value(val)
+        if attr == "dd_val" and not self.val_void:
+            self.dd.valbox_1.set_value(val)
+        if attr == "dm_val" and not self.val_void:
+            self.dm.valbox_1.set_value(val)
+        if attr == "dy_val" and not self.val_void:
+            self.dy.valbox_1.set_value(val)
+        if attr == "fchk_val" and not self.val_void:
+            if self.fchk.isChecked != val:
+                self.fchk.setChecked(val)
+            self.enable_fn(val)
+            if not val and self.t_val:
+                self.time_reset()
+            if not val and self.d_val:
+                self.date_reset()
+        if attr == "d_val" and not self.val_void:
+            self.drawer.date_copy.setToolTip(f"kopiuj datę: {val}") if val else self.drawer.date_copy.setToolTip(f"brak daty do skopiowania")
+            self.drawer.date_copy.setEnabled(True) if val else self.drawer.date_copy.setEnabled(False)
+        if attr == "d_copy":
+            self.drawer.date_paste.setToolTip(f"wklej datę: {val}") if val else self.drawer.date_paste.setToolTip(f"brak daty do wklejenia")
+            self.drawer.date_paste.setEnabled(True) if val else self.drawer.date_paste.setEnabled(False)
+
+    def date_load(self):
+        """Załadowanie wartości daty z db."""
+        db = PgConn()
+        sql = f"SELECT date_copy FROM public.team_users WHERE team_id = {dlg.team_i} and user_id = {dlg.user_id};"
+        if db:
+            res = db.query_sel(sql, False)
+            if res:
+                return res[0]
+
+    def enable_fn(self, _bool):
+        """Wyłączenie poszczególnych elementów box'u, jesli nie było kontroli terenowej."""
+        widgets = ["self.clock", "self.calendar", "self.th", "self.tm", "self.dd", "self.dm", "self.dy", "self.drawer"]
+        for widget in widgets:
+            obj = eval(widget)
+            if isinstance(obj, MoekButton):
+                obj.setEnabled(_bool)
+            else:
+                exec(f"{widget}.set_enabled(_bool)")
+
+    def val_changed(self):
+        """Zmieniono wartość jednej z części godziny lub daty."""
+        part_vals = [
+            ["self.th_val", self.th.valbox_1.text(), "time"],
+            ["self.tm_val", self.tm.valbox_1.text(), "time"],
+            ["self.dd_val", self.dd.valbox_1.text(), "date"],
+            ["self.dm_val", self.dm.valbox_1.text(), "date"],
+            ["self.dy_val", self.dy.valbox_1.text(), "date"]
+        ]
+        for part_val in part_vals:
+            if len(part_val[1]) == 0:
+                # Konwersja pustej wartości:
+                new_val = None
+            else:
+                new_val = part_val[1]
+            cur_val = eval(part_val[0])
+            if cur_val != new_val:
+                # Aktualizacja zmienionej wartości:
+                exec(f'{part_val[0]} = new_val')
+                if part_val[2] == "time":
+                    # Zmieniono część czasu:
+                    if (part_val[0] == "self.th_val" and not self.th_val) or (part_val[0] == "self.tm_val" and not self.tm_val):
+                        # Reset czasu po zmianie wartości na "pustą":
+                        self.time_reset()
+                        return
+                    if self.th_val and self.tm_val:
+                        # Wszystkie części są uzupełnione - ustalenie czasu:
+                        try:
+                            self.t_val = datetime.time(int(self.th_val), int(self.tm_val))
+                        except ValueError:
+                            return
+                    t_sql = self.sql_parser(self.t_val)
+                    db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="time_fchk", val=t_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+                    self.focus_switcher(part_val[0], part_val[2])
+                    return
+                else:
+                    # Zmieniono część daty:
+                    if self.dd_val and self.dm_val and (not self.dy_val and part_val[0] != "self.dy_val"):
+                        # Autouzupełnienie roku:
+                        self.dy_val = f"20{dlg.team_t[-2:]}"
+                    if (part_val[0] == "self.dd_val" and not self.dd_val) or (part_val[0] == "self.dm_val" and not self.dm_val) or (part_val[0] == "self.dy_val" and not self.dy_val):
+                        # Reset daty po zmianie wartości na "pustą":
+                        self.date_reset()
+                        return
+                    if self.dy_val and self.dm_val and self.dd_val:
+                        # Wszystkie części są uzupełnione - ustalenie daty:
+                        try:
+                            self.d_val = datetime.date(int(self.dy_val), int(self.dm_val), int(self.dd_val))
+                        except ValueError:
+                            return
+                    d_sql = self.sql_parser(self.d_val)
+                    db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_fchk", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+                    self.focus_switcher(part_val[0], part_val[2])
+                    return
+
+    def sql_parser(self, val):
+        """Zwraca wartość prawidłową dla formuły sql."""
+        return f"'{val}'" if val else 'Null'
+
+    def focus_switcher(self, obj_txt, cat):
+        """Przejście do kolejnego pustego parambox'a."""
+        if cat == "time":
+            val_list = ["self.th_val", "self.tm_val"]
+            obj_list = ["self.th.valbox_1", "self.tm.valbox_1"]
+            txt_list = [self.th.valbox_1.text(), self.tm.valbox_1.text()]
+        elif cat == "date":
+            val_list = ["self.dd_val", "self.dm_val", "self.dy_val"]
+            obj_list = ["self.dd.valbox_1", "self.dm.valbox_1", "self.dy.valbox_1"]
+            txt_list = [self.dd.valbox_1.text(), self.dm.valbox_1.text(), self.dy.valbox_1.text()]
+        idx = -1
+        i = -1
+        for val in val_list:
+            i += 1
+            if val == obj_txt:
+                idx = i
+                break
+        if idx == -1:
+            return
+        if idx == 0:
+            if len(txt_list[1]) == 0:
+                exec(f"{obj_list[1]}.setFocus()")
+        elif idx == 1:
+            if len(txt_list[0]) == 0:
+                exec(f"{obj_list[0]}.setFocus()")
+
+    def time_reset(self):
+        """Kasowanie wartości czasu."""
+        self.t_val = None
+        self.th_val = None
+        self.tm_val = None
+        t_sql = self.sql_parser(self.t_val)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="time_fchk", val=t_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+
+    def date_reset(self):
+        """Kasowanie wartości daty."""
+        self.d_val = None
+        self.dd_val = None
+        self.dm_val = None
+        self.dy_val = None
+        d_sql = self.sql_parser(self.d_val)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_fchk", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+
+    def set_values(self, val_list):
+        """Ustawienie wartości parambox'ów według danych z db."""
+        # Ustalenie aktualnych wartości godziny i daty:
+        if val_list[0]:
+            self.t_val = val_list[0]
+            self.th_val = str(self.t_val.hour).zfill(2)
+            self.tm_val = str(self.t_val.minute).zfill(2)
+        else:
+            self.t_val = None
+            self.th_val = None
+            self.tm_val = None
+        if val_list[1]:
+            self.d_val = val_list[1]
+            self.dd_val = str(self.d_val.day).zfill(2)
+            self.dm_val = str(self.d_val.month).zfill(2)
+            self.dy_val = str(self.d_val.year)
+        else:
+            self.d_val = None
+            self.dd_val = None
+            self.dm_val = None
+            self.dy_val = None
+        self.fchk_val = True if val_list[2] else False
+
+    def fchk_clicked(self):
+        """Aktualizacja wartości 'b_teren' w tabeli 'wyr_dane'."""
+        self.fchk_val = self.fchk.isChecked()
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_teren", val=self.fchk_val, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+
+    def date_copy(self):
+        """Aktualizacja wartości 'date_copy' zapisanej w db."""
+        self.d_copy = self.d_val
+        db_attr_change(tbl=f'public.team_users', attr='date_copy', val=f"'{self.d_copy}'", sql_bns=f' WHERE team_id = {dlg.team_i} AND user_id = {dlg.user_id}', user=False)
+
+    def date_paste(self):
+        """Wklejenie wartości 'date_copy' i zapisanie zmian w db."""
+        self.d_val = self.d_copy
+        self.dd_val = str(self.d_val.day).zfill(2)
+        self.dm_val = str(self.d_val.month).zfill(2)
+        self.dy_val = str(self.d_val.year)
+        d_sql = self.sql_parser(self.d_val)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_fchk", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+
+    def composer(self, slide=False):
+        """Ustalenie rozmieszczenia i widoczności widget'ów."""
+        if slide:
+            self.clock.setGeometry(3, 0, self.clock.width(), self.clock.height())
+            self.calendar.setVisible(False)
+            self.th.setGeometry(34, 0, self.th.width(), self.th.height())
+            self.tm.setGeometry(63, 0, self.tm.width(), self.tm.height())
+            self.dd.setGeometry(0, 29, self.dd.width(), self.dd.height())
+            self.dm.setGeometry(29, 29, self.dm.width(), self.dm.height())
+            self.dy.setGeometry(58, 29, self.dy.width(), self.dy.height())
+            self.fchk.setGeometry(94, 0, self.fchk.width(), self.fchk.height())
+            self.drawer.setGeometry(89, 29, self.drawer.width(), self.drawer.height())
+        else:
+            self.clock.setGeometry(3, 0, self.clock.width(), self.clock.height())
+            self.calendar.setVisible(True)
+            self.calendar.setGeometry(3, 29, self.calendar.width(), self.calendar.height())
+            self.th.setGeometry(34, 0, self.th.width(), self.th.height())
+            self.tm.setGeometry(63, 0, self.tm.width(), self.tm.height())
+            self.dd.setGeometry(34, 29, self.dd.width(), self.dd.height())
+            self.dm.setGeometry(63, 29, self.dm.width(), self.dm.height())
+            self.dy.setGeometry(92, 29, self.dy.width(), self.dy.height())
+            self.fchk.setGeometry(94, 0, self.fchk.width(), self.fchk.height())
+            self.drawer.setGeometry(123, 29, self.drawer.width(), self.drawer.height())
+
+
+class TerminDrawer(QFrame):
+    """Wysuwane menu dla TerminBox'u."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setCursor(Qt.ArrowCursor)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(42, 18)
+        self.setObjectName("main")
+        self.line = QFrame(self)
+        self.line.setFixedSize(1, 14)
+        self.line.setObjectName("line")
+        self.date_copy = MoekButton(self, name="date_copy", size=16, checkable=False, tooltip="kopiowanie daty")
+        self.date_copy.clicked.connect(self.date_copy_clicked)
+        self.date_paste = MoekButton(self, name="date_paste", size=16, checkable=False, tooltip="wklejenie daty")
+        self.date_paste.clicked.connect(self.date_paste_clicked)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(6, 0, 0, 0)
+        hlay.setSpacing(2)
+        hlay.addWidget(self.line)
+        hlay.setAlignment(self.line, Qt.AlignVCenter)
+        hlay.addWidget(self.date_copy)
+        hlay.setAlignment(self.date_copy, Qt.AlignVCenter)
+        hlay.addWidget(self.date_paste)
+        hlay.setAlignment(self.date_paste, Qt.AlignVCenter)
+        self.setLayout(hlay)
+        self.slide_void = True
+        self.slided = False
+        self.slide_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "slided" and not self.slide_void:
+            self.sliding()
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        alpha = 0.6 if self.isEnabled() else 0.1
+        self.setStyleSheet("""
+                    QFrame#main {background-color: transparent; border: none}
+                    QFrame#line {background-color: rgba(255, 255, 255, """ + str(alpha) + """); border: none}
+                    """)
+
+    def sliding(self):
+        self.parent().composer(slide=self.slided)
+
+    def enterEvent(self, event):
+        if self.isEnabled():
+            self.slided = True
+
+    def leaveEvent(self, event):
+        self.slided = False
+
+    def date_copy_clicked(self):
+        """Skopiowanie wartości daty do db."""
+        self.parent().date_copy()
+
+    def date_paste_clicked(self):
+        """Wklejenie wartości skopiowanej daty."""
+        self.parent().date_paste()
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        self.setEnabled(_bool)
+        self.set_style()
+
 
 class FlagTools(QFrame):
     """Menu przyborne dla flag."""
@@ -2029,6 +2360,12 @@ class ParamBox(QFrame):
                 self.titlebox_2 = TextItemLabel(self, height=10, align="left", width=val_width_2, font_size=6, font_weight="bold", font_alpha=0.6, text=title_down_2)
                 self.box.glay.addWidget(self.titlebox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
 
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        widgets = (self.box.glay.itemAt(i).widget() for i in range(self.box.glay.count()))
+        for widget in widgets:
+            widget.set_enabled(_bool)
+
     def composer(self, value, value_2, title_left, title_down, icon):
         """Zwraca listę z ustawieniami kompozycji widgetów, w zależności od parametrów."""
         comp_val = 0
@@ -2141,21 +2478,50 @@ class TextItemLabel(QLabel):
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
         self.setText(text)
-        if align == "center":
-            self.setAlignment(Qt.AlignCenter)
-            self.setStyleSheet(f" background-color: rgba(255, 255, 255, {bgr_alpha}); color: rgba(255, 255, 255, {font_alpha}); font-size: {font_size}pt; font-weight: {font_weight}; padding: 0px 0px 0px 0px ")
-        elif align == "left":
-            self.setAlignment(Qt.AlignLeft)
-            self.setStyleSheet(f" background-color: rgba(255, 255, 255, {bgr_alpha}); color: rgba(255, 255, 255, {font_alpha}); font-size: {font_size}pt; font-weight: {font_weight}; padding: 0px 6px 0px 0px ")
+        self.align = align
+        self.font_size = font_size
+        self.font_weight = font_weight
+        self.font_alpha = font_alpha
+        self.bgr_alpha = bgr_alpha
+        self.set_style()
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        font_alpha = self.font_alpha if self.isEnabled() else 0.1
+        padding = "0px 0px 0px 0px" if self.align == "center" else "0px 6px 0px 0px"
+        self.setAlignment(Qt.AlignCenter) if self.align == "center" else self.setAlignment(Qt.AlignLeft)
+        self.setStyleSheet(f"""
+                            background-color: rgba(255, 255, 255, {self.bgr_alpha});
+                            color: rgba(255, 255, 255, {font_alpha});
+                            font-size: {self.font_size}pt;
+                            font-weight: {self.font_weight};
+                            padding: {padding};
+                            """)
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie widget'u poleceniem zewnętrznym."""
+        self.setEnabled(_bool)
+        self.set_style()
 
 
 class MoekHLine(QFrame):
     """Linia pozioma."""
     def __init__(self, *args, px=1):
         super().__init__(*args)
-        # self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setFixedHeight(px)
-        self.setStyleSheet("QFrame {background-color: rgba(255, 255, 255, 0.6)}")
+        self.set_style()
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        alpha = 0.6 if self.isEnabled() else 0.1
+        self.setStyleSheet(f"""
+                            background-color: rgba(255, 255, 255, {alpha});
+                            """)
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie widget'u poleceniem zewnętrznym."""
+        self.setEnabled(_bool)
+        self.set_style()
 
 
 class IdSpinBox(QFrame):
@@ -2222,6 +2588,16 @@ class CanvasLineEdit(QLineEdit):
             self.setValidator(QRegExpValidator(QRegExp("[0-9]*") ))
         elif self.validator == "00.0":
             self.setValidator(QRegExpValidator(QRegExp("([0-9]|[,]|[.])*") ))
+        elif self.validator == "hours":
+            self.setValidator(QRegExpValidator(QRegExp("^([1-9]|0[1-9]|1[0-9]|2[0-3])") ))
+        elif self.validator == "minutes":
+            self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1-5]?[0-9]$") ))
+        elif self.validator == "days":
+            self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1-2]?[0-9]$|^[3][0-1]$") ))
+        elif self.validator == "months":
+            self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1][0-2]$") ))
+        elif self.validator == "years":
+            self.setValidator(QRegExpValidator(QRegExp("^1[8-9]$|^2[0-3]$|^201[8-9]$|^202[0-3]$") ))
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
         self.fn = fn
         self.placeholder = placeholder
@@ -2257,12 +2633,18 @@ class CanvasLineEdit(QLineEdit):
                 self.numerical = False
             self.value_changed()
 
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie widget'u poleceniem zewnętrznym."""
+        self.setEnabled(_bool)
+        self.set_style()
+
+
     def set_value(self, val):
         """Próba zmiany wartości."""
-        if len(str(val)) == 0:  # Wartość Null
+        if not val or len(str(val)) == 0:  # Wartość Null
             self.cur_val = None if self.null_allowed else self.cur_val
             return
-        if self.validator == '00.0' or self.validator == '000':
+        if self.validator == "00.0" or self.validator == "000":
             # Próba konwersji tekstu na wartość float:
             num_val = self.numeric_formater(val)
             self.numerical = True if num_val != -1 else False
@@ -2270,6 +2652,27 @@ class CanvasLineEdit(QLineEdit):
                 self.cur_val = str(num_val)
             else:
                 self.cur_val = self.cur_val
+        if self.validator == "years":
+            if len(val) == 2:
+                # Uzupełnienie wartości roku do formatu 4-cyfrowego:
+                val = '20' + val
+            elif len(val) == 1 or len(val) == 3:
+                # Wartość roku niepełna:
+                self.cur_val = self.cur_val
+                return
+            if int(val) >= 2018 and int(val) <= 2023:
+                # Ograniczenie wartości roku do przedziału 2018-2023:
+                self.cur_val = val
+            else:
+                self.cur_val = self.cur_val
+        # Dodanie zera do formatu dwucyfrowego:
+        v_double = ["hours", "minutes", "days", "months"]
+        if self.validator in v_double:
+            if int(val) == 0:
+                # Uniemożliwienie ustalenia wartości 0:
+                self.cur_val = self.cur_val
+                return
+            self.cur_val = str(val).zfill(2)
         else:
             self.cur_val = val
 
@@ -2297,7 +2700,10 @@ class CanvasLineEdit(QLineEdit):
 
     def set_style(self):
         """Modyfikacja stylesheet przy hoveringu lub zmianie tekstu."""
-        alpha = 0.3 if self.hover else 0.2
+        if self.isEnabled():
+            alpha = 0.3 if self.hover else 0.2
+        else:
+            alpha = 0.1
         if self.placeholder:
             font_color = "0, 0, 0, 0.3" if self.grey else self.color
         else:
@@ -2315,7 +2721,8 @@ class CanvasLineEdit(QLineEdit):
 
     def enterEvent(self, event):
         super().enterEvent(event)
-        self.hover = True
+        if self.isEnabled():
+            self.hover = True
 
     def leaveEvent(self, event):
         super().leaveEvent(event)
@@ -3623,20 +4030,29 @@ class MoekStackedBox(QStackedWidget):
 
 class MoekButton(QToolButton):
     """Fabryka guzików."""
-    def __init__(self, *args, size=25, hsize=0, name="", icon="", visible=True, enabled=True, checkable=False, tooltip=""):
+    def __init__(self, *args, size=25, hsize=0, name="", icon="", visible=True, enabled=True, checkable=False, tooltip="", tooltip_on=None):
         super().__init__(*args)
         name = icon if len(icon) > 0 else name
+        self.name = name
         self.shown = visible  # Dubluje setVisible() - .isVisible() może zależeć od rodzica
         self.setVisible(visible)
         self.setEnabled(enabled)
         self.setCheckable(checkable)
         self.setToolTip(tooltip)
+        self.tooltip_on = tooltip_on
         self.setToolButtonStyle(Qt.ToolButtonIconOnly)
         self.setAutoRaise(True)
         self.setStyleSheet("QToolButton {border: none}")
         self.set_icon(name, size, hsize)
         self.setMouseTracking(True)
         self.setCursor(Qt.ArrowCursor)
+        if self.tooltip_on:
+            self.tooltip = tooltip
+            self.toggled.connect(self.toggle)
+
+    def toggle(self, checked):
+        """Aktualizacja tooltip'u po zmianie stanu przycisku."""
+        self.setToolTip(self.tooltip_on) if checked else self.setToolTip(self.tooltip)
 
     def set_icon(self, name, size=25, hsize=0):
         """Ładowanie ikon do guzika."""
@@ -3963,9 +4379,10 @@ class CanvasArrowlessComboBox(QComboBox):
         """Ustawienie aktualnej wartości z db."""
         # Próba (bo może być jeszcze nie podłączony) odłączenia sygnału zmiany aktualnego indeksu combobox'a:
         self.signal_off()
-        if val and len(val) == 0:  # Wartość Null
-            val = None
-        idx = self.findData(val, flags=Qt.MatchExactly)
+        if not val or (val and len(val) == 0):  # Wartość Null
+            idx = 0
+        else:
+            idx = self.findData(val, flags=Qt.MatchExactly)
         if idx >= 0:
             self.setCurrentIndex(idx)
             self.index_changed(idx, True)

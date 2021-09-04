@@ -330,7 +330,7 @@ class ObjectManager:
     def wyr_update(self):
         """Zwraca dane wyrobiska."""
         db = PgConn()
-        sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2 FROM team_" + str(dlg.team_i) + ".wyr_dane AS d INNER JOIN team_" + str(dlg.team_i) + ".wyrobiska AS w USING(wyr_id) WHERE wyr_id = '" + str(self.wyr) + "';"
+        sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_fchk, d.b_teren FROM team_" + str(dlg.team_i) + ".wyr_dane AS d INNER JOIN team_" + str(dlg.team_i) + ".wyrobiska AS w USING(wyr_id) WHERE wyr_id = '" + str(self.wyr) + "';"
         if db:
             res = db.query_sel(sql, False)
             if not res:

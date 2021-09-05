@@ -523,7 +523,7 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "kopalina_wiek_1", "page": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "kop_wiek"},
 
-                    {"name": "okres_eksp_1", "page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 130, "val_width_2": 130, "sep_width": 6, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
+                    {"name": "okres_eksp_1", "page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 134, "val_width_2": 131, "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
 
                     {"name": "dlug_1", "page": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
@@ -1655,14 +1655,10 @@ class KopalinaWiekBox(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(266, 62)
+        self.setFixedSize(268, 62)
         self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
         self.df_kopalina = self.sl_pd_load("sl_kopalina")
         self.df_wiek = self.sl_pd_load("sl_wiek")
-        self.plus_btn = MoekButton(self, name="kw_plus", size=17)
-        self.plus_btn.clicked.connect(self.plus_clicked)
-        self.minus_btn = MoekButton(self, name="kw_minus", size=17)
-        self.minus_btn.clicked.connect(self.minus_clicked)
         self.dicts = [
                     {"name": "self.kopalina_1", "width": 180, "attr": "kopalina", "title_down": None, "val_display": False},
                     {"name": "self.kopalina_2", "width": 180, "attr": "kopalina_2", "title_down": None, "val_display": False},
@@ -1682,6 +1678,8 @@ class KopalinaWiekBox(QFrame):
                 value = None
             _cmb = ParamBox(self, item="combo_tv", height=height, width=dict["width"], value=value, val_width=dict["width"], title_down=dict["title_down"], val_display=dict["val_display"], fn=fn)
             exec(f'{dict["name"]} = _cmb')
+        self.drawer = KopalinaWiekDrawer(self)
+        self.second = False
         self.val_void = True
         self.k1_val = None
         self.k2_val = None
@@ -1808,43 +1806,111 @@ class KopalinaWiekBox(QFrame):
 
     def plus_clicked(self):
         """Akcja po naciśnięciu przycisku 'plus_btn'."""
-        self.composer(add_second=True)
+        self.second = True
+        self.composer()
 
     def minus_clicked(self):
         """Akcja po naciśnięciu przycisku 'minus_btn'."""
+        self.second = False
         self.k2_val = None
         self.w2_val = None
         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr='t_kopalina_2', val='Null', sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr='t_wiek_2', val='Null', sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
         self.composer()
 
-    def composer(self, add_second=False):
+    def composer(self):
         """Ustalenie rozmieszczenia i widoczności widget'ów."""
-        if self.k2_val or self.w2_val or add_second:  # Druga kopalina (lub wiek) jest ustalona albo przycisk plusa został naciśnięty
+        slide = True if self.drawer.slided else False
+        w = 66 if slide else 85
+        d = 243 if slide else 261
+        self.drawer.setGeometry(d, 24, self.drawer.width(), self.drawer.height())
+        self.kopalina_2.setGeometry(0, 24, self.kopalina_2.width(), self.kopalina_2.height())
+        self.wiek_2.setGeometry(181, 24, self.wiek_2.width(), self.wiek_2.height())
+        self.kopalina_title.setGeometry(0, 47, self.kopalina_title.width(), self.kopalina_title.height())
+        self.wiek_title.setGeometry(181, 47, self.wiek_title.width(), self.wiek_title.height())
+        if self.k2_val or self.w2_val or self.second:
+            # Druga kopalina (lub wiek) jest ustalona albo przycisk plusa został naciśnięty
+            self.wiek_1.setFixedWidth(85)
+            self.wiek_title.setFixedWidth(85)
+            self.wiek_2.setFixedWidth(w)
+            self.wiek_title.setFixedWidth(w)
             self.kopalina_1.setGeometry(0, 0, self.kopalina_1.width(), self.kopalina_1.height())
             self.wiek_1.setGeometry(181, 0, self.wiek_1.width(), self.wiek_1.height())
-            self.kopalina_2.setGeometry(0, 24, self.kopalina_2.width(), self.kopalina_2.height())
-            self.wiek_2.setGeometry(181, 24, self.wiek_2.width(), self.wiek_2.height())
-            self.kopalina_title.setGeometry(0, 47, self.kopalina_title.width(), self.kopalina_title.height())
-            self.wiek_title.setGeometry(181, 47, self.wiek_title.width(), self.wiek_title.height())
-            self.minus_btn.setGeometry(249, 27, self.minus_btn.width(), self.minus_btn.height())
             self.kopalina_2.setVisible(True)
             self.wiek_2.setVisible(True)
-            self.plus_btn.setVisible(False)
-            self.minus_btn.setVisible(True)
+            self.drawer.plus_btn.setVisible(False)
+            self.drawer.minus_btn.setVisible(True)
         else:
-            self.kopalina_1.setGeometry(0, 24, self.kopalina_1.width(), self.kopalina_1.height())
-            w = 66 if self.k1_val else 85
             self.wiek_1.setFixedWidth(w)
             self.wiek_title.setFixedWidth(w)
+            self.kopalina_1.setGeometry(0, 24, self.kopalina_1.width(), self.kopalina_1.height())
             self.wiek_1.setGeometry(181, 24, self.wiek_1.width(), self.wiek_1.height())
-            self.wiek_title.setGeometry(181, 47, self.wiek_title.width(), self.wiek_title.height())
-            self.kopalina_title.setGeometry(0, 47, self.kopalina_title.width(), self.kopalina_title.height())
-            self.plus_btn.setGeometry(249, 27, self.plus_btn.width(), self.plus_btn.height())
             self.kopalina_2.setVisible(False)
             self.wiek_2.setVisible(False)
-            self.plus_btn.setVisible(True) if self.k1_val else self.plus_btn.setVisible(False)
-            self.minus_btn.setVisible(False)
+            self.drawer.plus_btn.setVisible(True) if self.k1_val else self.drawer.plus_btn.setVisible(False)
+            self.drawer.minus_btn.setVisible(False)
+
+
+class KopalinaWiekDrawer(QFrame):
+    """Wysuwane menu dla KopalinaWiekBox'u."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setCursor(Qt.ArrowCursor)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(23, 23)
+        self.setObjectName("main")
+        self.plus_btn = MoekButton(self, name="kw_plus", size=17)
+        self.plus_btn.clicked.connect(self.parent().plus_clicked)
+        self.minus_btn = MoekButton(self, name="kw_minus", size=17)
+        self.minus_btn.clicked.connect(self.parent().minus_clicked)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(6, 0, 0, 0)
+        hlay.setSpacing(0)
+        hlay.addWidget(self.plus_btn)
+        hlay.setAlignment(self.plus_btn, Qt.AlignVCenter)
+        hlay.addWidget(self.minus_btn)
+        hlay.setAlignment(self.minus_btn, Qt.AlignVCenter)
+        self.setLayout(hlay)
+        self.slide_void = True
+        self.slided = False
+        self.slide_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "slided" and not self.slide_void:
+            self.sliding()
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        alpha = 0.6 if self.isEnabled() else 0.1
+        self.setStyleSheet("""
+                    QFrame#main {background-color: transparent; border: none}
+                    QFrame#line {background-color: rgba(255, 255, 255, """ + str(alpha) + """); border: none}
+                    """)
+
+    def sliding(self):
+        self.parent().composer()
+
+    def enterEvent(self, event):
+        if self.isEnabled():
+            self.slided = True
+
+    def leaveEvent(self, event):
+        self.slided = False
+
+    # def plus_clicked(self):
+    #     """Skopiowanie wartości daty do db."""
+    #     self.parent().plus_clicked()
+
+    # def minus_clicked(self):
+    #     """Wklejenie wartości skopiowanej daty."""
+    #     self.parent().date_paste()
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        self.setEnabled(_bool)
+        self.set_style()
 
 
 class TerminBox(QFrame):
@@ -2309,6 +2375,7 @@ class ParamBox(QFrame):
         self.height_1 = height if not margins else height
         self.val_width = val_width + val_width_2 + sep_width if value_2 else val_width
         self.val_width_1 = val_width if title_left or icon else self._width
+        self.val_width_2 = val_width_2 if title_left or icon else self._width
         _height = self._height + 10 if title_down else self._height
         self.setFixedSize(width, _height)
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
@@ -2341,11 +2408,11 @@ class ParamBox(QFrame):
                 self.box.glay.addWidget(self.valbox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "valbox_2":
                 if self.item == "label":
-                    self.valbox_2 = TextItemLabel(self, height=self._height, width=self.val_width_1, bgr_alpha=0.15, text=value)
+                    self.valbox_2 = TextItemLabel(self, height=self._height, width=self.val_width_2, bgr_alpha=0.15, text=value)
                 elif self.item == "line_edit":
-                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
+                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
                 elif self.item == "ruler":
-                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
+                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=self.height_1, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
                 self.box.glay.addWidget(self.valbox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "separator":
                 self.separator = TextItemLabel(self, height=self.height_1, width=sep_width, text=sep_txt)
@@ -2637,7 +2704,6 @@ class CanvasLineEdit(QLineEdit):
         """Włączenie/wyłączenie widget'u poleceniem zewnętrznym."""
         self.setEnabled(_bool)
         self.set_style()
-
 
     def set_value(self, val):
         """Próba zmiany wartości."""

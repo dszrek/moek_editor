@@ -440,7 +440,7 @@ class WyrCanvasPanel(QFrame):
         self.setFixedWidth(516)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
-        self.heights = [268, 460, 225]
+        self.heights = [268, 480, 225]
         self.mt_enabled = False
         self.cur_page = int()
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
@@ -517,7 +517,7 @@ class WyrCanvasPanel(QFrame):
         self.dicts = [
                     {"name": "okres_eksp_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 125, "val_width_2": 125, "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
 
-                    {"name": "notepad_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"},
+                    {"name": "notepad_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad", "title": "NOTATKI"},
 
                     {"name": "termin_1", "page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 8, "type": "termin"},
 
@@ -543,9 +543,9 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "stan_1", "page": 1, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "notepad_1", "page": 1, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"},
+                    {"name": "notepad_1", "page": 1, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad", "title": "UWAGI POKONTROLNE"},
 
-                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad"}
+                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad", "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA"}
                     ]
 
         for dict in self.dicts:
@@ -561,7 +561,8 @@ class WyrCanvasPanel(QFrame):
                 txt2_name = f'txt2_{dict["name"]}'
                 self.widgets[txt2_name] = _txt2
             if dict["type"] == "notepad":
-                _np = TextPadBox(self, height=110, obj="wyr", width=408)
+                fn = ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']
+                _np = ParamTextBox(self, margins=True, height=82, width=402, edit=True, title=dict["title"], fn=fn)
                 exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_np, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 np_name = f'np_{dict["name"]}'
                 self.widgets[np_name] = _np
@@ -608,8 +609,8 @@ class WyrCanvasPanel(QFrame):
             if not self.cur_page in param["pages"]:
                 continue
             if param["type"] == "notepad":
-                txt = self.param_parser(param["value"], True)
-                exec(f'self.widgets["np_notepad_{self.cur_page}"].set_text({txt})')
+                txt = self.param_parser(param["value"], False)
+                exec(f'self.widgets["np_notepad_{self.cur_page}"].value_change(txt)')
             if param["type"] == "text_2":
                 param_1 = self.param_parser(param["value"])
                 param_2 = self.param_parser(param["value_2"])
@@ -745,7 +746,9 @@ class FlagCanvasPanel(QFrame):
         self.sp_tools.lay.addWidget(self.flag_tools)
         self.sp_notepad = CanvasHSubPanel(self, height=110)
         self.box.lay.addWidget(self.sp_notepad)
-        self.notepad_box = TextPadBox(self, height=110, obj="flag")
+        fn = ['self.db_update(txt_val=self.cur_val, tbl=f"team_{str(dlg.team_i)}.flagi", attr="t_notatki", sql_bns=f" WHERE id = {dlg.obj.flag}")']
+        self.notepad_box = ParamTextBox(self, margins=True, height=82, width=332, edit=True, title="NOTATKI", fn=fn)
+        #TextPadBox(self, height=110, obj="flag")
         self.sp_notepad.lay.addWidget(self.notepad_box)
 
     def exit_clicked(self):
@@ -882,45 +885,45 @@ class WnCanvasPanel(QFrame):
         self.sp_id.lay.addWidget(self.id_box)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_id.lay.addItem(spacer)
-        self.params_1 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
+        self.params_1 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_1)
         self.kopalina = ParamBox(self, width=217, title_down="KOPALINA")
         self.params_1.lay.addWidget(self.kopalina)
         self.data_inw = ParamBox(self, width=103, title_down="DATA INWENTARYZACJI")
         self.params_1.lay.addWidget(self.data_inw)
-        self.params_2 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
+        self.params_2 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_2)
         self.wyrobisko = ParamBox(self, title_down="WYROBISKO")
         self.params_2.lay.addWidget(self.wyrobisko)
         self.zawodn = ParamBox(self, title_down="ZAWODNIENIE")
         self.params_2.lay.addWidget(self.zawodn)
-        self.params_3 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
+        self.params_3 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_3)
         self.eksploat = ParamBox(self, title_down="EKSPLOATACJA")
         self.params_3.lay.addWidget(self.eksploat)
         self.odpady = ParamBox(self, title_down="WYPEŁNIENIE ODPADAMI")
         self.params_3.lay.addWidget(self.odpady)
-        self.params_4 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
+        self.params_4 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_4)
         self.dlug_max = ParamBox(self, title_left="Długość maks. [m]:")
         self.params_4.lay.addWidget(self.dlug_max)
         self.szer_max = ParamBox(self, title_left="Szerokość maks. [m]:")
         self.params_4.lay.addWidget(self.szer_max)
-        self.params_5 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
+        self.params_5 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_5)
         self.wysokosc = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Wysokość wyrobiska [m]:")
         self.params_5.lay.addWidget(self.wysokosc)
-        self.params_6 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
+        self.params_6 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_6)
         self.nadklad = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Grubość nadkładu [m]:")
         self.params_6.lay.addWidget(self.nadklad)
-        self.params_7 = CanvasHSubPanel(self, height=44, margins=[8, 0, 8, 0], spacing=8)
+        self.params_7 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_7)
         self.miazsz = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Miąższość kopaliny [m]:")
         self.params_7.lay.addWidget(self.miazsz)
-        self.params_8 = CanvasHSubPanel(self, height=90, margins=[8, 0, 8, 0], spacing=8)
+        self.params_8 = CanvasHSubPanel(self, height=98, margins=[8, 0, 8, 0], spacing=8)
         self.box.lay.addWidget(self.params_8)
-        self.uwagi = ParamTextBox(self, title="UWAGI")
+        self.uwagi = ParamTextBox(self, height=82, title="UWAGI")
         self.params_8.lay.addWidget(self.uwagi)
         self.bottom_margin = CanvasHSubPanel(self, height=4)
         self.box.lay.addWidget(self.bottom_margin)
@@ -1822,7 +1825,7 @@ class KopalinaWiekBox(QFrame):
         """Ustalenie rozmieszczenia i widoczności widget'ów."""
         slide = True if self.drawer.slided else False
         w = 66 if slide else 85
-        d = 243 if slide else 261
+        d = 241 if slide else 260
         self.drawer.setGeometry(d, 24, self.drawer.width(), self.drawer.height())
         self.kopalina_2.setGeometry(0, 24, self.kopalina_2.width(), self.kopalina_2.height())
         self.wiek_2.setGeometry(181, 24, self.wiek_2.width(), self.wiek_2.height())
@@ -1857,7 +1860,7 @@ class KopalinaWiekDrawer(QFrame):
         super().__init__(*args)
         self.setCursor(Qt.ArrowCursor)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(23, 23)
+        self.setFixedSize(26, 23)
         self.setObjectName("main")
         self.plus_btn = MoekButton(self, name="kw_plus", size=17)
         self.plus_btn.clicked.connect(self.parent().plus_clicked)
@@ -1899,14 +1902,6 @@ class KopalinaWiekDrawer(QFrame):
     def leaveEvent(self, event):
         self.slided = False
 
-    # def plus_clicked(self):
-    #     """Skopiowanie wartości daty do db."""
-    #     self.parent().plus_clicked()
-
-    # def minus_clicked(self):
-    #     """Wklejenie wartości skopiowanej daty."""
-    #     self.parent().date_paste()
-
     def set_enabled(self, _bool):
         """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
         self.setEnabled(_bool)
@@ -1934,7 +1929,7 @@ class TerminBox(QFrame):
                     ]
         for dict in self.dicts:
             fn = [['dlg.wyr_panel.widgets["gd_1"].val_changed()']]
-            _txt2 = ParamBox(self, item="line_edit", max_len=dict["max_len"], validator=dict["validator"], height=19, width=dict["width"], value=" ", val_width=dict["width"], title_down=dict["title_down"], fn=fn)
+            _txt2 = ParamBox(self, item="line_edit", max_len=dict["max_len"], validator=dict["validator"], height=18, down_height=10, width=dict["width"], value=" ", val_width=dict["width"], title_down=dict["title_down"], fn=fn)
             exec(f'{dict["name"]} = _txt2')
         self.drawer = TerminDrawer(self)
         self.composer()
@@ -2366,65 +2361,66 @@ class ParkingTools(QFrame):
 class ParamBox(QFrame):
     """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem).
     item: label, line_edit, ruler."""
-    def __init__(self, *args, margins=False, width=160, height=24, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, fn=None):
+    def __init__(self, *args, margins=False, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.item = item
-        self._width = width
-        self._height = height if not margins else height + 8
-        self.height_1 = height if not margins else height
+        _width = width
+        _height = height
+        down_height = down_height if title_down else 0
+        margin_height = 8 if margins else 0
+        all_height = _height + 1 + down_height + margin_height
         self.val_width = val_width + val_width_2 + sep_width if value_2 else val_width
-        self.val_width_1 = val_width if title_left or icon else self._width
-        self.val_width_2 = val_width_2 if title_left or icon else self._width
-        _height = self._height + 10 if title_down else self._height
-        self.setFixedSize(width, _height)
+        self.val_width_1 = val_width if title_left or icon else _width
+        self.val_width_2 = val_width_2 if title_left or icon else _width
+        self.setFixedSize(width, all_height)
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
         lay = QVBoxLayout()
-        self.box = MoekGridBox(self, margins=[0, 0, 0, 0], spacing=0)
-        lay.addWidget(self.box)
         lay.setContentsMargins(0, 4, 0, 4) if margins else lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
         self.setLayout(lay)
+        self.box = MoekGridBox(self, margins=[0, 0, 0, 0], spacing=0)
+        lay.addWidget(self.box)
         self.widgets = self.composer(value, value_2, title_left, title_down, icon)
         for widget in self.widgets:
             if widget["item"] == "title_left":
-                _width = self._width - self.val_width
-                self.title_left = TextItemLabel(self, height=self.height_1, width=_width, font_size=8, text=title_left)
+                _width = _width - self.val_width
+                self.title_left = TextItemLabel(self, height=_height, width=_width, font_size=8, text=title_left)
                 self.box.glay.addWidget(self.title_left, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "icon":
                 self.icon = MoekButton(self, name=icon, size=34, checkable=False, enabled=False, tooltip=tooltip)
                 self.box.glay.addWidget(self.icon, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "valbox_1":
                 if self.item == "label":
-                    self.valbox_1 = TextItemLabel(self, height=self._height, width=self.val_width_1, bgr_alpha=0.15, text=value)
+                    self.valbox_1 = TextItemLabel(self, height=_height, width=self.val_width_1, bgr_alpha=0.15, text=value)
                 elif self.item == "line_edit":
-                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
+                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
                 elif self.item == "ruler":
-                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=self.height_1, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
+                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
                 elif self.item == "combo":
-                    self.valbox_1 = CanvasArrowlessComboBox(self, border=0, height=23, font_size=8, fn=fn)
+                    self.valbox_1 = CanvasArrowlessComboBox(self, border=0, height=_height, font_size=8, fn=fn)
                 elif self.item == "combo_tv":
-                    self.valbox_1 = CanvasArrowlessComboBox(self, border=0, height=23, font_size=8, tv=True, val_display=val_display, fn=fn)
+                    self.valbox_1 = CanvasArrowlessComboBox(self, border=0, height=_height, font_size=8, tv=True, val_display=val_display, fn=fn)
                 self.box.glay.addWidget(self.valbox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "valbox_2":
                 if self.item == "label":
-                    self.valbox_2 = TextItemLabel(self, height=self._height, width=self.val_width_2, bgr_alpha=0.15, text=value)
+                    self.valbox_2 = TextItemLabel(self, height=_height, width=self.val_width_2, bgr_alpha=0.15, text=value)
                 elif self.item == "line_edit":
-                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=self.height_1, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
+                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=_height, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
                 elif self.item == "ruler":
-                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=self.height_1, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
+                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
                 self.box.glay.addWidget(self.valbox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "separator":
-                self.separator = TextItemLabel(self, height=self.height_1, width=sep_width, text=sep_txt)
+                self.separator = TextItemLabel(self, height=_height, width=sep_width, text=sep_txt)
                 self.box.glay.addWidget(self.separator, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "line":
                 self.line = MoekHLine(self)
                 self.box.glay.addWidget(self.line, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "titlebox_1":
-                self.titlebox_1 = TextItemLabel(self, height=10, width=self.val_width_1, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title_down)
+                self.titlebox_1 = TextItemLabel(self, height=down_height, width=self.val_width_1, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title_down)
                 self.box.glay.addWidget(self.titlebox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "titlebox_2":
-                self.titlebox_2 = TextItemLabel(self, height=10, align="left", width=val_width_2, font_size=6, font_weight="bold", font_alpha=0.6, text=title_down_2)
+                self.titlebox_2 = TextItemLabel(self, height=down_height, align="left", width=val_width_2, font_size=6, font_weight="bold", font_alpha=0.6, text=title_down_2)
                 self.box.glay.addWidget(self.titlebox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
 
     def set_enabled(self, _bool):
@@ -2501,41 +2497,161 @@ class ParamBox(QFrame):
 
 
 class ParamTextBox(QFrame):
-    """Widget do wyświetlania parametru tekstowego (np. uwagi) wraz z nagłówkiem."""
-    def __init__(self, *args, width=328, height=80, title=None):
+    """Widget do wyświetlania i edycji parametru tekstowego (np. uwagi) wraz z nagłówkiem."""
+    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.width = width
-        self.height = height
-        _height = self.height + 10 if title else self.height
-        self.setFixedSize(width, _height)
-        self.vlay = QVBoxLayout()
-        self.vlay.setContentsMargins(0, 0, 0, 0)
-        self.vlay.setSpacing(0)
-        self.setLayout(self.vlay)
-        self.txtbox = TextViewer(self, height=self.height, width=self.width)
-        self.vlay.addWidget(self.txtbox)
+        _width = width
+        _height = height
+        down_height = down_height if title else 0
+        margin_height = 8 if margins else 0
+        all_height = _height + 1 + down_height + margin_height
+        self.setFixedSize(width, all_height)
+        lay = QVBoxLayout()
+        lay.setContentsMargins(0, 4, 0, 4) if margins else lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        self.setLayout(lay)
+        self.box = MoekVBox(self, margins=[0, 0, 0, 0], spacing=0)
+        lay.addWidget(self.box)
+        self.txtbox = TextBox(self, height=_height, width=_width, edit=edit, fn=fn)
+        self.box.lay.addWidget(self.txtbox)
         self.line = MoekHLine(self)
-        self.vlay.addWidget(self.line)
+        self.box.lay.addWidget(self.line)
         if title:
-            self.titlebox = TextItemLabel(self, height=10, width=self.width, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title)
-            self.vlay.addWidget(self.titlebox)
+            self.titlebox = TextItemLabel(self, height=down_height, width=_width, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title)
+            self.box.lay.addWidget(self.titlebox)
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
 
-    def value_change(self, value):
+    def value_change(self, val):
         """Zmienia wyświetlany tekst."""
-        self.txtbox.setPlainText(value) if value else self.txtbox.clear()
+        self.txtbox.cur_val = val
 
 
-class TextViewer(QPlainTextEdit):
-    """Wyświetla tekst bez możliwości edycji."""
-    def __init__(self, *args, width, height):
+class TextBox(QPlainTextEdit):
+    """Wyświetla tekst z możliwością edycji."""
+    def __init__(self, *args, width, height, edit, fn):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
         self.setBackgroundVisible(False)
-        self.setReadOnly(True)
-        self.setStyleSheet("QPlainTextEdit {background-color: rgba(255, 255, 255, 0.1); color: white; font-size: 8pt; padding: 0px 0px 0px 0px}")
+        self.fn = fn
+        self.edit = edit
+        self.setReadOnly(not self.edit)
+        if not self.edit:
+            self.viewport().setCursor(Qt.ArrowCursor)
+        self.hover = False
+        self.focus = False
+        self.cur_val = None
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "hover":
+            if hasattr(self, "focus"):
+                self.set_style()
+        if attr == "focus":
+            if hasattr(self, "hover"):
+                self.set_style()
+        if attr == "cur_val":
+            self.value_changed()
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie widget'u poleceniem zewnętrznym."""
+        self.setEnabled(_bool)
+        self.set_style()
+
+    def set_value(self, val):
+        """Próba zmiany wartości."""
+        if not val or len(str(val)) == 0:  # Wartość Null
+            self.cur_val = None
+        else:
+            self.cur_val = val
+
+    def db_update(self, txt_val, tbl, attr, sql_bns):
+        """Aktualizacja wartości 't_notatki' w db."""
+        if not txt_val:
+            sql_text = "NULL"
+        else:
+            txt = txt_val.replace("'", "''")
+            sql_text = f"'{txt}'"
+        db_attr_change(tbl=tbl, attr=attr, val=sql_text, sql_bns=sql_bns, user=False)
+
+    def value_changed(self):
+        """Aktualizacja tekstu po zmianie wartości."""
+        self.setPlainText(self.cur_val) if self.cur_val else self.clear()
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        if self.isEnabled():
+            alpha = 0.3 if self.hover or self.focus else 0.2
+        else:
+            alpha = 0.1
+        self.setStyleSheet("""
+                            QPlainTextEdit {background-color: rgba(255, 255, 255, """ + str(alpha) + """);
+                            color: white;
+                            font-size: 8pt;
+                            padding: 0px 0px 0px 0px}
+                            QScrollBar:vertical {
+                                border: 0px solid #999999;
+                                background: transparent;
+                                width: 14px;
+                                margin: 4px 3px 4px 3px;
+                            }
+                            QScrollBar::handle:vertical {
+                                min-height: 30px;
+                                border: 0px solid red;
+                                border-radius: 4px;
+                                background-color: rgba(0, 0, 0, 0.6);
+                            }
+                            QScrollBar::add-line:vertical {
+                                height: 0px;
+                                subcontrol-position: bottom;
+                                subcontrol-origin: margin;
+                            }
+                            QScrollBar::sub-line:vertical {
+                                height: 0 px;
+                                subcontrol-position: top;
+                                subcontrol-origin: margin;
+                            }
+                            """)
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        if self.isEnabled() and self.edit:
+            self.hover = True
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        if self.edit:
+            self.hover = False
+
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        if self.edit:
+            self.focus = True
+
+    def focusOutEvent(self, event):
+        super().focusOutEvent(event)
+        if not self.edit:
+            return
+        self.focus = False
+        self.set_value(self.toPlainText())
+        if self.fn:
+            self.run_fn()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
+            self.clearFocus()
+        else:
+            super().keyPressEvent(event)
+
+    def run_fn(self):
+        """Odpalenie funkcji po zmianie wartości."""
+        for fn in self.fn:
+            try:
+                exec(eval("f'{}'".format(fn)))
+            except Exception as err:
+                print(f"[run_fn] Błąd zmiany wartości: {err}")
 
 
 class TextItemLabel(QLabel):
@@ -2556,7 +2672,7 @@ class TextItemLabel(QLabel):
         """Modyfikacja stylesheet."""
         font_alpha = self.font_alpha if self.isEnabled() else 0.1
         padding = "0px 0px 0px 0px" if self.align == "center" else "0px 6px 0px 0px"
-        self.setAlignment(Qt.AlignCenter) if self.align == "center" else self.setAlignment(Qt.AlignLeft)
+        self.setAlignment(Qt.AlignCenter) if self.align == "center" else self.setAlignment(Qt.AlignLeft| Qt.AlignVCenter)
         self.setStyleSheet(f"""
                             background-color: rgba(255, 255, 255, {self.bgr_alpha});
                             color: rgba(255, 255, 255, {font_alpha});
@@ -2673,8 +2789,6 @@ class CanvasLineEdit(QLineEdit):
         self.mt_enabled = False
         self.focused = False
         self.hover = False
-        self.temp_val = None
-        self.pressed = False
         self.grey = False
         self.numerical = False
         self.cur_val = None

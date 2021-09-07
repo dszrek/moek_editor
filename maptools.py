@@ -65,7 +65,8 @@ class ObjectManager:
                 self.flag_data = self.flag_update()
                 self.list_position_check("flag")
                 self.dlg.flag_panel.flag_tools.fchk = self.flag_data[1]  # Aktualizacja przycisku fchg
-                self.dlg.flag_panel.notepad_box.set_text(self.flag_data[2])  # Aktualizacja tekstu notatki
+                txt = self.param_parser(self.flag_data[2])
+                self.dlg.flag_panel.notepad_box.value_change(txt)  # Aktualizacja tekstu notatki
                 if self.wn:
                     # Wyłączenie panelu wn, jeśli jest włączony:
                     self.wn = None
@@ -262,6 +263,10 @@ class ObjectManager:
                 self.p_vn = False
                 dlg.hk_vn = True
 
+    def param_parser(self, val):
+        """Zwraca wartość przerobioną na tekst (pusty, jeśli None)."""
+        return f'{val}' if val != None else f''
+
     def object_prevnext(self, _obj, next):
         """Aktywuje kolejną flagę z listy."""
         if _obj == "flag":
@@ -394,37 +399,6 @@ class ObjectManager:
             self.pan_to_object(_obj)
         else:
             exec(id_box + ' = ' + obj)
-
-    def set_object_text(self, _obj):
-        """Zmiana tekstu w notepadzie."""
-        if _obj == "flag":
-            widget = self.dlg.flag_panel.notepad_box
-            table = f"team_{str(dlg.team_i)}.flagi"
-            bns = f" WHERE id = {self.flag}"
-            upd = "self.flag = self.flag"
-        elif _obj == "wyr":
-            widget = self.dlg.wyr_panel.get_notepad()
-            table = f"team_{str(dlg.team_i)}.wyrobiska"
-            bns = f" WHERE wyr_id = {self.wyr}"
-            upd = "self.wyr = self.wyr"
-        elif _obj == "wn":
-            widget = self.dlg.wn_panel.notepad_box
-            table = f"external.wn_pne"
-            bns = f" WHERE id_arkusz = '{self.wn}'"
-            upd = "self.wn = self.wn"
-        raw_text = widget.get_text()
-        if not raw_text:
-            text = "NULL"
-        else:
-            raw_text = raw_text.replace("'", "''")
-            text = f"'{raw_text}'"
-        attr_chg = db_attr_change(tbl=table, attr="t_notatki", val=text, sql_bns=bns, user=False)
-        if not attr_chg:
-            print("Nie zmieniono tekstu notatki obiektu")
-            return False
-        else:
-            exec(upd)  # Aktualizacja danych obiektu
-            return True
 
     def list_position_check(self, _obj):
         """Sprawdza pozycję flagi, wyrobiska, parking lub punktu WN_PNE na liście."""

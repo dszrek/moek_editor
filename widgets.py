@@ -437,16 +437,15 @@ class WyrCanvasPanel(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedWidth(516)
+        self.setFixedSize(516, 490)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
-        self.heights = [268, 480, 225]
+        self.p_heights = [378, 350, 378]
         self.mt_enabled = False
-        self.cur_page = int()
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
-        self.list_box = MoekVBox(self, spacing=1)
+        self.list_box = MoekVBox(self, spacing=0)
         self.list_box.setFixedWidth(96)
-        self.sp_id = CanvasHSubPanel(self, height=34, margins=[0, 0, 0, 0], color="255, 255, 255", alpha=0.8)
+        self.sp_id = CanvasHSubPanel(self, height=34, margins=[0, 0, 0, 0], spacing=0, color="255, 255, 255", alpha=0.94)
         self.list_box.lay.addWidget(self.sp_id)
         self.id_box = IdSpinBox(self, _obj="wyr", theme="light")
         self.sp_id.lay.addWidget(self.id_box)
@@ -477,12 +476,12 @@ class WyrCanvasPanel(QFrame):
         vlay.addWidget(self.bar)
         vlay.addLayout(hlay)
         self.setLayout(vlay)
-        self.sp_main = CanvasHSubPanel(self, margins=[4, 0, 0, 0], spacing=2, height=34)
+        self.sp_main = CanvasHSubPanel(self, margins=[4, 0, 0, 0], spacing=2, height=34, alpha=0.94)
         self.box.lay.addWidget(self.sp_main)
         self.wn_picker = WyrWnPicker(self)
         self.sp_main.lay.addWidget(self.wn_picker)
-        spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
-        self.sp_main.lay.addItem(spacer)
+        spacer_1 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.sp_main.lay.addItem(spacer_1)
         self.area_icon = MoekButton(self, name="wyr_area", size=34, checkable=False, enabled=False, tooltip="powierzchnia wyrobiska")
         self.sp_main.lay.addWidget(self.area_icon)
         self.area_label = PanelLabel(self, text="", size=12)
@@ -493,105 +492,143 @@ class WyrCanvasPanel(QFrame):
         self.wyr_del = MoekButton(self, name="trash", size=34, checkable=False)
         self.wyr_del.clicked.connect(self.wyr_delete)
         self.sp_main.lay.addWidget(self.wyr_del)
-        self.sp_status = CanvasHSubPanel(self, height=34, margins=[4, 2, 4, 4], spacing=4)
+        self.sp_status = CanvasHSubPanel(self, height=34, margins=[4, 2, 4, 4], spacing=4, alpha=0.94)
         self.box.lay.addWidget(self.sp_status)
         self.status_indicator = WyrStatusIndicator(self)
         self.sp_status.lay.addWidget(self.status_indicator)
         self.status_selector = WyrStatusSelector(self, width=68)
         self.sp_status.lay.addWidget(self.status_selector)
-        self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        self.separator_1 = CanvasHSubPanel(self, height=2, alpha=0.0)
         self.box.lay.addWidget(self.separator_1)
-        self.sb = MoekStackedBox(self)
+        self.tab_box = TabBox(self)
+        self.box.lay.addWidget(self.tab_box)
+        self.sb = CanvasStackedBox(self, alpha=0.94)
         self.sb.setFixedWidth(412)
         self.box.lay.addWidget(self.sb)
+        self.sb.currentChanged.connect(self.page_change)
         self.pages = {}
+        self.subpages = {}
         self.widgets = {}
         for p in range(3):
-            _page = MoekGridBox(self, margins=[4, 4, 0, 2], spacing=0, theme="dark")
+            _page = CanvasGridBox(self, height=self.p_heights[p], margins=[4, 4, 0, 2], spacing=0)
             page_id = f'page_{p}'
             self.pages[page_id] = _page
             self.sb.addWidget(_page)
-        self.sb.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
-        self.sb.currentChanged.connect(self.page_change)
-        self.height_change()  # Wstępne ustalenie wysokości panelu
+        self.ssb = CanvasStackedBox(self)
+        self.ssb.setFixedWidth(406)
+        self.pages["page_1"].glay.glay.addWidget(self.ssb, 1, 0, 1, 1)
+        for s in range(6):
+            _subpage = CanvasGridBox(self, height=350, margins=[0, 6, 0, 0], spacing=0)
+            subpage_id = f'subpage_{s}'
+            self.subpages[subpage_id] = _subpage
+            self.ssb.addWidget(_subpage)
+        self.tab_box.cur_idx = 0
         self.dicts = [
                     {"name": "okres_eksp_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 125, "val_width_2": 125, "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
 
-                    {"name": "notepad_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad", "title": "NOTATKI"},
+                    {"name": "notepad_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "NOTATKI", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "termin_1", "page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 8, "type": "termin"},
+                    {"name": "termin_1", "page": 1, "subpage": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 8, "type": "termin"},
 
-                    {"name": "kopalina_wiek_1", "page": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "kop_wiek"},
+                    {"name": "kopalina_wiek_1", "page": 1, "subpage": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "kop_wiek"},
 
-                    {"name": "okres_eksp_1", "page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 134, "val_width_2": 131, "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
+                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 134, "val_width_2": 131, "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
 
-                    {"name": "dlug_1", "page": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "dlug_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "szer_1", "page": 1, "row": 2, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "szer_1", "page": 1, "subpage": 0, "row": 2, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "wys_1", "page": 1, "row": 2, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
+                    {"name": "wys_1", "page": 1, "subpage": 0, "row": 2, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
 
-                    {"name": "nadkl_1", "page": 1, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
+                    {"name": "nadkl_1", "page": 1, "subpage": 0, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
 
-                    {"name": "miaz_1", "page": 1, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "miaz_1", "page": 1, "subpage": 0, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "droga_1", "page": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "droga_1", "page": 1, "subpage": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "rodz_wyr_1", "page": 1, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "rodz_wyr_1", "page": 1, "subpage": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "hydro_1", "page": 1, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "hydro_1", "page": 1, "subpage": 0, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "stan_1", "page": 1, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "stan_1", "page": 1, "subpage": 0, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "notepad_1", "page": 1, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad", "title": "UWAGI POKONTROLNE"},
+                    {"name": "notepad_1", "page": 1, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "UWAGI POKONTROLNE", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "notepad", "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA"}
+                    {"name": "zagrozenia_1", "page": 1, "subpage": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI", "trigger": "trigger_empty('zagrozenia', 2)", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_zagrozenia", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_empty('rekultywacja', 3)", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": False, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "zgloszenie_1", "page": 1, "subpage": 5, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Zgłoszenie do OUG, Starosty lub WIOŚ, inne:", "title_down": None, "tbl_name": "sl_zgloszenie", "null_val": False, "trigger": "trigger_zgloszenie()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zgloszenie", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "powod_1", "page": 1, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
                     ]
 
         for dict in self.dicts:
             if dict["type"] == "combo":
-                _cmb = ParamBox(self, margins=True, item="combo", width=dict["width"], val_width=dict["width"], title_down=dict["title_down"], fn=dict["fn"])
-                exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_cmb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                _cmb = ParamBox(self, margins=True, item="combo", width=dict["width"], val_width=dict["val_width"], title_down=dict["title_down"], title_left=dict["title_left"], trigger=dict["trigger"], fn=dict["fn"])
+                exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_cmb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 cmb_name = f'cmb_{dict["name"]}'
                 self.widgets[cmb_name] = _cmb
-                self.sl_load(dict["tbl_name"], self.widgets[cmb_name].valbox_1)
+                self.sl_load(dict["tbl_name"], self.widgets[cmb_name].valbox_1, dict["null_val"])
             if dict["type"] == "text_2":
                 _txt2 = ParamBox(self, margins=True, item=dict["item"], max_len=dict["max_len"], validator=dict["validator"], placeholder=dict["placeholder"], zero_allowed=dict["zero_allowed"], width=dict["width"], value_2=" ", val_width=dict["val_width"], val_width_2=dict["val_width_2"], sep_width=dict["sep_width"], sep_txt=dict["sep_txt"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], icon=dict["icon"], tooltip=dict["tooltip"], fn=dict["fn"])
-                exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_txt2, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                if "subpage" in dict:
+                    exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_txt2, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                else:
+                    exec(f'self.pages["page_{dict["page"]}"].glay.glay.addWidget(_txt2, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 txt2_name = f'txt2_{dict["name"]}'
                 self.widgets[txt2_name] = _txt2
-            if dict["type"] == "notepad":
-                fn = ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']
-                _np = ParamTextBox(self, margins=True, height=82, width=402, edit=True, title=dict["title"], fn=fn)
-                exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_np, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
-                np_name = f'np_{dict["name"]}'
-                self.widgets[np_name] = _np
+            if dict["type"] == "text_box":
+                _tb = ParamTextBox(self, margins=True, height=82, width=402, edit=True, title=dict["title"], trigger=dict["trigger"], fn=dict["fn"])
+                if "subpage" in dict:
+                    exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_tb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                else:
+                    exec(f'self.pages["page_{dict["page"]}"].glay.glay.addWidget(_tb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                tb_name = f'tb_{dict["name"]}'
+                self.widgets[tb_name] = _tb
             if dict["type"] == "kop_wiek":
                 _kw = KopalinaWiekBox(self)
-                exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_kw, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_kw, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 kw_name = 'kw_1'
                 self.widgets[kw_name] = _kw
             if dict["type"] == "termin":
                 _gd = TerminBox(self)
-                exec(f'self.pages["page_{dict["page"]}"].glay.addWidget(_gd, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_gd, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 gd_name = 'gd_1'
                 self.widgets[gd_name] = _gd
 
-    def sl_load(self, tbl_name, cmb):
+        self.cur_page = None
+
+    # def __setattr__(self, attr, val):
+    #     """Przechwycenie zmiany atrybutu."""
+    #     super().__setattr__(attr, val)
+    #     if attr == "cur_subpage":
+    #         self.ssb.setCurrentIndex(val)
+    #         self.tab_box.cur_idx = val
+
+    def sl_load(self, tbl_name, cmb, null_val=True):
         """Załadowanie wartości słownikowych z db do combobox'a."""
         db = PgConn()
         sql = f"SELECT t_val, t_desc FROM public.{tbl_name};"
         if db:
             res = db.query_sel(sql, True)
             if res:
-                cmb.addItem(f"", None)
+                if null_val:
+                    cmb.addItem(f"", None)
                 for r in res:
                     cmb.addItem(f"  {r[1]}  ", r[0])
 
     def values_update(self, _dict):
         """Aktualizuje wartości parametrów."""
         params = [
-            {'type': 'notepad', 'value': _dict[7], 'pages': [0, 1, 2]},
+            {'type': 'text_box', 'name': 'notepad','value': _dict[7], 'pages': [0, 1, 2]},
+            {'type': 'text_box', 'name': 'rekultywacja','value': _dict[30], 'pages': [1]},
+            {'type': 'text_box', 'name': 'zagrozenia','value': _dict[32], 'pages': [1]},
+            {'type': 'text_box', 'name': 'powod','value': _dict[34], 'pages': [1]},
             {'type': 'text_2', 'name': 'okres_eksp', 'value': _dict[5], 'value_2': _dict[6], 'pages': [0, 1]},
             {'type': 'text_2', 'name': 'dlug', 'value': _dict[8], 'value_2': _dict[9], 'pages': [1]},
             {'type': 'text_2', 'name': 'szer', 'value': _dict[10], 'value_2': _dict[11], 'pages': [1]},
@@ -603,14 +640,16 @@ class WyrCanvasPanel(QFrame):
             {'type': 'combo', 'name': 'droga', 'value': _dict[31], 'pages': [1]},
             {'type': 'combo', 'name': 'hydro', 'value': _dict[19], 'pages': [1]},
             {'type': 'combo', 'name': 'stan', 'value': _dict[35], 'pages': [1]},
-            {'type': 'combo', 'name': 'rodz_wyr', 'value': _dict[18], 'pages': [1]}
+            {'type': 'combo', 'name': 'rodz_wyr', 'value': _dict[18], 'pages': [1]},
+            {'type': 'combo', 'name': 'wyp_odpady', 'value': _dict[22], 'pages': [1]},
+            {'type': 'combo', 'name': 'zgloszenie', 'value': _dict[33], 'pages': [1]}
         ]
         for param in params:
             if not self.cur_page in param["pages"]:
                 continue
-            if param["type"] == "notepad":
+            if param["type"] == "text_box":
                 txt = self.param_parser(param["value"], False)
-                exec(f'self.widgets["np_notepad_{self.cur_page}"].value_change(txt)')
+                exec(f'self.widgets["tb_{param["name"]}_{self.cur_page}"].value_change(txt)')
             if param["type"] == "text_2":
                 param_1 = self.param_parser(param["value"])
                 param_2 = self.param_parser(param["value_2"])
@@ -632,9 +671,39 @@ class WyrCanvasPanel(QFrame):
             txt = f'{val}' if val != None else f''
         return txt
 
-    def get_notepad(self):
-        """Zwraca referencję do notepad_box'a z odpowiedniej strony."""
-        return self.widgets[f"np_notepad_{self.cur_page}"]
+    def trigger_zgloszenie(self):
+        """Wykonywane po zmianie wartości combobox'u 'zgloszenie'."""
+        val = self.widgets["cmb_zgloszenie_1"].valbox_1.data_val
+        if not val:
+            return
+        if val[1:-1] == 'brak':
+            dlg.wyr_panel.tab_box.widgets["btn_5"].active = False
+            self.widgets["tb_powod_1"].set_enabled(False)
+            if self.widgets["tb_powod_1"].txtbox.cur_val:
+                self.widgets["tb_powod_1"].txtbox.cur_val = None
+                self.widgets["tb_powod_1"].txtbox.db_update(txt_val=None, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")
+        else:
+            dlg.wyr_panel.tab_box.widgets["btn_5"].active = True
+            self.widgets["tb_powod_1"].set_enabled(True)
+
+    def trigger_odpady(self):
+        """Wykonywane po zmianie wartości combobox'u 'wyp_odpady'."""
+        val = self.widgets["cmb_wyp_odpady_1"].valbox_1.data_val
+        print(f'[trigger_odpady]: {val}')
+        if not val:
+            return
+        if val[1:-1] == '0':
+            dlg.wyr_panel.tab_box.widgets["btn_4"].active = False
+        else:
+            dlg.wyr_panel.tab_box.widgets["btn_4"].active = True
+
+    def trigger_empty(self, tb_name, tab_idx):
+        """Zmiana stanu 'active' dla przycisku tabbox'u po zmianie wartości paramtextbox'u'."""
+        val = self.widgets[f"tb_{tb_name}_1"].txtbox.cur_val
+        if val:
+            dlg.wyr_panel.tab_box.widgets[f"btn_{tab_idx}"].active = True
+        else:
+            dlg.wyr_panel.tab_box.widgets[f"btn_{tab_idx}"].active = False
 
     def wdf_sel_change(self):
         """Zmiana zaznaczonego wiersza w tv_wdf."""
@@ -669,7 +738,6 @@ class WyrCanvasPanel(QFrame):
         dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.set_value(miaz_val) if min_max == "min" else dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.set_value(miaz_val)
         dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.run_fn() if min_max == "min" else dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.run_fn()
 
-
     def wdf_sel_update(self):
         """Aktualizacja zaznaczenia wiersza w tv_wdf."""
         index = self.tv_wdf.model().match(self.tv_wdf.model().index(0, 1), Qt.DisplayRole, str(dlg.obj.wyr))
@@ -685,11 +753,6 @@ class WyrCanvasPanel(QFrame):
     def page_change(self, index):
         """Zmiana aktywnej strony stackedbox'a."""
         self.cur_page = index
-        self.height_change()  # Aktualizacja wysokości dock'u
-
-    def height_change(self):
-        """Zmiana wysokości dock'u i aktualizacja pozycji na mapcanvas'ie."""
-        self.setFixedHeight(self.heights[self.cur_page])
 
     def exit_clicked(self):
         """Zmiana trybu active po kliknięciu na przycisk io."""
@@ -726,7 +789,7 @@ class FlagCanvasPanel(QFrame):
         self.box.setObjectName("box")
         self.setStyleSheet("""
                     QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
-                    QFrame#box{background-color: transparent; border: none}
+                    QFrame#box{background-color: rgba(40, 40, 40, 0.94); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(3, 3, 3, 3)
@@ -744,10 +807,10 @@ class FlagCanvasPanel(QFrame):
         self.sp_tools.lay.addItem(spacer)
         self.flag_tools = FlagTools(self)
         self.sp_tools.lay.addWidget(self.flag_tools)
-        self.sp_notepad = CanvasHSubPanel(self, height=110)
+        self.sp_notepad = CanvasHSubPanel(self, height=102)
         self.box.lay.addWidget(self.sp_notepad)
         fn = ['self.db_update(txt_val=self.cur_val, tbl=f"team_{str(dlg.team_i)}.flagi", attr="t_notatki", sql_bns=f" WHERE id = {dlg.obj.flag}")']
-        self.notepad_box = ParamTextBox(self, margins=True, height=82, width=332, edit=True, title="NOTATKI", fn=fn)
+        self.notepad_box = ParamTextBox(self, height=82, width=332, edit=True, title="NOTATKI", fn=fn)
         #TextPadBox(self, height=110, obj="flag")
         self.sp_notepad.lay.addWidget(self.notepad_box)
 
@@ -770,7 +833,7 @@ class ParkingCanvasPanel(QFrame):
         self.box.setObjectName("box")
         self.setStyleSheet("""
                     QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
-                    QFrame#box{background-color: transparent; border: none}
+                    QFrame#box{background-color: rgba(40, 40, 40, 0.94); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(3, 3, 3, 3)
@@ -788,10 +851,6 @@ class ParkingCanvasPanel(QFrame):
         self.sp_tools.lay.addItem(spacer)
         self.parking_tools = ParkingTools(self)
         self.sp_tools.lay.addWidget(self.parking_tools)
-        # self.sp_notepad = CanvasHSubPanel(self, height=110)
-        # self.box.lay.addWidget(self.sp_notepad)
-        # self.notepad_box = TextPadBox(self, height=110, obj="flag")
-        # self.sp_notepad.lay.addWidget(self.notepad_box)
 
     def exit_clicked(self):
         """Zmiana trybu active po kliknięciu na przycisk io."""
@@ -814,8 +873,8 @@ class MarszCanvasPanel(QFrame):
         self.box.setObjectName("box")
         self.box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setStyleSheet("""
-                    QFrame#main{background-color: transparent; border: none}
-                    QFrame#box{background-color: rgba(0,0,0,0.6); border: none}
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
+                    QFrame#box{background-color: rgba(40, 40, 40, 0.94); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(0, 0, 0, 0)
@@ -865,7 +924,7 @@ class WnCanvasPanel(QFrame):
         self.box.setObjectName("box")
         self.setStyleSheet("""
                     QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
-                    QFrame#box{background-color: transparent; border: none}
+                    QFrame#box{background-color: rgba(40, 40, 40, 0.94); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(3, 3, 3, 3)
@@ -984,7 +1043,7 @@ class ExportCanvasPanel(QFrame):
         self.box.setObjectName("box")
         self.setStyleSheet("""
                     QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
-                    QFrame#box{background-color: transparent; border: none}
+                    QFrame#box{background-color: rgba(40, 40, 40, 0.94); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(3, 3, 3, 3)
@@ -1223,7 +1282,7 @@ class CanvasPanelTitleBar(QFrame):
             self.l_title = PanelLabel(self, text=title, size=font_size)
             self.l_title.setFixedWidth(width - 34)
         self.setStyleSheet("""
-                    QFrame#bar{background-color: rgba(0, 0, 0, 1.0); border: none}
+                    QFrame#bar{background-color: rgba(40, 40, 40, 0.95); border: none}
                     QFrame#title {color: rgb(255, 255, 255); font-size: """ + str(font_size) + """pt; qproperty-alignment: AlignCenter}
                     """)
         hlay = QHBoxLayout()
@@ -1243,7 +1302,7 @@ class CanvasPanelTitleBar(QFrame):
 
 class CanvasHSubPanel(QFrame):
     """Belka canvaspanel'u z box'em."""
-    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, color="0, 0, 0", alpha=0.8):
+    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, color="40, 40, 40", alpha=0.0):
         super().__init__(*args)
         self.setObjectName("main")
         self.setFixedHeight(height)
@@ -1255,17 +1314,6 @@ class CanvasHSubPanel(QFrame):
         self.lay.setSpacing(spacing)
         self.setLayout(self.lay)
 
-
-class CanvasStackedSubPanel(QStackedWidget):
-    """Subpanel ze stronami."""
-    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, alpha=0.8):
-        super().__init__(*args)
-        self.setObjectName("main")
-
-        def minimumSizeHint(self):
-            self.setMinimumHeight(self.currentWidget().minimumSizeHint().height())
-            self.setMaximumHeight(self.currentWidget().minimumSizeHint().height())
-            return self.currentWidget().minimumSizeHint()
 
 class WnPowSelector(QFrame):
     """Belka wyboru aktywnych powiatów dla punktu WN_PNE."""
@@ -1566,6 +1614,7 @@ class WyrStatusSelector(QFrame):
         super().__setattr__(attr, val)
         if attr == "case":
             self.case_change()
+            dlg.wyr_panel.tab_box.setVisible(True) if val == 1 else dlg.wyr_panel.tab_box.setVisible(False)
 
     def set_case(self, after_fchk, confirmed):
         """Ustala 'case' na podstawie atrybutów wyrobiska."""
@@ -1823,7 +1872,16 @@ class KopalinaWiekBox(QFrame):
 
     def composer(self):
         """Ustalenie rozmieszczenia i widoczności widget'ów."""
-        slide = True if self.drawer.slided else False
+        _second = True if self.k2_val or self.w2_val or self.second else False
+        _slide = True if self.drawer.slided else False
+        _k1 = True if self.k1_val else False
+        if not _slide:
+            slide = False
+        else:
+            if _second:
+                slide = True
+            else:
+                slide = True if _k1 else False
         w = 66 if slide else 85
         d = 241 if slide else 260
         self.drawer.setGeometry(d, 24, self.drawer.width(), self.drawer.height())
@@ -1831,7 +1889,7 @@ class KopalinaWiekBox(QFrame):
         self.wiek_2.setGeometry(181, 24, self.wiek_2.width(), self.wiek_2.height())
         self.kopalina_title.setGeometry(0, 47, self.kopalina_title.width(), self.kopalina_title.height())
         self.wiek_title.setGeometry(181, 47, self.wiek_title.width(), self.wiek_title.height())
-        if self.k2_val or self.w2_val or self.second:
+        if _second:
             # Druga kopalina (lub wiek) jest ustalona albo przycisk plusa został naciśnięty
             self.wiek_1.setFixedWidth(85)
             self.wiek_title.setFixedWidth(85)
@@ -2358,10 +2416,112 @@ class ParkingTools(QFrame):
         dlg.obj.parking_ids = get_parking_ids(dlg.cfg.parking_case())
 
 
+class TabBox(QFrame):
+    """Widget wyświetlający przyciski do przełączania subpage'y w formularzu wyrobiska."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(412, 28)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(0)
+        self.setLayout(self.lay)
+        self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
+        self.widgets = {}
+        self.btns = [
+            {"index": 0, "title": "CHARAKTERYSTYKA", "active": True},
+            {"index": 1, "title": "MIDAS", "active": False},
+            {"index": 2, "title": "ZAGROŻENIA", "active": False},
+            {"index": 3, "title": "REKULTYWACJA", "active": False},
+            {"index": 4, "title": "ODPADY", "active": False},
+            {"index": 5, "title": "ZGŁOSZENIE", "active": False}
+        ]
+        for btn in self.btns:
+            _btn = TabButton(self, index=btn["index"], title=btn["title"], active=btn["active"])
+            exec(f'self.lay.addWidget(_btn)')
+            btn_idx = f'btn_{btn["index"]}'
+            self.widgets[btn_idx] = _btn
+        spacer = MoekDummy(width=1, height=28, color="rgba(20, 20, 20, 0.94)", spacer="horizontal")
+        self.lay.addWidget(spacer)
+        self.cur_idx = None
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "cur_idx" and val != None:
+            self.parent().parent().ssb.setCurrentIndex(val)
+            self.btns_state()
+
+    def btns_state(self):
+        """Aktualizacja stanów przycisków."""
+        for btn in self.btns:
+            if btn["index"] == self.cur_idx:
+                self.widgets[f'btn_{btn["index"]}'].setChecked(True)
+            else:
+                self.widgets[f'btn_{btn["index"]}'].setChecked(False)
+
+
+class TabButton(QPushButton):
+    """Przyciski menu w TabBox'ie."""
+    def __init__(self, *args, index, title, active):
+        super().__init__(*args)
+        self.index = index
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.setFixedHeight(28)
+        self.setText(title)
+        self.setCheckable(True)
+        self.active = active
+        self.set_style()
+        self.clicked.connect(self.state_changed)
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "active":
+            self.set_style()
+
+    def state_changed(self):
+        """Aktualizacja bieżącego indeksu tabbox'u po naciśnięciu przycisku."""
+        self.parent().cur_idx = self.index
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        alpha_sub = 0.0 if self.active else 0.5
+        self.setStyleSheet("""
+                            QPushButton {
+                                font-size: 6pt;
+                                font-weight: bold;
+                                color: rgba(255, 255, 255, """ + str(0.8 - alpha_sub) + """);
+                                background-color: rgba(20, 20, 20, 0.94);
+                                border: none;
+                                padding: 6px;
+                                text-align: center;
+                            }
+                            QPushButton:hover {
+                                font-size: 6pt;
+                                font-weight: bold;
+                                color: rgba(255, 255, 255, """ + str(1.0 - alpha_sub) + """);
+                                background-color: rgba(20, 20, 20, 0.94);
+                                border: none;
+                                padding: 6px;
+                                text-align: center;
+                            }
+                            QPushButton:checked {
+                                font-size: 6pt;
+                                font-weight: bold;
+                                color: rgba(255, 255, 255, """ + str(1.0 - alpha_sub) + """);
+                                background-color: rgba(40, 40, 40, 0.94);
+                                border: none;
+                                padding: 6px;
+                                text-align: center;
+                            }
+                            """)
+
+
 class ParamBox(QFrame):
     """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem).
     item: label, line_edit, ruler."""
-    def __init__(self, *args, margins=False, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, fn=None):
+    def __init__(self, *args, margins=False, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, trigger=None, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.item = item
@@ -2398,9 +2558,9 @@ class ParamBox(QFrame):
                 elif self.item == "ruler":
                     self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
                 elif self.item == "combo":
-                    self.valbox_1 = CanvasArrowlessComboBox(self, border=0, height=_height, font_size=8, fn=fn)
+                    self.valbox_1 = CanvasArrowlessComboBox(self, border=0, height=_height, font_size=8, trigger=trigger, fn=fn)
                 elif self.item == "combo_tv":
-                    self.valbox_1 = CanvasArrowlessComboBox(self, border=0, height=_height, font_size=8, tv=True, val_display=val_display, fn=fn)
+                    self.valbox_1 = CanvasArrowlessComboBox(self, border=0, height=_height, font_size=8, tv=True, val_display=val_display, trigger=trigger, fn=fn)
                 self.box.glay.addWidget(self.valbox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "valbox_2":
                 if self.item == "label":
@@ -2478,6 +2638,13 @@ class ParamBox(QFrame):
                 {"row": 0, "col": 0, "r_span": 1, "c_span": 4, "item": "line"},
                 {"row": 1, "col": 0, "r_span": 2, "c_span": 4, "item": "titlebox_1"}
             ]
+        elif comp_val == 13:  # 7
+            widgets = [
+                {"row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "title_left"},
+                {"row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "valbox_1"},
+                {"row": 1, "col": 0, "r_span": 1, "c_span": 2, "item": "line"},
+                {"row": 2, "col": 1, "r_span": 1, "c_span": 1, "item": "titlebox_1"}
+            ]
         return widgets
 
     def value_change(self, attrib, val):
@@ -2498,7 +2665,7 @@ class ParamBox(QFrame):
 
 class ParamTextBox(QFrame):
     """Widget do wyświetlania i edycji parametru tekstowego (np. uwagi) wraz z nagłówkiem."""
-    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, fn=None):
+    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         _width = width
@@ -2513,7 +2680,7 @@ class ParamTextBox(QFrame):
         self.setLayout(lay)
         self.box = MoekVBox(self, margins=[0, 0, 0, 0], spacing=0)
         lay.addWidget(self.box)
-        self.txtbox = TextBox(self, height=_height, width=_width, edit=edit, fn=fn)
+        self.txtbox = TextBox(self, height=_height, width=_width, edit=edit, trigger=trigger, fn=fn)
         self.box.lay.addWidget(self.txtbox)
         self.line = MoekHLine(self)
         self.box.lay.addWidget(self.line)
@@ -2526,22 +2693,31 @@ class ParamTextBox(QFrame):
         """Zmienia wyświetlany tekst."""
         self.txtbox.cur_val = val
 
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        widgets = (self.box.lay.itemAt(i).widget() for i in range(self.box.lay.count()))
+        for widget in widgets:
+            widget.set_enabled(_bool)
+
 
 class TextBox(QPlainTextEdit):
     """Wyświetla tekst z możliwością edycji."""
-    def __init__(self, *args, width, height, edit, fn):
+    def __init__(self, *args, width, height, edit, trigger, fn):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
         self.setBackgroundVisible(False)
         self.fn = fn
         self.edit = edit
+        self.trigger = trigger
         self.setReadOnly(not self.edit)
         if not self.edit:
             self.viewport().setCursor(Qt.ArrowCursor)
         self.hover = False
         self.focus = False
+        self.attr_void = True
         self.cur_val = None
+        self.attr_void = False
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -2552,8 +2728,10 @@ class TextBox(QPlainTextEdit):
         if attr == "focus":
             if hasattr(self, "hover"):
                 self.set_style()
-        if attr == "cur_val":
+        if attr == "cur_val" and not self.attr_void:
             self.value_changed()
+            if self.trigger:
+                exec(f'dlg.wyr_panel.{self.trigger}')
 
     def set_enabled(self, _bool):
         """Włączenie/wyłączenie widget'u poleceniem zewnętrznym."""
@@ -2601,7 +2779,7 @@ class TextBox(QPlainTextEdit):
                                 min-height: 30px;
                                 border: 0px solid red;
                                 border-radius: 4px;
-                                background-color: rgba(0, 0, 0, 0.6);
+                                background-color: rgba(0, 0, 0, 0.8);
                             }
                             QScrollBar::add-line:vertical {
                                 height: 0px;
@@ -3170,20 +3348,20 @@ class MoekLeftBottomDock(QFrame):
         vlay.addWidget(self.box)
         vlay.setAlignment(self.box, Qt.AlignTop)
         self.setLayout(vlay)
-        self.set_style(0.8)
+        self.set_style(0.6)
 
     def page_change(self, index):
         """Zmiana aktywnej strony stackedbox'a."""
         self.cur_page = index
-        alpha = 0.4 if index > 0 else 0.8
+        alpha = 0.8 if index > 0 else 0.6
         self.set_style(alpha)  # Ustalenie przezroczystości tła seq_dock'a
         self.height_change()  # Aktualizacja wysokości dock'u
 
     def set_style(self, alpha):
         """Zmiana przezroczystości tła w zależności od aktualnej strony stackedbox'a."""
         self.setStyleSheet("""
-            QFrame#main{background-color: rgba(0, 0, 0, """ + str(alpha) + """); border: none}
-            QFrame#box{background-color: transparent; border: none}
+            QFrame#main{background-color: rgba(40, 40, 40, """ + str(alpha) + """); border: none}
+            QFrame#box{background-color: rgba(40, 40, 40, """ + str(alpha) + """); border: none}
             """)
 
     def height_change(self):
@@ -3544,7 +3722,7 @@ class MoekSeqAddBox(QFrame):
         self.maps = []
         self.add_btn.clicked.connect(self.add_basemap)
         self.setStyleSheet("""
-                        QFrame#main {background-color: rgba(0, 0, 0, 0.8); border: none}
+                        QFrame#main {background-color: rgba(40, 40, 40, 0.8); border: none}
                         """)
 
     def combobox_update(self, _id):
@@ -3889,7 +4067,7 @@ class MoekSeqCfg(QFrame):
         self.map_changed.connect(self.map_change)
         self.last_changed.connect(self.last_change)
         self.setStyleSheet("""
-                               QFrame#box {background-color: rgba(0, 0, 0, 0.8); border: none}
+                               QFrame#box {background-color: rgba(40, 40, 40, 0.8); border: none}
                                QFrame#lbl {color: rgb(255, 255, 255); qproperty-alignment: AlignCenter}
                                """)
 
@@ -4123,7 +4301,7 @@ class WyrIdTableView(QTableView):
         self.setStyleSheet("""
                             QTableView {
                                 selection-background-color: transparent;
-                                background-color: rgba(255, 255, 255, 0.6);
+                                background-color: rgba(180, 180, 180, 0.94);
                             }
                             QScrollBar:vertical {
                                 border: 0px solid #999999;
@@ -4132,10 +4310,10 @@ class WyrIdTableView(QTableView):
                                 margin: 4px 3px 4px 3px;
                             }
                             QScrollBar::handle:vertical {
-                                min-height: 30px;
+                                min-height: 60px;
                                 border: 0px solid red;
                                 border-radius: 4px;
-                                background-color: rgba(0, 0, 0, 0.6);
+                                background-color: rgba(40, 40, 40, 0.6);
                             }
                             QScrollBar::add-line:vertical {
                                 height: 0px;
@@ -4161,13 +4339,11 @@ class WyrIdTableView(QTableView):
 
 class MoekGridBox(QFrame):
     """Zawartość panelu w kompozycji QGridLayout."""
-    def __init__(self, *args, margins=[4, 2, 4, 4], spacing=0, theme=None):
+    def __init__(self, *args, margins=[4, 2, 4, 4], spacing=0):
         super().__init__(*args)
         self.setObjectName("gbox")
-        # self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        alpha = 0.0 if not theme else 0.8
         self.setStyleSheet("""
-                    QFrame#gbox{background-color: rgba(0, 0, 0 , """ + str(alpha) + """); border: none}
+                    QFrame#gbox{background-color: transparent; border: none}
                     """)
         self.glay = QGridLayout()
         self.glay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
@@ -4175,11 +4351,30 @@ class MoekGridBox(QFrame):
         self.setLayout(self.glay)
 
 
+class CanvasGridBox(QFrame):
+    """Zawartość panelu z wertykalnym spacer'em."""
+    def __init__(self, *args, height=None, margins=[4, 2, 4, 4], spacing=0):
+        super().__init__(*args)
+        self.setObjectName("box")
+        if height:
+            self.setFixedHeight(height)
+        self.setStyleSheet("""
+                    QFrame#box{background-color: transparent; border: none}
+                    """)
+        self.vlay = QVBoxLayout()
+        self.vlay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
+        self.vlay.setSpacing(spacing)
+        self.glay = MoekGridBox(self, margins=[0, 0, 0, 0], spacing=0)
+        self.vlay.addWidget(self.glay)
+        spacer = QSpacerItem(1, 1, QSizePolicy.Maximum, QSizePolicy.Expanding)
+        self.vlay.addItem(spacer)
+        self.setLayout(self.vlay)
+
+
 class MoekHBox(QFrame):
     """Zawartość panelu w kompozycji QHBoxLayout."""
     def __init__(self, *args, margins=[0, 0, 0, 0], spacing=0):
         super().__init__(*args)
-        # self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.lay = QHBoxLayout()
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)
@@ -4190,7 +4385,6 @@ class MoekVBox(QFrame):
     """Zawartość toolbox'a w kompozycji QVBoxLayout."""
     def __init__(self, *args, margins=[0, 0, 0, 0], spacing=0):
         super().__init__(*args)
-        # self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Maximum)
         self.lay = QVBoxLayout()
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)
@@ -4208,6 +4402,13 @@ class MoekStackedBox(QStackedWidget):
         return self.currentWidget().minimumSizeHint()
 
 
+class CanvasStackedBox(QStackedWidget):
+    """Widget dzielący zawartość panelu na strony."""
+    def __init__(self, *args, color="40, 40, 40", alpha=0.0):
+        super().__init__(*args)
+        self.setStyleSheet(f"background-color: rgba({color}, {alpha}); border: none")
+
+
 class MoekButton(QToolButton):
     """Fabryka guzików."""
     def __init__(self, *args, size=25, hsize=0, name="", icon="", visible=True, enabled=True, checkable=False, tooltip="", tooltip_on=None):
@@ -4222,7 +4423,17 @@ class MoekButton(QToolButton):
         self.tooltip_on = tooltip_on
         self.setToolButtonStyle(Qt.ToolButtonIconOnly)
         self.setAutoRaise(True)
-        self.setStyleSheet("QToolButton {border: none}")
+        self.setStyleSheet("""
+                            QToolButton {
+                                border: none;
+                            }
+                            QToolTip {
+                                border: 1px solid rgb(50, 50, 50);
+                                padding: 5px;
+                                background-color: rgb(30, 30, 30);
+                                color: rgb(200, 200, 200);
+                            }
+                        """)
         self.set_icon(name, size, hsize)
         self.setMouseTracking(True)
         self.setCursor(Qt.ArrowCursor)
@@ -4279,14 +4490,28 @@ class MoekSlideButton(MoekButton):
 
 class MoekDummy(QFrame):
     """Pusty obiekt zajmujący określoną przestrzeń."""
-    def __init__(self, *args, width, height):
+    def __init__(self, *args, width, height, color=None, spacer=None):
         super().__init__(*args)
         self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(width, height)
-        self.box = MoekHBox(self)
+        self.lay = QVBoxLayout()
+        self.setLayout(self.lay)
+        # self.box = MoekHBox(self)
+        if not spacer:
+            self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            self.setFixedSize(width, height)
+        else:
+            if spacer == "horizontal":
+                w, h = QSizePolicy.Expanding, QSizePolicy.Fixed
+                self.setFixedHeight(height)
+            else:
+                w, h = QSizePolicy.Fixed, QSizePolicy.Expanding
+                self.setFixedWidth(width)
+            self.setSizePolicy(w, h)
+            self.spacer = QSpacerItem(1, 1, w, h)
+            self.lay.addItem(self.spacer)
+        b_color = color if color else "transparent"
         self.setStyleSheet("""
-                    QFrame#main{background-color: transparent; border: none}
+                    QFrame#main{background-color: """ + str(b_color) + """; border: none}
                     """)
 
 
@@ -4397,7 +4622,7 @@ class MoekComboBox(QComboBox):
 
 class CanvasArrowlessComboBox(QComboBox):
     """Fabryka rozwijanych bez strzałki."""
-    def __init__(self, *args, name="", height=24, border=1, font_size=8, icon_disable=False, b_round="none", tv=False, val_display=False, fn=None):
+    def __init__(self, *args, name="", height=24, border=1, font_size=8, icon_disable=False, b_round="none", tv=False, val_display=False, trigger=None, fn=None):
         super().__init__(*args)
         if b_round == "right":
             B_CSS = "border-top-right-radius: 3px; border-bottom-right-radius: 3px;"
@@ -4415,6 +4640,7 @@ class CanvasArrowlessComboBox(QComboBox):
         self.setFixedHeight(height)
         self.data_val = None
         self.val_display = val_display
+        self.trigger = trigger
         self.fn = fn
         if tv:
             popup = 0
@@ -4519,7 +4745,7 @@ class CanvasArrowlessComboBox(QComboBox):
                                     min-height: 30px;
                                     border: 0px solid red;
                                     border-radius: 4px;
-                                    background-color: rgba(255, 255, 255, 0.6);
+                                    background-color: rgba(255, 255, 255, 0.8);
                                 }
                                 QScrollBar::add-line:vertical {
                                     height: 0px;
@@ -4575,6 +4801,8 @@ class CanvasArrowlessComboBox(QComboBox):
             self.data_val = "Null"
         else:
             self.data_val = f"'{self.itemData(index)}'"
+        if self.trigger:
+            exec(f'dlg.wyr_panel.{self.trigger}')
         if self.fn and not fn_void:
             self.run_fn()
 
@@ -4604,9 +4832,6 @@ class CanvasComboBox(QComboBox):
             B_CSS = "border-radius: 6px;"
         else:
             B_CSS = ""
-        icon_path_txt = ICON_PATH.replace("\\", "/")
-        icon = f"url('{icon_path_txt}down_arrow_dark.png')"
-        icon_dis = f"url('{icon_path_txt}down_arrow_dark_dis.png')"
 
         self.setStyleSheet("""
                             QComboBox {
@@ -4661,10 +4886,10 @@ class CanvasComboBox(QComboBox):
                                 background-color: transparent;
                             }
                             QComboBox::down-arrow {
-                                image: """ + icon + """);
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow_dark.png');
                             }
                             QComboBox::down-arrow:disabled {
-                                image: """ + icon_dis + """);
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow_dark_dis.png');
                             }
                             QComboBox QAbstractItemView {
                                 border: """ + str(border) + """px solid rgb(255, 255, 255);

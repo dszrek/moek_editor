@@ -179,6 +179,7 @@ def powiaty_load():
                 dlg.powiat_t = dlg.powiaty[0][1]
                 print("team nie ma aktywnego powiatu. Ustawiony pierwszy: ", str(dlg.powiat_i), " | ", str(dlg.powiat_t))
             dlg.p_pow.box.widgets["cmb_pow_act"].setCurrentText(dlg.powiat_t)  # Ustawienie cb na aktualny dlg.powiat_t
+            dlg.wyr_panel.status_indicator.order_check()
         else:  # Do team'u nie ma przypisanych powiatów
             QMessageBox.warning(None, "Problem", "Podany zespół nie ma przypisanych powiatów. Skontaktuj się z administratorem systemu.")
 
@@ -308,13 +309,21 @@ def wyr_layer_update(check=True):
         wyr_dane_check()
     # Stworzenie listy wyrobisk z aktywnych powiatów:
     dlg.obj.wyr_ids = get_wyr_ids()
+    if dlg.wyr_panel.pow_all:
+        dlg.obj.order_ids = []
+    else:
+        dlg.obj.order_ids = get_order_ids()
     # Aktualizacja wdf:
     wdf_update()
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.obj.wyr_ids:
         uri_a1 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ') AND b_after_fchk = False'
-        uri_a2 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ') AND b_after_fchk = True AND b_confirmed = True'
+        if dlg.wyr_panel.pow_all:
+            uri_a2 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ') AND b_after_fchk = True AND b_confirmed = True'
+        else:
+            table = f'''"(SELECT row_number() OVER (ORDER BY p.order_id) AS row_num, w.wyr_id, w.user_id, w.t_notatki, p.order_id, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_pow p ON w.wyr_id = p.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND w.b_after_fchk = True AND w.b_confirmed = True AND p.pow_id = '{dlg.powiat_i}')"'''
+            uri_a2 = f'{params} key="row_num" table={table} (point) sql='
         uri_a3 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ') AND b_after_fchk = True AND b_confirmed = False'
         uri_a4 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
         uri_b = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
@@ -501,6 +510,17 @@ def wyr_poly_exist(wyr_id):
             return res[0]
         else:
             return None
+
+def get_order_ids():
+    """Zwraca listę unikalnych order_id wraz z wyr_id w obrębie aktywnego powiatu."""
+    db = PgConn()
+    sql = f"SELECT order_id, wyr_id FROM team_{dlg.team_i}.wyr_pow WHERE pow_id = '{dlg.powiat_i}' AND order_id IS NOT NULL ORDER BY order_id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+                return res
+        else:
+            return []
 
 def get_wyr_ids_with_pows(table, pows=None):
     """Zwraca listę unikalnych wyr_id z podanej tabeli w obrębie podanych powiatów."""

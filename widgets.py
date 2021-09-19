@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import pandas as pd
+import numpy as np
 import datetime
 
 from qgis.core import QgsApplication, QgsVectorLayer, QgsVectorFileWriter
@@ -476,6 +477,14 @@ class WyrCanvasPanel(QFrame):
         vlay.addWidget(self.bar)
         vlay.addLayout(hlay)
         self.setLayout(vlay)
+        self.sp_status = CanvasHSubPanel(self, height=34, margins=[4, 2, 4, 4], spacing=4, alpha=0.94)
+        self.box.lay.addWidget(self.sp_status)
+        self.order_box = IdSpinBox(self, _obj="order", width=90, height=28, max_len=3, validator="order", placeholder="001", theme="green")
+        self.sp_status.lay.addWidget(self.order_box)
+        self.status_indicator = WyrStatusIndicator(self)
+        self.sp_status.lay.addWidget(self.status_indicator)
+        self.status_selector = WyrStatusSelector(self, width=68)
+        self.sp_status.lay.addWidget(self.status_selector)
         self.sp_main = CanvasHSubPanel(self, margins=[4, 0, 0, 0], spacing=2, height=34, alpha=0.94)
         self.box.lay.addWidget(self.sp_main)
         self.wn_picker = WyrWnPicker(self)
@@ -492,12 +501,6 @@ class WyrCanvasPanel(QFrame):
         self.wyr_del = MoekButton(self, name="trash", size=34, checkable=False)
         self.wyr_del.clicked.connect(self.wyr_delete)
         self.sp_main.lay.addWidget(self.wyr_del)
-        self.sp_status = CanvasHSubPanel(self, height=34, margins=[4, 2, 4, 4], spacing=4, alpha=0.94)
-        self.box.lay.addWidget(self.sp_status)
-        self.status_indicator = WyrStatusIndicator(self)
-        self.sp_status.lay.addWidget(self.status_indicator)
-        self.status_selector = WyrStatusSelector(self, width=68)
-        self.sp_status.lay.addWidget(self.status_selector)
         self.separator_1 = CanvasHSubPanel(self, height=2, alpha=0.0)
         self.box.lay.addWidget(self.separator_1)
         self.tab_box = TabBox(self)
@@ -602,13 +605,11 @@ class WyrCanvasPanel(QFrame):
                 self.widgets[gd_name] = _gd
 
         self.cur_page = None
+        self.pow_all = None
 
-    # def __setattr__(self, attr, val):
-    #     """Przechwycenie zmiany atrybutu."""
-    #     super().__setattr__(attr, val)
-    #     if attr == "cur_subpage":
-    #         self.ssb.setCurrentIndex(val)
-    #         self.tab_box.cur_idx = val
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
 
     def sl_load(self, tbl_name, cmb, null_val=True):
         """Załadowanie wartości słownikowych z db do combobox'a."""
@@ -1534,6 +1535,56 @@ class WyrStatusIndicator(QLabel):
                     """)
         self.setText(text)
 
+    def order_check(self):
+        """Ustalenie order_id wyrobisk potwierdzonych we wszystkich powiatach."""
+        odf = self.order_pd_load()
+        odf = odf.sort_values(by=['pow_id', 'Y_92'], ascending=[True, False])
+        odf_pows = dict(tuple(odf.groupby('pow_id')))
+        odf_pows_list = [odf_pows[x] for x in odf_pows]
+        for odf_pow in odf_pows_list:
+            odf_pow = odf_pow.reset_index(drop=True)
+            # Podział na pasy o szerokości 3 km:
+            odf_pow['row'] = odf_pow['Y_92'].diff(periods=1).abs().cumsum().fillna(0).div(3000).floordiv(1).astype(int)
+            # Sortowanie po współrzędnej X wewnątrz pasów:
+            odf_pow = odf_pow.sort_values(by=['row', 'X_92'], ascending=[True, True]).reset_index(drop=True)
+            # Ponumerowanie wszystkich wyrobisk:
+            odf_pow['order_new'] = odf_pow.index + 1
+            odf_pow['order_new'] = odf_pow['order_new'].map(lambda x: f'{x:0>3}')
+            # Sprawdzenie, czy jest różnica pomiędzy ustaloną numeracją, a nową:
+            not_same = np.any( odf_pow['order_id'].values != odf_pow['order_new'].values)
+            pow_id = odf_pow.loc[0, 'pow_id']
+            if not_same:
+                # Konieczność aktualizacji order_id w tym powiecie:
+                udf = odf_pow[['wyr_id', 'pow_id', 'order_new']]
+                udf_list = udf.to_records(index=False).tolist()
+                self.order_clear()
+                self.order_update(udf_list)
+
+    def order_pd_load(self):
+        """Zwraca dataframe z danymi wyrobisk potwierdzonych dla ustalenia order_id."""
+        db = PgConn()
+        sql = f"SELECT w.wyr_id, ST_X(w.centroid) as X_92, ST_Y(w.centroid) as Y_92, p.pow_id, p.order_id FROM team_{dlg.team_i}.wyr_pow AS p INNER JOIN team_{dlg.team_i}.wyrobiska AS w USING(wyr_id) WHERE w.b_confirmed IS TRUE;"
+        if db:
+            df = db.query_pd(sql, ['wyr_id' ,'X_92', 'Y_92', 'pow_id', 'order_id'])
+            if len(df) > 0:
+                return df
+            else:
+                return pd.Dataframe(columns=['wyr_id' ,'X_92', 'Y_92', 'pow_id', 'order_id'])
+
+    def order_update(self, list):
+        """Aktualizacja order_id w db."""
+        db = PgConn()
+        sql = f"UPDATE team_{dlg.team_i}.wyr_pow AS p SET order_id = u.order_id FROM (VALUES %s) AS u (wyr_id, pow_id, order_id) WHERE p.wyr_id = u.wyr_id AND p.pow_id = u.pow_id;"
+        if db:
+            db.query_exeval(sql, list)
+
+    def order_clear(self):
+        """Wyczyszczenie order_id dla wyrobisk z bieżącego powiatu."""
+        db = PgConn()
+        sql = f"UPDATE team_{dlg.team_i}.wyr_pow SET order_id = Null WHERE pow_id = '{dlg.powiat_i}'"
+        if db:
+            res = db.query_upd(sql)
+
 
 class WyrWnPicker(QFrame):
     """Belka przydziału WN_PNE dla wyrobiska."""
@@ -1608,13 +1659,15 @@ class WyrStatusSelector(QFrame):
             self.lay.addWidget(_itm)
             itm_name = f'btn_{status["name"]}'
             self.itms[itm_name] = _itm
+        self.case = None
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
-        if attr == "case":
+        if attr == "case" and val != None:
             self.case_change()
             dlg.wyr_panel.tab_box.setVisible(True) if val == 1 else dlg.wyr_panel.tab_box.setVisible(False)
+            dlg.wyr_panel.order_box.setVisible(True) if val == 1 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_box.setVisible(False)
 
     def set_case(self, after_fchk, confirmed):
         """Ustala 'case' na podstawie atrybutów wyrobiska."""
@@ -1647,6 +1700,7 @@ class WyrStatusSelector(QFrame):
 
     def btn_clicked(self, id):
         """Zmiana wartości 'case' i aktualizacja db po naciśnięciu przycisku."""
+        old_id = self.case
         self.case = id
         for status in self.statuses:
             if status["id"] == self.case:
@@ -1654,6 +1708,9 @@ class WyrStatusSelector(QFrame):
                 if result:
                     self.vis_check(status["layer"])
                     dlg.obj.wyr = dlg.obj.wyr
+        if self.case == 1 or old_id == 1:
+            dlg.wyr_panel.status_indicator.order_check()
+            wyr_layer_update(False)
 
     def vis_check(self, lyr_name):
         """Włącza dany typ wyrobisk, jeśli nie jest włączony."""
@@ -2887,7 +2944,7 @@ class MoekHLine(QFrame):
 
 class IdSpinBox(QFrame):
     """Widget z centralnie umieszczonym labelem i przyciskami zmiany po jego obu stronach."""
-    def __init__(self, *args, _obj, width=90, height=34, max_len=4, validator="id", theme="dark"):
+    def __init__(self, *args, _obj, width=90, height=34, max_len=4, validator="id", placeholder=None, theme="dark"):
         super().__init__(*args)
         self.obj = _obj
         self.max_len = max_len
@@ -2895,13 +2952,16 @@ class IdSpinBox(QFrame):
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
-        self.prev_btn = MoekButton(self, name=f"id_prev_{theme}", size=22, hsize=34, checkable=False)
+        if theme == "green":
+            self.setStyleSheet(" QFrame#main {background-color: rgba(40, 170, 40, 204); border: none} ")
+        else:
+            self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
+        self.prev_btn = MoekButton(self, name=f"id_prev_{theme}", size=22, hsize=height, checkable=False)
         self.prev_btn.clicked.connect(self.prev_clicked)
-        self.next_btn = MoekButton(self, name=f"id_next_{theme}", size=22, hsize=34, checkable=False)
+        self.next_btn = MoekButton(self, name=f"id_next_{theme}", size=22, hsize=height, checkable=False)
         self.next_btn.clicked.connect(self.next_clicked)
         fn = ['dlg.obj.set_object_from_input(self.text(), self.parent().obj)']
-        self.idbox = CanvasLineEdit(self, width=self.width() - 44, height=self.height() - 4, max_len=self.max_len, validator=self.validator, null_allowed=False, fn=fn, theme=theme)
-        self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
+        self.idbox = CanvasLineEdit(self, width=self.width() - 44, height=self.height() - 4, max_len=self.max_len, validator=self.validator, placeholder=placeholder, null_allowed=False, fn=fn, theme=theme)
         self.hlay = QHBoxLayout()
         self.hlay.setContentsMargins(0, 0, 0, 0)
         self.hlay.setSpacing(0)
@@ -2942,23 +3002,23 @@ class CanvasLineEdit(QLineEdit):
             self.setMaxLength(max_len)
         self.validator = validator
         if self.validator == "id":
-            self.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]*") ))
+            self.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]*")))
         elif self.validator == "id_arkusz":
-            self.setValidator(QRegExpValidator(QRegExp("[0-1]([0-9]|[_])*") ))
-        elif self.validator == "000":
-            self.setValidator(QRegExpValidator(QRegExp("[0-9]*") ))
+            self.setValidator(QRegExpValidator(QRegExp("[0-1]([0-9]|[_])*")))
+        elif self.validator == "000" or self.validator == "order":
+            self.setValidator(QRegExpValidator(QRegExp("[0-9]*")))
         elif self.validator == "00.0":
-            self.setValidator(QRegExpValidator(QRegExp("([0-9]|[,]|[.])*") ))
+            self.setValidator(QRegExpValidator(QRegExp("([0-9]|[,]|[.])*")))
         elif self.validator == "hours":
-            self.setValidator(QRegExpValidator(QRegExp("^([1-9]|0[1-9]|1[0-9]|2[0-3])") ))
+            self.setValidator(QRegExpValidator(QRegExp("^([1-9]|0[1-9]|1[0-9]|2[0-3])")))
         elif self.validator == "minutes":
-            self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1-5]?[0-9]$") ))
+            self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1-5]?[0-9]$")))
         elif self.validator == "days":
-            self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1-2]?[0-9]$|^[3][0-1]$") ))
+            self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1-2]?[0-9]$|^[3][0-1]$")))
         elif self.validator == "months":
-            self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1][0-2]$") ))
+            self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1][0-2]$")))
         elif self.validator == "years":
-            self.setValidator(QRegExpValidator(QRegExp("^1[8-9]$|^2[0-3]$|^201[8-9]$|^202[0-3]$") ))
+            self.setValidator(QRegExpValidator(QRegExp("^1[8-9]$|^2[0-3]$|^201[8-9]$|^202[0-3]$")))
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
         self.fn = fn
         self.placeholder = placeholder
@@ -2999,10 +3059,10 @@ class CanvasLineEdit(QLineEdit):
 
     def set_value(self, val):
         """Próba zmiany wartości."""
-        if not val or len(str(val)) == 0:  # Wartość Null
+        if not val or val == 'None' or len(str(val)) == 0:  # Wartość Null
             self.cur_val = None if self.null_allowed else self.cur_val
             return
-        if self.validator == "00.0" or self.validator == "000":
+        if self.validator == "00.0" or self.validator == "000" or self.validator == "order":
             # Próba konwersji tekstu na wartość float:
             num_val = self.numeric_formater(val)
             self.numerical = True if num_val != -1 else False
@@ -3010,6 +3070,7 @@ class CanvasLineEdit(QLineEdit):
                 self.cur_val = str(num_val)
             else:
                 self.cur_val = self.cur_val
+                return
         if self.validator == "years":
             if len(val) == 2:
                 # Uzupełnienie wartości roku do formatu 4-cyfrowego:
@@ -3023,16 +3084,18 @@ class CanvasLineEdit(QLineEdit):
                 self.cur_val = val
             else:
                 self.cur_val = self.cur_val
-        # Dodanie zera do formatu dwucyfrowego:
-        v_double = ["hours", "minutes", "days", "months"]
-        if self.validator in v_double:
-            if int(val) == 0:
-                # Uniemożliwienie ustalenia wartości 0:
-                self.cur_val = self.cur_val
                 return
-            self.cur_val = str(val).zfill(2)
-        else:
-            self.cur_val = val
+        # Dodanie zer do formatu dwu- lub trzycyfrowego:
+        lead_zeros = [("order", 3), ("hours", 2), ("minutes", 2), ("days", 2), ("months", 2)]
+        for lz in lead_zeros:
+            if self.validator == lz[0]:
+                if int(val) == 0:
+                    # Uniemożliwienie ustalenia wartości 0:
+                    self.cur_val = self.cur_val
+                    return
+                self.cur_val = str(val).zfill(lz[1])
+                return
+        self.cur_val = val
 
     def value_changed(self):
         """Aktualizacja tekstu lineedit'u po zmianie wartości."""

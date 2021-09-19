@@ -46,11 +46,14 @@ class ObjectManager:
         self.wyr_ids = []
         self.wyr = None
         self.wyr_data = []
+        self.order_ids = []
+        self.order = None
         self.wn_ids = []
         self.wn = None
         self.wn_data = []
         self.wn_pow = []
         self.p_vn = False
+        self.init_void = False
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -106,6 +109,8 @@ class ObjectManager:
                 self.dlg.wyr_panel.values_update(self.wyr_data)  # Aktualizacja atrybutów
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
+            if dlg.wyr_panel.status_selector.case == 1:
+                self.set_order_id()
         elif attr == "wyr_ids":
             # Zmiana listy dostępnych wyrobisk:
             wyr_check = self.list_position_check("wyr")
@@ -128,8 +133,13 @@ class ObjectManager:
                     self.parking = None
                 dlg.wn_panel.values_update(self.wn_data)
                 dlg.wn_panel.pow_update(self.wn_pow)
-            self.dlg.wn_panel.id_box.id = val if val else None
-            self.dlg.wn_panel.show() if val else self.dlg.wn_panel.hide()
+            dlg.wn_panel.id_box.id = val if val else None
+            dlg.wn_panel.show() if val else dlg.wn_panel.hide()
+        elif attr == "order" and val:
+            self.list_position_check("order")
+            dlg.wyr_panel.order_box.id = val
+        elif attr == "order_ids" and val:
+            self.set_order_id()
         elif attr == "wn_ids":
             # Zmiana listy dostępnych punktów WN_PNE:
             wn_check = self.list_position_check("wn")
@@ -214,6 +224,8 @@ class ObjectManager:
             self.marsz = None
         if self.wyr:
             self.wyr = None
+        if self.order:
+            self.order = None
         if self.wn:
             self.wn = None
 
@@ -268,7 +280,7 @@ class ObjectManager:
         return f'{val}' if val != None else f''
 
     def object_prevnext(self, _obj, next):
-        """Aktywuje kolejną flagę z listy."""
+        """Aktywuje kolejny obiekt z listy."""
         if _obj == "flag":
             obj = "self.flag"
             ids = self.flag_ids
@@ -284,6 +296,12 @@ class ObjectManager:
             ids = self.wyr_ids
             val = self.wyr
             is_int = True
+        elif _obj == "order":
+            obj = "self.wyr"
+            ids = [i[1] for i in self.order_ids]
+            val = self.wyr
+            is_int = True
+            _obj = "wyr"
         elif _obj == "wn":
             obj = "self.wn"
             ids = self.wn_ids
@@ -335,7 +353,10 @@ class ObjectManager:
     def wyr_update(self):
         """Zwraca dane wyrobiska."""
         db = PgConn()
-        sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_fchk, d.b_teren FROM team_" + str(dlg.team_i) + ".wyr_dane AS d INNER JOIN team_" + str(dlg.team_i) + ".wyrobiska AS w USING(wyr_id) WHERE wyr_id = '" + str(self.wyr) + "';"
+        if dlg.wyr_panel.pow_all:
+            sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_fchk, d.b_teren FROM team_" + str(dlg.team_i) + ".wyr_dane AS d INNER JOIN team_" + str(dlg.team_i) + ".wyrobiska AS w USING(wyr_id) WHERE wyr_id = '" + str(self.wyr) + "';"
+        else:
+            sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_fchk, d.b_teren, p.order_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_pow AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "' AND p.pow_id = '" + str(dlg.powiat_i) + "';"
         if db:
             res = db.query_sel(sql, False)
             if not res:
@@ -385,6 +406,9 @@ class ObjectManager:
             ids = self.wyr_ids
             id_box = "dlg.wyr_panel.id_box.id"
             is_int = True
+        elif _obj == "order":
+            self.set_wyr_id(_id)
+            return
         elif _obj == "wn":
             obj = "self.wn"
             ids = self.wn_ids
@@ -399,6 +423,22 @@ class ObjectManager:
             self.pan_to_object(_obj)
         else:
             exec(id_box + ' = ' + obj)
+
+    def set_order_id(self):
+        """Ustawia wartość order_box'a po zmianie wyrobiska."""
+        for ord in self.order_ids:
+            if ord[1] == self.wyr:
+                self.order = ord[0]
+                return
+
+    def set_wyr_id(self, _order):
+        """Zmienia wyrobisko po zmianie order_id w box'ie"""
+        for ord in self.order_ids:
+            if ord[0] == _order:
+                self.wyr = ord[1]
+                self.pan_to_object("wyr")
+                return
+        self.order = self.order
 
     def list_position_check(self, _obj):
         """Sprawdza pozycję flagi, wyrobiska, parking lub punktu WN_PNE na liście."""
@@ -417,6 +457,11 @@ class ObjectManager:
             val = self.wyr
             ids = self.wyr_ids
             id_box = dlg.wyr_panel.id_box
+        elif _obj == "order":
+            obj = "self.order"
+            val = self.order
+            ids = [i[0] for i in self.order_ids]
+            id_box = dlg.wyr_panel.order_box
         elif _obj == "wn":
             obj = "self.wn"
             val = self.wn

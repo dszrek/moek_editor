@@ -41,8 +41,8 @@ class LayerManager:
             {'name': 'temp', 'level': 1, 'layers': ['wyr_point', 'edit_poly', 'backup_poly']}
             ]
         self.lyrs = [
-            {"source": "postgres", "name": "wyr_przed_teren", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_potwierdzone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_przed_teren", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_odrzucone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
@@ -401,6 +401,8 @@ class PanelManager:
             dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(name)[0].id()).setItemVisibilityChecked(val_out)
         elif action == "grp_vis":
             dlg.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(val_out)
+        if name == "powiaty":
+            dlg.wyr_panel.pow_all = not val_out
         if name == "flagi" or name == "komunikacja" or name == "wyrobiska" or name == "wn_pne":
             # Zmiana parametru widoczności wszystkich warstw z określonej grupy dla MultiMapTool:
             dlg.lyr.grp_vis_change(name, val_out)

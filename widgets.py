@@ -529,7 +529,7 @@ class WyrCanvasPanel(QFrame):
         self.dicts = [
                     {"name": "okres_eksp_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 125, "val_width_2": 125, "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
 
-                    {"name": "notepad_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "NOTATKI", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "notepad_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "NOTATKI", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
                     {"name": "termin_1", "page": 1, "subpage": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 8, "type": "termin"},
 
@@ -555,19 +555,25 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "stan_1", "page": 1, "subpage": 0, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "notepad_1", "page": 1, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "UWAGI POKONTROLNE", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "notepad_1", "page": 1, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UWAGI POKONTROLNE", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "zagrozenia_1", "page": 1, "subpage": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI", "trigger": "trigger_empty('zagrozenia', 2)", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_zagrozenia", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "zagrozenia_1", "page": 1, "subpage": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI", "trigger": "trigger_empty('zagrozenia', 2)", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_zagrozenia", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_empty('rekultywacja', 3)", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_empty('rekultywacja', 3)", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
                     {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": False, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
+                    {"name": "odpady_1", "page": 1, "subpage": 4, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "odpady"},
+
+                    {"name": "odpady_opak_1", "page": 1, "subpage": 4, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE ODPADÓW OPAKOWANIOWYCH", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_opak", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "odpady_inne_1", "page": 1, "subpage": 4, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE INNYCH ODPADÓW", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_inne", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
                     {"name": "zgloszenie_1", "page": 1, "subpage": 5, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Zgłoszenie do OUG, Starosty lub WIOŚ, inne:", "title_down": None, "tbl_name": "sl_zgloszenie", "null_val": False, "trigger": "trigger_zgloszenie()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zgloszenie", val="{self.data_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "powod_1", "page": 1, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "powod_1", "page": 1, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
+                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
                     ]
 
         for dict in self.dicts:
@@ -586,7 +592,7 @@ class WyrCanvasPanel(QFrame):
                 txt2_name = f'txt2_{dict["name"]}'
                 self.widgets[txt2_name] = _txt2
             if dict["type"] == "text_box":
-                _tb = ParamTextBox(self, margins=True, height=82, width=402, edit=True, title=dict["title"], trigger=dict["trigger"], fn=dict["fn"])
+                _tb = ParamTextBox(self, margins=True, height=dict["height"], width=402, edit=True, title=dict["title"], trigger=dict["trigger"], fn=dict["fn"])
                 if "subpage" in dict:
                     exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_tb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 else:
@@ -603,6 +609,11 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_gd, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 gd_name = 'gd_1'
                 self.widgets[gd_name] = _gd
+            if dict["type"] == "odpady":
+                _os = OdpadySelector(self)
+                exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_os, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                os_name = 'os_1'
+                self.widgets[os_name] = _os
 
         self.cur_page = None
         self.pow_all = None
@@ -643,7 +654,8 @@ class WyrCanvasPanel(QFrame):
             {'type': 'combo', 'name': 'stan', 'value': _dict[35], 'pages': [1]},
             {'type': 'combo', 'name': 'rodz_wyr', 'value': _dict[18], 'pages': [1]},
             {'type': 'combo', 'name': 'wyp_odpady', 'value': _dict[22], 'pages': [1]},
-            {'type': 'combo', 'name': 'zgloszenie', 'value': _dict[33], 'pages': [1]}
+            {'type': 'combo', 'name': 'zgloszenie', 'value': _dict[33], 'pages': [1]},
+            {'type': 'os','values': [_dict[23], _dict[24], _dict[25], _dict[26], _dict[27], _dict[28]], 'pages': [1]}
         ]
         for param in params:
             if not self.cur_page in param["pages"]:
@@ -663,6 +675,8 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.widgets["kw_1"].set_values({param["values"]})')
             if param["type"] == "gd":
                 exec(f'self.widgets["gd_1"].set_values({param["values"]})')
+            if param["type"] == "os":
+                exec(f'self.widgets["os_1"].set_values({param["values"]})')
 
     def param_parser(self, val, quote=False):
         """Zwraca wartość przerobioną na tekst (pusty, jeśli None)."""
@@ -690,13 +704,13 @@ class WyrCanvasPanel(QFrame):
     def trigger_odpady(self):
         """Wykonywane po zmianie wartości combobox'u 'wyp_odpady'."""
         val = self.widgets["cmb_wyp_odpady_1"].valbox_1.data_val
-        print(f'[trigger_odpady]: {val}')
         if not val:
             return
-        if val[1:-1] == '0':
-            dlg.wyr_panel.tab_box.widgets["btn_4"].active = False
-        else:
-            dlg.wyr_panel.tab_box.widgets["btn_4"].active = True
+        _bool = False if val[1:-1] == '0' else True
+        dlg.wyr_panel.tab_box.widgets["btn_4"].active = _bool
+        self.widgets["os_1"].setVisible(_bool)
+        if not _bool:
+            self.widgets["os_1"].clear_all()
 
     def trigger_empty(self, tb_name, tab_idx):
         """Zmiana stanu 'active' dla przycisku tabbox'u po zmianie wartości paramtextbox'u'."""
@@ -1314,6 +1328,199 @@ class CanvasHSubPanel(QFrame):
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)
         self.setLayout(self.lay)
+
+
+class OdpadySelector(QFrame):
+    """Widget wyboru rodzajów odpadów dla wyrobiska."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setFixedWidth(402)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
+        self.lay = QGridLayout()
+        self.lay.setContentsMargins(0, 6, 0, 6)
+        self.lay.setSpacing(6)
+        self.setLayout(self.lay)
+        self.act_cnt = 0
+        self.attr_void = True
+        self.o1_val = None
+        self.o2_val = None
+        self.o3_val = None
+        self.o4_val = None
+        self.op_bool = None
+        self.i_bool = None
+        self.attr_void = False
+        self.vals = []
+        self.itms = {}
+        self.btns = [
+                {"row": 2, "col": 0, "r_span": 1, "c_span": 1, "item": "btn", "id": "e", "text": "eksploatacyjne"},
+                {"row": 2, "col": 1, "r_span": 1, "c_span": 1, "item": "btn", "id": "rb", "text": "remontowo-budowlane"},
+                {"row": 3, "col": 0, "r_span": 1, "c_span": 1, "item": "btn", "id": "p", "text": "przeróbcze"},
+                {"row": 3, "col": 1, "r_span": 1, "c_span": 1, "item": "btn", "id": "op", "text": "opakowaniowe"},
+                {"row": 4, "col": 0, "r_span": 1, "c_span": 1, "item": "btn", "id": "k", "text": "zmieszane komunalne"},
+                {"row": 4, "col": 1, "r_span": 1, "c_span": 1, "item": "btn", "id": "czp", "text": "opony, części pojazdów"},
+                {"row": 5, "col": 0, "r_span": 1, "c_span": 1, "item": "btn", "id": "wg", "text": "wielkogabarytowe"},
+                {"row": 5, "col": 1, "r_span": 1, "c_span": 1, "item": "btn", "id": "r", "text": "zielone, biodegradowalne"},
+                {"row": 6, "col": 0, "r_span": 1, "c_span": 1, "item": "btn", "id": "el", "text": "elektroodpady"},
+                {"row": 6, "col": 1, "r_span": 1, "c_span": 1, "item": "btn", "id": "i", "text": "inne"}
+            ]
+        for widget in self.btns:
+            if widget["item"] == "btn":
+                _btn = OdpadySelectorItem(self, id=widget["id"], txt=widget["text"])
+                exec(f'self.lay.addWidget(_btn, widget["row"], widget["col"], widget["r_span"], widget["c_span"])')
+                btn_name = f'btn_{widget["id"]}'
+                self.itms[btn_name] = _btn
+
+    def set_values(self, val_list):
+        """Ustawienie wartości przycisków i textbox'ów według danych z db."""
+        temp_list = []
+        temp_op = False
+        temp_i = False
+        self.act_cnt = 0
+        self.vals = []
+        self.attr_void = True
+        for i in range(4):
+            if val_list[i]:
+                exec(f'self.o{i + 1}_val = val_list[i]')
+                temp_list.append(val_list[i])
+                self.act_cnt += 1
+                if val_list[i] == "op":
+                    temp_op = True
+                if val_list[i] == "i":
+                    temp_i = True
+            else:
+                exec(f'self.o{i + 1}_val = None')
+        self.attr_void = False
+        self.vals.extend(temp_list)
+        txt = dlg.wyr_panel.param_parser(val_list[4], False)
+        dlg.wyr_panel.widgets["tb_odpady_opak_1"].value_change(txt)
+        self.op_bool = temp_op
+        txt = dlg.wyr_panel.param_parser(val_list[5], False)
+        dlg.wyr_panel.widgets["tb_odpady_inne_1"].value_change(txt)
+        self.i_bool = temp_i
+        for btn_name in self.itms:
+            btn = self.itms[btn_name]
+            if btn.id in temp_list:
+                btn.setChecked(True)
+                temp_list.remove(btn.id)
+            else:
+                btn.setChecked(False)
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "op_bool" and not self.attr_void:
+            dlg.wyr_panel.widgets["tb_odpady_opak_1"].setVisible(val)
+            if not val and dlg.wyr_panel.widgets["tb_odpady_opak_1"].txtbox.cur_val:
+                dlg.wyr_panel.widgets["tb_odpady_opak_1"].txtbox.cur_val = None
+        if attr == "i_bool" and not self.attr_void:
+            dlg.wyr_panel.widgets["tb_odpady_inne_1"].setVisible(val)
+            if not val and dlg.wyr_panel.widgets["tb_odpady_inne_1"].txtbox.cur_val:
+                dlg.wyr_panel.widgets["tb_odpady_inne_1"].txtbox.cur_val = None
+        if attr == "o1_val" and not self.attr_void:
+            val_sql = self.sql_parser(val)
+            db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_odpady_1", val=val_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        if attr == "o2_val" and not self.attr_void:
+            val_sql = self.sql_parser(val)
+            db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_odpady_2", val=val_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        if attr == "o3_val" and not self.attr_void:
+            val_sql = self.sql_parser(val)
+            db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_odpady_3", val=val_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        if attr == "o4_val" and not self.attr_void:
+            val_sql = self.sql_parser(val)
+            db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_odpady_4", val=val_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+
+    def sql_parser(self, val):
+        """Zwraca wartość prawidłową dla formuły sql."""
+        return f"'{val}'" if val else 'Null'
+
+    def btn_clicked(self, _id):
+        """Włączenie/wyłączenie powiatu po naciśnięciu przycisku."""
+        btn = self.itms[f"btn_{_id}"]
+        if self.act_cnt == 4 and btn.isChecked():  # Wszystkie dostępne guziki zajęte, blokada wciśnięcia przycisku
+            btn.setChecked(False)
+            return
+        if btn.isChecked():
+            # Włączono przycisk:
+            self.act_cnt += 1
+            self.vals.append(_id)
+        else:
+            # Wyłączono przycisk:
+            self.act_cnt -= 1
+            self.vals.remove(_id)
+        if _id == "op":
+            self.op_bool = btn.isChecked()
+        if _id == "i":
+            self.i_bool = btn.isChecked()
+        self.odp_update()
+
+    def odp_update(self):
+        """Aktualizacja wartości rodzajów odpadów."""
+        odp_vals = ["self.o1_val", "self.o2_val", "self.o3_val", "self.o4_val"]
+        for i in range(4):
+            new_val = self.vals[i] if i < len(self.vals) else None
+            cur_val = eval(odp_vals[i])
+            if cur_val != new_val:
+                exec(f'{odp_vals[i]} = new_val')
+
+    def clear_all(self):
+        """Odznaczenie wszystkich przycisków po ustawieniu combobox'a na wartość 'brak'."""
+        for btn_name in self.itms:
+            btn = self.itms[btn_name]
+            if btn.isChecked():
+                btn.setChecked(False)
+                self.btn_clicked(btn.id)
+
+
+class OdpadySelectorItem(QPushButton):
+    """Guzik do wyboru rodzaju odpadów dla wyrobiska."""
+    def __init__(self, *args, id, txt):
+        super().__init__(*args)
+        self.setCheckable(True)
+        self.setFixedSize(198, 34)
+        self.id = id
+        self.setText(txt)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setStyleSheet("""
+                            QPushButton {
+                                border: 2px dashed rgb(60, 60, 60);
+                                background: rgb(40, 40, 40);
+                                color: rgba(255, 255, 255, 0.4);
+                                font-size: 8pt;
+                                font-weight: normal;
+                            }
+                            QPushButton:hover {
+                                border: 2px dashed rgb(60, 60, 60);
+                                background: rgb(35, 35, 35);
+                                color: rgba(255, 255, 255, 0.5);
+                                font-size: 8pt;
+                                font-weight: normal;
+                            }
+                            QPushButton:checked {
+                                border: 2px solid rgb(150, 150, 150);
+                                background: rgba(255, 255, 255, 0.3);
+                                color: rgba(255, 255, 255, 1.0);
+                                font-size: 8pt;
+                                font-weight: bold;
+                            }
+                            QPushButton:hover:checked {
+                                border: 2px solid rgb(180, 180, 180);
+                                background: rgba(255, 255, 255, 0.4);
+                                color: rgba(255, 255, 255, 1.0);
+                                font-size: 8pt;
+                                font-weight: bold;
+                            }
+                            QPushButton:disabled {
+                                border: none;
+                                background: rgba(255, 255, 255, 0.1);
+                                color: rgba(255, 255, 255, 0.2);
+                                font-size: 8pt;
+                                font-weight: normal;
+                           """)
+        self.clicked.connect(lambda: self.parent().btn_clicked(self.id))
 
 
 class WnPowSelector(QFrame):

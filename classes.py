@@ -303,8 +303,9 @@ class GESync:
             self.child = 0
             try:
                 win32gui.EnumChildWindows(self.ge_hwnd, self._enum_children, None)
+                print("Handler subokna Google Earth Pro został ustalony.")
             except:
-                print(f"EnumChildWindows exception!")
+                pass
 
     def _enum_children(self, hwnd, extras):
         """Ustalenie handlera subokna Google Earth Pro z obrazem mapy."""

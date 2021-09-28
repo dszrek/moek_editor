@@ -438,11 +438,11 @@ class WyrCanvasPanel(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(516, 532)
+        self.setFixedSize(516, 580)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
         self.trigger_void = True
-        self.p_heights = [420, 392, 420]
+        self.p_heights = [468, 440, 468]
         self.mt_enabled = False
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
         self.list_box = MoekVBox(self, spacing=0)
@@ -522,7 +522,7 @@ class WyrCanvasPanel(QFrame):
         self.ssb.setFixedWidth(406)
         self.pages["page_1"].glay.glay.addWidget(self.ssb, 1, 0, 1, 1)
         for s in range(6):
-            _subpage = CanvasGridBox(self, height=392, margins=[0, 6, 0, 0], spacing=0)
+            _subpage = CanvasGridBox(self, height=440, margins=[0, 6, 0, 0], spacing=0)
             subpage_id = f'subpage_{s}'
             self.subpages[subpage_id] = _subpage
             self.ssb.addWidget(_subpage)
@@ -573,7 +573,9 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "fotki_1", "page": 1, "subpage": 0, "row": 5, "col": 9, "r_span": 1, "c_span": 3, "type": "text_2", "item": "line_edit", "max_len": 2, "validator": "id", "placeholder": "0", "zero_allowed": True, "width": 96, "val_width": 24, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": " ", "title_down_2": None, "title_left": "Ilość zdjęć:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=False)']]},
 
-                    {"name": "notepad_1", "page": 1, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UWAGI POKONTROLNE", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "notepad_1", "page": 1, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "autor_1", "page": 1, "subpage": 0, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "autor"},
 
                     {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
 
@@ -632,6 +634,11 @@ class WyrCanvasPanel(QFrame):
                     exec(f'self.pages["page_{dict["page"]}"].glay.glay.addWidget(_tb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 tb_name = f'tb_{dict["name"]}'
                 self.widgets[tb_name] = _tb
+            if dict["type"] == "autor":
+                _ab = AutorBox(self)
+                exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_ab, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                ab_name = 'ab_1'
+                self.widgets[ab_name] = _ab
             if dict["type"] == "kop_wiek":
                 _kw = KopalinaWiekBox(self)
                 exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_kw, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
@@ -684,6 +691,7 @@ class WyrCanvasPanel(QFrame):
             {'type': 'text_2', 'name': 'okres_zloze', 'value': _dict[45], 'value_2': _dict[46], 'pages': [0, 1]},
             {'type': 'kw','values': [_dict[36], _dict[37], _dict[38], _dict[39]], 'pages': [1]},
             {'type': 'gd','values': [_dict[40], _dict[41], _dict[42]], 'pages': [1]},
+            {'type': 'ab', 'name': 'autor', 'value': _dict[50], 'pages': [1]},
             {'type': 'combo', 'name': 'droga', 'value': _dict[31], 'pages': [1]},
             {'type': 'combo', 'name': 'hydro', 'value': _dict[19], 'pages': [1]},
             {'type': 'combo', 'name': 'eksploatacja', 'value': _dict[20], 'pages': [1]},
@@ -702,7 +710,7 @@ class WyrCanvasPanel(QFrame):
             if not self.cur_page in param["pages"]:
                 continue
             if param["type"] == "text_box":
-                txt = self.param_parser(param["value"], False)
+                txt = self.param_parser(param["value"])
                 exec(f'self.widgets["tb_{param["name"]}_{self.cur_page}"].value_change(txt)')
             if param["type"] == "text_2":
                 param_1 = self.param_parser(param["value"])
@@ -713,6 +721,9 @@ class WyrCanvasPanel(QFrame):
             if param["type"] == "combo":
                 param_val = self.param_parser(param["value"])
                 exec(f'self.widgets["cmb_{param["name"]}_{self.cur_page}"].value_change("value", param_val)')
+            if param["type"] == "ab":
+                txt = self.param_parser(param["value"])
+                exec(f'self.widgets["ab_1"].value_change(txt)')
             if param["type"] == "kw":
                 exec(f'self.widgets["kw_1"].set_values({param["values"]})')
             if param["type"] == "gd":
@@ -911,7 +922,8 @@ class FlagCanvasPanel(QFrame):
         self.box.setObjectName("box")
         self.setStyleSheet("""
                     QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
-                    QFrame#box{background-color: rgba(40, 40, 40, 0.94); border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    QFrame#sp{background-color: rgba(40, 40, 40, 0.94); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(3, 3, 3, 3)
@@ -920,19 +932,23 @@ class FlagCanvasPanel(QFrame):
         vlay.addWidget(self.box)
         self.setLayout(vlay)
         self.sp_tools = CanvasHSubPanel(self, height=34)
+        self.sp_tools.setObjectName("sp")
         self.box.lay.addWidget(self.sp_tools)
         self.id_label = PanelLabel(self, text="  Id:", size=12)
         self.sp_tools.lay.addWidget(self.id_label)
-        self.id_box = IdSpinBox(self, _obj="flag")
+        self.id_box = IdSpinBox(self, _obj="flag", height=32)
         self.sp_tools.lay.addWidget(self.id_box)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_tools.lay.addItem(spacer)
+        self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        self.box.lay.addWidget(self.separator_1)
         self.flag_tools = FlagTools(self)
         self.sp_tools.lay.addWidget(self.flag_tools)
         self.sp_notepad = CanvasHSubPanel(self, height=102)
+        self.sp_notepad.setObjectName("sp")
         self.box.lay.addWidget(self.sp_notepad)
         fn = ['self.db_update(txt_val=self.cur_val, tbl=f"team_{str(dlg.team_i)}.flagi", attr="t_notatki", sql_bns=f" WHERE id = {dlg.obj.flag}")']
-        self.notepad_box = ParamTextBox(self, height=82, width=332, edit=True, title="NOTATKI", fn=fn)
+        self.notepad_box = ParamTextBox(self, margins=True, height=82, width=332, edit=True, title="NOTATKI", fn=fn)
         #TextPadBox(self, height=110, obj="flag")
         self.sp_notepad.lay.addWidget(self.notepad_box)
 
@@ -967,7 +983,7 @@ class ParkingCanvasPanel(QFrame):
         self.box.lay.addWidget(self.sp_tools)
         self.id_label = PanelLabel(self, text="  Id:", size=12)
         self.sp_tools.lay.addWidget(self.id_label)
-        self.id_box = IdSpinBox(self, _obj="parking")
+        self.id_box = IdSpinBox(self, _obj="parking", height=32)
         self.sp_tools.lay.addWidget(self.id_box)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_tools.lay.addItem(spacer)
@@ -1046,7 +1062,8 @@ class WnCanvasPanel(QFrame):
         self.box.setObjectName("box")
         self.setStyleSheet("""
                     QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
-                    QFrame#box{background-color: rgba(40, 40, 40, 0.94); border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    QFrame#sp{background-color: rgba(40, 40, 40, 0.94); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(3, 3, 3, 3)
@@ -1055,62 +1072,74 @@ class WnCanvasPanel(QFrame):
         vlay.addWidget(self.box)
         self.setLayout(vlay)
         self.sp_id = CanvasHSubPanel(self, height=34)
+        self.sp_id.setObjectName("sp")
         self.box.lay.addWidget(self.sp_id)
         self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
         self.box.lay.addWidget(self.separator_1)
         self.top_margin = CanvasHSubPanel(self, height=8)
+        self.top_margin.setObjectName("sp")
         self.box.lay.addWidget(self.top_margin)
         self.id_label = PanelLabel(self, text="   Id_arkusz:", size=11)
         self.sp_id.lay.addWidget(self.id_label)
-        self.id_box = IdSpinBox(self, _obj="wn", width=134, max_len=8, validator="id_arkusz")
+        self.id_box = IdSpinBox(self, _obj="wn", width=134, height=32, max_len=8, validator="id_arkusz")
         self.sp_id.lay.addWidget(self.id_box)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_id.lay.addItem(spacer)
         self.params_1 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_1.setObjectName("sp")
         self.box.lay.addWidget(self.params_1)
         self.kopalina = ParamBox(self, width=217, title_down="KOPALINA")
         self.params_1.lay.addWidget(self.kopalina)
         self.data_inw = ParamBox(self, width=103, title_down="DATA INWENTARYZACJI")
         self.params_1.lay.addWidget(self.data_inw)
         self.params_2 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_2.setObjectName("sp")
         self.box.lay.addWidget(self.params_2)
         self.wyrobisko = ParamBox(self, title_down="WYROBISKO")
         self.params_2.lay.addWidget(self.wyrobisko)
         self.zawodn = ParamBox(self, title_down="ZAWODNIENIE")
         self.params_2.lay.addWidget(self.zawodn)
         self.params_3 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_3.setObjectName("sp")
         self.box.lay.addWidget(self.params_3)
         self.eksploat = ParamBox(self, title_down="EKSPLOATACJA")
         self.params_3.lay.addWidget(self.eksploat)
         self.odpady = ParamBox(self, title_down="WYPEŁNIENIE ODPADAMI")
         self.params_3.lay.addWidget(self.odpady)
         self.params_4 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_4.setObjectName("sp")
         self.box.lay.addWidget(self.params_4)
         self.dlug_max = ParamBox(self, title_left="Długość maks. [m]:")
         self.params_4.lay.addWidget(self.dlug_max)
         self.szer_max = ParamBox(self, title_left="Szerokość maks. [m]:")
         self.params_4.lay.addWidget(self.szer_max)
         self.params_5 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_5.setObjectName("sp")
         self.box.lay.addWidget(self.params_5)
         self.wysokosc = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Wysokość wyrobiska [m]:")
         self.params_5.lay.addWidget(self.wysokosc)
         self.params_6 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_6.setObjectName("sp")
         self.box.lay.addWidget(self.params_6)
         self.nadklad = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Grubość nadkładu [m]:")
         self.params_6.lay.addWidget(self.nadklad)
         self.params_7 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_7.setObjectName("sp")
         self.box.lay.addWidget(self.params_7)
         self.miazsz = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Miąższość kopaliny [m]:")
         self.params_7.lay.addWidget(self.miazsz)
         self.params_8 = CanvasHSubPanel(self, height=98, margins=[8, 0, 8, 0], spacing=8)
+        self.params_8.setObjectName("sp")
         self.box.lay.addWidget(self.params_8)
         self.uwagi = ParamTextBox(self, height=82, title="UWAGI")
         self.params_8.lay.addWidget(self.uwagi)
         self.bottom_margin = CanvasHSubPanel(self, height=4)
+        self.bottom_margin.setObjectName("sp")
         self.box.lay.addWidget(self.bottom_margin)
         self.separator_2 = CanvasHSubPanel(self, height=1, alpha=0.0)
         self.box.lay.addWidget(self.separator_2)
         self.sp_pow = CanvasHSubPanel(self, height=34)
+        self.sp_pow.setObjectName("sp")
         self.box.lay.addWidget(self.sp_pow)
         self.pow_selector = WnPowSelector(self)
         self.sp_pow.lay.addWidget(self.pow_selector)
@@ -2339,6 +2368,78 @@ class KopalinaWiekDrawer(QFrame):
         self.set_style()
 
 
+class AutorBox(QFrame):
+    """Widget do wpisywania autorstwa karty wyrobiska."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(403, 38)
+        self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
+        fn = [['dlg.wyr_panel.widgets["ab_1"].value_changed()']]
+        self.txtbox = ParamBox(self, margins=True, height=24, item="line_edit_left", width=401, value=" ", val_width=401, title_down="KARTA WYROBISKA OPRACOWANA PRZEZ", max_len=255, fn=fn)
+        self.drawer = CopyPasteDrawer(self, height=24)
+        self.drawer.set_enabled(True)
+        self.composer()
+        self.val_void = True
+        self.txt_val = None
+        self.val_void = False
+        self.txt_copy = self.txt_load()
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "txt_val" and not self.val_void:
+            self.drawer.val_copy.setToolTip(f"kopiuj: {val}") if val else self.drawer.val_copy.setToolTip(f"brak tekstu do skopiowania")
+            self.drawer.val_copy.setEnabled(True) if val else self.drawer.val_copy.setEnabled(False)
+        if attr == "txt_copy":
+            self.drawer.val_paste.setToolTip(f"wklej: {val}") if val else self.drawer.val_paste.setToolTip(f"brak tekstu do wklejenia")
+            self.drawer.val_paste.setEnabled(True) if val else self.drawer.val_paste.setEnabled(False)
+
+    def txt_load(self):
+        """Załadowanie wartości 'autor_copy' z db."""
+        db = PgConn()
+        sql = f"SELECT autor_copy FROM public.team_users WHERE team_id = {dlg.team_i} and user_id = {dlg.user_id};"
+        if db:
+            res = db.query_sel(sql, False)
+            if res:
+                return res[0]
+
+    def value_change(self, val):
+        """Zmienia wyświetlany tekst."""
+        self.txtbox.valbox_1.cur_val = val
+        self.txt_val = val
+
+    def value_changed(self):
+        """Zatwierdzono zmianę wartości tekstowej parambox'u."""
+        self.txt_val = self.txtbox.valbox_1.cur_val
+        txt_sql = self.sql_parser(self.txt_val)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_autor", val=txt_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+
+    def sql_parser(self, val):
+        """Zwraca wartość prawidłową dla formuły sql."""
+        return f"'{val}'" if val else 'Null'
+
+    def val_copy(self):
+        """Aktualizacja wartości 'autor_copy' zapisanej w db."""
+        self.txt_copy = self.txt_val
+        db_attr_change(tbl=f'public.team_users', attr='autor_copy', val=f"'{self.txt_copy}'", sql_bns=f' WHERE team_id = {dlg.team_i} AND user_id = {dlg.user_id}', user=False)
+
+    def val_paste(self):
+        """Wklejenie wartości 'val_copy' i zapisanie zmian w db."""
+        self.txt_val = self.txt_copy
+        self.txtbox.valbox_1.cur_val = self.txt_val
+        txt_sql = self.sql_parser(self.txt_val)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_autor", val=txt_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+
+    def composer(self, slide=False):
+        """Ustalenie rozmieszczenia i widoczności widget'ów."""
+        t_width = 367 if slide else 401
+        d_x = 362 if slide else 396
+        self.txtbox.setFixedWidth(t_width)
+        self.drawer.setGeometry(d_x, 4, self.drawer.width(), self.drawer.height())
+
+
 class TerminBox(QFrame):
     """Widget ustalania dla wyrobiska godziny i daty kontroli terenowej, albo oznaczenia braku kontroli terenowej."""
     def __init__(self, *args):
@@ -2362,7 +2463,7 @@ class TerminBox(QFrame):
             fn = [['dlg.wyr_panel.widgets["gd_1"].val_changed()']]
             _txt2 = ParamBox(self, item="line_edit", max_len=dict["max_len"], validator=dict["validator"], height=18, down_height=10, width=dict["width"], value=" ", val_width=dict["width"], title_down=dict["title_down"], fn=fn)
             exec(f'{dict["name"]} = _txt2')
-        self.drawer = TerminDrawer(self)
+        self.drawer = CopyPasteDrawer(self)
         self.composer()
         self.val_void = True
         self.t_val = None
@@ -2398,11 +2499,11 @@ class TerminBox(QFrame):
             if not val and self.d_val:
                 self.date_reset()
         if attr == "d_val" and not self.val_void:
-            self.drawer.date_copy.setToolTip(f"kopiuj datę: {val}") if val else self.drawer.date_copy.setToolTip(f"brak daty do skopiowania")
-            self.drawer.date_copy.setEnabled(True) if val else self.drawer.date_copy.setEnabled(False)
+            self.drawer.val_copy.setToolTip(f"kopiuj datę: {val}") if val else self.drawer.val_copy.setToolTip(f"brak daty do skopiowania")
+            self.drawer.val_copy.setEnabled(True) if val else self.drawer.val_copy.setEnabled(False)
         if attr == "d_copy":
-            self.drawer.date_paste.setToolTip(f"wklej datę: {val}") if val else self.drawer.date_paste.setToolTip(f"brak daty do wklejenia")
-            self.drawer.date_paste.setEnabled(True) if val else self.drawer.date_paste.setEnabled(False)
+            self.drawer.val_paste.setToolTip(f"wklej datę: {val}") if val else self.drawer.val_paste.setToolTip(f"brak daty do wklejenia")
+            self.drawer.val_paste.setEnabled(True) if val else self.drawer.val_paste.setEnabled(False)
 
     def date_load(self):
         """Załadowanie wartości daty z db."""
@@ -2559,13 +2660,13 @@ class TerminBox(QFrame):
         self.fchk_val = self.fchk.isChecked()
         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_teren", val=self.fchk_val, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
 
-    def date_copy(self):
-        """Aktualizacja wartości 'date_copy' zapisanej w db."""
+    def val_copy(self):
+        """Aktualizacja wartości 'val_copy' zapisanej w db."""
         self.d_copy = self.d_val
         db_attr_change(tbl=f'public.team_users', attr='date_copy', val=f"'{self.d_copy}'", sql_bns=f' WHERE team_id = {dlg.team_i} AND user_id = {dlg.user_id}', user=False)
 
-    def date_paste(self):
-        """Wklejenie wartości 'date_copy' i zapisanie zmian w db."""
+    def val_paste(self):
+        """Wklejenie wartości 'val_copy' i zapisanie zmian w db."""
         self.d_val = self.d_copy
         self.dd_val = str(self.d_val.day).zfill(2)
         self.dm_val = str(self.d_val.month).zfill(2)
@@ -2598,30 +2699,30 @@ class TerminBox(QFrame):
             self.drawer.setGeometry(123, 29, self.drawer.width(), self.drawer.height())
 
 
-class TerminDrawer(QFrame):
-    """Wysuwane menu dla TerminBox'u."""
-    def __init__(self, *args):
+class CopyPasteDrawer(QFrame):
+    """Wysuwane menu z przyciskami do kopiowania i wklejania wartości."""
+    def __init__(self, *args, height=18):
         super().__init__(*args)
         self.setCursor(Qt.ArrowCursor)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(42, 18)
+        self.setFixedSize(42, height)
         self.setObjectName("main")
-        self.line = QFrame(self)
-        self.line.setFixedSize(1, 14)
-        self.line.setObjectName("line")
-        self.date_copy = MoekButton(self, name="date_copy", size=16, checkable=False, tooltip="kopiowanie daty")
-        self.date_copy.clicked.connect(self.date_copy_clicked)
-        self.date_paste = MoekButton(self, name="date_paste", size=16, checkable=False, tooltip="wklejenie daty")
-        self.date_paste.clicked.connect(self.date_paste_clicked)
+        self.v_line = QFrame(self)
+        self.v_line.setFixedSize(1, height - 6)
+        self.v_line.setObjectName("v_line")
+        self.val_copy = MoekButton(self, name="val_copy", size=16, checkable=False, tooltip="")
+        self.val_copy.clicked.connect(self.val_copy_clicked)
+        self.val_paste = MoekButton(self, name="val_paste", size=16, checkable=False, tooltip="")
+        self.val_paste.clicked.connect(self.val_paste_clicked)
         hlay = QHBoxLayout()
         hlay.setContentsMargins(6, 0, 0, 0)
         hlay.setSpacing(2)
-        hlay.addWidget(self.line)
-        hlay.setAlignment(self.line, Qt.AlignVCenter)
-        hlay.addWidget(self.date_copy)
-        hlay.setAlignment(self.date_copy, Qt.AlignVCenter)
-        hlay.addWidget(self.date_paste)
-        hlay.setAlignment(self.date_paste, Qt.AlignVCenter)
+        hlay.addWidget(self.v_line)
+        hlay.setAlignment(self.v_line, Qt.AlignVCenter)
+        hlay.addWidget(self.val_copy)
+        hlay.setAlignment(self.val_copy, Qt.AlignVCenter)
+        hlay.addWidget(self.val_paste)
+        hlay.setAlignment(self.val_paste, Qt.AlignVCenter)
         self.setLayout(hlay)
         self.slide_void = True
         self.slided = False
@@ -2638,7 +2739,7 @@ class TerminDrawer(QFrame):
         alpha = 0.6 if self.isEnabled() else 0.1
         self.setStyleSheet("""
                     QFrame#main {background-color: transparent; border: none}
-                    QFrame#line {background-color: rgba(255, 255, 255, """ + str(alpha) + """); border: none}
+                    QFrame#v_line {background-color: rgba(255, 255, 255, """ + str(alpha) + """); border: none}
                     """)
 
     def sliding(self):
@@ -2651,13 +2752,13 @@ class TerminDrawer(QFrame):
     def leaveEvent(self, event):
         self.slided = False
 
-    def date_copy_clicked(self):
+    def val_copy_clicked(self):
         """Skopiowanie wartości daty do db."""
-        self.parent().date_copy()
+        self.parent().val_copy()
 
-    def date_paste_clicked(self):
+    def val_paste_clicked(self):
         """Wklejenie wartości skopiowanej daty."""
-        self.parent().date_paste()
+        self.parent().val_paste()
 
     def set_enabled(self, _bool):
         """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
@@ -2934,6 +3035,8 @@ class ParamBox(QFrame):
                     self.valbox_1 = TextItemLabel(self, height=_height, width=self.val_width_1, bgr_alpha=0.15, text=value)
                 elif self.item == "line_edit":
                     self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, trigger=trigger, fn=fn[0])
+                elif self.item == "line_edit_left":
+                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, align="AlignLeft", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, trigger=trigger, fn=fn[0])
                 elif self.item == "ruler":
                     self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
                 elif self.item == "combo":
@@ -3161,7 +3264,7 @@ class TextBox(QPlainTextEdit):
                                 min-height: 30px;
                                 border: 0px solid red;
                                 border-radius: 4px;
-                                background-color: rgba(0, 0, 0, 0.8);
+                                background-color: rgba(0, 0, 0, 0.4);
                             }
                             QScrollBar::add-line:vertical {
                                 height: 0px;
@@ -3313,12 +3416,13 @@ class IdSpinBox(QFrame):
 
 class CanvasLineEdit(QLineEdit):
     """Lineedit z odpalaniem funkcji po zatwierdzeniu zmian tekstu."""
-    def __init__(self, *args, width, height, r_widget=None, font_size=12, max_len=None, validator=None, placeholder=None, zero_allowed=False, null_allowed=True, theme="dark", trigger=None, fn=None):
+    def __init__(self, *args, width, height, r_widget=None, font_size=12, align="AlignCenter", max_len=None, validator=None, placeholder=None, zero_allowed=False, null_allowed=True, theme="dark", trigger=None, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
         self.setFrame(False)
         self.font_size = font_size
+        self.align = align
         self.r_widget = r_widget
         if self.r_widget == "ruler":
             self.r_widget = MoekSlideButton(self, name="ruler", size=24, checkable=True)
@@ -3466,7 +3570,7 @@ class CanvasLineEdit(QLineEdit):
                         font-size: """ + str(self.font_size) + """pt;
                         border: none;
                         padding: 0px 0px 2px 2px;
-                        qproperty-alignment: AlignCenter;
+                        qproperty-alignment: """ + str(self.align) + """;
                         }
                     """)
 

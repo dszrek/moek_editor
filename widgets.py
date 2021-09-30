@@ -438,18 +438,20 @@ class WyrCanvasPanel(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(516, 580)
+        self.setFixedSize(516, 578)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
+        shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
+        self.setGraphicsEffect(shadow_1)
         self.trigger_void = True
-        self.p_heights = [468, 440, 468]
+        self.p_heights = [468, 438, 468]
         self.mt_enabled = False
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
         self.list_box = MoekVBox(self, spacing=0)
         self.list_box.setFixedWidth(96)
-        self.sp_id = CanvasHSubPanel(self, height=34, margins=[0, 0, 0, 0], spacing=0, color="255, 255, 255", alpha=0.94)
+        self.sp_id = CanvasHSubPanel(self, height=32, margins=[0, 0, 0, 0], spacing=0, color="255, 255, 255", alpha=0.71)
         self.list_box.lay.addWidget(self.sp_id)
-        self.id_box = IdSpinBox(self, _obj="wyr", theme="light")
+        self.id_box = IdSpinBox(self, _obj="wyr", height=32, theme="light")
         self.sp_id.lay.addWidget(self.id_box)
         self.tv_wdf = WyrIdTableView(self)
         self.tv_wdf.setFixedWidth(96)
@@ -463,7 +465,7 @@ class WyrCanvasPanel(QFrame):
         self.box = MoekVBox(self)
         self.box.setObjectName("box")
         self.setStyleSheet("""
-                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.6); border: none}
                     QFrame#box{background-color: transparent; border: none}
                     """)
         hlay = QHBoxLayout()
@@ -478,35 +480,58 @@ class WyrCanvasPanel(QFrame):
         vlay.addWidget(self.bar)
         vlay.addLayout(hlay)
         self.setLayout(vlay)
-        self.sp_status = CanvasHSubPanel(self, height=34, margins=[4, 2, 4, 4], spacing=4, alpha=0.94)
-        self.box.lay.addWidget(self.sp_status)
+        self.head = MoekHBox(self, spacing=2)
+        self.box.lay.addWidget(self.head)
+        self.head_left = MoekVBox(self)
+        self.head.lay.addWidget(self.head_left)
+        self.head_right = MoekVBox(self, alpha=0.71)
+        self.head.lay.addWidget(self.head_right)
+        self.sp_status = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], spacing=2, alpha=0.71)
+        self.head_left.lay.addWidget(self.sp_status)
         self.order_box = IdSpinBox(self, _obj="order", width=90, height=28, max_len=3, validator="order", placeholder="001", theme="green")
         self.sp_status.lay.addWidget(self.order_box)
         self.status_indicator = WyrStatusIndicator(self)
         self.sp_status.lay.addWidget(self.status_indicator)
         self.status_selector = WyrStatusSelector(self, width=68)
         self.sp_status.lay.addWidget(self.status_selector)
-        self.sp_main = CanvasHSubPanel(self, margins=[4, 0, 0, 0], spacing=2, height=34, alpha=0.94)
-        self.box.lay.addWidget(self.sp_main)
+        self.separator_1 = CanvasHSubPanel(self, height=2, alpha=0.0)
+        self.head_left.lay.addWidget(self.separator_1)
+        self.sp_main = MoekHBox(self, margins=[0, 0, 0, 0], spacing=2)
+        self.head_left.lay.addWidget(self.sp_main)
+        self.hashbox = CanvasHSubPanel(self, height=32, margins=[1, 1, 2, 1], spacing=3, alpha=0.71)
+        self.sp_main.lay.addWidget(self.hashbox)
+        self.hash_icon = MoekButton(self, name="hash", size=30, checkable=False, enabled=False, tooltip="numer roboczy, terenowy")
+        self.hashbox.lay.addWidget(self.hash_icon)
+        self.hash = CanvasLineEdit(self, width=56, height=28, font_size=10, max_len=5, validator=None, theme="dark", placeholder="XXXXX")
+        self.hashbox.lay.addWidget(self.hash)
         self.wn_picker = WyrWnPicker(self)
         self.sp_main.lay.addWidget(self.wn_picker)
+        self.lokbox = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], alpha=0.71)
+        self.sp_main.lay.addWidget(self.lokbox)
+        self.lok = MoekButton(self, name="lok", size=28, checkable=True, enabled=True, tooltip="lokalizacja wyrobiska")
+        self.lokbox.lay.addWidget(self.lok)
+        self.areabox = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], alpha=0.71)
+        self.areabox.setFixedWidth(145)
+        self.sp_main.lay.addWidget(self.areabox)
+        self.area_icon = MoekButton(self, name="wyr_area", size=30, checkable=False, enabled=False, tooltip="powierzchnia wyrobiska")
+        self.areabox.lay.addWidget(self.area_icon)
         spacer_1 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
-        self.sp_main.lay.addItem(spacer_1)
-        self.area_icon = MoekButton(self, name="wyr_area", size=34, checkable=False, enabled=False, tooltip="powierzchnia wyrobiska")
-        self.sp_main.lay.addWidget(self.area_icon)
+        self.areabox.lay.addItem(spacer_1)
         self.area_label = PanelLabel(self, text="", size=12)
-        self.sp_main.lay.addWidget(self.area_label)
-        self.wyr_edit = MoekButton(self, name="wyr_edit", size=34, checkable=False)
+        self.areabox.lay.addWidget(self.area_label)
+        spacer_2 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.areabox.lay.addItem(spacer_2)
+        self.wyr_edit = MoekButton(self, name="wyr_edit", size=33, checkable=False)
         self.wyr_edit.clicked.connect(lambda: dlg.mt.init("wyr_edit"))
-        self.sp_main.lay.addWidget(self.wyr_edit)
-        self.wyr_del = MoekButton(self, name="trash", size=34, checkable=False)
+        self.head_right.lay.addWidget(self.wyr_edit)
+        self.wyr_del = MoekButton(self, name="trash", size=33, checkable=False)
         self.wyr_del.clicked.connect(self.wyr_delete)
-        self.sp_main.lay.addWidget(self.wyr_del)
-        self.separator_1 = CanvasHSubPanel(self, height=2, alpha=0.0)
-        self.box.lay.addWidget(self.separator_1)
+        self.head_right.lay.addWidget(self.wyr_del)
+        self.separator_2 = CanvasHSubPanel(self, height=2, alpha=0.0)
+        self.box.lay.addWidget(self.separator_2)
         self.tab_box = TabBox(self)
         self.box.lay.addWidget(self.tab_box)
-        self.sb = CanvasStackedBox(self, alpha=0.94)
+        self.sb = CanvasStackedBox(self, alpha=0.71)
         self.sb.setFixedWidth(412)
         self.box.lay.addWidget(self.sb)
         self.sb.currentChanged.connect(self.page_change)
@@ -522,7 +547,7 @@ class WyrCanvasPanel(QFrame):
         self.ssb.setFixedWidth(406)
         self.pages["page_1"].glay.glay.addWidget(self.ssb, 1, 0, 1, 1)
         for s in range(6):
-            _subpage = CanvasGridBox(self, height=440, margins=[0, 6, 0, 0], spacing=0)
+            _subpage = CanvasGridBox(self, height=438, margins=[0, 6, 0, 0], spacing=0)
             subpage_id = f'subpage_{s}'
             self.subpages[subpage_id] = _subpage
             self.ssb.addWidget(_subpage)
@@ -605,7 +630,7 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "powod_1", "page": 1, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
+                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
                     ]
 
         for dict in self.dicts:
@@ -917,13 +942,15 @@ class FlagCanvasPanel(QFrame):
         self.setFixedWidth(350)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
+        shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
+        self.setGraphicsEffect(shadow_1)
         self.bar = CanvasPanelTitleBar(self, title="Flagi", width=self.width())
         self.box = MoekVBox(self)
         self.box.setObjectName("box")
         self.setStyleSheet("""
-                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.6); border: none}
                     QFrame#box{background-color: transparent; border: none}
-                    QFrame#sp{background-color: rgba(40, 40, 40, 0.94); border: none}
+                    QFrame#sp{background-color: rgba(55, 55, 55, 0.71); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(3, 3, 3, 3)
@@ -931,7 +958,7 @@ class FlagCanvasPanel(QFrame):
         vlay.addWidget(self.bar)
         vlay.addWidget(self.box)
         self.setLayout(vlay)
-        self.sp_tools = CanvasHSubPanel(self, height=34)
+        self.sp_tools = CanvasHSubPanel(self, height=34, alpha=0.71)
         self.sp_tools.setObjectName("sp")
         self.box.lay.addWidget(self.sp_tools)
         self.id_label = PanelLabel(self, text="  Id:", size=12)
@@ -944,7 +971,7 @@ class FlagCanvasPanel(QFrame):
         self.box.lay.addWidget(self.separator_1)
         self.flag_tools = FlagTools(self)
         self.sp_tools.lay.addWidget(self.flag_tools)
-        self.sp_notepad = CanvasHSubPanel(self, height=102)
+        self.sp_notepad = CanvasHSubPanel(self, height=102, alpha=0.71)
         self.sp_notepad.setObjectName("sp")
         self.box.lay.addWidget(self.sp_notepad)
         fn = ['self.db_update(txt_val=self.cur_val, tbl=f"team_{str(dlg.team_i)}.flagi", attr="t_notatki", sql_bns=f" WHERE id = {dlg.obj.flag}")']
@@ -966,12 +993,14 @@ class ParkingCanvasPanel(QFrame):
         self.setFixedWidth(350)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
+        shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
+        self.setGraphicsEffect(shadow_1)
         self.bar = CanvasPanelTitleBar(self, title="Miejsca parkowania", width=self.width())
         self.box = MoekVBox(self)
         self.box.setObjectName("box")
         self.setStyleSheet("""
-                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
-                    QFrame#box{background-color: rgba(40, 40, 40, 0.94); border: none}
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.6); border: none}
+                    QFrame#box{background-color: rgba(55, 55, 55, 0.71); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(3, 3, 3, 3)
@@ -979,7 +1008,7 @@ class ParkingCanvasPanel(QFrame):
         vlay.addWidget(self.bar)
         vlay.addWidget(self.box)
         self.setLayout(vlay)
-        self.sp_tools = CanvasHSubPanel(self, height=34)
+        self.sp_tools = CanvasHSubPanel(self, height=34, alpha=0.71)
         self.box.lay.addWidget(self.sp_tools)
         self.id_label = PanelLabel(self, text="  Id:", size=12)
         self.sp_tools.lay.addWidget(self.id_label)
@@ -1011,8 +1040,8 @@ class MarszCanvasPanel(QFrame):
         self.box.setObjectName("box")
         self.box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setStyleSheet("""
-                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
-                    QFrame#box{background-color: rgba(40, 40, 40, 0.94); border: none}
+                    QFrame#main{background-color: transparent; border: none}
+                    QFrame#box{background-color: rgba(20, 20, 20, 0.8); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(0, 0, 0, 0)
@@ -1057,13 +1086,15 @@ class WnCanvasPanel(QFrame):
         self.setFixedWidth(350)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
+        shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
+        self.setGraphicsEffect(shadow_1)
         self.bar = CanvasPanelTitleBar(self, title="WN_Kopaliny_PNE", width=self.width())
         self.box = MoekVBox(self)
         self.box.setObjectName("box")
         self.setStyleSheet("""
-                    QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.6); border: none}
                     QFrame#box{background-color: transparent; border: none}
-                    QFrame#sp{background-color: rgba(40, 40, 40, 0.94); border: none}
+                    QFrame#sp{background-color: rgba(55, 55, 55, 0.71); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(3, 3, 3, 3)
@@ -1085,50 +1116,50 @@ class WnCanvasPanel(QFrame):
         self.sp_id.lay.addWidget(self.id_box)
         spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.sp_id.lay.addItem(spacer)
-        self.params_1 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_1 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8, alpha=0.71)
         self.params_1.setObjectName("sp")
         self.box.lay.addWidget(self.params_1)
         self.kopalina = ParamBox(self, width=217, title_down="KOPALINA")
         self.params_1.lay.addWidget(self.kopalina)
         self.data_inw = ParamBox(self, width=103, title_down="DATA INWENTARYZACJI")
         self.params_1.lay.addWidget(self.data_inw)
-        self.params_2 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_2 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8, alpha=0.71)
         self.params_2.setObjectName("sp")
         self.box.lay.addWidget(self.params_2)
         self.wyrobisko = ParamBox(self, title_down="WYROBISKO")
         self.params_2.lay.addWidget(self.wyrobisko)
         self.zawodn = ParamBox(self, title_down="ZAWODNIENIE")
         self.params_2.lay.addWidget(self.zawodn)
-        self.params_3 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_3 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8, alpha=0.71)
         self.params_3.setObjectName("sp")
         self.box.lay.addWidget(self.params_3)
         self.eksploat = ParamBox(self, title_down="EKSPLOATACJA")
         self.params_3.lay.addWidget(self.eksploat)
         self.odpady = ParamBox(self, title_down="WYPEŁNIENIE ODPADAMI")
         self.params_3.lay.addWidget(self.odpady)
-        self.params_4 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_4 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8, alpha=0.71)
         self.params_4.setObjectName("sp")
         self.box.lay.addWidget(self.params_4)
         self.dlug_max = ParamBox(self, title_left="Długość maks. [m]:")
         self.params_4.lay.addWidget(self.dlug_max)
         self.szer_max = ParamBox(self, title_left="Szerokość maks. [m]:")
         self.params_4.lay.addWidget(self.szer_max)
-        self.params_5 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_5 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8, alpha=0.71)
         self.params_5.setObjectName("sp")
         self.box.lay.addWidget(self.params_5)
         self.wysokosc = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Wysokość wyrobiska [m]:")
         self.params_5.lay.addWidget(self.wysokosc)
-        self.params_6 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_6 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8, alpha=0.71)
         self.params_6.setObjectName("sp")
         self.box.lay.addWidget(self.params_6)
         self.nadklad = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Grubość nadkładu [m]:")
         self.params_6.lay.addWidget(self.nadklad)
-        self.params_7 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8)
+        self.params_7 = CanvasHSubPanel(self, height=40, margins=[8, 0, 8, 0], spacing=8, alpha=0.71)
         self.params_7.setObjectName("sp")
         self.box.lay.addWidget(self.params_7)
         self.miazsz = ParamBox(self, width=328, value_2=" ", title_down="MIN", title_down_2="MAX", title_left="Miąższość kopaliny [m]:")
         self.params_7.lay.addWidget(self.miazsz)
-        self.params_8 = CanvasHSubPanel(self, height=98, margins=[8, 0, 8, 0], spacing=8)
+        self.params_8 = CanvasHSubPanel(self, height=98, margins=[8, 0, 8, 0], spacing=8, alpha=0.71)
         self.params_8.setObjectName("sp")
         self.box.lay.addWidget(self.params_8)
         self.uwagi = ParamTextBox(self, height=82, title="UWAGI")
@@ -1194,7 +1225,7 @@ class ExportCanvasPanel(QFrame):
         self.box.setObjectName("box")
         self.setStyleSheet("""
                     QFrame#main{background-color: rgba(0, 0, 0, 0.4); border: none}
-                    QFrame#box{background-color: rgba(40, 40, 40, 0.94); border: none}
+                    QFrame#box{background-color: rgba(55, 55, 55, 0.71); border: none}
                     """)
         vlay = QVBoxLayout()
         vlay.setContentsMargins(3, 3, 3, 3)
@@ -1433,7 +1464,7 @@ class CanvasPanelTitleBar(QFrame):
             self.l_title = PanelLabel(self, text=title, size=font_size)
             self.l_title.setFixedWidth(width - 34)
         self.setStyleSheet("""
-                    QFrame#bar{background-color: rgba(40, 40, 40, 0.95); border: none}
+                    QFrame#bar{background-color: rgba(60, 60, 60, 0.95); border: none}
                     QFrame#title {color: rgb(255, 255, 255); font-size: """ + str(font_size) + """pt; qproperty-alignment: AlignCenter}
                     """)
         hlay = QHBoxLayout()
@@ -1453,7 +1484,7 @@ class CanvasPanelTitleBar(QFrame):
 
 class CanvasHSubPanel(QFrame):
     """Belka canvaspanel'u z box'em."""
-    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, color="40, 40, 40", alpha=0.0):
+    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, color="55, 55, 55", alpha=0.0):
         super().__init__(*args)
         self.setObjectName("main")
         self.setFixedHeight(height)
@@ -1623,14 +1654,14 @@ class OdpadySelectorItem(QPushButton):
         self.setStyleSheet("""
                             QPushButton {
                                 border: 2px dashed rgb(60, 60, 60);
-                                background: rgb(40, 40, 40);
+                                background: transparent;
                                 color: rgba(255, 255, 255, 0.4);
                                 font-size: 8pt;
                                 font-weight: normal;
                             }
                             QPushButton:hover {
                                 border: 2px dashed rgb(60, 60, 60);
-                                background: rgb(35, 35, 35);
+                                background: rgb(55, 55, 55);
                                 color: rgba(255, 255, 255, 0.5);
                                 font-size: 8pt;
                                 font-weight: normal;
@@ -1935,21 +1966,21 @@ class WyrWnPicker(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedHeight(30)
-        self.setFixedWidth(123)
-        self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
+        self.setFixedSize(102, 32)
+        self.setStyleSheet("QFrame#main{background-color: rgba(55, 55, 55, 0.71); border: none}")
         self.lay = QHBoxLayout()
-        self.lay.setContentsMargins(0, 0, 0, 0)
-        self.lay.setSpacing(3)
+        self.lay.setContentsMargins(2, 0, 2, 0)
+        self.lay.setSpacing(2)
         self.setLayout(self.lay)
-        self.wn_picker_empty = MoekButton(self, name="wyr_wn_empty", size=30, checkable=True)
+        self.wn_picker_empty = MoekButton(self, name="wyr_wn_empty", size=28, checkable=True)
         self.lay.addWidget(self.wn_picker_empty)
         self.wn_picker_empty.clicked.connect(lambda: dlg.mt.init("wn_pick"))
-        self.wn_picker_eraser = MoekButton(self, name="wyr_wn", size=30, checkable=False)
+        self.wn_picker_eraser = MoekButton(self, name="wyr_wn", size=28, checkable=False)
         self.lay.addWidget(self.wn_picker_eraser)
         self.wn_picker_eraser.clicked.connect(lambda: self.wn_id_update(None))
-        self.idbox = CanvasLineEdit(self, width=90, height=30, max_len=8, validator="id_arkusz", theme="dark", fn=["dlg.wyr_panel.wn_picker.wn_id_update(self.text())"], placeholder="0001_001")
+        self.idbox = CanvasLineEdit(self, width=68, height=28, font_size=10, max_len=8, validator="id_arkusz", theme="dark", fn=["dlg.wyr_panel.wn_picker.wn_id_update(self.text())"], placeholder="0001_001")
         self.lay.addWidget(self.idbox)
+        self.lay.setAlignment(self.idbox, Qt.AlignVCenter)
         self.wn_id = None
 
     def __setattr__(self, attr, val):
@@ -2921,7 +2952,7 @@ class TabBox(QFrame):
             exec(f'self.lay.addWidget(_btn)')
             btn_idx = f'btn_{btn["index"]}'
             self.widgets[btn_idx] = _btn
-        spacer = MoekDummy(width=1, height=28, color="rgba(20, 20, 20, 0.94)", spacer="horizontal")
+        spacer = MoekDummy(width=1, height=28, color="rgba(20, 20, 20, 0.71)", spacer="horizontal")
         self.lay.addWidget(spacer)
         self.cur_idx = None
 
@@ -2972,7 +3003,7 @@ class TabButton(QPushButton):
                                 font-size: 6pt;
                                 font-weight: bold;
                                 color: rgba(255, 255, 255, """ + str(0.8 - alpha_sub) + """);
-                                background-color: rgba(20, 20, 20, 0.94);
+                                background-color: rgba(20, 20, 20, 0.71);
                                 border: none;
                                 padding: 6px;
                                 text-align: center;
@@ -2981,7 +3012,7 @@ class TabButton(QPushButton):
                                 font-size: 6pt;
                                 font-weight: bold;
                                 color: rgba(255, 255, 255, """ + str(1.0 - alpha_sub) + """);
-                                background-color: rgba(20, 20, 20, 0.94);
+                                background-color: rgba(20, 20, 20, 0.71);
                                 border: none;
                                 padding: 6px;
                                 text-align: center;
@@ -2990,7 +3021,7 @@ class TabButton(QPushButton):
                                 font-size: 6pt;
                                 font-weight: bold;
                                 color: rgba(255, 255, 255, """ + str(1.0 - alpha_sub) + """);
-                                background-color: rgba(40, 40, 40, 0.94);
+                                background-color: rgba(55, 55, 55, 0.71);
                                 border: none;
                                 padding: 6px;
                                 text-align: center;
@@ -3153,6 +3184,7 @@ class ParamTextBox(QFrame):
     def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setObjectName("main")
         _width = width
         _height = height
         down_height = down_height if title else 0
@@ -3172,7 +3204,7 @@ class ParamTextBox(QFrame):
         if title:
             self.titlebox = TextItemLabel(self, height=down_height, width=_width, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title)
             self.box.lay.addWidget(self.titlebox)
-        self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
+        self.setStyleSheet(" QFrame#main{background-color: transparent; border: none} ")
 
     def value_change(self, val):
         """Zmienia wyświetlany tekst."""
@@ -3250,19 +3282,21 @@ class TextBox(QPlainTextEdit):
         else:
             alpha = 0.1
         self.setStyleSheet("""
-                            QPlainTextEdit {background-color: rgba(255, 255, 255, """ + str(alpha) + """);
+                            QPlainTextEdit {
+                            border: none;
+                            background-color: rgba(255, 255, 255, """ + str(alpha) + """);
                             color: white;
                             font-size: 8pt;
-                            padding: 0px 0px 0px 0px}
+                            }
                             QScrollBar:vertical {
-                                border: 0px solid #999999;
+                                border: none;
                                 background: transparent;
                                 width: 14px;
                                 margin: 4px 3px 4px 3px;
                             }
                             QScrollBar::handle:vertical {
                                 min-height: 30px;
-                                border: 0px solid red;
+                                border: none;
                                 border-radius: 4px;
                                 background-color: rgba(0, 0, 0, 0.4);
                             }
@@ -3860,8 +3894,8 @@ class MoekLeftBottomDock(QFrame):
     def set_style(self, alpha):
         """Zmiana przezroczystości tła w zależności od aktualnej strony stackedbox'a."""
         self.setStyleSheet("""
-            QFrame#main{background-color: rgba(40, 40, 40, """ + str(alpha) + """); border: none}
-            QFrame#box{background-color: rgba(40, 40, 40, """ + str(alpha) + """); border: none}
+            QFrame#main{background-color: rgba(30, 30, 30, """ + str(alpha) + """); border: none}
+            QFrame#box{background-color: rgba(30, 30, 30, """ + str(alpha) + """); border: none}
             """)
 
     def height_change(self):
@@ -4222,7 +4256,7 @@ class MoekSeqAddBox(QFrame):
         self.maps = []
         self.add_btn.clicked.connect(self.add_basemap)
         self.setStyleSheet("""
-                        QFrame#main {background-color: rgba(40, 40, 40, 0.8); border: none}
+                        QFrame#main {background-color: rgba(55, 55, 55, 0.8); border: none}
                         """)
 
     def combobox_update(self, _id):
@@ -4567,7 +4601,7 @@ class MoekSeqCfg(QFrame):
         self.map_changed.connect(self.map_change)
         self.last_changed.connect(self.last_change)
         self.setStyleSheet("""
-                               QFrame#box {background-color: rgba(40, 40, 40, 0.8); border: none}
+                               QFrame#box {background-color: rgba(55, 55, 55, 0.8); border: none}
                                QFrame#lbl {color: rgb(255, 255, 255); qproperty-alignment: AlignCenter}
                                """)
 
@@ -4801,7 +4835,7 @@ class WyrIdTableView(QTableView):
         self.setStyleSheet("""
                             QTableView {
                                 selection-background-color: transparent;
-                                background-color: rgba(180, 180, 180, 0.94);
+                                background-color: rgba(200, 200, 200, 0.71);
                             }
                             QScrollBar:vertical {
                                 border: 0px solid #999999;
@@ -4813,7 +4847,7 @@ class WyrIdTableView(QTableView):
                                 min-height: 60px;
                                 border: 0px solid red;
                                 border-radius: 4px;
-                                background-color: rgba(40, 40, 40, 0.6);
+                                background-color: rgba(55, 55, 55, 0.6);
                             }
                             QScrollBar::add-line:vertical {
                                 height: 0px;
@@ -4873,8 +4907,12 @@ class CanvasGridBox(QFrame):
 
 class MoekHBox(QFrame):
     """Zawartość panelu w kompozycji QHBoxLayout."""
-    def __init__(self, *args, margins=[0, 0, 0, 0], spacing=0):
+    def __init__(self, *args, margins=[0, 0, 0, 0], spacing=0, color="55, 55, 55", alpha=0.0):
         super().__init__(*args)
+        self.setObjectName("main")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(""" + color + """, """ + str(alpha) + """); border: none}
+                    """)
         self.lay = QHBoxLayout()
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)
@@ -4883,8 +4921,12 @@ class MoekHBox(QFrame):
 
 class MoekVBox(QFrame):
     """Zawartość toolbox'a w kompozycji QVBoxLayout."""
-    def __init__(self, *args, margins=[0, 0, 0, 0], spacing=0):
+    def __init__(self, *args, margins=[0, 0, 0, 0], spacing=0, color="55, 55, 55", alpha=0.0):
         super().__init__(*args)
+        self.setObjectName("main")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(""" + color + """, """ + str(alpha) + """); border: none}
+                    """)
         self.lay = QVBoxLayout()
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)
@@ -4904,9 +4946,13 @@ class MoekStackedBox(QStackedWidget):
 
 class CanvasStackedBox(QStackedWidget):
     """Widget dzielący zawartość panelu na strony."""
-    def __init__(self, *args, color="40, 40, 40", alpha=0.0):
+    def __init__(self, *args, color="55, 55, 55", alpha=0.0):
         super().__init__(*args)
-        self.setStyleSheet(f"background-color: rgba({color}, {alpha}); border: none")
+        self.setStyleSheet("""QStackedWidget {
+                                background-color: rgba(""" + str(color) + """, """ + str(alpha) + """);
+                                border: none;
+                            }"""
+                            )
 
 
 class MoekButton(QToolButton):
@@ -5034,7 +5080,7 @@ class MoekPointer(QWidget):
         path.lineTo(6,0)
         path.lineTo(5,0)
         path.closeSubpath()
-        painter.fillPath(path, QColor(0, 0, 0, 153))
+        painter.fillPath(path, QColor(20, 20, 20, 204))
         self.pixmap = _pixmap
         qp = QPainter(self)
         qp.drawPixmap(0, 0, self.pixmap)

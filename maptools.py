@@ -3669,7 +3669,7 @@ def parking_add(point, extra):
     dlg.mt.init("multi_tool")
     if not point:
         return
-    p_pow = parking_pow(point)
+    p_pow = point_pow(point)
     if not p_pow:
         p_pow = "Null"
     db = PgConn()

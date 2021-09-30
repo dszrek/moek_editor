@@ -704,7 +704,7 @@ def wyr_powiaty_listed(wyr_id, geom):
     bbox = geom.makeValid().boundingBox().asWktPolygon()
     with CfgPars() as cfg:
         params = cfg.uri()
-    table = '"(SELECT pow_id, geom FROM public.powiaty)"'
+    table = '"(SELECT p.pow_id, p.geom, t.pow_grp FROM public.powiaty p INNER JOIN public.team_powiaty t ON p.pow_id=t.pow_id)"'
     key = '"pow_id"'
     sql = "ST_Intersects(ST_SetSRID(ST_GeomFromText('" + str(bbox) + "'), 2180), geom)"
     uri = f'{params} key={key} table={table} (geom) sql={sql}'
@@ -712,7 +712,8 @@ def wyr_powiaty_listed(wyr_id, geom):
     feats = lyr_pow.getFeatures()
     for feat in feats:
         if geom.makeValid().intersects(feat.geometry()):
-            p_list.append((wyr_id, feat.attribute("pow_id")))
+            if not (wyr_id, feat.attribute("pow_grp")) in p_list:
+                p_list.append((wyr_id, feat.attribute("pow_grp")))
     del lyr_pow
     return p_list
 

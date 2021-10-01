@@ -79,7 +79,7 @@ class ObjectManager:
                     self.parking = None
             if self.dlg.mt.mt_name == "flag_move":
                 self.dlg.mt.init("multi_tool")
-            self.dlg.flag_panel.id_box.id = val if val else None
+            self.dlg.flag_panel.id_spinbox.id = val if val else None
             self.dlg.flag_panel.show() if val else self.dlg.flag_panel.hide()
         elif attr == "flag_hidden":
             # Zmiana flagi ukrytej (aktywowana przy przenoszeniu flagi):
@@ -396,7 +396,7 @@ class ObjectManager:
         if _obj == "flag":
             obj = "self.flag"
             ids = self.flag_ids
-            id_box = "dlg.flag_panel.id_box.id"
+            id_box = "dlg.flag_panel.id_spinbox.id"
             is_int = True
         elif _obj == "parking":
             obj = "self.parking"
@@ -448,7 +448,7 @@ class ObjectManager:
             obj = "self.flag"
             val = self.flag
             ids = self.flag_ids
-            id_box = dlg.flag_panel.id_box
+            id_box = dlg.flag_panel.id_spinbox
         elif _obj == "parking":
             obj = "self.parking"
             val = self.parking

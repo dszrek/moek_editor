@@ -1,15 +1,15 @@
 <!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
-<qgis styleCategories="AllStyleCategories" minScale="1e+08" simplifyDrawingTol="1" readOnly="0" version="3.10.11-A Coruña" hasScaleBasedVisibilityFlag="0" labelsEnabled="0" simplifyLocal="1" maxScale="0" simplifyMaxScale="1" simplifyDrawingHints="0" simplifyAlgorithm="0">
+<qgis labelsEnabled="0" version="3.10.14-A Coruña" hasScaleBasedVisibilityFlag="0" maxScale="0" simplifyAlgorithm="0" minScale="1e+08" simplifyMaxScale="1" readOnly="0" styleCategories="AllStyleCategories" simplifyDrawingTol="1" simplifyLocal="1" simplifyDrawingHints="0">
   <flags>
     <Identifiable>1</Identifiable>
     <Removable>1</Removable>
     <Searchable>1</Searchable>
   </flags>
-  <renderer-v2 enableorderby="0" toleranceUnit="MM" forceraster="0" toleranceUnitScale="3x:0,0,0,0,0,0" type="pointCluster" tolerance="9">
-    <renderer-v2 enableorderby="0" forceraster="0" type="singleSymbol" symbollevels="0">
+  <renderer-v2 toleranceUnitScale="3x:0,0,0,0,0,0" type="pointCluster" toleranceUnit="MM" forceraster="0" tolerance="9" enableorderby="0">
+    <renderer-v2 type="singleSymbol" forceraster="0" symbollevels="0" enableorderby="0">
       <symbols>
-        <symbol name="0" clip_to_extent="1" type="marker" alpha="1" force_rhr="0">
-          <layer pass="0" class="RasterMarker" locked="0" enabled="1">
+        <symbol name="0" type="marker" force_rhr="0" clip_to_extent="1" alpha="1">
+          <layer class="RasterMarker" enabled="1" pass="0" locked="0">
             <prop k="alpha" v="1"/>
             <prop k="angle" v="0"/>
             <prop k="fixedAspectRatio" v="0"/>
@@ -97,19 +97,19 @@
             </effect>
             <data_defined_properties>
               <Option type="Map">
-                <Option name="name" value="" type="QString"/>
+                <Option name="name" type="QString" value=""/>
                 <Option name="properties" type="Map">
                   <Option name="enabled" type="Map">
-                    <Option name="active" value="true" type="bool"/>
-                    <Option name="expression" value="if( to_int( @wyr_sel ) = wyr_id, 1, 0)" type="QString"/>
-                    <Option name="type" value="3" type="int"/>
+                    <Option name="active" type="bool" value="true"/>
+                    <Option name="expression" type="QString" value="if( to_int( @wyr_sel ) = wyr_id, 1, 0)"/>
+                    <Option name="type" type="int" value="3"/>
                   </Option>
                 </Option>
-                <Option name="type" value="collection" type="QString"/>
+                <Option name="type" type="QString" value="collection"/>
               </Option>
             </data_defined_properties>
           </layer>
-          <layer pass="0" class="RasterMarker" locked="0" enabled="1">
+          <layer class="RasterMarker" enabled="1" pass="0" locked="0">
             <prop k="alpha" v="1"/>
             <prop k="angle" v="0"/>
             <prop k="fixedAspectRatio" v="0"/>
@@ -125,19 +125,19 @@
             <prop k="vertical_anchor_point" v="1"/>
             <data_defined_properties>
               <Option type="Map">
-                <Option name="name" value="" type="QString"/>
+                <Option name="name" type="QString" value=""/>
                 <Option name="properties" type="Map">
                   <Option name="enabled" type="Map">
-                    <Option name="active" value="true" type="bool"/>
-                    <Option name="expression" value="if( &quot;t_wn_id&quot; IS NULL, 1, 0 )" type="QString"/>
-                    <Option name="type" value="3" type="int"/>
+                    <Option name="active" type="bool" value="true"/>
+                    <Option name="expression" type="QString" value="if( &quot;wn_id&quot; IS NULL, 1, 0 )"/>
+                    <Option name="type" type="int" value="3"/>
                   </Option>
                 </Option>
-                <Option name="type" value="collection" type="QString"/>
+                <Option name="type" type="QString" value="collection"/>
               </Option>
             </data_defined_properties>
           </layer>
-          <layer pass="0" class="RasterMarker" locked="0" enabled="1">
+          <layer class="RasterMarker" enabled="1" pass="0" locked="0">
             <prop k="alpha" v="1"/>
             <prop k="angle" v="0"/>
             <prop k="fixedAspectRatio" v="0"/>
@@ -153,19 +153,19 @@
             <prop k="vertical_anchor_point" v="1"/>
             <data_defined_properties>
               <Option type="Map">
-                <Option name="name" value="" type="QString"/>
+                <Option name="name" type="QString" value=""/>
                 <Option name="properties" type="Map">
                   <Option name="enabled" type="Map">
-                    <Option name="active" value="true" type="bool"/>
-                    <Option name="expression" value="if( &quot;t_wn_id&quot; IS NULL, 0, 1 )" type="QString"/>
-                    <Option name="type" value="3" type="int"/>
+                    <Option name="active" type="bool" value="true"/>
+                    <Option name="expression" type="QString" value="if( &quot;wn_id&quot; IS NULL, 0, 1 )"/>
+                    <Option name="type" type="int" value="3"/>
                   </Option>
                 </Option>
-                <Option name="type" value="collection" type="QString"/>
+                <Option name="type" type="QString" value="collection"/>
               </Option>
             </data_defined_properties>
           </layer>
-          <layer pass="0" class="FontMarker" locked="0" enabled="1">
+          <layer class="FontMarker" enabled="1" pass="0" locked="0">
             <prop k="angle" v="0"/>
             <prop k="chr" v="A"/>
             <prop k="color" v="255,255,255,255"/>
@@ -185,15 +185,15 @@
             <prop k="vertical_anchor_point" v="1"/>
             <data_defined_properties>
               <Option type="Map">
-                <Option name="name" value="" type="QString"/>
+                <Option name="name" type="QString" value=""/>
                 <Option name="properties" type="Map">
                   <Option name="char" type="Map">
-                    <Option name="active" value="true" type="bool"/>
-                    <Option name="expression" value="to_string( &quot;wyr_id&quot;)" type="QString"/>
-                    <Option name="type" value="3" type="int"/>
+                    <Option name="active" type="bool" value="true"/>
+                    <Option name="expression" type="QString" value="to_string( &quot;wyr_id&quot;)"/>
+                    <Option name="type" type="int" value="3"/>
                   </Option>
                 </Option>
-                <Option name="type" value="collection" type="QString"/>
+                <Option name="type" type="QString" value="collection"/>
               </Option>
             </data_defined_properties>
           </layer>
@@ -202,8 +202,8 @@
       <rotation/>
       <sizescale/>
     </renderer-v2>
-    <symbol name="centerSymbol" clip_to_extent="1" type="marker" alpha="1" force_rhr="0">
-      <layer pass="0" class="RasterMarker" locked="0" enabled="1">
+    <symbol name="centerSymbol" type="marker" force_rhr="0" clip_to_extent="1" alpha="1">
+      <layer class="RasterMarker" enabled="1" pass="0" locked="0">
         <prop k="alpha" v="0.75"/>
         <prop k="angle" v="0"/>
         <prop k="fixedAspectRatio" v="0"/>
@@ -219,13 +219,13 @@
         <prop k="vertical_anchor_point" v="1"/>
         <data_defined_properties>
           <Option type="Map">
-            <Option name="name" value="" type="QString"/>
+            <Option name="name" type="QString" value=""/>
             <Option name="properties"/>
-            <Option name="type" value="collection" type="QString"/>
+            <Option name="type" type="QString" value="collection"/>
           </Option>
         </data_defined_properties>
       </layer>
-      <layer pass="0" class="FontMarker" locked="0" enabled="1">
+      <layer class="FontMarker" enabled="1" pass="0" locked="0">
         <prop k="angle" v="0"/>
         <prop k="chr" v="A"/>
         <prop k="color" v="255,0,0,255"/>
@@ -317,15 +317,15 @@
         </effect>
         <data_defined_properties>
           <Option type="Map">
-            <Option name="name" value="" type="QString"/>
+            <Option name="name" type="QString" value=""/>
             <Option name="properties" type="Map">
               <Option name="char" type="Map">
-                <Option name="active" value="true" type="bool"/>
-                <Option name="expression" value="@cluster_size" type="QString"/>
-                <Option name="type" value="3" type="int"/>
+                <Option name="active" type="bool" value="true"/>
+                <Option name="expression" type="QString" value="@cluster_size"/>
+                <Option name="type" type="int" value="3"/>
               </Option>
             </Option>
-            <Option name="type" value="collection" type="QString"/>
+            <Option name="type" type="QString" value="collection"/>
           </Option>
         </data_defined_properties>
       </layer>
@@ -340,27 +340,55 @@
   <blendMode>0</blendMode>
   <featureBlendMode>0</featureBlendMode>
   <layerOpacity>1</layerOpacity>
-  <SingleCategoryDiagramRenderer attributeLegend="1" diagramType="Histogram">
-    <DiagramCategory height="15" sizeScale="3x:0,0,0,0,0,0" opacity="1" rotationOffset="270" minScaleDenominator="0" lineSizeType="MM" backgroundColor="#ffffff" width="15" scaleBasedVisibility="0" barWidth="5" lineSizeScale="3x:0,0,0,0,0,0" labelPlacementMethod="XHeight" penWidth="0" minimumSize="0" penColor="#000000" scaleDependency="Area" backgroundAlpha="255" enabled="0" maxScaleDenominator="1e+08" penAlpha="255" diagramOrientation="Up" sizeType="MM">
-      <fontProperties description="MS Shell Dlg 2,8.25,-1,5,50,0,0,0,0,0" style=""/>
-      <attribute label="" color="#000000" field=""/>
+  <SingleCategoryDiagramRenderer diagramType="Histogram" attributeLegend="1">
+    <DiagramCategory penWidth="0" lineSizeScale="3x:0,0,0,0,0,0" barWidth="5" maxScaleDenominator="1e+08" backgroundAlpha="255" labelPlacementMethod="XHeight" penAlpha="255" scaleBasedVisibility="0" lineSizeType="MM" opacity="1" scaleDependency="Area" width="15" sizeScale="3x:0,0,0,0,0,0" minScaleDenominator="0" sizeType="MM" backgroundColor="#ffffff" penColor="#000000" diagramOrientation="Up" enabled="0" rotationOffset="270" height="15" minimumSize="0">
+      <fontProperties style="" description="MS Shell Dlg 2,8.25,-1,5,50,0,0,0,0,0"/>
+      <attribute color="#000000" field="" label=""/>
     </DiagramCategory>
   </SingleCategoryDiagramRenderer>
-  <DiagramLayerSettings zIndex="0" linePlacementFlags="18" obstacle="0" dist="0" priority="0" showAll="1" placement="0">
+  <DiagramLayerSettings placement="0" showAll="1" zIndex="0" dist="0" linePlacementFlags="18" obstacle="0" priority="0">
     <properties>
       <Option type="Map">
-        <Option name="name" value="" type="QString"/>
+        <Option name="name" type="QString" value=""/>
         <Option name="properties"/>
-        <Option name="type" value="collection" type="QString"/>
+        <Option name="type" type="QString" value="collection"/>
       </Option>
     </properties>
   </DiagramLayerSettings>
-  <geometryOptions geometryPrecision="0" removeDuplicateNodes="0">
+  <geometryOptions removeDuplicateNodes="0" geometryPrecision="0">
     <activeChecks/>
     <checkConfiguration/>
   </geometryOptions>
   <fieldConfiguration>
+    <field name="row_num">
+      <editWidget type="TextEdit">
+        <config>
+          <Option/>
+        </config>
+      </editWidget>
+    </field>
     <field name="wyr_id">
+      <editWidget type="TextEdit">
+        <config>
+          <Option/>
+        </config>
+      </editWidget>
+    </field>
+    <field name="teren_id">
+      <editWidget type="TextEdit">
+        <config>
+          <Option/>
+        </config>
+      </editWidget>
+    </field>
+    <field name="wn_id">
+      <editWidget type="TextEdit">
+        <config>
+          <Option/>
+        </config>
+      </editWidget>
+    </field>
+    <field name="midas_id">
       <editWidget type="TextEdit">
         <config>
           <Option/>
@@ -374,84 +402,14 @@
         </config>
       </editWidget>
     </field>
-    <field name="wyr_sys">
+    <field name="notatki">
       <editWidget type="TextEdit">
         <config>
           <Option/>
         </config>
       </editWidget>
     </field>
-    <field name="order_id">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="t_wyr_od">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="t_wyr_do">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="i_area_m2">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="t_wn_id">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="b_zloze">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="b_after_fchk">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="b_confirmed">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="date_fchk">
-      <editWidget type="DateTime">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="time_fchk">
-      <editWidget type="DateTime">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="t_notatki">
+    <field name="pow_m2">
       <editWidget type="TextEdit">
         <config>
           <Option/>
@@ -460,92 +418,62 @@
     </field>
   </fieldConfiguration>
   <aliases>
-    <alias name="" index="0" field="wyr_id"/>
-    <alias name="" index="1" field="user_id"/>
-    <alias name="" index="2" field="wyr_sys"/>
-    <alias name="" index="3" field="order_id"/>
-    <alias name="" index="4" field="t_wyr_od"/>
-    <alias name="" index="5" field="t_wyr_do"/>
-    <alias name="" index="6" field="i_area_m2"/>
-    <alias name="" index="7" field="t_wn_id"/>
-    <alias name="" index="8" field="b_zloze"/>
-    <alias name="" index="9" field="b_after_fchk"/>
-    <alias name="" index="10" field="b_confirmed"/>
-    <alias name="" index="11" field="date_fchk"/>
-    <alias name="" index="12" field="time_fchk"/>
-    <alias name="" index="13" field="t_notatki"/>
+    <alias name="" field="row_num" index="0"/>
+    <alias name="" field="wyr_id" index="1"/>
+    <alias name="" field="teren_id" index="2"/>
+    <alias name="" field="wn_id" index="3"/>
+    <alias name="" field="midas_id" index="4"/>
+    <alias name="" field="user_id" index="5"/>
+    <alias name="" field="notatki" index="6"/>
+    <alias name="" field="pow_m2" index="7"/>
   </aliases>
   <excludeAttributesWMS/>
   <excludeAttributesWFS/>
   <defaults>
-    <default expression="" applyOnUpdate="0" field="wyr_id"/>
-    <default expression="" applyOnUpdate="0" field="user_id"/>
-    <default expression="" applyOnUpdate="0" field="wyr_sys"/>
-    <default expression="" applyOnUpdate="0" field="order_id"/>
-    <default expression="" applyOnUpdate="0" field="t_wyr_od"/>
-    <default expression="" applyOnUpdate="0" field="t_wyr_do"/>
-    <default expression="" applyOnUpdate="0" field="i_area_m2"/>
-    <default expression="" applyOnUpdate="0" field="t_wn_id"/>
-    <default expression="" applyOnUpdate="0" field="b_zloze"/>
-    <default expression="" applyOnUpdate="0" field="b_after_fchk"/>
-    <default expression="" applyOnUpdate="0" field="b_confirmed"/>
-    <default expression="" applyOnUpdate="0" field="date_fchk"/>
-    <default expression="" applyOnUpdate="0" field="time_fchk"/>
-    <default expression="" applyOnUpdate="0" field="t_notatki"/>
+    <default field="row_num" applyOnUpdate="0" expression=""/>
+    <default field="wyr_id" applyOnUpdate="0" expression=""/>
+    <default field="teren_id" applyOnUpdate="0" expression=""/>
+    <default field="wn_id" applyOnUpdate="0" expression=""/>
+    <default field="midas_id" applyOnUpdate="0" expression=""/>
+    <default field="user_id" applyOnUpdate="0" expression=""/>
+    <default field="notatki" applyOnUpdate="0" expression=""/>
+    <default field="pow_m2" applyOnUpdate="0" expression=""/>
   </defaults>
   <constraints>
-    <constraint unique_strength="1" notnull_strength="1" constraints="3" exp_strength="0" field="wyr_id"/>
-    <constraint unique_strength="0" notnull_strength="1" constraints="1" exp_strength="0" field="user_id"/>
-    <constraint unique_strength="0" notnull_strength="1" constraints="1" exp_strength="0" field="wyr_sys"/>
-    <constraint unique_strength="0" notnull_strength="0" constraints="0" exp_strength="0" field="order_id"/>
-    <constraint unique_strength="0" notnull_strength="0" constraints="0" exp_strength="0" field="t_wyr_od"/>
-    <constraint unique_strength="0" notnull_strength="0" constraints="0" exp_strength="0" field="t_wyr_do"/>
-    <constraint unique_strength="0" notnull_strength="1" constraints="1" exp_strength="0" field="i_area_m2"/>
-    <constraint unique_strength="0" notnull_strength="0" constraints="0" exp_strength="0" field="t_wn_id"/>
-    <constraint unique_strength="0" notnull_strength="1" constraints="1" exp_strength="0" field="b_zloze"/>
-    <constraint unique_strength="0" notnull_strength="1" constraints="1" exp_strength="0" field="b_after_fchk"/>
-    <constraint unique_strength="0" notnull_strength="1" constraints="1" exp_strength="0" field="b_confirmed"/>
-    <constraint unique_strength="0" notnull_strength="0" constraints="0" exp_strength="0" field="date_fchk"/>
-    <constraint unique_strength="0" notnull_strength="0" constraints="0" exp_strength="0" field="time_fchk"/>
-    <constraint unique_strength="0" notnull_strength="0" constraints="0" exp_strength="0" field="t_notatki"/>
+    <constraint field="row_num" notnull_strength="1" unique_strength="1" constraints="3" exp_strength="0"/>
+    <constraint field="wyr_id" notnull_strength="1" unique_strength="1" constraints="3" exp_strength="0"/>
+    <constraint field="teren_id" notnull_strength="0" unique_strength="0" constraints="0" exp_strength="0"/>
+    <constraint field="wn_id" notnull_strength="0" unique_strength="0" constraints="0" exp_strength="0"/>
+    <constraint field="midas_id" notnull_strength="0" unique_strength="0" constraints="0" exp_strength="0"/>
+    <constraint field="user_id" notnull_strength="1" unique_strength="0" constraints="1" exp_strength="0"/>
+    <constraint field="notatki" notnull_strength="0" unique_strength="0" constraints="0" exp_strength="0"/>
+    <constraint field="pow_m2" notnull_strength="1" unique_strength="0" constraints="1" exp_strength="0"/>
   </constraints>
   <constraintExpressions>
-    <constraint exp="" field="wyr_id" desc=""/>
-    <constraint exp="" field="user_id" desc=""/>
-    <constraint exp="" field="wyr_sys" desc=""/>
-    <constraint exp="" field="order_id" desc=""/>
-    <constraint exp="" field="t_wyr_od" desc=""/>
-    <constraint exp="" field="t_wyr_do" desc=""/>
-    <constraint exp="" field="i_area_m2" desc=""/>
-    <constraint exp="" field="t_wn_id" desc=""/>
-    <constraint exp="" field="b_zloze" desc=""/>
-    <constraint exp="" field="b_after_fchk" desc=""/>
-    <constraint exp="" field="b_confirmed" desc=""/>
-    <constraint exp="" field="date_fchk" desc=""/>
-    <constraint exp="" field="time_fchk" desc=""/>
-    <constraint exp="" field="t_notatki" desc=""/>
+    <constraint desc="" field="row_num" exp=""/>
+    <constraint desc="" field="wyr_id" exp=""/>
+    <constraint desc="" field="teren_id" exp=""/>
+    <constraint desc="" field="wn_id" exp=""/>
+    <constraint desc="" field="midas_id" exp=""/>
+    <constraint desc="" field="user_id" exp=""/>
+    <constraint desc="" field="notatki" exp=""/>
+    <constraint desc="" field="pow_m2" exp=""/>
   </constraintExpressions>
   <expressionfields/>
   <attributeactions>
     <defaultAction value="{00000000-0000-0000-0000-000000000000}" key="Canvas"/>
   </attributeactions>
-  <attributetableconfig sortExpression="" actionWidgetStyle="dropDown" sortOrder="0">
+  <attributetableconfig sortOrder="0" sortExpression="" actionWidgetStyle="dropDown">
     <columns>
-      <column name="wyr_id" type="field" width="-1" hidden="0"/>
-      <column name="user_id" type="field" width="-1" hidden="0"/>
-      <column name="t_wyr_od" type="field" width="-1" hidden="0"/>
-      <column name="t_wyr_do" type="field" width="-1" hidden="0"/>
-      <column name="i_area_m2" type="field" width="-1" hidden="0"/>
-      <column name="b_zloze" type="field" width="-1" hidden="0"/>
-      <column name="b_after_fchk" type="field" width="-1" hidden="0"/>
-      <column name="b_confirmed" type="field" width="-1" hidden="0"/>
-      <column name="date_fchk" type="field" width="-1" hidden="0"/>
-      <column name="time_fchk" type="field" width="-1" hidden="0"/>
-      <column type="actions" width="-1" hidden="1"/>
-      <column name="wyr_sys" type="field" width="-1" hidden="0"/>
-      <column name="order_id" type="field" width="-1" hidden="0"/>
-      <column name="t_notatki" type="field" width="-1" hidden="0"/>
-      <column name="t_wn_id" type="field" width="-1" hidden="0"/>
+      <column name="wyr_id" type="field" hidden="0" width="-1"/>
+      <column name="user_id" type="field" hidden="0" width="-1"/>
+      <column type="actions" hidden="1" width="-1"/>
+      <column name="row_num" type="field" hidden="0" width="-1"/>
+      <column name="teren_id" type="field" hidden="0" width="-1"/>
+      <column name="wn_id" type="field" hidden="0" width="-1"/>
+      <column name="midas_id" type="field" hidden="0" width="-1"/>
+      <column name="notatki" type="field" hidden="0" width="-1"/>
+      <column name="pow_m2" type="field" hidden="0" width="-1"/>
     </columns>
   </attributetableconfig>
   <conditionalstyles>
@@ -583,13 +511,19 @@ def my_form_open(dialog, layer, feature):
     <field name="b_zloze" editable="1"/>
     <field name="date_fchk" editable="1"/>
     <field name="i_area_m2" editable="1"/>
+    <field name="midas_id" editable="1"/>
+    <field name="notatki" editable="1"/>
     <field name="order_id" editable="1"/>
+    <field name="pow_m2" editable="1"/>
+    <field name="row_num" editable="1"/>
     <field name="t_notatki" editable="1"/>
     <field name="t_wn_id" editable="1"/>
     <field name="t_wyr_do" editable="1"/>
     <field name="t_wyr_od" editable="1"/>
+    <field name="teren_id" editable="1"/>
     <field name="time_fchk" editable="1"/>
     <field name="user_id" editable="1"/>
+    <field name="wn_id" editable="1"/>
     <field name="wyr_id" editable="1"/>
     <field name="wyr_sys" editable="1"/>
   </editable>
@@ -600,13 +534,19 @@ def my_form_open(dialog, layer, feature):
     <field name="b_zloze" labelOnTop="0"/>
     <field name="date_fchk" labelOnTop="0"/>
     <field name="i_area_m2" labelOnTop="0"/>
+    <field name="midas_id" labelOnTop="0"/>
+    <field name="notatki" labelOnTop="0"/>
     <field name="order_id" labelOnTop="0"/>
+    <field name="pow_m2" labelOnTop="0"/>
+    <field name="row_num" labelOnTop="0"/>
     <field name="t_notatki" labelOnTop="0"/>
     <field name="t_wn_id" labelOnTop="0"/>
     <field name="t_wyr_do" labelOnTop="0"/>
     <field name="t_wyr_od" labelOnTop="0"/>
+    <field name="teren_id" labelOnTop="0"/>
     <field name="time_fchk" labelOnTop="0"/>
     <field name="user_id" labelOnTop="0"/>
+    <field name="wn_id" labelOnTop="0"/>
     <field name="wyr_id" labelOnTop="0"/>
     <field name="wyr_sys" labelOnTop="0"/>
   </labelOnTop>

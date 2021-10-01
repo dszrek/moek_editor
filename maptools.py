@@ -68,7 +68,8 @@ class ObjectManager:
                 self.flag_data = self.flag_update()
                 self.list_position_check("flag")
                 self.dlg.flag_panel.flag_tools.fchk = self.flag_data[1]  # Aktualizacja przycisku fchg
-                txt = self.param_parser(self.flag_data[2])
+                self.dlg.flag_panel.hash.set_value(self.flag_data[2])  # Aktualizacja teren_id
+                txt = self.param_parser(self.flag_data[3])
                 self.dlg.flag_panel.notepad_box.value_change(txt)  # Aktualizacja tekstu notatki
                 if self.wn:
                     # Wyłączenie panelu wn, jeśli jest włączony:
@@ -102,6 +103,7 @@ class ObjectManager:
                 self.wyr_data = self.wyr_update()
                 self.list_position_check("wyr")
                 area_txt = f"{self.wyr_data[4]} m\u00b2 "
+                self.dlg.wyr_panel.hash.set_value(self.wyr_data[51])  # Aktualizacja teren_id
                 self.dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
                 self.dlg.wyr_panel.status_selector.set_case(self.wyr_data[1], self.wyr_data[2])  # Aktualizacja statusu wyrobiska
                 self.dlg.wyr_panel.wn_picker.wn_id = self.wyr_data[3]  # Aktualizacja wn_id
@@ -317,7 +319,7 @@ class ObjectManager:
     def flag_update(self):
         """Zwraca dane flagi."""
         db = PgConn()
-        sql = "SELECT id, b_fieldcheck, t_notatki FROM team_" + str(dlg.team_i) + ".flagi WHERE id = " + str(self.flag) + ";"
+        sql = "SELECT id, b_fieldcheck, t_teren_id, t_notatki FROM team_" + str(dlg.team_i) + ".flagi WHERE id = " + str(self.flag) + ";"
         if db:
             res = db.query_sel(sql, False)
             if not res:
@@ -354,9 +356,9 @@ class ObjectManager:
         """Zwraca dane wyrobiska."""
         db = PgConn()
         if dlg.wyr_panel.pow_all:
-            sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_fchk, d.b_teren, w.t_midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor FROM team_" + str(dlg.team_i) + ".wyr_dane AS d INNER JOIN team_" + str(dlg.team_i) + ".wyrobiska AS w USING(wyr_id) WHERE wyr_id = '" + str(self.wyr) + "';"
+            sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_fchk, d.b_teren, w.t_midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.t_teren_id FROM team_" + str(dlg.team_i) + ".wyr_dane AS d INNER JOIN team_" + str(dlg.team_i) + ".wyrobiska AS w USING(wyr_id) WHERE wyr_id = '" + str(self.wyr) + "';"
         else:
-            sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_fchk, d.b_teren, w.t_midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, p.order_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_pow AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "' AND p.pow_id = '" + str(dlg.powiat_i) + "';"
+            sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_fchk, d.b_teren, w.t_midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.t_teren_id, p.order_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_pow AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "' AND p.pow_id = '" + str(dlg.powiat_i) + "';"
         if db:
             res = db.query_sel(sql, False)
             if not res:

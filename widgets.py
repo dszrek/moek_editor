@@ -444,6 +444,7 @@ class WyrCanvasPanel(QFrame):
         self.setMouseTracking(True)
         shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow_1)
+        self.focus_void = True
         self.trigger_void = True
         self.p_heights = [468, 435, 468]
         self.mt_enabled = False
@@ -509,7 +510,7 @@ class WyrCanvasPanel(QFrame):
         self.sp_main.lay.addWidget(self.wn_picker)
         self.lokbox = CanvasHSubPanel(self, height=32, margins=[0, 0, 0, 0], alpha=0.71)
         self.sp_main.lay.addWidget(self.lokbox)
-        self.lok = MoekButton(self, name="lok", size=30, checkable=True, enabled=True, tooltip="lokalizacja wyrobiska")
+        self.lok = MoekButton(self, name="lok", size=30, checkable=False, enabled=True, tooltip = "lokalizacja wyrobiska")
         self.lokbox.lay.addWidget(self.lok)
         self.areabox = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], alpha=0.71)
         self.areabox.setFixedWidth(150)
@@ -522,10 +523,10 @@ class WyrCanvasPanel(QFrame):
         self.areabox.lay.addWidget(self.area_label)
         spacer_2 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.areabox.lay.addItem(spacer_2)
-        self.wyr_edit = MoekButton(self, name="wyr_edit", size=32, checkable=False)
+        self.wyr_edit = MoekButton(self, name="wyr_edit", size=32, checkable=False, tooltip="edytuj geometrię wyrobiska")
         self.wyr_edit.clicked.connect(lambda: dlg.mt.init("wyr_edit"))
         self.head_right.lay.addWidget(self.wyr_edit)
-        self.wyr_del = MoekButton(self, name="trash", size=32, checkable=False)
+        self.wyr_del = MoekButton(self, name="trash", size=32, checkable=False, tooltip="usuń wyrobisko")
         self.wyr_del.clicked.connect(self.wyr_delete)
         self.head_right.lay.addWidget(self.wyr_del)
         self.separator_2 = CanvasHSubPanel(self, height=1, alpha=0.0)
@@ -555,17 +556,17 @@ class WyrCanvasPanel(QFrame):
         self.tab_box.cur_idx = 0
         self.dicts = [
 
-                    {"name": "midas_id_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)','wyr_point_lyrs_repaint()']]},
+                    {"name": "midas_id_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
                     {"name": "stan_midas_0", "page": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "okres_zloze_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
+                    {"name": "okres_zloze_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
                     {"name": "pne_zloze_0", "page": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "pne_poza_0", "page": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "okres_eksp_0", "page": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
+                    {"name": "okres_eksp_0", "page": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
                     {"name": "notepad_0", "page": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "NOTATKI", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
@@ -573,17 +574,17 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "kopalina_wiek_1", "page": 1, "subpage": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "kop_wiek"},
 
-                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
+                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "dlug_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "dlug_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "szer_1", "page": 1, "subpage": 0, "row": 2, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "szer_1", "page": 1, "subpage": 0, "row": 2, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 3, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "wys_1", "page": 1, "subpage": 0, "row": 2, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
+                    {"name": "wys_1", "page": 1, "subpage": 0, "row": 2, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
 
-                    {"name": "nadkl_1", "page": 1, "subpage": 0, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
+                    {"name": "nadkl_1", "page": 1, "subpage": 0, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
 
-                    {"name": "miaz_1", "page": 1, "subpage": 0, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "miaz_1", "page": 1, "subpage": 0, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
                     {"name": "droga_1", "page": 1, "subpage": 0, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
@@ -597,17 +598,17 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "wydobycie_1", "page": 1, "subpage": 0, "row": 5, "col": 4, "r_span": 1, "c_span": 5, "type": "combo", "width": 164, "val_width": None, "title_left": None, "title_down": "POLE EKSPLOATACYJNE CZYNNE", "tbl_name": "sl_wydobycie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wydobycie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "fotki_1", "page": 1, "subpage": 0, "row": 5, "col": 9, "r_span": 1, "c_span": 3, "type": "text_2", "item": "line_edit", "max_len": 2, "validator": "id", "placeholder": "0", "zero_allowed": True, "width": 96, "val_width": 24, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": " ", "title_down_2": None, "title_left": "Ilość zdjęć:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=False)']]},
+                    {"name": "fotki_1", "page": 1, "subpage": 0, "row": 5, "col": 9, "r_span": 1, "c_span": 3, "type": "text_2", "item": "line_edit", "max_len": 2, "validator": "id", "placeholder": "0", "zero_allowed": True, "width": 96, "val_width": 24, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": " ", "title_down_2": None, "title_left": "Ilość zdjęć:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
                     {"name": "notepad_1", "page": 1, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
                     {"name": "autor_1", "page": 1, "subpage": 0, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "autor"},
 
-                    {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)','wyr_point_lyrs_repaint()']]},
+                    {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
                     {"name": "stan_midas_1", "page": 1, "subpage": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "okres_zloze_1", "page": 1, "subpage": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "width": 402, "val_width": 132, "val_width_2": 133, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.text()}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)']]},
+                    {"name": "okres_zloze_1", "page": 1, "subpage": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "width": 402, "val_width": 132, "val_width_2": 133, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
                     {"name": "pne_zloze_1", "page": 1, "subpage": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
@@ -882,20 +883,21 @@ class WyrCanvasPanel(QFrame):
 
     def miaz_fill(self, min_max):
         """Uzupełnia wartość miąższości kopaliny jako różnicy wysokości i nadkładu."""
-        wys_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_1.text() if min_max == "min" else dlg.wyr_panel.widgets["txt2_wys_1"].valbox_2.text()
+        wys_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_1.cur_val if min_max == "min" else dlg.wyr_panel.widgets["txt2_wys_1"].valbox_2.cur_val
         nadkl_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.cur_val if min_max == "min" else dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_2.cur_val
         if wys_txt == None or nadkl_txt == None:
-            miaz_val = ""
+            miaz_val = None
         else:
             wys_val = float(wys_txt)
             nadkl_val = float(nadkl_txt)
             miaz_val = wys_val - nadkl_val
             if miaz_val < 0.0:
-                miaz_val = ""
+                miaz_val = None
             else:
-                miaz_val = str(miaz_val)
-        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.set_value(miaz_val) if min_max == "min" else dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.set_value(miaz_val)
-        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.run_fn() if min_max == "min" else dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.run_fn()
+                miaz_val = miaz_val
+        dlg.wyr_panel.focus_void = True
+        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.value_change(miaz_val) if min_max == "min" else dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.value_change(miaz_val)
+        dlg.wyr_panel.focus_void = False
 
     def wdf_sel_update(self):
         """Aktualizacja zaznaczenia wiersza w tv_wdf."""
@@ -1055,9 +1057,9 @@ class MarszCanvasPanel(QFrame):
         vlay.addWidget(self.box)
         vlay.setAlignment(self.pointer, Qt.AlignCenter)
         self.setLayout(vlay)
-        self.marsz_continue = MoekButton(self, name="line_continue", size=34)
-        self.marsz_edit = MoekButton(self, name="line_edit", size=34)
-        self.trash = MoekButton(self, name="marsz_trash", size=34)
+        self.marsz_continue = MoekButton(self, name="line_continue", size=34, tooltip="kontynuuj rysowanie marszruty")
+        self.marsz_edit = MoekButton(self, name="line_edit", size=34, tooltip="edytuj linię marszruty")
+        self.trash = MoekButton(self, name="marsz_trash", size=34, tooltip="usuń marszrutę")
         hlay = QHBoxLayout()
         hlay.setContentsMargins(4, 4, 4, 4)
         hlay.setSpacing(1)
@@ -1244,12 +1246,12 @@ class ExportCanvasPanel(QFrame):
         self.box.lay.addWidget(self.path_box)
         self.path_pb = ParamBox(self, width=445, title_down="FOLDER EKSPORTU")
         self.path_box.lay.addWidget(self.path_pb)
-        self.path_btn = MoekButton(self, name="export_path", size=34, checkable=False)
+        self.path_btn = MoekButton(self, name="export_path", size=34, checkable=False, tooltip="wybierz folder, do którego zostaną wyeksportowane dane")
         self.path_btn.clicked.connect(self.set_path)
         self.path_box.lay.addWidget(self.path_btn)
         self.sp_ext = CanvasHSubPanel(self, height=46, margins=[0, 10, 0, 2], alpha=0.71)
         self.box.lay.addWidget(self.sp_ext)
-        self.export_btn = MoekButton(self, name="export", size=34, checkable=False, enabled=False)
+        self.export_btn = MoekButton(self, name="export", size=34, checkable=False, enabled=False, tooltip="wyeksportuj dane")
         self.export_btn.clicked.connect(self.layers_export)
         self.export_selector = ExportSelector(self, width=445)
         self.sp_ext.lay.addWidget(self.export_selector)
@@ -1919,8 +1921,8 @@ class WyrStatusIndicator(QLabel):
     def order_check(self):
         """Ustalenie order_id wyrobisk potwierdzonych we wszystkich powiatach."""
         odf = self.order_pd_load()
-        odf = odf.sort_values(by=['pow_id', 'Y_92'], ascending=[True, False])
-        odf_pows = dict(tuple(odf.groupby('pow_id')))
+        odf = odf.sort_values(by=['pow_grp', 'Y_92'], ascending=[True, False])
+        odf_pows = dict(tuple(odf.groupby('pow_grp')))
         odf_pows_list = [odf_pows[x] for x in odf_pows]
         for odf_pow in odf_pows_list:
             odf_pow = odf_pow.reset_index(drop=True)
@@ -1933,10 +1935,10 @@ class WyrStatusIndicator(QLabel):
             odf_pow['order_new'] = odf_pow['order_new'].map(lambda x: f'{x:0>3}')
             # Sprawdzenie, czy jest różnica pomiędzy ustaloną numeracją, a nową:
             not_same = np.any( odf_pow['order_id'].values != odf_pow['order_new'].values)
-            pow_id = odf_pow.loc[0, 'pow_id']
+            pow_id = odf_pow.loc[0, 'pow_grp']
             if not_same:
                 # Konieczność aktualizacji order_id w tym powiecie:
-                udf = odf_pow[['wyr_id', 'pow_id', 'order_new']]
+                udf = odf_pow[['wyr_id', 'pow_grp', 'order_new']]
                 udf_list = udf.to_records(index=False).tolist()
                 self.order_clear()
                 self.order_update(udf_list)
@@ -1944,25 +1946,25 @@ class WyrStatusIndicator(QLabel):
     def order_pd_load(self):
         """Zwraca dataframe z danymi wyrobisk potwierdzonych dla ustalenia order_id."""
         db = PgConn()
-        sql = f"SELECT w.wyr_id, ST_X(w.centroid) as X_92, ST_Y(w.centroid) as Y_92, p.pow_id, p.order_id FROM team_{dlg.team_i}.wyr_pow AS p INNER JOIN team_{dlg.team_i}.wyrobiska AS w USING(wyr_id) WHERE w.b_confirmed IS TRUE;"
+        sql = f"SELECT w.wyr_id, ST_X(w.centroid) as X_92, ST_Y(w.centroid) as Y_92, p.pow_grp, p.order_id FROM team_{dlg.team_i}.wyr_prg AS p INNER JOIN team_{dlg.team_i}.wyrobiska AS w USING(wyr_id) WHERE w.b_confirmed IS TRUE;"
         if db:
-            df = db.query_pd(sql, ['wyr_id' ,'X_92', 'Y_92', 'pow_id', 'order_id'])
-            if len(df) > 0:
+            df = db.query_pd(sql, ['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id'])
+            if isinstance(df, pd.DataFrame):
                 return df
             else:
-                return pd.Dataframe(columns=['wyr_id' ,'X_92', 'Y_92', 'pow_id', 'order_id'])
+                return pd.DataFrame(columns=['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id'])
 
     def order_update(self, list):
         """Aktualizacja order_id w db."""
         db = PgConn()
-        sql = f"UPDATE team_{dlg.team_i}.wyr_pow AS p SET order_id = u.order_id FROM (VALUES %s) AS u (wyr_id, pow_id, order_id) WHERE p.wyr_id = u.wyr_id AND p.pow_id = u.pow_id;"
+        sql = f"UPDATE team_{dlg.team_i}.wyr_prg AS p SET order_id = u.order_id FROM (VALUES %s) AS u (wyr_id, pow_grp, order_id) WHERE p.wyr_id = u.wyr_id AND p.pow_grp = u.pow_grp;"
         if db:
             db.query_exeval(sql, list)
 
     def order_clear(self):
         """Wyczyszczenie order_id dla wyrobisk z bieżącego powiatu."""
         db = PgConn()
-        sql = f"UPDATE team_{dlg.team_i}.wyr_pow SET order_id = Null WHERE pow_id = '{dlg.powiat_i}'"
+        sql = f"UPDATE team_{dlg.team_i}.wyr_prg SET order_id = Null WHERE pow_grp = '{dlg.powiat_i}'"
         if db:
             res = db.query_upd(sql)
 
@@ -1979,10 +1981,10 @@ class WyrWnPicker(QFrame):
         self.lay.setContentsMargins(2, 0, 2, 0)
         self.lay.setSpacing(2)
         self.setLayout(self.lay)
-        self.wn_picker_empty = MoekButton(self, name="wyr_wn_empty", size=28, checkable=True)
+        self.wn_picker_empty = MoekButton(self, name="wyr_wn_empty", size=28, checkable=True, tooltip="wybierz z mapy punkt WN_PNE, który będzie powiązany z wyrobiskiem")
         self.lay.addWidget(self.wn_picker_empty)
         self.wn_picker_empty.clicked.connect(lambda: dlg.mt.init("wn_pick"))
-        self.wn_picker_eraser = MoekButton(self, name="wyr_wn", size=28, checkable=False)
+        self.wn_picker_eraser = MoekButton(self, name="wyr_wn", size=28, checkable=False, tooltip="wyczyść powiązanie wyrobiska z punktem WN_PNE")
         self.lay.addWidget(self.wn_picker_eraser)
         self.wn_picker_eraser.clicked.connect(lambda: self.wn_id_update(None))
         self.idbox = CanvasLineEdit(self, width=68, height=28, font_size=10, max_len=8, validator="id_arkusz", theme="dark", fn=["dlg.wyr_panel.wn_picker.wn_id_update(self.text())"], placeholder="0001_001")
@@ -2159,7 +2161,7 @@ class KopalinaWiekBox(QFrame):
         for dict in self.dicts:
             if dict["attr"]:
                 fn = ['dlg.wyr_panel.widgets["kw_1"].val_changed()']
-                height = 23
+                height = 22
                 value = " "
             else:
                 fn = None
@@ -2239,7 +2241,7 @@ class KopalinaWiekBox(QFrame):
         sql = f"SELECT t_val, t_desc FROM public.{tbl_name};"
         if db:
             df = db.query_pd(sql, ['t_val' ,'t_desc'])
-            if len(df) > 0:
+            if isinstance(df, pd.DataFrame):
                 return df
             else:
                 return pd.Dataframe(columns=['t_val' ,'t_desc'])
@@ -2293,7 +2295,8 @@ class KopalinaWiekBox(QFrame):
         sql = f"SELECT {attr_name} FROM team_{dlg.team_i}.wyr_dane;"
         if db:
             temp_df = db.query_pd(sql, ['t_val'])
-            return temp_df
+            if isinstance(temp_df, pd.DataFrame):
+                return temp_df
 
     def plus_clicked(self):
         """Akcja po naciśnięciu przycisku 'plus_btn'."""
@@ -2359,9 +2362,9 @@ class KopalinaWiekDrawer(QFrame):
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(26, 23)
         self.setObjectName("main")
-        self.plus_btn = MoekButton(self, name="kw_plus", size=17)
+        self.plus_btn = MoekButton(self, name="kw_plus", size=17, tooltip="dodaj drugą kopalinę")
         self.plus_btn.clicked.connect(self.parent().plus_clicked)
-        self.minus_btn = MoekButton(self, name="kw_minus", size=17)
+        self.minus_btn = MoekButton(self, name="kw_minus", size=17, tooltip="usuń drugą kopalinę")
         self.minus_btn.clicked.connect(self.parent().minus_clicked)
         hlay = QHBoxLayout()
         hlay.setContentsMargins(6, 0, 0, 0)
@@ -3052,6 +3055,7 @@ class ParamBox(QFrame):
         self.val_width = val_width + val_width_2 + sep_width if value_2 else val_width
         self.val_width_1 = val_width if title_left or icon else _width
         self.val_width_2 = val_width_2 if title_left or icon else _width
+        self.focus_switch = False
         self.setFixedSize(width, all_height)
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
         lay = QVBoxLayout()
@@ -3088,8 +3092,10 @@ class ParamBox(QFrame):
                     self.valbox_2 = TextItemLabel(self, height=_height, width=self.val_width_2, bgr_alpha=0.15, text=value)
                 elif self.item == "line_edit":
                     self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=_height, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
+                    self.focus_switch = True
                 elif self.item == "ruler":
                     self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
+                    self.focus_switch = True
                 self.box.glay.addWidget(self.valbox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "separator":
                 self.separator = TextItemLabel(self, height=_height, width=sep_width, text=sep_txt)
@@ -3185,6 +3191,17 @@ class ParamBox(QFrame):
                 self.valbox_2.set_value(val)
             else:
                 self.valbox_2.setText(str(val)) if val else self.valbox_2.setText("")
+
+    def focus_switcher(self, val):
+        """Ustawia focus na lineedit z pustą wartością, po zatwierdzeniu wartości w innym lineedit z tego parambox'u."""
+        if not self.focus_switch:
+            return
+        if self.valbox_1.cur_val == val and not self.valbox_2.cur_val:
+            if not dlg.wyr_panel.focus_void:
+                self.valbox_2.setFocus()
+        elif self.valbox_2.cur_val == val and not self.valbox_1.cur_val:
+            if not dlg.wyr_panel.focus_void:
+                self.valbox_1.setFocus()
 
 
 class ParamTextBox(QFrame):
@@ -3525,6 +3542,11 @@ class CanvasLineEdit(QLineEdit):
                 self.numerical = False
             self.value_changed()
 
+    def sql_parser(self, val):
+        """Zwraca wartość prawidłową dla formuły sql."""
+        result = val if val else 'Null'
+        return result
+
     def set_enabled(self, _bool):
         """Włączenie/wyłączenie widget'u poleceniem zewnętrznym."""
         self.setEnabled(_bool)
@@ -3532,12 +3554,13 @@ class CanvasLineEdit(QLineEdit):
 
     def set_value(self, val):
         """Próba zmiany wartości."""
-        if not val or val == 'None' or len(str(val)) == 0:  # Wartość Null
-            self.cur_val = None if self.null_allowed else self.cur_val
-            return
+        if not val or val == 'None' or val == '' or len(str(val)) == 0:  # Wartość Null
+            if str(val) != "0.0":
+                self.cur_val = None if self.null_allowed else self.cur_val
+                return
         if self.validator == "00.0" or self.validator == "000" or self.validator == "order":
             # Próba konwersji tekstu na wartość float:
-            num_val = self.numeric_formater(val)
+            num_val = self.numeric_formater(str(val))
             self.numerical = True if num_val != -1 else False
             if num_val != -1:
                 self.cur_val = str(num_val)
@@ -3578,6 +3601,8 @@ class CanvasLineEdit(QLineEdit):
         self.setText(self.placeholder) if self.placeholder and self.cur_val == None else self.setText(self.cur_val)
         if self.trigger and hasattr(dlg, "wyr_panel"):
             exec(f'dlg.wyr_panel.{self.trigger}')
+        if isinstance(self.parent().parent(), ParamBox) and self.cur_val != None:
+            self.parent().parent().focus_switcher(self.cur_val)
 
     def set_grey(self):
         """Ustalenie, czy wartość powinna zostać wyszarzona."""

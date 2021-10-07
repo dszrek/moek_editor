@@ -6,7 +6,7 @@ import numpy as np
 
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
 from qgis.PyQt.QtCore import Qt, QDir
-from qgis.core import QgsApplication, QgsProject, QgsDataSourceUri, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext, QgsFeature, QgsGeometry, QgsPointXY, edit
+from qgis.core import QgsApplication, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext, QgsFeature, QgsGeometry, edit
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 

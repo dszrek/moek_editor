@@ -24,11 +24,11 @@
 
 import os
 
-from qgis.core import QgsProject, QgsFeature
+from qgis.core import QgsProject
 from qgis.gui import QgsMapToolPan
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QObject, QTimer
-from qgis.PyQt.QtGui import QIcon, QPixmap
+from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QTimer
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QDockWidget, QShortcut, QMessageBox, QSizePolicy
 from qgis.utils import iface
 
@@ -37,7 +37,7 @@ from .layers import dlg_layers, PanelManager, LayerManager
 from .maptools import dlg_maptools, MapToolManager, ObjectManager
 from .main import dlg_main, vn_mode_changed, data_export_init, sequences_load, prev_map, next_map, seq
 from .viewnet import dlg_viewnet, change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
+from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
 from .basemaps import dlg_basemaps, MoekMapPanel, basemaps_load
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(

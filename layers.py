@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
-from qgis.core import QgsProject, QgsApplication, QgsRasterLayer, QgsVectorLayer, QgsRectangle, QgsField, QgsLayerTreeGroup, QgsLayerTreeLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform
+from qgis.core import QgsApplication, QgsRasterLayer, QgsVectorLayer, QgsField, QgsLayerTreeLayer, QgsCoordinateReferenceSystem
 from qgis.PyQt.QtWidgets import QMessageBox
 from PyQt5.QtCore import Qt, QVariant
 from qgis.utils import iface

@@ -12,13 +12,11 @@ import tempfile
 import codecs
 import time
 import pandas as pd
-import numpy as np
 
-from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
-from qgis.core import QgsProject, QgsGeometry, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsPointXY
+from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsPointXY
 from qgis.PyQt.QtCore import Qt, pyqtSlot, pyqtProperty, QTimer, QAbstractTableModel, QVariant, QModelIndex, QRect
-from qgis.PyQt.QtWidgets import QMessageBox, QHeaderView, QStyledItemDelegate, QItemDelegate, QStyle
-from qgis.PyQt.QtGui import QColor, QKeySequence, QFont, QLinearGradient, QBrush, QPen, QPixmap, QPainter, QIcon
+from qgis.PyQt.QtWidgets import QMessageBox, QHeaderView, QStyledItemDelegate, QStyle
+from qgis.PyQt.QtGui import QColor, QFont, QLinearGradient, QBrush, QPen, QPainter
 from qgis.utils import iface
 from threading import Thread
 from PIL import Image

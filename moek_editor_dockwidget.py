@@ -24,22 +24,21 @@
 
 import os
 
-from qgis.core import QgsProject, QgsFeature
+from qgis.core import QgsProject
 from qgis.gui import QgsMapToolPan
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QObject, QTimer
-from qgis.PyQt.QtGui import QIcon, QPixmap
+from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QTimer
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QDockWidget, QShortcut, QMessageBox, QSizePolicy
 from qgis.utils import iface
 
 from .classes import PgConn
-from .layers import LayerManager
-from .maptools import MapToolManager, ObjectManager
-from .main import vn_mode_changed, data_export_init
-from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
-from .basemaps import MoekMapPanel, basemaps_load
-from .sequences import sequences_load, prev_map, next_map, seq
+from .layers import dlg_layers, PanelManager, LayerManager
+from .maptools import dlg_maptools, MapToolManager, ObjectManager
+from .main import dlg_main, vn_mode_changed, data_export_init, sequences_load, prev_map, next_map, seq
+from .viewnet import dlg_viewnet, change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
+from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
+from .basemaps import dlg_basemaps, MoekMapPanel, basemaps_load
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -54,7 +53,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
     hk_vn_changed = pyqtSignal(bool)
     hk_seq_changed = pyqtSignal(bool)
 
-    def __init__(self, parent=None):
+    def __init__(self, user_id, user_name, team_i, parent=None):
         super(MoekEditorDockWidget, self).__init__(parent)
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
@@ -64,6 +63,17 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
         self.iface = iface
         self.setupUi(self)
+        self.user_id = user_id
+        self.user_name = user_name
+        self.t_user_id = int()
+        self.t_user_name = ""
+        self.powiaty = []
+        self.powiat_i = int()
+        self.powiat_t = ""
+        self.team_users = []
+        self.teams = []
+        self.team_i = team_i
+        self.team_t = ""
         self.resize_timer = None
         self.freeze = False
         self.changing = False
@@ -76,6 +86,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.proj.legendLayersAdded.connect(self.layers_adding)
         self.app = iface.mainWindow()  # Referencja do aplikacji QGIS
         self.canvas = iface.mapCanvas()  # Referencja do okna mapowego
+        self.dlg_referencer()
 
         self.p_team = MoekBarPanel(
                             self,
@@ -309,6 +320,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.wn_panel.hide()
         self.export_panel = ExportCanvasPanel(self.canvas)
         self.export_panel.hide()
+
+        self.cfg = PanelManager(dlg=self)
         self.mt = MapToolManager(dlg=self, canvas=self.canvas)
         self.obj = ObjectManager(dlg=self, canvas=self.canvas)
         self.lyr = LayerManager(dlg=self)
@@ -347,6 +360,14 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         if attr == "hk_seq":
             self.hk_seq_changed.emit(val)
 
+    def dlg_referencer(self):
+        dlg_widgets(self)  # Przekazanie referencji interfejsu wtyczki do widgets.py
+        dlg_main(self)  # Przekazanie referencji interfejsu wtyczki do main.py
+        dlg_layers(self)  # Przekazanie referencji interfejsu wtyczki do layers.py
+        dlg_maptools(self)  # Przekazanie referencji interfejsu wtyczki do maptools.py
+        dlg_viewnet(self)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
+        dlg_basemaps(self)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
+
     def freeze_set(self, val, from_resize=False, delay=False):
         """Zarządza blokadą odświeżania dockwidget'u."""
         if val and self.freeze:
@@ -370,12 +391,12 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             else:
                 self.freeze_start()
         elif not val and self.changing and self.freeze:
-            QTimer.singleShot(10, self.changing_stop)
+            QTimer.singleShot(300, self.changing_stop)
         elif not val and not self.changing and not self.resizing:
             if delay:
                 QTimer.singleShot(300, self.freeze_end)
             else:
-                QTimer.singleShot(10, self.freeze_end)
+                QTimer.singleShot(300, self.freeze_end)
 
     def changing_stop(self):
         """Zakończenie zmiany stanu / zawartości panelu, odpalone z pewnym opóźnieniem
@@ -541,7 +562,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             self.close()
 
     def basemaps_and_sequences_load(self):
-        """Odpala basemaps_load() z basemaps.py i sequences_load() z sequences.py."""
+        """Odpala basemaps_load() z basemaps.py i sequences_load() z main.py."""
         basemaps_load()
         sequences_load()
 
@@ -648,6 +669,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"].clicked.connect(lambda: self.mt.init("parking_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"].clicked.connect(lambda: self.mt.init("marsz_add"))
+        self.wyr_panel.widgets["txt2_dlug_1"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("dlug_min"))
+        self.wyr_panel.widgets["txt2_dlug_1"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("dlug_max"))
+        self.wyr_panel.widgets["txt2_szer_1"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("szer_min"))
+        self.wyr_panel.widgets["txt2_szer_1"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("szer_max"))
+
 
     def button_cfg(self, btn, icon_name, size=50, tooltip=""):
         """Konfiguracja przycisków."""

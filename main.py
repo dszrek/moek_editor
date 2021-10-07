@@ -1,10 +1,12 @@
 #!/usr/bin/python
 import os
 import time as tm
+import pandas as pd
+import numpy as np
 
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
 from qgis.PyQt.QtCore import Qt, QDir
-from qgis.core import QgsApplication, QgsProject, QgsDataSourceUri, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext
+from qgis.core import QgsApplication, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext, QgsFeature, QgsGeometry, edit
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
@@ -177,6 +179,7 @@ def powiaty_load():
                 dlg.powiat_t = dlg.powiaty[0][1]
                 print("team nie ma aktywnego powiatu. Ustawiony pierwszy: ", str(dlg.powiat_i), " | ", str(dlg.powiat_t))
             dlg.p_pow.box.widgets["cmb_pow_act"].setCurrentText(dlg.powiat_t)  # Ustawienie cb na aktualny dlg.powiat_t
+            dlg.wyr_panel.status_indicator.order_check()
         else:  # Do team'u nie ma przypisanych powiatów
             QMessageBox.warning(None, "Problem", "Podany zespół nie ma przypisanych powiatów. Skontaktuj się z administratorem systemu.")
 
@@ -300,17 +303,29 @@ def wyr_layer_update(check=True):
     """Aktualizacja warstw z wyrobiskami."""
     QgsApplication.setOverrideCursor(Qt.WaitCursor)
     if check:
-    # Sprawdzenie, czy wszystkie wyrobiska mają przypisane powiaty
-    # i dokonanie aktualizacji, jeśli występują braki:
+        # Sprawdzenie, czy wszystkie wyrobiska mają przypisane powiaty i dane
+        # oraz dokonanie aktualizacji, jeśli występują braki:
         wyr_powiaty_check()
+        wyr_dane_check()
     # Stworzenie listy wyrobisk z aktywnych powiatów:
     dlg.obj.wyr_ids = get_wyr_ids()
+    if dlg.wyr_panel.pow_all:
+        dlg.obj.order_ids = []
+    else:
+        dlg.obj.order_ids = get_order_ids()
+    # Aktualizacja wdf:
+    wdf_update()
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.obj.wyr_ids:
-        uri_a1 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ') AND b_after_fchk = False'
-        uri_a2 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ') AND b_after_fchk = True AND b_confirmed = True'
-        uri_a3 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ') AND b_after_fchk = True AND b_confirmed = False'
+        table = f'''"(SELECT row_number() OVER (ORDER BY w.wyr_id::int) AS row_num, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'''
+        if dlg.wyr_panel.pow_all:
+            table_green = f'''"(SELECT row_number() OVER (ORDER BY w.wyr_id::int) AS row_num, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND w.b_after_fchk = True AND w.b_confirmed = True)"'''
+        else:
+            table_green = f'''"(SELECT row_number() OVER (ORDER BY p.order_id) AS row_num, p.order_id, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_prg p ON w.wyr_id = p.wyr_id INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND w.b_after_fchk = True AND w.b_confirmed = True AND p.pow_grp = '{dlg.powiat_i}')"'''
+        uri_a1 = f'''{params} key="row_num" table={table} AND b_after_fchk = False)" (point) sql='''
+        uri_a2 = f'{params} key="row_num" table={table_green} (point) sql='
+        uri_a3 = f'''{params} key="row_num" table={table} AND b_after_fchk = True AND b_confirmed = False)" (point) sql='''
         uri_a4 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
         uri_b = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
     else:
@@ -334,16 +349,104 @@ def wyr_layer_update(check=True):
     dlg.wyr_visibility()  # Aktualizacja widoczności warstw
     QgsApplication.restoreOverrideCursor()
 
+def wdf_update():
+    """Aktualizacja dataframe'u wdf."""
+    # Załadowanie danych o wyrobiskach do dataframe'u:
+    wdf_load()
+    # Aktualizacja tableview:
+    dlg.wyr_panel.wdf_mdl.setDataFrame(dlg.wyr_panel.wdf)
+
+def wdf_load():
+    """Załadowanie danych o wyrobiskach z db do dataframe'u wdf."""
+    db = PgConn()
+    extras = f" WHERE wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})" if dlg.obj.wyr_ids else f" WHERE wyr_id = 0"
+    sql = "SELECT wyr_id, b_after_fchk, b_confirmed, t_wn_id FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
+    if db:
+        temp_df = db.query_pd(sql, ['wyr_id', 'fchk', 'cnfrm', 'wn_id'])
+        if isinstance(temp_df, pd.DataFrame):
+            wn_df = temp_df.copy()
+            wn_df.drop(['fchk', 'cnfrm'], axis=1, inplace=True)
+            wn_check(wn_df)
+            wdf = wyr_status_determine(temp_df)
+            dlg.wyr_panel.wdf = wdf
+        else:
+            dlg.wyr_panel.wdf = pd.DataFrame(columns=dlg.wyr_panel.wn_df.columns)  # Wyczyszczenie dataframe'a z połączeniami wyrobiska-wn_pne
+            return None
+
+def wn_check(wn_df):
+    """Kontrola zmian w połączeniach wyrobisk z WN_PNE."""
+    wn_df_new = wn_df[~wn_df['wn_id'].isna()].reset_index(drop=True)
+    wn_df_old = dlg.wyr_panel.wn_df.copy()
+    wn_df_old = wn_df_old[['wyr_id', 'wn_id']]
+    if not wn_df_new.equals(wn_df_old):
+        dlg.wyr_panel.wn_df = wn_df_new
+        wn_update(wn_df_new)
+
+def wn_update(wn_df):
+    """Aktualizacja danych dla warstwy wn_link."""
+    if len(dlg.wyr_panel.wn_df) == 0:
+        lyr = dlg.proj.mapLayersByName("wn_link")[0]
+        if lyr.featureCount() > 0:
+            pr = lyr.dataProvider()
+            pr.truncate()
+        return
+    # Pobranie geometrii punktowych wybranych wyrobisk:
+    wyr_ids = wn_df['wyr_id'].tolist()
+    table = f'"team_{dlg.team_i}"."wyrobiska"'
+    wyr_pts = get_point_from_ids(wyr_ids, table, "wyr_id", "centroid")
+    if len(wyr_pts) == 0:
+        return
+    # Pobranie geometrii punktowych wybranych WN_PNE:
+    wn_ids = wn_df['wn_id'].tolist()
+    table = f'"external"."wn_pne"'
+    wn_pts = get_point_from_ids(wn_ids, table, "id_arkusz", "geom")
+    if len(wn_pts) == 0:
+        return
+    # Stworzenie linii łączących wyrobiska i punkty WN_PNE:
+    lyr = dlg.proj.mapLayersByName("wn_link")[0]
+    pr = lyr.dataProvider()
+    pr.truncate()
+    i = 0
+    with edit(lyr):
+        for index in dlg.wyr_panel.wn_df.to_records():
+            wyr_id = index[1]
+            wyr_pnt = get_geom_from_id(wyr_id, wyr_pts)
+            wn_id = index[2]
+            wn_pnt = get_geom_from_id(wn_id, wn_pts)
+            ft = QgsFeature()
+            attrs = [i, int(wyr_id), str(wn_id)]
+            ft.setAttributes(attrs)
+            ft.setGeometry(QgsGeometry.fromPolylineXY([wyr_pnt.asPoint(), wn_pnt.asPoint()]))
+            pr.addFeature(ft)
+            i += 1
+
+def get_geom_from_id(id, ids):
+    """Zwraca geometrię punktową z listy na podstawie id."""
+    for item in ids:
+        if id == item[0]:
+            return item[1]
+
+def wyr_status_determine(temp_df):
+    """Ustala status wyrobiska na podstawie atrybutów: 'fchk' i 'cnfrm', następnie zwraca gotową wersję wdf."""
+    conditions = [temp_df['fchk'].eq(False),
+                temp_df['fchk'].eq(True) & temp_df['cnfrm'].eq(False),
+                temp_df['fchk'].eq(True) & temp_df['cnfrm'].eq(True)]
+    choices = [0, 1, 2]
+    temp_df['status'] = np.select(conditions, choices, default=0)
+    temp_df.drop(['fchk', 'cnfrm'], axis=1, inplace=True)
+    temp_df = temp_df[['status', 'wyr_id']]
+    return temp_df
+
 def wyr_powiaty_check():
-    """Sprawdza, czy wszystkie wyrobiska zespołu mają wpisy w tabeli 'wyr_pow'.
+    """Sprawdza, czy wszystkie wyrobiska zespołu mają wpisy w tabeli 'wyr_prg'.
     Jeśli nie, to przypisuje je na podstawie geometrii poligonalnej lub punktowej."""
     wyr_ids = get_wyr_ids_with_pows("wyrobiska")
-    wyr_pow_ids = get_wyr_ids_with_pows("wyr_pow")
+    wyr_pow_ids = get_wyr_ids_with_pows("wyr_prg")
     wyr_pow_to_add = list_diff(wyr_ids, wyr_pow_ids)
     if not wyr_pow_to_add:
         return
     print(f"wyr_pow_to_add: {wyr_pow_to_add}")
-    # Uzupełnienie brakujących rekordów w tabeli 'wyr_pow':
+    # Uzupełnienie brakujących rekordów w tabeli 'wyr_prg':
     wyr_poly_ids = []
     wyr_point_ids = []
     for wyr in wyr_pow_to_add:
@@ -355,9 +458,23 @@ def wyr_powiaty_check():
             wyr_powiaty_change(wyr_poly[0], wyr_poly[1])
     if wyr_point_ids:
         # Pozyskanie informacji o powiatach z geometrii punktowej:
-        wyr_pts = get_point_from_ids(wyr_point_ids)
+        table = f'"team_{dlg.team_i}"."wyrobiska"'
+        wyr_pts = get_point_from_ids(wyr_point_ids, table, "wyr_id", "centroid")
         for wyr_pt in wyr_pts:
             wyr_powiaty_change(wyr_pt[0], wyr_pt[1])
+
+def wyr_dane_check():
+    """Sprawdza, czy wszystkie wyrobiska zespołu mają wpisy w tabeli 'wyr_dane'.
+    Jeśli nie, to tworzy odpowiednie wpisy."""
+    wyr_ids = get_wyr_ids_with_pows("wyrobiska")
+    wyr_dane_ids = get_wyr_ids_with_pows("wyr_dane")
+    # wyr_dane_to_add = ()
+    wyr_dane_to_add = list(zip((list_diff(wyr_ids, wyr_dane_ids))))
+    if not wyr_dane_to_add:
+        return
+    print(f"wyr_dane_to_add: {wyr_dane_to_add}")
+    # Uzupełnienie brakujących rekordów w tabeli 'wyr_dane':
+    wyr_dane_update(wyr_dane_to_add)
 
 def get_poly_from_ids(wyr_ids):
     """Zwraca listę z geometriami poligonalnymi wyrobisk na podstawie ich id."""
@@ -374,20 +491,19 @@ def get_poly_from_ids(wyr_ids):
     del lyr_poly
     return wyr_polys
 
-def get_point_from_ids(wyr_ids):
+def get_point_from_ids(ids, table, id_col, geom_col):
     """Zwraca listę z geometriami punktowymi wyrobisk na podstawie ich id."""
-    wyr_pts = []
+    pts = []
     with CfgPars() as cfg:
         params = cfg.uri()
-    table = '"team_' + str(dlg.team_i) + '"."wyrobiska"'
-    sql = "wyr_id IN (" + str(wyr_ids)[1:-1] + ")"
-    uri = f'{params} table={table} (centroid) sql={sql}'
-    lyr_pt = QgsVectorLayer(uri, "temp_wyr_pt", "postgres")
+    sql = f"{id_col} IN ({str(ids)[1:-1]})"
+    uri = f'{params} table={table} ({geom_col}) sql={sql}'
+    lyr_pt = QgsVectorLayer(uri, "temp_pt", "postgres")
     feats = lyr_pt.getFeatures()
     for feat in feats:
-        wyr_pts.append((feat.attribute("wyr_id"), feat.geometry()))
+        pts.append((feat.attribute(id_col), feat.geometry()))
     del lyr_pt
-    return wyr_pts
+    return pts
 
 def wyr_poly_exist(wyr_id):
     """Zwraca geometrię poligonalną wyrobiska."""
@@ -399,6 +515,17 @@ def wyr_poly_exist(wyr_id):
             return res[0]
         else:
             return None
+
+def get_order_ids():
+    """Zwraca listę unikalnych order_id wraz z wyr_id w obrębie aktywnego powiatu."""
+    db = PgConn()
+    sql = f"SELECT order_id, wyr_id FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{dlg.powiat_i}' AND order_id IS NOT NULL ORDER BY order_id;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+                return res
+        else:
+            return []
 
 def get_wyr_ids_with_pows(table, pows=None):
     """Zwraca listę unikalnych wyr_id z podanej tabeli w obrębie podanych powiatów."""
@@ -438,7 +565,7 @@ def get_wyr_ids():
         return []
     # Utworzenie listy z wyr_id wyrobisk, które należą do aktywnych powiatów:
     pows = active_pow_listed()
-    wyr_ids_from_pows = get_wyr_ids_with_pows("wyr_pow", pows)
+    wyr_ids_from_pows = get_wyr_ids_with_pows("wyr_prg", pows)
     if not wyr_ids_from_pows:
         # Brak wyrobisk w aktywnych powiatach
         return []
@@ -539,53 +666,174 @@ def active_pow_listed():
             return None
 
 def wyr_powiaty_change(wyr_id, geom, new=False):
-    """Aktualizuje tabelę 'wyr_pow' po zmianie geometrii wyrobiska."""
+    """Aktualizuje tabelę 'wyr_prg' po zmianie geometrii wyrobiska."""
     if not new:
-        # Usunięcie poprzednich wpisów z tabeli 'wyr_pow':
+        # Usunięcie poprzednich wpisów z tabeli 'wyr_prg':
         wyr_powiaty_delete(wyr_id)
     # Stworzenie listy z aktualnymi powiatami dla wyrobiska:
     p_list = wyr_powiaty_listed(wyr_id, geom)
     if not p_list:  # Brak powiatów
         print(f"wyr_powiaty_change: Nie udało się stworzyć listy powiatów dla wyrobiska {wyr_id}")
         return
-    # Wstawienie nowych rekordów do tabeli 'wyr_pow':
+    # Wstawienie nowych rekordów do tabeli 'wyr_prg':
     wyr_powiaty_update(p_list)
 
 def wyr_powiaty_delete(wyr_id):
-    """Usunięcie z tabeli 'wyr_pow' rekordów odnoszących się do wyr_id."""
+    """Usunięcie z tabeli 'wyr_prg' rekordów odnoszących się do wyr_id."""
     db = PgConn()
-    sql = "DELETE FROM team_" + str(dlg.team_i) + ".wyr_pow WHERE wyr_id = " + str(wyr_id) + ";"
+    sql = "DELETE FROM team_" + str(dlg.team_i) + ".wyr_prg WHERE wyr_id = " + str(wyr_id) + ";"
     if db:
         res = db.query_upd(sql)
-        if not res:
-            print(f"wyr_powiaty_delete: brak rekordów dla wyrobiska {wyr_id}")
+        # if not res:
+            # print(f"wyr_powiaty_delete: brak rekordów dla wyrobiska {wyr_id}")
 
 def wyr_powiaty_update(p_list):
-    """Wstawienie do tabeli 'wyr_pow' aktualnych numerów powiatów dla wyrobiska."""
+    """Wstawienie do tabeli 'wyr_prg' aktualnych numerów powiatów dla wyrobiska."""
     db = PgConn()
-    sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyr_pow(wyr_id, pow_id) VALUES %s"
+    sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyr_prg(wyr_id, gmi_id, t_gmi_name, pow_id, pow_grp, t_pow_name, t_woj_name, t_mie_name) VALUES %s"
+    if db:
+        db.query_exeval(sql, p_list)
+
+def wyr_dane_update(p_list):
+    """Wstawienie do tabeli 'wyr_dane' rekordów dla brakujących numerów wyr_id."""
+    db = PgConn()
+    sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyr_dane(wyr_id) VALUES %s"
     if db:
         db.query_exeval(sql, p_list)
 
 def wyr_powiaty_listed(wyr_id, geom):
-    """Zwraca listę powiatów, w obrębie których leży geometria wyrobiska."""
+    """Zwraca listę z danymi jednostek administracyjnych, w obrębie których leży geometria wyrobiska."""
+    non_team = False
     p_list = []
+    g_list = []
     if geom.type() == QgsWkbTypes.PointGeometry:
         geom = geom.buffer(1., 1)
     bbox = geom.makeValid().boundingBox().asWktPolygon()
     with CfgPars() as cfg:
         params = cfg.uri()
-    table = '"(SELECT pow_id, geom FROM public.powiaty)"'
-    key = '"pow_id"'
+    table = '"team_' + str(dlg.team_i) + '"."gminy"'
+    key = '"gmi_id"'
     sql = "ST_Intersects(ST_SetSRID(ST_GeomFromText('" + str(bbox) + "'), 2180), geom)"
     uri = f'{params} key={key} table={table} (geom) sql={sql}'
     lyr_pow = QgsVectorLayer(uri, "powiaty_bbox", "postgres")
     feats = lyr_pow.getFeatures()
-    for feat in feats:
-        if geom.makeValid().intersects(feat.geometry()):
-            p_list.append((wyr_id, feat.attribute("pow_id")))
+    if lyr_pow.featureCount() == 0:  # Wyrobisko może być poza gminami przydzielonymi do zespołu
+        del lyr_pow
+        non_team = True
+        with CfgPars() as cfg:
+            params = cfg.uri()
+        table = '"public"."gminy"'
+        key = '"gmi_id"'
+        sql = "ST_Intersects(ST_SetSRID(ST_GeomFromText('" + str(bbox) + "'), 2180), geom)"
+        uri = f'{params} key={key} table={table} (geom) sql={sql}'
+        lyr_pow = QgsVectorLayer(uri, "powiaty_bbox", "postgres")
+        feats = lyr_pow.getFeatures()
+    if lyr_pow.featureCount() == 0:
+        del lyr_pow
+        return None
+    if lyr_pow.featureCount() == 1:
+        for feat in feats:
+            mie_name = mie_picker(geom, feat.attribute("gmi_id"))
+            pow_grp = feat.attribute("pow_id") if non_team else feat.attribute("pow_grp")
+            attrs = (wyr_id, feat.attribute("gmi_id"), feat.attribute("t_gmi_name"), feat.attribute("pow_id"), pow_grp, feat.attribute("t_pow_name"), feat.attribute("t_woj_name"), mie_name)
+            p_list.append(attrs)
+    elif lyr_pow.featureCount() > 1:
+        for feat in feats:
+            pow_grp = feat.attribute("pow_id") if non_team else feat.attribute("pow_grp")
+            if geom.makeValid().intersects(feat.geometry()):
+                attrs = (wyr_id, feat.attribute("gmi_id"), feat.attribute("t_gmi_name"), feat.attribute("pow_id"), pow_grp, feat.attribute("t_pow_name"), feat.attribute("t_woj_name"))
+                g_list.append((feat.attribute("gmi_id"), pow_grp, feat.geometry(), attrs))
+        p_list = wyr_powiaty_splitter(geom, g_list)
     del lyr_pow
     return p_list
+
+def wyr_powiaty_splitter(wyr_geom, g_list):
+    """Dzieli wyrobisko wzdłuż granic gmin i zwraca listę 'pow_grp' z danymi gmin, które mają największy udział powierzchni."""
+    # Agregacja gmin w 'pow_grp':
+    p_list = []
+    grp_list = []
+    pows = {}
+    for g in g_list:
+        pow_grp = g[1]
+        if not pow_grp in grp_list:
+            grp_list.append(pow_grp)
+            _grp = []
+            pows[pow_grp] = _grp
+            _grp.append((g[0], g[2], g[3]))
+        else:
+            pows[pow_grp].append((g[0], g[2], g[3]))
+    # Wybór gminy dla każdego 'pow_grp':
+    for p in pows:
+        p_items = pows[p]
+        if len(p_items) == 1:  # Tylko jedna gmina
+            for gp in p_items:
+                g_chosed = gp[2]
+                mie_name = mie_picker(wyr_geom, g_chosed[1])
+                result = g_chosed + (mie_name,)
+                p_list.append(result)
+        else:  # Więcej niż jedna gmina
+            area = 0
+            g_chosed = None
+            for gp in p_items:
+                g_geom = wyr_geom.intersection(gp[1])
+                g_area = g_geom.area()
+                if g_area > area:
+                    area = g_area
+                    g_chosed = gp[2]
+            mie_name = mie_picker(wyr_geom, g_chosed[1])
+            result = g_chosed + (mie_name,)
+            p_list.append(result)
+    return p_list
+
+def mie_picker(geom, gmi_id):
+    """Wybiera najbliższą do wyrobiska miejscowość w wybranej gminie."""
+    # Przygotowanie współrzędnych centroidu wyrobiska:
+    p_geom = geom.centroid()
+    p_xy = np.array((p_geom.asPoint().x(), p_geom.asPoint().y()))
+    mdf = mie_loader(gmi_id)  # Wczytanie danych z db
+    if not isinstance(mdf, pd.DataFrame):
+        # Wyrobisko znajduje się poza gminami zespołu
+        return "!!!"
+    # Obliczenie odległości pomiędzy punktem, a miejscowościami z wybranej gminy:
+    mdf['dist'] = compute_dist(mdf.iloc[:,4:6], p_xy).astype('float32')
+    # Obróbka dataframe'u:
+    mdf = mdf.sort_values(by=['dist'], ascending=[True]).reset_index(drop=True)
+    mdf = mdf.groupby('i_rank').first().reset_index()
+    mdf_near = mdf[mdf['dist'] < 1000]  # Filtrowanie obiektów poniżej 1 km odległości
+    if len(mdf_near) > 0:
+        return mdf_near['t_mie_name'].iloc[0]
+    else:
+        mdf_far = mdf.sort_values(by=['dist'], ascending=[True]).reset_index(drop=True)
+        return mdf_far['t_mie_name'].iloc[0]
+
+def compute_dist(df, a_pnt):
+    """Oblicza jednocześnie dla całego dataframe'u odległości od wskazanego punktu."""
+    result = apply_numba_dist(df['X'].to_numpy(), df['Y'].to_numpy(), a_pnt)
+    return pd.Series(result, index=df.index, name='dist')
+
+def apply_numba_dist(x, y, a_pnt):
+    n = len(x)
+    result = np.empty(n, dtype='float32')
+    for i in range(n):
+        result[i] = numba_dist(x[i], y[i], a_pnt)
+    return result
+
+def numba_dist(x, y, a_pnt):
+    if np.isnan(x) or np.isnan(y):
+        return np.nan
+    b_pnt = np.array((x, y))
+    return np.sqrt(np.sum(((a_pnt - b_pnt) ** 2)))
+
+def mie_loader(gmi_id):
+    """Zwraca dataframe z miejscowościami wybranej gminy."""
+    db = PgConn()
+    sql = f"SELECT mie_id, t_mie_name, t_mie_rodz, i_rank, ST_X(geom) as X, ST_Y(geom) as Y FROM team_{dlg.team_i}.miejscowosci WHERE gmi_id = '{gmi_id}';"
+    if db:
+        mdf = db.query_pd(sql, ['mie_id', 't_mie_name', 't_mie_rodz', 'i_rank', 'X', 'Y'])
+        if isinstance(mdf, pd.DataFrame):
+            return mdf if len(mdf) > 0 else None
+        else:
+            return None
 
 def wn_layer_update():
     """Aktualizacja warstwy z wn_pne."""
@@ -1085,15 +1333,19 @@ def db_attr_check(attr):
         if res:
             return res[0]
 
-def db_attr_change(tbl, attr, val, sql_bns, user=True):
+def db_attr_change(tbl, attr, val, sql_bns, user=True, quotes=False):
     """Zmiana atrybutu w db."""
     # print("[db_attr_change(", tbl, ",", attr, "):", val, "]")
     db = PgConn()
     # Aktualizacja atrybutu (attr) w tabeli (tbl) na wartość (val):
-    if user:
-        sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + SQL_1 + str(dlg.user_id) + sql_bns + ";"
+    if len(str(val)) == 0:
+        val = 'Null'
     else:
-        sql = "UPDATE " + tbl + " SET " + attr + " = " + str(val) + sql_bns + ";"
+        val = f"'{val}'" if quotes else val
+    if user:
+        sql = f"UPDATE {tbl} SET {attr} = {val}{SQL_1} {dlg.user_id}{sql_bns};"
+    else:
+        sql = f"UPDATE {tbl} SET {attr} = {val}{sql_bns};"
     if db:
         res = db.query_upd(sql)
         if res:
@@ -1161,3 +1413,98 @@ def file_dialog(dir='', for_open=True, fmt='', is_folder=False):
         return path
     else:
         return None
+
+def sequences_load():
+    """Załadowanie z db ustawień użytkownika, dotyczących sekwencyjnego wczytywania podkładów mapowych."""
+    # print("[sequences_load]")
+    for s in range(1, 4):
+        seq = db_seq(s)  # Pobranie danych sekwencji
+        if seq:  # Sekwencja nie jest pusta
+            # Ustawienie parametru empty w przycisku sekwencji:
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].empty = False
+            # Aktualizacja ilości podkładów sekwencji seqcfgbox'ie:
+            dlg.seq_dock.widgets["scg_seq" + str(s)].cnt = len(seq)
+        else:  # Sekwencja jest pusta
+            # Ustawienie parametru empty w przycisku sekwencji:
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].empty = True
+            # Aktualizacja ilości podkładów sekwencji seqcfgbox'ie:
+            dlg.seq_dock.widgets["scg_seq" + str(s)].cnt = 0
+            seq = [(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)]
+        # Czyszczenie przycisku sekwencji z danych sekwencji:
+        dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].maps.clear()
+        # Aktualizacja seqcfg'ów:
+        m = 0
+        for map in seq:
+            # Wczytanie danych do przycisku sekwencji:
+            if map[0] > 0:  # Pominięcie w przycisku pustych podkładów
+                dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].maps.append([map[0], map[1]])
+            # Ustawienie w sekwencji atrybute ge (czy w sekwencji jest Google Earth Pro):
+            if map[0] == 6 or map[0] == 11:
+                dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(s)].ge = True
+            # Wczytanie danych do seqcfg'ów (obiektów przechowujących ustawienia podkładów mapowych z sekwencji):
+            dlg.seq_dock.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].spinbox.value = map[1]  # Opóźnienie
+            dlg.seq_dock.widgets["scg_seq" + str(s)].scgs["scg_" + str(m)].map = map[0]  # Id mapy
+            m += 1
+        # Odkrycie seq_dock'u:
+        if not dlg.seq_dock.isVisible():
+            dlg.seq_dock.show()
+
+def db_seq(num):
+    """Sprawdzenie, czy w tabeli basemaps z aktywnego teamu dla zalogowanego użytkownika są ustawienia dla sekwencji."""
+    db = PgConn()
+    sql = "SELECT map_id, i_delay_" + str(num) + " FROM team_" + str(dlg.team_i) + ".basemaps WHERE user_id = " + str(dlg.user_id) + " AND i_order_" + str(num) + " IS NOT NULL ORDER BY i_order_" + str(num) + " ASC;"
+    if db:
+        res = db.query_sel(sql, True)
+        if res:
+            return res
+        else:
+            return False
+
+def db_sequence_update(seq, list):
+    """Aktualizacja sekwencji w db."""
+    # print("[db_sequence_update]")
+    if db_sequence_reset(seq):
+        print("Wyczyszczono sekwencję w db.")
+    else:
+        print("Nie udało się wyczyścić sekwencji!")
+        return
+    db = PgConn()
+    sql = "UPDATE team_" + str(dlg.team_i) + ".basemaps AS bm SET i_order_" + str(seq) + " = d.i_order_" + str(seq) + ", i_delay_" + str(seq) + " = d.i_delay_" + str(seq) + " FROM (VALUES %s) AS d (map_id, i_order_" + str(seq) + ", i_delay_" + str(seq) + ") WHERE bm.map_id = d.map_id AND bm.user_id = " + str(dlg.user_id) + ";"
+    if db:
+        db.query_exeval(sql, list)
+
+def db_sequence_reset(seq):
+    """Wyczyszczenie w db dotychczasowych ustawień sekwencji."""
+    # print(f"[db_sequence_reset]: {seq}")
+    db = PgConn()
+    # Aktualizacja i_order_[seq] = NULL i i_delay)[seq] dla użytkownika w tabeli 'basemaps':
+    sql = "UPDATE team_" + str(dlg.team_i) + ".basemaps SET i_order_" + str(seq) + " = NULL, i_delay_" + str(seq) + " = NULL WHERE user_id = " + str(dlg.user_id) + ";"
+    if db:
+        res = db.query_upd(sql)
+        if res:
+            return True
+        else:
+            return False
+    else:
+        return False
+
+def next_map():
+    """Przejście do następnej mapy w aktywnej sekwencji. Funkcja pod skrót klawiszowy."""
+    if dlg.seq_dock.widgets["sqb_seq"].num > 0:
+        dlg.seq_dock.widgets["sqb_seq"].next_map()
+
+def prev_map():
+    """Przejście do następnej mapy w aktywnej sekwencji. Funkcja pod skrót klawiszowy."""
+    if dlg.seq_dock.widgets["sqb_seq"].num > 0:
+        dlg.seq_dock.widgets["sqb_seq"].prev_map()
+
+def seq(_num):
+    """Aktywowanie wybranej sekwencji lub jej deaktywacja, jeśli już jest aktywna. Funkcja pod skrót klawiszowy."""
+    if dlg.seq_dock.widgets["sqb_seq"].num == _num:  # Sekwencja jest aktywna, następuje deaktywacja
+        dlg.seq_dock.widgets["sqb_seq"].num = 0
+    else:  # Sekwencja zostaje aktywowana
+        if dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].empty:  # Sekwencja jest pusta, przejście do ustawień
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].button.setChecked(False)
+            dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].cfg_clicked()
+        else:  # Sekwencja nie jest pusta, następuje jej aktywacja
+            dlg.seq_dock.widgets["sqb_seq"].num = _num

@@ -1,5 +1,20 @@
 # Changelog (dziennik zmian):
 
+## [0.5.0] - 2021-10-07
+### Dodano
+- Wprowadzono możliwość nadawania flagom roboczych (terenowych) numerów identyfikacyjnych.
+- Wprowadzono pełną listę funkcji i narzędzi obsługujących wyrobiska, m.in.: zmiana statusu wyrobiska, automatyczne ustalenie przynależności administracyjnej (miejscowość, gmina), automatyczna numeracja (zgodna ze standardami map seryjnych) wyrobisk potwierdzonych, możliwość powiązania wyrobisk ze złożami i punktami WN_PNE, uzupełnianie wszystkich atrybutów wyrobisk (wymaganych w bazie danych i w kartach wyrobisk) za pomocą formularzy, które posiadają reguły uniemożliwiające powstawanie tzw. błędów wykluczających.
+
+### Zmieniono
+- Przeniesiono przyciski obsługujące sekwencje podkładów z panelu "Siatka widoków" do samodzielnego panelu umiejscowionego w lewym dolnym rogu okna mapowego. Pozwala to na korzystanie z sekwencji podkładów również po wyłączeniu siatki widoków.
+- Uproszczono obsługę widget'u do wpisywania uwag/notatek.
+- Rozbudowano panel "Wyrobiska" o listę wybieralną dostępnych wyrobisk (która może służyć do przełączania się między obiektami) oraz narzędzia mapowe i formularze do uzupełniania atrybutów wyrobisk.
+- W celu zwiększenia przejrzystości interfejsu użytkownika, zmodyfikowano i ujednolicono jego kolorystykę.
+
+### Poprawiono
+- Zmodyfikowano zdeaktualizowany adres WMS podkładu BDOO.
+- Wyeliminowano zacinanie się funkcji odtwarzania sekwencji podkładów podczas przepatrywania siatki widoków.
+
 ## [0.4.0] - 2021-06-30
 ### Dodano
 - Wprowadzono nowe obiekty - miejsca parkowania i marszruty. Ułatwiają one planowanie tras kontroli terenowych oraz umożliwiają ich sprawną realizację (przy wykorzystaniu aplikacji mobilnej na tablet/smartfon).

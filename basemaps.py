@@ -6,9 +6,8 @@ from qgis.core import QgsProject
 from qgis.utils import iface
 
 from .classes import PgConn
-from .main import block_panels
+from .main import block_panels, db_sequence_reset, sequences_load
 from .widgets import MoekButton, MoekCheckBox, MoekStackedBox, MoekCfgHSpinBox
-from .sequences import db_sequence_reset, sequences_load
 
 dlg = None
 
@@ -253,7 +252,7 @@ class MoekMapPanel(QFrame):
         self.box.setCurrentIndex(1) if self.cat == "sat" or self.cat == "snmt" else self.box.setCurrentIndex(2)
         block_panels(self, True)  # Zablokowanie pozostałych paneli na czas wyboru map
         dlg.p_map.btns.setEnabled(False)  # Zablokowanie przycisków z p_map
-        dlg.p_vn.widgets["sqb_seq"].num = 0  # Deaktywacja sekwencji
+        dlg.seq_dock.widgets["sqb_seq"].num = 0  # Deaktywacja sekwencji
         dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
     
     def exit_clicked(self):
@@ -284,9 +283,9 @@ class MoekMapPanel(QFrame):
             # Podkłady, które zostają wyłączone:
             out_maps = [all["id"] for m in m_list for all in dlg.p_map.all if m[0] == all["name"] and not m[1]]
             # Ustalenie podkładów, które występują w sekwencjach:
-            seq1_maps = [m[0] for m in dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_1"].maps]
-            seq2_maps = [m[0] for m in dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_2"].maps]
-            seq3_maps = [m[0] for m in dlg.p_vn.widgets["sqb_seq"].sqb_btns["sqb_3"].maps]
+            seq1_maps = [m[0] for m in dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_1"].maps]
+            seq2_maps = [m[0] for m in dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_2"].maps]
+            seq3_maps = [m[0] for m in dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_3"].maps]
             seq1_out = [i for i in seq1_maps if i  in out_maps]
             seq2_out = [i for i in seq2_maps if i  in out_maps]
             seq3_out = [i for i in seq3_maps if i  in out_maps]
@@ -311,9 +310,9 @@ class MoekMapPanel(QFrame):
             db_basemaps_update(m_list)  # Aktualizacja b_map_enabled w db
             basemaps_load()  # Ponowne wczytanie wartości checkbox'ów
             # Aktualizacje combobox'ów:
-            dlg.p_vn.widgets["sab_seq" + str(1)].combobox_update(1)
-            dlg.p_vn.widgets["sab_seq" + str(2)].combobox_update(2)
-            dlg.p_vn.widgets["sab_seq" + str(3)].combobox_update(3)
+            dlg.seq_dock.widgets["sab_seq" + str(1)].combobox_update(1)
+            dlg.seq_dock.widgets["sab_seq" + str(2)].combobox_update(2)
+            dlg.seq_dock.widgets["sab_seq" + str(3)].combobox_update(3)
             # Przejście do pierwszej wybranej mapy z aktualnej kategorii:
             self.first_map(self.cat)
             self.spb_update()  # Wymuszenie odświeżenia spinbox'a

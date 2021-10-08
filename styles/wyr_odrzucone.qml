@@ -1,15 +1,15 @@
 <!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
-<qgis maxScale="0" simplifyMaxScale="1" simplifyLocal="1" hasScaleBasedVisibilityFlag="0" readOnly="0" styleCategories="AllStyleCategories" version="3.10.11-A Coruña" minScale="1e+08" simplifyDrawingTol="1" simplifyAlgorithm="0" labelsEnabled="0" simplifyDrawingHints="0">
+<qgis labelsEnabled="0" version="3.10.14-A Coruña" hasScaleBasedVisibilityFlag="0" maxScale="0" simplifyAlgorithm="0" minScale="1e+08" simplifyMaxScale="1" readOnly="0" styleCategories="AllStyleCategories" simplifyDrawingTol="1" simplifyLocal="1" simplifyDrawingHints="0">
   <flags>
     <Identifiable>1</Identifiable>
     <Removable>1</Removable>
     <Searchable>1</Searchable>
   </flags>
-  <renderer-v2 type="pointCluster" toleranceUnitScale="3x:0,0,0,0,0,0" enableorderby="0" tolerance="9" toleranceUnit="MM" forceraster="0">
-    <renderer-v2 type="singleSymbol" enableorderby="0" symbollevels="0" forceraster="0">
+  <renderer-v2 toleranceUnitScale="3x:0,0,0,0,0,0" type="pointCluster" toleranceUnit="MM" forceraster="0" tolerance="9" enableorderby="0">
+    <renderer-v2 type="singleSymbol" forceraster="0" symbollevels="0" enableorderby="0">
       <symbols>
-        <symbol type="marker" clip_to_extent="1" force_rhr="0" alpha="1" name="0">
-          <layer pass="0" enabled="1" locked="0" class="RasterMarker">
+        <symbol name="0" type="marker" force_rhr="0" clip_to_extent="1" alpha="1">
+          <layer class="RasterMarker" enabled="1" pass="0" locked="0">
             <prop k="alpha" v="1"/>
             <prop k="angle" v="0"/>
             <prop k="fixedAspectRatio" v="0"/>
@@ -97,19 +97,19 @@
             </effect>
             <data_defined_properties>
               <Option type="Map">
-                <Option value="" type="QString" name="name"/>
-                <Option type="Map" name="properties">
-                  <Option type="Map" name="enabled">
-                    <Option value="true" type="bool" name="active"/>
-                    <Option value="if( to_int( @wyr_sel ) = wyr_id, 1, 0)" type="QString" name="expression"/>
-                    <Option value="3" type="int" name="type"/>
+                <Option name="name" type="QString" value=""/>
+                <Option name="properties" type="Map">
+                  <Option name="enabled" type="Map">
+                    <Option name="active" type="bool" value="true"/>
+                    <Option name="expression" type="QString" value="if( to_int( @wyr_sel ) = wyr_id, 1, 0)"/>
+                    <Option name="type" type="int" value="3"/>
                   </Option>
                 </Option>
-                <Option value="collection" type="QString" name="type"/>
+                <Option name="type" type="QString" value="collection"/>
               </Option>
             </data_defined_properties>
           </layer>
-          <layer pass="0" enabled="1" locked="0" class="RasterMarker">
+          <layer class="RasterMarker" enabled="1" pass="0" locked="0">
             <prop k="alpha" v="1"/>
             <prop k="angle" v="0"/>
             <prop k="fixedAspectRatio" v="0"/>
@@ -125,24 +125,24 @@
             <prop k="vertical_anchor_point" v="1"/>
             <data_defined_properties>
               <Option type="Map">
-                <Option value="" type="QString" name="name"/>
-                <Option type="Map" name="properties">
-                  <Option type="Map" name="enabled">
-                    <Option value="false" type="bool" name="active"/>
-                    <Option value="1" type="int" name="type"/>
-                    <Option value="" type="QString" name="val"/>
+                <Option name="name" type="QString" value=""/>
+                <Option name="properties" type="Map">
+                  <Option name="enabled" type="Map">
+                    <Option name="active" type="bool" value="true"/>
+                    <Option name="expression" type="QString" value="if( &quot;wn_id&quot; IS NULL, 1, 0 )"/>
+                    <Option name="type" type="int" value="3"/>
                   </Option>
                 </Option>
-                <Option value="collection" type="QString" name="type"/>
+                <Option name="type" type="QString" value="collection"/>
               </Option>
             </data_defined_properties>
           </layer>
-          <layer pass="0" enabled="1" locked="0" class="RasterMarker">
+          <layer class="RasterMarker" enabled="1" pass="0" locked="0">
             <prop k="alpha" v="1"/>
             <prop k="angle" v="0"/>
             <prop k="fixedAspectRatio" v="0"/>
             <prop k="horizontal_anchor_point" v="1"/>
-            <prop k="imageFile" v="base64:iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAKT2lDQ1BQaG90b3Nob3AgSUNDIHByb2ZpbGUAAHjanVNnVFPpFj333vRCS4iAlEtvUhUIIFJCi4AUkSYqIQkQSoghodkVUcERRUUEG8igiAOOjoCMFVEsDIoK2AfkIaKOg6OIisr74Xuja9a89+bN/rXXPues852zzwfACAyWSDNRNYAMqUIeEeCDx8TG4eQuQIEKJHAAEAizZCFz/SMBAPh+PDwrIsAHvgABeNMLCADATZvAMByH/w/qQplcAYCEAcB0kThLCIAUAEB6jkKmAEBGAYCdmCZTAKAEAGDLY2LjAFAtAGAnf+bTAICd+Jl7AQBblCEVAaCRACATZYhEAGg7AKzPVopFAFgwABRmS8Q5ANgtADBJV2ZIALC3AMDOEAuyAAgMADBRiIUpAAR7AGDIIyN4AISZABRG8lc88SuuEOcqAAB4mbI8uSQ5RYFbCC1xB1dXLh4ozkkXKxQ2YQJhmkAuwnmZGTKBNA/g88wAAKCRFRHgg/P9eM4Ors7ONo62Dl8t6r8G/yJiYuP+5c+rcEAAAOF0ftH+LC+zGoA7BoBt/qIl7gRoXgugdfeLZrIPQLUAoOnaV/Nw+H48PEWhkLnZ2eXk5NhKxEJbYcpXff5nwl/AV/1s+X48/Pf14L7iJIEyXYFHBPjgwsz0TKUcz5IJhGLc5o9H/LcL//wd0yLESWK5WCoU41EScY5EmozzMqUiiUKSKcUl0v9k4t8s+wM+3zUAsGo+AXuRLahdYwP2SycQWHTA4vcAAPK7b8HUKAgDgGiD4c93/+8//UegJQCAZkmScQAAXkQkLlTKsz/HCAAARKCBKrBBG/TBGCzABhzBBdzBC/xgNoRCJMTCQhBCCmSAHHJgKayCQiiGzbAdKmAv1EAdNMBRaIaTcA4uwlW4Dj1wD/phCJ7BKLyBCQRByAgTYSHaiAFiilgjjggXmYX4IcFIBBKLJCDJiBRRIkuRNUgxUopUIFVIHfI9cgI5h1xGupE7yAAygvyGvEcxlIGyUT3UDLVDuag3GoRGogvQZHQxmo8WoJvQcrQaPYw2oefQq2gP2o8+Q8cwwOgYBzPEbDAuxsNCsTgsCZNjy7EirAyrxhqwVqwDu4n1Y8+xdwQSgUXACTYEd0IgYR5BSFhMWE7YSKggHCQ0EdoJNwkDhFHCJyKTqEu0JroR+cQYYjIxh1hILCPWEo8TLxB7iEPENyQSiUMyJ7mQAkmxpFTSEtJG0m5SI+ksqZs0SBojk8naZGuyBzmULCAryIXkneTD5DPkG+Qh8lsKnWJAcaT4U+IoUspqShnlEOU05QZlmDJBVaOaUt2ooVQRNY9aQq2htlKvUYeoEzR1mjnNgxZJS6WtopXTGmgXaPdpr+h0uhHdlR5Ol9BX0svpR+iX6AP0dwwNhhWDx4hnKBmbGAcYZxl3GK+YTKYZ04sZx1QwNzHrmOeZD5lvVVgqtip8FZHKCpVKlSaVGyovVKmqpqreqgtV81XLVI+pXlN9rkZVM1PjqQnUlqtVqp1Q61MbU2epO6iHqmeob1Q/pH5Z/YkGWcNMw09DpFGgsV/jvMYgC2MZs3gsIWsNq4Z1gTXEJrHN2Xx2KruY/R27iz2qqaE5QzNKM1ezUvOUZj8H45hx+Jx0TgnnKKeX836K3hTvKeIpG6Y0TLkxZVxrqpaXllirSKtRq0frvTau7aedpr1Fu1n7gQ5Bx0onXCdHZ4/OBZ3nU9lT3acKpxZNPTr1ri6qa6UbobtEd79up+6Ynr5egJ5Mb6feeb3n+hx9L/1U/W36p/VHDFgGswwkBtsMzhg8xTVxbzwdL8fb8VFDXcNAQ6VhlWGX4YSRudE8o9VGjUYPjGnGXOMk423GbcajJgYmISZLTepN7ppSTbmmKaY7TDtMx83MzaLN1pk1mz0x1zLnm+eb15vft2BaeFostqi2uGVJsuRaplnutrxuhVo5WaVYVVpds0atna0l1rutu6cRp7lOk06rntZnw7Dxtsm2qbcZsOXYBtuutm22fWFnYhdnt8Wuw+6TvZN9un2N/T0HDYfZDqsdWh1+c7RyFDpWOt6azpzuP33F9JbpL2dYzxDP2DPjthPLKcRpnVOb00dnF2e5c4PziIuJS4LLLpc+Lpsbxt3IveRKdPVxXeF60vWdm7Obwu2o26/uNu5p7ofcn8w0nymeWTNz0MPIQ+BR5dE/C5+VMGvfrH5PQ0+BZ7XnIy9jL5FXrdewt6V3qvdh7xc+9j5yn+M+4zw33jLeWV/MN8C3yLfLT8Nvnl+F30N/I/9k/3r/0QCngCUBZwOJgUGBWwL7+Hp8Ib+OPzrbZfay2e1BjKC5QRVBj4KtguXBrSFoyOyQrSH355jOkc5pDoVQfujW0Adh5mGLw34MJ4WHhVeGP45wiFga0TGXNXfR3ENz30T6RJZE3ptnMU85ry1KNSo+qi5qPNo3ujS6P8YuZlnM1VidWElsSxw5LiquNm5svt/87fOH4p3iC+N7F5gvyF1weaHOwvSFpxapLhIsOpZATIhOOJTwQRAqqBaMJfITdyWOCnnCHcJnIi/RNtGI2ENcKh5O8kgqTXqS7JG8NXkkxTOlLOW5hCepkLxMDUzdmzqeFpp2IG0yPTq9MYOSkZBxQqohTZO2Z+pn5mZ2y6xlhbL+xW6Lty8elQfJa7OQrAVZLQq2QqboVFoo1yoHsmdlV2a/zYnKOZarnivN7cyzytuQN5zvn//tEsIS4ZK2pYZLVy0dWOa9rGo5sjxxedsK4xUFK4ZWBqw8uIq2Km3VT6vtV5eufr0mek1rgV7ByoLBtQFr6wtVCuWFfevc1+1dT1gvWd+1YfqGnRs+FYmKrhTbF5cVf9go3HjlG4dvyr+Z3JS0qavEuWTPZtJm6ebeLZ5bDpaql+aXDm4N2dq0Dd9WtO319kXbL5fNKNu7g7ZDuaO/PLi8ZafJzs07P1SkVPRU+lQ27tLdtWHX+G7R7ht7vPY07NXbW7z3/T7JvttVAVVN1WbVZftJ+7P3P66Jqun4lvttXa1ObXHtxwPSA/0HIw6217nU1R3SPVRSj9Yr60cOxx++/p3vdy0NNg1VjZzG4iNwRHnk6fcJ3/ceDTradox7rOEH0x92HWcdL2pCmvKaRptTmvtbYlu6T8w+0dbq3nr8R9sfD5w0PFl5SvNUyWna6YLTk2fyz4ydlZ19fi753GDborZ752PO32oPb++6EHTh0kX/i+c7vDvOXPK4dPKy2+UTV7hXmq86X23qdOo8/pPTT8e7nLuarrlca7nuer21e2b36RueN87d9L158Rb/1tWeOT3dvfN6b/fF9/XfFt1+cif9zsu72Xcn7q28T7xf9EDtQdlD3YfVP1v+3Njv3H9qwHeg89HcR/cGhYPP/pH1jw9DBY+Zj8uGDYbrnjg+OTniP3L96fynQ89kzyaeF/6i/suuFxYvfvjV69fO0ZjRoZfyl5O/bXyl/erA6xmv28bCxh6+yXgzMV70VvvtwXfcdx3vo98PT+R8IH8o/2j5sfVT0Kf7kxmTk/8EA5jz/GMzLdsAAAAgY0hSTQAAeiUAAICDAAD5/wAAgOkAAHUwAADqYAAAOpgAABdvkl/FRgAAAd5JREFUeNrs2r9L1HEcx/Hnx/M0A/GLYdSVIFFTDQ5BCUcqLoKgiw3RcA4iJIeWSnU6uLXYf9CgixLUFILQIB403eEkDXfQ2CGHeDbcd9F4tXhFPy4Uvwffk/cbvtPnFw/en/fnvXydJM5DNHBOwiAGMYhBDGIQgxjEIAYxiEEMYhCDGMQgBjGIQQxiEIPUOhqD2MQ5V3VMUgvQ5Jz7VmU8/BmRtAz4wIGkVWp82Jm/KvvGJSn18rlmn07pOIZqcb6kmkI2yuWymqONao5GVCqVJGmrriCSkpI0nnik2XhUqQcRPX44XMnKQl1AJLVI+pzL5XTraqu0iLSI7t5oUyaTkaSipCv1AFmWpL773dpM8BOy8wTdvtlZycq7oCENAT8ccWBsPvWCa0df6O/6NXbnMvRc2mfu2TTA6L8K/0wtIIh3vNJHJG34vj/Y7rWxO3OEd+H3ef4htC9F2C3u4Xle2jnXF7o+IikJDE5PjpO85/5CAFyMwkwPJCcSAL1/Fn5YGmJvPp8n/XGd1wOHVSe96v9ObjtNNpsFiIfqagEdQHFqcoL3b0/WwIeGR3izsgZwHfgamho5folGC4XCidbEYjGAD8BIGIt97BTX5ZNzbiWoYnf2d5BBDPLf+DEAy5Tx3gcbIoMAAAAASUVORK5CYII="/>
+            <prop k="imageFile" v="base64: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"/>
             <prop k="offset" v="0,0"/>
             <prop k="offset_map_unit_scale" v="3x:0,0,0,0,0,0"/>
             <prop k="offset_unit" v="MM"/>
@@ -153,75 +153,19 @@
             <prop k="vertical_anchor_point" v="1"/>
             <data_defined_properties>
               <Option type="Map">
-                <Option value="" type="QString" name="name"/>
-                <Option type="Map" name="properties">
-                  <Option type="Map" name="enabled">
-                    <Option value="true" type="bool" name="active"/>
-                    <Option value="if( &quot;b_wn&quot; = True and &quot;b_zloze&quot; = False, 1, 0 )" type="QString" name="expression"/>
-                    <Option value="3" type="int" name="type"/>
+                <Option name="name" type="QString" value=""/>
+                <Option name="properties" type="Map">
+                  <Option name="enabled" type="Map">
+                    <Option name="active" type="bool" value="true"/>
+                    <Option name="expression" type="QString" value="if( &quot;wn_id&quot; IS NULL, 0, 1 )"/>
+                    <Option name="type" type="int" value="3"/>
                   </Option>
                 </Option>
-                <Option value="collection" type="QString" name="type"/>
+                <Option name="type" type="QString" value="collection"/>
               </Option>
             </data_defined_properties>
           </layer>
-          <layer pass="0" enabled="1" locked="0" class="RasterMarker">
-            <prop k="alpha" v="1"/>
-            <prop k="angle" v="0"/>
-            <prop k="fixedAspectRatio" v="0"/>
-            <prop k="horizontal_anchor_point" v="1"/>
-            <prop k="imageFile" v="base64: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"/>
-            <prop k="offset" v="0,0"/>
-            <prop k="offset_map_unit_scale" v="3x:0,0,0,0,0,0"/>
-            <prop k="offset_unit" v="MM"/>
-            <prop k="scale_method" v="diameter"/>
-            <prop k="size" v="50"/>
-            <prop k="size_map_unit_scale" v="3x:0,0,0,0,0,0"/>
-            <prop k="size_unit" v="Pixel"/>
-            <prop k="vertical_anchor_point" v="1"/>
-            <data_defined_properties>
-              <Option type="Map">
-                <Option value="" type="QString" name="name"/>
-                <Option type="Map" name="properties">
-                  <Option type="Map" name="enabled">
-                    <Option value="true" type="bool" name="active"/>
-                    <Option value="if( &quot;b_wn&quot; = False and &quot;b_zloze&quot; = True, 1, 0 )" type="QString" name="expression"/>
-                    <Option value="3" type="int" name="type"/>
-                  </Option>
-                </Option>
-                <Option value="collection" type="QString" name="type"/>
-              </Option>
-            </data_defined_properties>
-          </layer>
-          <layer pass="0" enabled="1" locked="0" class="RasterMarker">
-            <prop k="alpha" v="1"/>
-            <prop k="angle" v="0"/>
-            <prop k="fixedAspectRatio" v="0"/>
-            <prop k="horizontal_anchor_point" v="1"/>
-            <prop k="imageFile" v="base64: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"/>
-            <prop k="offset" v="0,0"/>
-            <prop k="offset_map_unit_scale" v="3x:0,0,0,0,0,0"/>
-            <prop k="offset_unit" v="MM"/>
-            <prop k="scale_method" v="diameter"/>
-            <prop k="size" v="50"/>
-            <prop k="size_map_unit_scale" v="3x:0,0,0,0,0,0"/>
-            <prop k="size_unit" v="Pixel"/>
-            <prop k="vertical_anchor_point" v="1"/>
-            <data_defined_properties>
-              <Option type="Map">
-                <Option value="" type="QString" name="name"/>
-                <Option type="Map" name="properties">
-                  <Option type="Map" name="enabled">
-                    <Option value="true" type="bool" name="active"/>
-                    <Option value="if( &quot;b_wn&quot; = True and &quot;b_zloze&quot; = True, 1, 0 )" type="QString" name="expression"/>
-                    <Option value="3" type="int" name="type"/>
-                  </Option>
-                </Option>
-                <Option value="collection" type="QString" name="type"/>
-              </Option>
-            </data_defined_properties>
-          </layer>
-          <layer pass="0" enabled="1" locked="0" class="FontMarker">
+          <layer class="FontMarker" enabled="1" pass="0" locked="0">
             <prop k="angle" v="0"/>
             <prop k="chr" v="A"/>
             <prop k="color" v="255,255,255,255"/>
@@ -241,15 +185,15 @@
             <prop k="vertical_anchor_point" v="1"/>
             <data_defined_properties>
               <Option type="Map">
-                <Option value="" type="QString" name="name"/>
-                <Option type="Map" name="properties">
-                  <Option type="Map" name="char">
-                    <Option value="true" type="bool" name="active"/>
-                    <Option value="to_string( &quot;wyr_id&quot;)" type="QString" name="expression"/>
-                    <Option value="3" type="int" name="type"/>
+                <Option name="name" type="QString" value=""/>
+                <Option name="properties" type="Map">
+                  <Option name="char" type="Map">
+                    <Option name="active" type="bool" value="true"/>
+                    <Option name="expression" type="QString" value="to_string( &quot;wyr_id&quot;)"/>
+                    <Option name="type" type="int" value="3"/>
                   </Option>
                 </Option>
-                <Option value="collection" type="QString" name="type"/>
+                <Option name="type" type="QString" value="collection"/>
               </Option>
             </data_defined_properties>
           </layer>
@@ -258,8 +202,8 @@
       <rotation/>
       <sizescale/>
     </renderer-v2>
-    <symbol type="marker" clip_to_extent="1" force_rhr="0" alpha="1" name="centerSymbol">
-      <layer pass="0" enabled="1" locked="0" class="RasterMarker">
+    <symbol name="centerSymbol" type="marker" force_rhr="0" clip_to_extent="1" alpha="1">
+      <layer class="RasterMarker" enabled="1" pass="0" locked="0">
         <prop k="alpha" v="0.75"/>
         <prop k="angle" v="0"/>
         <prop k="fixedAspectRatio" v="0"/>
@@ -275,13 +219,13 @@
         <prop k="vertical_anchor_point" v="1"/>
         <data_defined_properties>
           <Option type="Map">
-            <Option value="" type="QString" name="name"/>
+            <Option name="name" type="QString" value=""/>
             <Option name="properties"/>
-            <Option value="collection" type="QString" name="type"/>
+            <Option name="type" type="QString" value="collection"/>
           </Option>
         </data_defined_properties>
       </layer>
-      <layer pass="0" enabled="1" locked="0" class="FontMarker">
+      <layer class="FontMarker" enabled="1" pass="0" locked="0">
         <prop k="angle" v="0"/>
         <prop k="chr" v="A"/>
         <prop k="color" v="255,0,0,255"/>
@@ -373,15 +317,15 @@
         </effect>
         <data_defined_properties>
           <Option type="Map">
-            <Option value="" type="QString" name="name"/>
-            <Option type="Map" name="properties">
-              <Option type="Map" name="char">
-                <Option value="true" type="bool" name="active"/>
-                <Option value="@cluster_size" type="QString" name="expression"/>
-                <Option value="3" type="int" name="type"/>
+            <Option name="name" type="QString" value=""/>
+            <Option name="properties" type="Map">
+              <Option name="char" type="Map">
+                <Option name="active" type="bool" value="true"/>
+                <Option name="expression" type="QString" value="@cluster_size"/>
+                <Option name="type" type="int" value="3"/>
               </Option>
             </Option>
-            <Option value="collection" type="QString" name="type"/>
+            <Option name="type" type="QString" value="collection"/>
           </Option>
         </data_defined_properties>
       </layer>
@@ -397,26 +341,54 @@
   <featureBlendMode>0</featureBlendMode>
   <layerOpacity>1</layerOpacity>
   <SingleCategoryDiagramRenderer diagramType="Histogram" attributeLegend="1">
-    <DiagramCategory lineSizeScale="3x:0,0,0,0,0,0" scaleDependency="Area" maxScaleDenominator="1e+08" penWidth="0" width="15" penAlpha="255" opacity="1" minimumSize="0" enabled="0" labelPlacementMethod="XHeight" height="15" minScaleDenominator="0" penColor="#000000" sizeType="MM" backgroundColor="#ffffff" scaleBasedVisibility="0" barWidth="5" sizeScale="3x:0,0,0,0,0,0" diagramOrientation="Up" backgroundAlpha="255" rotationOffset="270" lineSizeType="MM">
+    <DiagramCategory penWidth="0" lineSizeScale="3x:0,0,0,0,0,0" barWidth="5" maxScaleDenominator="1e+08" backgroundAlpha="255" labelPlacementMethod="XHeight" penAlpha="255" scaleBasedVisibility="0" lineSizeType="MM" opacity="1" scaleDependency="Area" width="15" sizeScale="3x:0,0,0,0,0,0" minScaleDenominator="0" sizeType="MM" backgroundColor="#ffffff" penColor="#000000" diagramOrientation="Up" enabled="0" rotationOffset="270" height="15" minimumSize="0">
       <fontProperties style="" description="MS Shell Dlg 2,8.25,-1,5,50,0,0,0,0,0"/>
-      <attribute label="" field="" color="#000000"/>
+      <attribute color="#000000" field="" label=""/>
     </DiagramCategory>
   </SingleCategoryDiagramRenderer>
-  <DiagramLayerSettings linePlacementFlags="18" zIndex="0" showAll="1" priority="0" dist="0" placement="0" obstacle="0">
+  <DiagramLayerSettings placement="0" showAll="1" zIndex="0" dist="0" linePlacementFlags="18" obstacle="0" priority="0">
     <properties>
       <Option type="Map">
-        <Option value="" type="QString" name="name"/>
+        <Option name="name" type="QString" value=""/>
         <Option name="properties"/>
-        <Option value="collection" type="QString" name="type"/>
+        <Option name="type" type="QString" value="collection"/>
       </Option>
     </properties>
   </DiagramLayerSettings>
-  <geometryOptions geometryPrecision="0" removeDuplicateNodes="0">
+  <geometryOptions removeDuplicateNodes="0" geometryPrecision="0">
     <activeChecks/>
     <checkConfiguration/>
   </geometryOptions>
   <fieldConfiguration>
+    <field name="row_num">
+      <editWidget type="TextEdit">
+        <config>
+          <Option/>
+        </config>
+      </editWidget>
+    </field>
     <field name="wyr_id">
+      <editWidget type="TextEdit">
+        <config>
+          <Option/>
+        </config>
+      </editWidget>
+    </field>
+    <field name="teren_id">
+      <editWidget type="TextEdit">
+        <config>
+          <Option/>
+        </config>
+      </editWidget>
+    </field>
+    <field name="wn_id">
+      <editWidget type="TextEdit">
+        <config>
+          <Option/>
+        </config>
+      </editWidget>
+    </field>
+    <field name="midas_id">
       <editWidget type="TextEdit">
         <config>
           <Option/>
@@ -430,84 +402,14 @@
         </config>
       </editWidget>
     </field>
-    <field name="wyr_sys">
+    <field name="notatki">
       <editWidget type="TextEdit">
         <config>
           <Option/>
         </config>
       </editWidget>
     </field>
-    <field name="order_id">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="t_wyr_od">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="t_wyr_do">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="i_area_m2">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="b_wn">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="b_zloze">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="b_after_fchk">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="b_confirmed">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="date_fchk">
-      <editWidget type="DateTime">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="time_fchk">
-      <editWidget type="DateTime">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="t_notatki">
+    <field name="pow_m2">
       <editWidget type="TextEdit">
         <config>
           <Option/>
@@ -516,92 +418,62 @@
     </field>
   </fieldConfiguration>
   <aliases>
-    <alias index="0" field="wyr_id" name=""/>
-    <alias index="1" field="user_id" name=""/>
-    <alias index="2" field="wyr_sys" name=""/>
-    <alias index="3" field="order_id" name=""/>
-    <alias index="4" field="t_wyr_od" name=""/>
-    <alias index="5" field="t_wyr_do" name=""/>
-    <alias index="6" field="i_area_m2" name=""/>
-    <alias index="7" field="b_wn" name=""/>
-    <alias index="8" field="b_zloze" name=""/>
-    <alias index="9" field="b_after_fchk" name=""/>
-    <alias index="10" field="b_confirmed" name=""/>
-    <alias index="11" field="date_fchk" name=""/>
-    <alias index="12" field="time_fchk" name=""/>
-    <alias index="13" field="t_notatki" name=""/>
+    <alias name="" field="row_num" index="0"/>
+    <alias name="" field="wyr_id" index="1"/>
+    <alias name="" field="teren_id" index="2"/>
+    <alias name="" field="wn_id" index="3"/>
+    <alias name="" field="midas_id" index="4"/>
+    <alias name="" field="user_id" index="5"/>
+    <alias name="" field="notatki" index="6"/>
+    <alias name="" field="pow_m2" index="7"/>
   </aliases>
   <excludeAttributesWMS/>
   <excludeAttributesWFS/>
   <defaults>
-    <default field="wyr_id" expression="" applyOnUpdate="0"/>
-    <default field="user_id" expression="" applyOnUpdate="0"/>
-    <default field="wyr_sys" expression="" applyOnUpdate="0"/>
-    <default field="order_id" expression="" applyOnUpdate="0"/>
-    <default field="t_wyr_od" expression="" applyOnUpdate="0"/>
-    <default field="t_wyr_do" expression="" applyOnUpdate="0"/>
-    <default field="i_area_m2" expression="" applyOnUpdate="0"/>
-    <default field="b_wn" expression="" applyOnUpdate="0"/>
-    <default field="b_zloze" expression="" applyOnUpdate="0"/>
-    <default field="b_after_fchk" expression="" applyOnUpdate="0"/>
-    <default field="b_confirmed" expression="" applyOnUpdate="0"/>
-    <default field="date_fchk" expression="" applyOnUpdate="0"/>
-    <default field="time_fchk" expression="" applyOnUpdate="0"/>
-    <default field="t_notatki" expression="" applyOnUpdate="0"/>
+    <default field="row_num" applyOnUpdate="0" expression=""/>
+    <default field="wyr_id" applyOnUpdate="0" expression=""/>
+    <default field="teren_id" applyOnUpdate="0" expression=""/>
+    <default field="wn_id" applyOnUpdate="0" expression=""/>
+    <default field="midas_id" applyOnUpdate="0" expression=""/>
+    <default field="user_id" applyOnUpdate="0" expression=""/>
+    <default field="notatki" applyOnUpdate="0" expression=""/>
+    <default field="pow_m2" applyOnUpdate="0" expression=""/>
   </defaults>
   <constraints>
-    <constraint constraints="3" unique_strength="1" notnull_strength="1" field="wyr_id" exp_strength="0"/>
-    <constraint constraints="1" unique_strength="0" notnull_strength="1" field="user_id" exp_strength="0"/>
-    <constraint constraints="1" unique_strength="0" notnull_strength="1" field="wyr_sys" exp_strength="0"/>
-    <constraint constraints="0" unique_strength="0" notnull_strength="0" field="order_id" exp_strength="0"/>
-    <constraint constraints="0" unique_strength="0" notnull_strength="0" field="t_wyr_od" exp_strength="0"/>
-    <constraint constraints="0" unique_strength="0" notnull_strength="0" field="t_wyr_do" exp_strength="0"/>
-    <constraint constraints="1" unique_strength="0" notnull_strength="1" field="i_area_m2" exp_strength="0"/>
-    <constraint constraints="1" unique_strength="0" notnull_strength="1" field="b_wn" exp_strength="0"/>
-    <constraint constraints="1" unique_strength="0" notnull_strength="1" field="b_zloze" exp_strength="0"/>
-    <constraint constraints="1" unique_strength="0" notnull_strength="1" field="b_after_fchk" exp_strength="0"/>
-    <constraint constraints="1" unique_strength="0" notnull_strength="1" field="b_confirmed" exp_strength="0"/>
-    <constraint constraints="0" unique_strength="0" notnull_strength="0" field="date_fchk" exp_strength="0"/>
-    <constraint constraints="0" unique_strength="0" notnull_strength="0" field="time_fchk" exp_strength="0"/>
-    <constraint constraints="0" unique_strength="0" notnull_strength="0" field="t_notatki" exp_strength="0"/>
+    <constraint field="row_num" notnull_strength="1" unique_strength="1" constraints="3" exp_strength="0"/>
+    <constraint field="wyr_id" notnull_strength="1" unique_strength="1" constraints="3" exp_strength="0"/>
+    <constraint field="teren_id" notnull_strength="0" unique_strength="0" constraints="0" exp_strength="0"/>
+    <constraint field="wn_id" notnull_strength="0" unique_strength="0" constraints="0" exp_strength="0"/>
+    <constraint field="midas_id" notnull_strength="0" unique_strength="0" constraints="0" exp_strength="0"/>
+    <constraint field="user_id" notnull_strength="1" unique_strength="0" constraints="1" exp_strength="0"/>
+    <constraint field="notatki" notnull_strength="0" unique_strength="0" constraints="0" exp_strength="0"/>
+    <constraint field="pow_m2" notnull_strength="1" unique_strength="0" constraints="1" exp_strength="0"/>
   </constraints>
   <constraintExpressions>
-    <constraint field="wyr_id" desc="" exp=""/>
-    <constraint field="user_id" desc="" exp=""/>
-    <constraint field="wyr_sys" desc="" exp=""/>
-    <constraint field="order_id" desc="" exp=""/>
-    <constraint field="t_wyr_od" desc="" exp=""/>
-    <constraint field="t_wyr_do" desc="" exp=""/>
-    <constraint field="i_area_m2" desc="" exp=""/>
-    <constraint field="b_wn" desc="" exp=""/>
-    <constraint field="b_zloze" desc="" exp=""/>
-    <constraint field="b_after_fchk" desc="" exp=""/>
-    <constraint field="b_confirmed" desc="" exp=""/>
-    <constraint field="date_fchk" desc="" exp=""/>
-    <constraint field="time_fchk" desc="" exp=""/>
-    <constraint field="t_notatki" desc="" exp=""/>
+    <constraint desc="" field="row_num" exp=""/>
+    <constraint desc="" field="wyr_id" exp=""/>
+    <constraint desc="" field="teren_id" exp=""/>
+    <constraint desc="" field="wn_id" exp=""/>
+    <constraint desc="" field="midas_id" exp=""/>
+    <constraint desc="" field="user_id" exp=""/>
+    <constraint desc="" field="notatki" exp=""/>
+    <constraint desc="" field="pow_m2" exp=""/>
   </constraintExpressions>
   <expressionfields/>
   <attributeactions>
     <defaultAction value="{00000000-0000-0000-0000-000000000000}" key="Canvas"/>
   </attributeactions>
-  <attributetableconfig actionWidgetStyle="dropDown" sortExpression="" sortOrder="0">
+  <attributetableconfig sortOrder="0" sortExpression="" actionWidgetStyle="dropDown">
     <columns>
-      <column width="-1" type="field" hidden="0" name="wyr_id"/>
-      <column width="-1" type="field" hidden="0" name="user_id"/>
-      <column width="-1" type="field" hidden="0" name="t_wyr_od"/>
-      <column width="-1" type="field" hidden="0" name="t_wyr_do"/>
-      <column width="-1" type="field" hidden="0" name="i_area_m2"/>
-      <column width="-1" type="field" hidden="0" name="b_wn"/>
-      <column width="-1" type="field" hidden="0" name="b_zloze"/>
-      <column width="-1" type="field" hidden="0" name="b_after_fchk"/>
-      <column width="-1" type="field" hidden="0" name="b_confirmed"/>
-      <column width="-1" type="field" hidden="0" name="date_fchk"/>
-      <column width="-1" type="field" hidden="0" name="time_fchk"/>
-      <column width="-1" type="actions" hidden="1"/>
-      <column width="-1" type="field" hidden="0" name="wyr_sys"/>
-      <column width="-1" type="field" hidden="0" name="order_id"/>
-      <column width="-1" type="field" hidden="0" name="t_notatki"/>
+      <column name="wyr_id" type="field" hidden="0" width="-1"/>
+      <column name="user_id" type="field" hidden="0" width="-1"/>
+      <column type="actions" hidden="1" width="-1"/>
+      <column name="row_num" type="field" hidden="0" width="-1"/>
+      <column name="teren_id" type="field" hidden="0" width="-1"/>
+      <column name="wn_id" type="field" hidden="0" width="-1"/>
+      <column name="midas_id" type="field" hidden="0" width="-1"/>
+      <column name="notatki" type="field" hidden="0" width="-1"/>
+      <column name="pow_m2" type="field" hidden="0" width="-1"/>
     </columns>
   </attributetableconfig>
   <conditionalstyles>
@@ -633,36 +505,50 @@ def my_form_open(dialog, layer, feature):
   <featformsuppress>0</featformsuppress>
   <editorlayout>generatedlayout</editorlayout>
   <editable>
-    <field editable="1" name="b_after_fchk"/>
-    <field editable="1" name="b_confirmed"/>
-    <field editable="1" name="b_wn"/>
-    <field editable="1" name="b_zloze"/>
-    <field editable="1" name="date_fchk"/>
-    <field editable="1" name="i_area_m2"/>
-    <field editable="1" name="order_id"/>
-    <field editable="1" name="t_notatki"/>
-    <field editable="1" name="t_wyr_do"/>
-    <field editable="1" name="t_wyr_od"/>
-    <field editable="1" name="time_fchk"/>
-    <field editable="1" name="user_id"/>
-    <field editable="1" name="wyr_id"/>
-    <field editable="1" name="wyr_sys"/>
+    <field name="b_after_fchk" editable="1"/>
+    <field name="b_confirmed" editable="1"/>
+    <field name="b_wn" editable="1"/>
+    <field name="b_zloze" editable="1"/>
+    <field name="date_fchk" editable="1"/>
+    <field name="i_area_m2" editable="1"/>
+    <field name="midas_id" editable="1"/>
+    <field name="notatki" editable="1"/>
+    <field name="order_id" editable="1"/>
+    <field name="pow_m2" editable="1"/>
+    <field name="row_num" editable="1"/>
+    <field name="t_notatki" editable="1"/>
+    <field name="t_wn_id" editable="1"/>
+    <field name="t_wyr_do" editable="1"/>
+    <field name="t_wyr_od" editable="1"/>
+    <field name="teren_id" editable="1"/>
+    <field name="time_fchk" editable="1"/>
+    <field name="user_id" editable="1"/>
+    <field name="wn_id" editable="1"/>
+    <field name="wyr_id" editable="1"/>
+    <field name="wyr_sys" editable="1"/>
   </editable>
   <labelOnTop>
-    <field labelOnTop="0" name="b_after_fchk"/>
-    <field labelOnTop="0" name="b_confirmed"/>
-    <field labelOnTop="0" name="b_wn"/>
-    <field labelOnTop="0" name="b_zloze"/>
-    <field labelOnTop="0" name="date_fchk"/>
-    <field labelOnTop="0" name="i_area_m2"/>
-    <field labelOnTop="0" name="order_id"/>
-    <field labelOnTop="0" name="t_notatki"/>
-    <field labelOnTop="0" name="t_wyr_do"/>
-    <field labelOnTop="0" name="t_wyr_od"/>
-    <field labelOnTop="0" name="time_fchk"/>
-    <field labelOnTop="0" name="user_id"/>
-    <field labelOnTop="0" name="wyr_id"/>
-    <field labelOnTop="0" name="wyr_sys"/>
+    <field name="b_after_fchk" labelOnTop="0"/>
+    <field name="b_confirmed" labelOnTop="0"/>
+    <field name="b_wn" labelOnTop="0"/>
+    <field name="b_zloze" labelOnTop="0"/>
+    <field name="date_fchk" labelOnTop="0"/>
+    <field name="i_area_m2" labelOnTop="0"/>
+    <field name="midas_id" labelOnTop="0"/>
+    <field name="notatki" labelOnTop="0"/>
+    <field name="order_id" labelOnTop="0"/>
+    <field name="pow_m2" labelOnTop="0"/>
+    <field name="row_num" labelOnTop="0"/>
+    <field name="t_notatki" labelOnTop="0"/>
+    <field name="t_wn_id" labelOnTop="0"/>
+    <field name="t_wyr_do" labelOnTop="0"/>
+    <field name="t_wyr_od" labelOnTop="0"/>
+    <field name="teren_id" labelOnTop="0"/>
+    <field name="time_fchk" labelOnTop="0"/>
+    <field name="user_id" labelOnTop="0"/>
+    <field name="wn_id" labelOnTop="0"/>
+    <field name="wyr_id" labelOnTop="0"/>
+    <field name="wyr_sys" labelOnTop="0"/>
   </labelOnTop>
   <widgets/>
   <previewExpression>"wyr_id"</previewExpression>

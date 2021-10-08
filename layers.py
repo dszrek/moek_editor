@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
-from qgis.core import QgsProject, QgsApplication, QgsRasterLayer, QgsVectorLayer, QgsRectangle, QgsField, QgsLayerTreeGroup, QgsLayerTreeLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform
+from qgis.core import QgsApplication, QgsRasterLayer, QgsVectorLayer, QgsField, QgsLayerTreeLayer, QgsCoordinateReferenceSystem
 from qgis.PyQt.QtWidgets import QMessageBox
 from PyQt5.QtCore import Qt, QVariant
 from qgis.utils import iface
@@ -27,10 +27,11 @@ class LayerManager:
     def __init__(self, dlg):
         self.root = dlg.proj.layerTreeRoot()
         self.groups_tree = [
-            {'level': 0, 'layers': ['wn_pne', 'powiaty', 'arkusze', 'powiaty_mask']},
+            {'level': 0, 'layers': ['powiaty', 'arkusze', 'powiaty_mask']},
             {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_poly']},
             {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
             {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone', 'marszruty']},
+            {'name': 'wn_kopaliny', 'level': 1, 'layers': ['wn_pne', 'wn_link']},
             {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
             {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wybilansowane', 'midas_obszary', 'midas_tereny']},
             {'name': 'MGSP', 'level': 1, 'layers': ['mgsp_pkt_kop', 'mgsp_zloza_p', 'mgsp_zloza_a', 'mgsp_zloza_wb_p', 'mgsp_zloza_wb_a']},
@@ -40,8 +41,8 @@ class LayerManager:
             {'name': 'temp', 'level': 1, 'layers': ['wyr_point', 'edit_poly', 'backup_poly']}
             ]
         self.lyrs = [
-            {"source": "postgres", "name": "wyr_przed_teren", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_potwierdzone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_przed_teren", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_odrzucone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
@@ -49,7 +50,8 @@ class LayerManager:
             {"source": "postgres", "name": "parking_planowane", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
             {"source": "postgres", "name": "parking_odwiedzone", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
             {"source": "postgres", "name": "marszruty", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."marsz" (geom) sql='},
-            {"source": "postgres", "name": "wn_pne", "root": True, "pos": 3, "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
+            {"source": "postgres", "name": "wn_pne", "root": False, "parent": "wn_kopaliny", "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
+            {"source": "memory", "name": "wn_link", "root": False, "parent": "wn_kopaliny", "visible": True, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('wyr_id', QVariant.Int, "int"), QgsField('wn_id', QVariant.String, "string", 0)]},
             {"source": "postgres", "name": "powiaty", "root": True, "pos": 4, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
             {"source": "postgres", "name": "arkusze", "root": True, "pos": 5, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
             {"source": "postgres", "name": "vn_sel", "root": False, "parent": "vn", "visible": True, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
@@ -77,7 +79,7 @@ class LayerManager:
             {"source": "wms", "name": "OpenStreetMap", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:3857&format&type=xyz&url=https://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0'},
             {"source": "wms", "name": "Topograficzna", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=MAPA TOPOGRAFICZNA&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/TOPO?service%3DWMTS%26request%3DgetCapabilities'},
             {"source": "wms", "name": "BDOT", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/png&layers=BDOT10k&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOT10k?service%3DWMTS%26request%3DgetCapabilities'},
-            {"source": "wms", "name": "BDOO", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/png&layers=BDOO&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOO?service%3DWMTS%26request%3DgetCapabilities'},
+            {"source": "wms", "name": "BDOO", "root": False, "parent": "topo", "visible": False, "uri": 'crs=EPSG:2180&dpiMode=7&featureCount=10&format=image/png&layers=G2_MOBILE_500&styles=default&tileMatrixSet=EPSG:2180&url=http://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/G2_MOBILE_500?service%3DWMTS%26request%3DgetCapabilities'},
             {"source": "wms", "name": "ISOK", "root": False, "parent": "basemaps", "pos": 0, "visible": False, "uri": 'crs=EPSG:2180&dpiMode=0&featureCount=10&format=image/jpeg&layers=ISOK_Cien&styles=default&tileMatrixSet=EPSG:2180&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WMTS/ShadedRelief?service%3DWMTS%26request%3DgetCapabilities'},
             {"source": "postgres", "name": "wyr_point", "root": False, "parent": "temp", "visible": False, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "memory", "name": "edit_poly", "root": False, "parent": "temp", "visible": True, "uri": "Polygon?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int)]},
@@ -399,6 +401,8 @@ class PanelManager:
             dlg.proj.layerTreeRoot().findLayer(dlg.proj.mapLayersByName(name)[0].id()).setItemVisibilityChecked(val_out)
         elif action == "grp_vis":
             dlg.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(val_out)
+        if name == "powiaty":
+            dlg.wyr_panel.pow_all = not val_out
         if name == "flagi" or name == "komunikacja" or name == "wyrobiska" or name == "wn_pne":
             # Zmiana parametru widoczności wszystkich warstw z określonej grupy dla MultiMapTool:
             dlg.lyr.grp_vis_change(name, val_out)
@@ -533,7 +537,7 @@ class PanelManager:
         """Włączenie/wyłączenie warstw przy wychodzeniu/wchodzeniu do trybu ustawień."""
         if off:
             # Wyłączanie warstw:
-            lyrs = [5, 6, 11, 17, 18, 22]
+            lyrs = [5, 6, 11, 17, 18, 22, 27]
             for lyr in lyrs:
                 # Zapamiętanie ustawień warstwy:
                 self.cfg_mem.append([self.cfg_dicts[lyr]["name"], self.cfg_dicts[lyr]["value"]])

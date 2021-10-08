@@ -24,22 +24,21 @@
 
 import os
 
-from qgis.core import QgsProject, QgsFeature
+from qgis.core import QgsProject
 from qgis.gui import QgsMapToolPan
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QObject, QTimer
-from qgis.PyQt.QtGui import QIcon, QPixmap
+from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QTimer
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QDockWidget, QShortcut, QMessageBox, QSizePolicy
 from qgis.utils import iface
 
 from .classes import PgConn
-from .layers import LayerManager
-from .maptools import MapToolManager, ObjectManager
-from .main import vn_mode_changed, data_export_init
-from .viewnet import change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekButton, MoekSideDock, MoekBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
-from .basemaps import MoekMapPanel, basemaps_load
-from .sequences import sequences_load, prev_map, next_map, seq
+from .layers import dlg_layers, PanelManager, LayerManager
+from .maptools import dlg_maptools, MapToolManager, ObjectManager
+from .main import dlg_main, vn_mode_changed, data_export_init, sequences_load, prev_map, next_map, seq
+from .viewnet import dlg_viewnet, change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
+from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
+from .basemaps import dlg_basemaps, MoekMapPanel, basemaps_load
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -54,7 +53,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
     hk_vn_changed = pyqtSignal(bool)
     hk_seq_changed = pyqtSignal(bool)
 
-    def __init__(self, parent=None):
+    def __init__(self, user_id, user_name, team_i, parent=None):
         super(MoekEditorDockWidget, self).__init__(parent)
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
@@ -64,6 +63,17 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
         self.iface = iface
         self.setupUi(self)
+        self.user_id = user_id
+        self.user_name = user_name
+        self.t_user_id = int()
+        self.t_user_name = ""
+        self.powiaty = []
+        self.powiat_i = int()
+        self.powiat_t = ""
+        self.team_users = []
+        self.teams = []
+        self.team_i = team_i
+        self.team_t = ""
         self.resize_timer = None
         self.freeze = False
         self.changing = False
@@ -76,6 +86,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.proj.legendLayersAdded.connect(self.layers_adding)
         self.app = iface.mainWindow()  # Referencja do aplikacji QGIS
         self.canvas = iface.mapCanvas()  # Referencja do okna mapowego
+        self.dlg_referencer()
 
         self.p_team = MoekBarPanel(
                             self,
@@ -128,7 +139,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             io_fn="vn_mode_changed(clicked=True)",
                             config=True,
                             cfg_fn="vn_cfg()",
-                            pages=5)
+                            pages=2)
         self.p_flag = MoekBoxPanel(
                             self,
                             title="Flagi",
@@ -180,19 +191,12 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_zoom", "size": 50, "checkable": False, "tooltip": u"przybliż do pola"},
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_done", "icon": "vn_doneT", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE"'},
                     {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_doneF", "icon": "vn_doneTf", "size": 50, "checkable": False, "tooltip": u'oznacz jako "SPRAWDZONE" i idź do następnego'},
-                    {"page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 4, "item": "seqbox", "name": "seq"},
-                    {"page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "seqaddbox", "name": "sab_seq1", "id": 1, "height": 21, "border": 1, "b_round": "none"},
-                    {"page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "seqcfgbox", "name": "scg_seq1", "id": 1, "height": 21, "border": 1, "b_round": "none"},
-                    {"page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "seqaddbox", "name": "sab_seq2", "id":2, "height": 21, "border": 1, "b_round": "none"},
-                    {"page": 2, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "seqcfgbox", "name": "scg_seq2", "id": 2, "height": 21, "border": 1, "b_round": "none"},
-                    {"page": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "seqaddbox", "name": "sab_seq3", "id":3, "height": 21, "border": 1, "b_round": "none"},
-                    {"page": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "seqcfgbox", "name": "scg_seq3", "id": 3, "height": 21, "border": 1, "b_round": "none"},
-                    {"page": 4, "row": 0, "col": 1, "r_span": 1, "c_span": 3, "item": "combobox", "name": "teamusers", "border": 1, "b_round": "none"},
-                    {"page": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_powsel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola siatki widoków znajdujące się w granicach wybranego powiatu"},
-                    {"page": 4, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_polysel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola znajdujące się w granicach narysowanego poligonu"},
-                    {"page": 4, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_unsel", "size": 50, "checkable": False, "tooltip": u"wyczyść zaznaczenie pól siatki widoków"},
-                    {"page": 4, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_add", "size": 50, "checkable": False, "tooltip": u"dodaj wybrane pola siatki widoków do zakresu poszukiwań wskazanego użytkownika"},
-                    {"page": 4, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sub", "size": 50, "checkable": False, "tooltip": u"odejmij wybrane pola siatki widoków od zakresu poszukiwań wskazanego użytkownika"}
+                    {"page": 1, "row": 0, "col": 1, "r_span": 1, "c_span": 3, "item": "combobox", "name": "teamusers", "border": 1, "b_round": "none"},
+                    {"page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_powsel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola siatki widoków znajdujące się w granicach wybranego powiatu"},
+                    {"page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_polysel", "size": 50, "checkable": True, "tooltip": u"zaznacz pola znajdujące się w granicach narysowanego poligonu"},
+                    {"page": 1, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_unsel", "size": 50, "checkable": False, "tooltip": u"wyczyść zaznaczenie pól siatki widoków"},
+                    {"page": 1, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_add", "size": 50, "checkable": False, "tooltip": u"dodaj wybrane pola siatki widoków do zakresu poszukiwań wskazanego użytkownika"},
+                    {"page": 1, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sub", "size": 50, "checkable": False, "tooltip": u"odejmij wybrane pola siatki widoków od zakresu poszukiwań wskazanego użytkownika"}
                     ]
         p_flag_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
@@ -227,25 +231,22 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     panel.add_combobox(widget)
                 elif widget["item"] == "lineedit":
                     panel.add_lineedit(widget)
-                elif widget["item"] == "seqbox":
-                    panel.add_seqbox(widget)
-                elif widget["item"] == "seqaddbox":
-                    panel.add_seqaddbox(widget)
-                elif widget["item"] == "seqcfgbox":
-                    panel.add_seqcfgbox(widget)
                 elif widget["item"] == "panel":
                     panel.add_panel(widget)
             panel.resizeEvent = self.resize_panel
         self.frm_main.setLayout(self.vl_main)
 
         # Utworzenie bocznego docker'u z toolbox'ami:
-        self.side_dock = MoekSideDock()
+        self.side_dock = MoekSideDock(self.canvas)
         self.side_dock.hide()
         # Utworzenie dolnego docker'u z toolbox'ami:
-        self.bottom_dock = MoekBottomDock()
+        self.bottom_dock = MoekBottomDock(self.canvas)
         self.bottom_dock.hide()
+        # Utworzenie lewego dolnego docker'u z toolbox'em sekwencji podkładów:
+        self.seq_dock = MoekLeftBottomDock(self.canvas, pages=4)
+        self.seq_dock.hide()
         # Utworzenie splashscreen'u widocznego przy wczytywaniu wtyczki:
-        self.splash_screen = SplashScreen()
+        self.splash_screen = SplashScreen(self.canvas)
         self.splash_screen.show()
 
         tb_multi_tool_widgets = [
@@ -257,6 +258,18 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"item": "button", "name": "wyr_add_poly", "icon" : "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"},
                     {"item": "button", "name": "parking", "size": 50, "checkable": True, "tooltip": u"dodaj miejsce parkowania"},
                     {"item": "button", "name": "marsz", "size": 50, "checkable": True, "tooltip": u"dodaj marszrutę"}
+                    ]
+        tb_seq_tools_widgets = [
+                    {"item": "seqbox", "name": "seq", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1},
+                    {"item": "seqbar", "name": "stb_seq1", "title": "Konfiguracja sekwencji nr 1", "page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 1},
+                    {"item": "seqaddbox", "name": "sab_seq1", "id": 1, "page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 1},
+                    {"item": "seqcfgbox", "name": "scg_seq1", "id": 1, "page": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 1},
+                    {"item": "seqbar", "name": "stb_seq2", "title": "Konfiguracja sekwencji nr 2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 1},
+                    {"item": "seqaddbox", "name": "sab_seq2", "id":2, "page": 2, "row": 1, "col": 0, "r_span": 1, "c_span": 1},
+                    {"item": "seqcfgbox", "name": "scg_seq2", "id": 2, "page": 2, "row": 2, "col": 0, "r_span": 1, "c_span": 1},
+                    {"item": "seqbar", "name": "stb_seq3", "title": "Konfiguracja sekwencji nr 3", "page": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 1},
+                    {"item": "seqaddbox", "name": "sab_seq3", "id":3, "page": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 1},
+                    {"item": "seqcfgbox", "name": "scg_seq3", "id": 3, "page": 3, "row": 2, "col": 0, "r_span": 1, "c_span": 1}
                     ]
         tb_edit_tools_widgets = [
                     {"item": "button", "name": "edit_tool", "size": 50, "checkable": True, "tooltip": u"edycja geometrii wyrobiska"},
@@ -271,11 +284,12 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"item": "button", "name": "accept", "size": 50, "checkable": False, "tooltip": u"zatwierdź zmiany geometrii wyrobiska"}
                     ]
         toolboxes = [
-                {"name": "multi_tool", "dock": "side", "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_multi_tool_widgets},
-                {"name": "add_object", "dock": "side", "background": "rgba(0, 128, 0, 0.6)", "widgets": tb_add_widgets},
-                {"name": "edit_tools", "dock": "bottom", "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_edit_tools_widgets},
-                {"name": "edit_separator", "dock": "bottom", "background": "rgba(0, 0, 0, 0.0)", "widgets": tb_edit_separator_widgets},
-                {"name": "edit_exit", "dock": "bottom", "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_edit_exit_widgets}
+                {"name": "multi_tool", "dock": "side", "size": 51, "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_multi_tool_widgets},
+                {"name": "add_object", "dock": "side", "size": 51, "background": "rgba(0, 128, 0, 0.6)", "widgets": tb_add_widgets},
+                {"name": "seq_tools", "dock": "bottom_left", "size": 60, "background": "rgba(255, 255, 255, 0.0)", "widgets": tb_seq_tools_widgets},
+                {"name": "edit_tools", "dock": "bottom", "size": 51, "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_edit_tools_widgets},
+                {"name": "edit_separator", "dock": "bottom", "size": 51, "background": "rgba(0, 0, 0, 0.0)", "widgets": tb_edit_separator_widgets},
+                {"name": "edit_exit", "dock": "bottom", "size": 51, "background": "rgba(0, 0, 0, 0.6)", "widgets": tb_edit_exit_widgets}
                 ]
 
         for toolbox in toolboxes:
@@ -284,19 +298,30 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     self.side_dock.add_toolbox(toolbox)
                 if key == "dock" and val == "bottom":
                     self.bottom_dock.add_toolbox(toolbox)
-
-        self.flag_panel = FlagCanvasPanel()
+                if key == "dock" and val == "bottom_left":
+                    for widget in toolbox["widgets"]:
+                        if widget["item"] == "seqbar":
+                            self.seq_dock.add_seqbar(widget)
+                        elif widget["item"] == "seqbox":
+                            self.seq_dock.add_seqbox(widget)
+                        elif widget["item"] == "seqaddbox":
+                            self.seq_dock.add_seqaddbox(widget)
+                        elif widget["item"] == "seqcfgbox":
+                            self.seq_dock.add_seqcfgbox(widget)
+        self.flag_panel = FlagCanvasPanel(self.canvas)
         self.flag_panel.hide()
-        self.parking_panel = ParkingCanvasPanel()
+        self.parking_panel = ParkingCanvasPanel(self.canvas)
         self.parking_panel.hide()
-        self.marsz_panel = MarszCanvasPanel()
+        self.marsz_panel = MarszCanvasPanel(self.canvas)
         self.marsz_panel.hide()
-        self.wyr_panel = WyrCanvasPanel()
+        self.wyr_panel = WyrCanvasPanel(self.canvas)
         self.wyr_panel.hide()
-        self.wn_panel = WnCanvasPanel()
+        self.wn_panel = WnCanvasPanel(self.canvas)
         self.wn_panel.hide()
-        self.export_panel = ExportCanvasPanel()
+        self.export_panel = ExportCanvasPanel(self.canvas)
         self.export_panel.hide()
+
+        self.cfg = PanelManager(dlg=self)
         self.mt = MapToolManager(dlg=self, canvas=self.canvas)
         self.obj = ObjectManager(dlg=self, canvas=self.canvas)
         self.lyr = LayerManager(dlg=self)
@@ -304,6 +329,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.side_dock.move(1,0)
         bottom_y = self.canvas.height() - 52
         self.bottom_dock.move(0, bottom_y)
+        bottom_y = self.canvas.height() - self.seq_dock.height() - 53
+        self.seq_dock.move(53, bottom_y)
         self.flag_panel.move(60, 60)
         self.parking_panel.move(60, 60)
         self.wn_panel.move(60, 60)
@@ -333,6 +360,14 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         if attr == "hk_seq":
             self.hk_seq_changed.emit(val)
 
+    def dlg_referencer(self):
+        dlg_widgets(self)  # Przekazanie referencji interfejsu wtyczki do widgets.py
+        dlg_main(self)  # Przekazanie referencji interfejsu wtyczki do main.py
+        dlg_layers(self)  # Przekazanie referencji interfejsu wtyczki do layers.py
+        dlg_maptools(self)  # Przekazanie referencji interfejsu wtyczki do maptools.py
+        dlg_viewnet(self)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
+        dlg_basemaps(self)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
+
     def freeze_set(self, val, from_resize=False, delay=False):
         """Zarządza blokadą odświeżania dockwidget'u."""
         if val and self.freeze:
@@ -356,12 +391,12 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             else:
                 self.freeze_start()
         elif not val and self.changing and self.freeze:
-            QTimer.singleShot(10, self.changing_stop)
+            QTimer.singleShot(300, self.changing_stop)
         elif not val and not self.changing and not self.resizing:
             if delay:
                 QTimer.singleShot(300, self.freeze_end)
             else:
-                QTimer.singleShot(10, self.freeze_end)
+                QTimer.singleShot(300, self.freeze_end)
 
     def changing_stop(self):
         """Zakończenie zmiany stanu / zawartości panelu, odpalone z pewnym opóźnieniem
@@ -408,6 +443,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.side_dock.move(1,0)
         self.bottom_dock.setFixedWidth(self.canvas.width())
         self.bottom_dock.move(0, self.canvas.height() - 52)
+        bottom_y = self.canvas.height() - self.seq_dock.height() - 53
+        self.seq_dock.move(53, bottom_y)
         self.flag_panel.move(60, 60)
         self.parking_panel.move(60, 60)
         self.wyr_panel.move(60, 60)
@@ -525,7 +562,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             self.close()
 
     def basemaps_and_sequences_load(self):
-        """Odpala basemaps_load() z basemaps.py i sequences_load() z sequences.py."""
+        """Odpala basemaps_load() z basemaps.py i sequences_load() z main.py."""
         basemaps_load()
         sequences_load()
 
@@ -632,6 +669,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"].clicked.connect(lambda: self.mt.init("parking_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"].clicked.connect(lambda: self.mt.init("marsz_add"))
+        self.wyr_panel.widgets["txt2_dlug_1"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("dlug_min"))
+        self.wyr_panel.widgets["txt2_dlug_1"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("dlug_max"))
+        self.wyr_panel.widgets["txt2_szer_1"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("szer_min"))
+        self.wyr_panel.widgets["txt2_szer_1"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("szer_max"))
+
 
     def button_cfg(self, btn, icon_name, size=50, tooltip=""):
         """Konfiguracja przycisków."""
@@ -691,6 +733,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         try:
             self.canvas.children().remove(self.bottom_dock)
             self.bottom_dock.deleteLater()
+        except:
+            pass
+        try:
+            self.canvas.children().remove(self.seq_dock)
+            self.seq_dock.deleteLater()
         except:
             pass
         try:

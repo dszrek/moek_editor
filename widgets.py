@@ -3544,7 +3544,10 @@ class CanvasLineEdit(QLineEdit):
 
     def sql_parser(self, val):
         """Zwraca wartość prawidłową dla formuły sql."""
-        result = val if val else 'Null'
+        if val:
+            result = val if self.numerical else f"'{val}'"
+        else:
+            result = 'Null'
         return result
 
     def set_enabled(self, _bool):

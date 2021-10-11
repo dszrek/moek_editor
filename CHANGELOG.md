@@ -1,5 +1,9 @@
 # Changelog (dziennik zmian):
 
+## [0.5.1] - 2021-10-11 (hotfix)
+### Poprawiono
+- Naprawiono błąd zapisu do bazy danych wartości tekstowych w atrybutach dotyczących okresu eksploatacji.
+
 ## [0.5.0] - 2021-10-07
 ### Dodano
 - Wprowadzono możliwość nadawania flagom roboczych (terenowych) numerów identyfikacyjnych.

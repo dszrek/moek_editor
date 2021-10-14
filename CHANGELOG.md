@@ -1,7 +1,11 @@
 # Changelog (dziennik zmian):
 
+## [0.5.3] - 2021-10-14 (hotfix)
+### Poprawiono
+- Poprawiono błąd uniemożliwiający wprowadzenie "pełnej" godziny kontroli wyrobiska (np. 09:00, 12:00). Obecnie, wpisując w pole minut wartość "0" lub "00", godzina kontroli jest prawidłowo ustalana.
+
 ## [0.5.2] - 2021-10-11 (hotfix)
-### Poprawiono:
+### Poprawiono
 - Naprawiono błąd zapisu edycji geometrii wyrobisk przy otwartym własnym pliku projektowym. Aby błąd przestał występować, należy warstwy własne projektu (bez warstw systemowych wtyczki) zapisać jako definicję warstw. Następnie uruchomić wtyczkę na pustym projekcie, tak aby utworzyły się nowe warstwy systemowe. Na koniec należy wczytać własne warstwy z uwcześnie zapisanej definicji warstw i tak przygotowany projekt zapisać pod nową nazwą.
 
 ## [0.5.1] - 2021-10-11 (hotfix)

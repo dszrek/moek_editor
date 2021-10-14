@@ -2493,15 +2493,15 @@ class TerminBox(QFrame):
         self.fchk = MoekButton(self, name="fchk", size=34, hsize=26, checkable=True, tooltip="nie przeprowadzono kontroli terenowej", tooltip_on="przeprowadzono kontrolę terenową")
         self.fchk.clicked.connect(self.fchk_clicked)
         self.dicts = [
-                    {"name": "self.th", "width": 28, "title_down": "GG", "max_len": 2, "validator": "hours"},
-                    {"name": "self.tm", "width": 28, "title_down": "MM", "max_len": 2, "validator": "minutes"},
-                    {"name": "self.dd", "width": 28, "title_down": "DD", "max_len": 2, "validator": "days"},
-                    {"name": "self.dm", "width": 28, "title_down": "MM", "max_len": 2, "validator": "months"},
-                    {"name": "self.dy", "width": 36, "title_down": "RRRR", "max_len": 4, "validator": "years"}
+                    {"name": "self.th", "width": 28, "title_down": "GG", "max_len": 2, "validator": "hours", "zero_allowed": True},
+                    {"name": "self.tm", "width": 28, "title_down": "MM", "max_len": 2, "validator": "minutes", "zero_allowed": True},
+                    {"name": "self.dd", "width": 28, "title_down": "DD", "max_len": 2, "validator": "days", "zero_allowed": False},
+                    {"name": "self.dm", "width": 28, "title_down": "MM", "max_len": 2, "validator": "months", "zero_allowed": False},
+                    {"name": "self.dy", "width": 36, "title_down": "RRRR", "max_len": 4, "validator": "years", "zero_allowed": False}
                     ]
         for dict in self.dicts:
             fn = [['dlg.wyr_panel.widgets["gd_1"].val_changed()']]
-            _txt2 = ParamBox(self, item="line_edit", max_len=dict["max_len"], validator=dict["validator"], height=18, down_height=10, width=dict["width"], value=" ", val_width=dict["width"], title_down=dict["title_down"], fn=fn)
+            _txt2 = ParamBox(self, item="line_edit", max_len=dict["max_len"], validator=dict["validator"], height=18, down_height=10, width=dict["width"], value=" ", val_width=dict["width"], title_down=dict["title_down"], zero_allowed=dict["zero_allowed"], fn=fn)
             exec(f'{dict["name"]} = _txt2')
         self.drawer = CopyPasteDrawer(self)
         self.composer()
@@ -3501,7 +3501,7 @@ class CanvasLineEdit(QLineEdit):
         elif self.validator == "hours":
             self.setValidator(QRegExpValidator(QRegExp("^([1-9]|0[1-9]|1[0-9]|2[0-3])")))
         elif self.validator == "minutes":
-            self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1-5]?[0-9]$")))
+            self.setValidator(QRegExpValidator(QRegExp("^[0]?[0-9]$|^[1-5]?[0-9]$")))
         elif self.validator == "days":
             self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1-2]?[0-9]$|^[3][0-1]$")))
         elif self.validator == "months":
@@ -3590,7 +3590,7 @@ class CanvasLineEdit(QLineEdit):
         lead_zeros = [("order", 3), ("hours", 2), ("minutes", 2), ("days", 2), ("months", 2)]
         for lz in lead_zeros:
             if self.validator == lz[0]:
-                if int(val) == 0:
+                if int(val) == 0 and lz[0] not in ["minutes", "hours"]:
                     # Uniemożliwienie ustalenia wartości 0:
                     self.cur_val = self.cur_val
                     return

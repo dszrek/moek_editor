@@ -1,5 +1,12 @@
 # Changelog (dziennik zmian):
 
+## [0.5.4] - 2021-10-25 (hotfix)
+### Zmieniono
+- Umożliwiono wprowadzanie wartości powyżej 1000 m dla długości i szerokości wyrobiska.
+
+### Poprawiono
+- Poprawiono błędy występujące przy eksporcie punktowej warstwy wyrobisk (wyr_point).
+
 ## [0.5.3] - 2021-10-14 (hotfix)
 ### Poprawiono
 - Poprawiono błąd uniemożliwiający wprowadzenie "pełnej" godziny kontroli wyrobiska (np. 09:00, 12:00). Obecnie, wpisując w pole minut wartość "0" lub "00", godzina kontroli jest prawidłowo ustalana.

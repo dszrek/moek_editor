@@ -6,7 +6,7 @@
 name=MOEK Editor
 qgisMinimumVersion=3.0
 description=Wtyczka do obsługi systemu MOEK (PIG-PIB).
-version=0.5.3
+version=0.5.4
 author=Dominik Szrek / PIG-PIB
 email=dszr@pgi.gov.pl
 
@@ -20,7 +20,15 @@ repository=https://github.com/dszrek/moek_editor
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-changelog=[0.5.3] - 2021-10-14 (hotfix)
+changelog=[0.5.4] - 2021-10-25 (hotfix)
+
+  * Zmieniono:
+ - Umożliwiono wprowadzanie wartości powyżej 1000 m dla długości i szerokości wyrobiska.
+
+  * Poprawiono:
+ - Poprawiono błędy występujące przy eksporcie punktowej warstwy wyrobisk (wyr_point).
+
+  [0.5.3] - 2021-10-14 (hotfix)
 
   * Poprawiono:
  - Poprawiono błąd uniemożliwiający wprowadzenie "pełnej" godziny kontroli wyrobiska (np. 09:00, 12:00). Obecnie, wpisując w pole minut wartość "0" lub "00", godzina kontroli jest prawidłowo ustalana.

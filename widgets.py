@@ -783,11 +783,19 @@ class WyrCanvasPanel(QFrame):
                 self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value(None, signal=True)
             if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val == "'brak'":
                 self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+            # Kontrola 'pne_poza', jeśli nie ma złoża:
+            if not self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val:
+                if self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val == "'False'":
+                    self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("True", signal=True)
         if val[1:-1] == "Z" or val[1:-1] == "brak":  # Wyrobisko zaniechane lub brak wyrobiska
             if self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.cur_val != "0":
                 self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value("0", signal=True)
             if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val != "brak":
                 self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value("brak", signal=True)
+            # Kontrola 'pne_poza', jeśli nie ma złoża:
+            if not self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val:
+                if self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val == "'True'":
+                    self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("False", signal=True)
         if val[1:-1] == "brak" or val == "Null":  # Nie ma wyrobiska
             if self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].valbox_1.cur_val != "Null":
                 self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].valbox_1.set_value(None, signal=True)

@@ -515,7 +515,7 @@ class WyrCanvasPanel(QFrame):
         self.areabox = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], alpha=0.71)
         self.areabox.setFixedWidth(150)
         self.sp_main.lay.addWidget(self.areabox)
-        self.area_icon = MoekButton(self, name="wyr_area", size=30, checkable=False, enabled=False, tooltip="powierzchnia wyrobiska")
+        self.area_icon = MoekButton(self, name="wyr_area", size=30, checkable=False, enabled=True, tooltip="powierzchnia wyrobiska")
         self.areabox.lay.addWidget(self.area_icon)
         spacer_1 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.areabox.lay.addItem(spacer_1)
@@ -801,6 +801,28 @@ class WyrCanvasPanel(QFrame):
                 self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].valbox_1.set_value(None, signal=True)
             if self.widgets[f"cmb_hydro_{self.cur_page}"].valbox_1.cur_val != "Null":
                 self.widgets[f"cmb_hydro_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+        if val[1:-1] == "E" or val[1:-1] == "Z" or val[1:-1] == "nd" or val == "Null":
+            # Odblokowanie wymiarów wyrobiska, jeśli zablokowane:
+            p_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
+            for p in p_list:
+                if not self.widgets[f"txt2_{p}_{self.cur_page}"].is_enabled:
+                    self.widgets[f"txt2_{p}_{self.cur_page}"].set_enabled(True)
+            # Wyświetlenie powierzchni wyrobiska:
+            area_txt = f"{dlg.obj.wyr_data[4]} m\u00b2 "
+            dlg.wyr_panel.area_icon.setEnabled(True)
+            dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
+        elif val[1:-1] == "brak":
+            # Kasowanie i blokowanie wymiarów wyrobiska:
+            p_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
+            for p in p_list:
+                if self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_1.cur_val:
+                    self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_1.value_change(None)
+                if self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_2.cur_val:
+                    self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_2.value_change(None)
+                self.widgets[f"txt2_{p}_{self.cur_page}"].set_enabled(False)
+            # Wyłączenie powierzchni wyrobiska:
+            dlg.wyr_panel.area_icon.setEnabled(False)
+            dlg.wyr_panel.area_label.setText("")
 
     def trigger_midas(self):
         """Wykonywane po zmianie wartości combobox'u 'stan_rekul'."""
@@ -3065,6 +3087,7 @@ class ParamBox(QFrame):
         self.val_width_2 = val_width_2 if title_left or icon else _width
         self.focus_switch = False
         self.setFixedSize(width, all_height)
+        self.is_enabled = True
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
         lay = QVBoxLayout()
         lay.setContentsMargins(0, 4, 0, 4) if margins else lay.setContentsMargins(0, 0, 0, 0)
@@ -3120,6 +3143,7 @@ class ParamBox(QFrame):
 
     def set_enabled(self, _bool):
         """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        self.is_enabled = _bool
         widgets = (self.box.glay.itemAt(i).widget() for i in range(self.box.glay.count()))
         for widget in widgets:
             if isinstance(widget, MoekButton):
@@ -5077,7 +5101,8 @@ class MoekSlideButton(MoekButton):
         self.setGeometry(self.parent().width() - 6 - offset, (self.parent().height()/2) - (self.height()/2), self.width(), self.height())
 
     def enterEvent(self, event):
-        self.slided = True
+        if self.parent().parent().parent().is_enabled:
+            self.slided = True
 
     def leaveEvent(self, event):
         self.slided = False

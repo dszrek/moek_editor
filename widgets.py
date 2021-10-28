@@ -618,7 +618,7 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "stan_rekul_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan rekultywacji:", "title_down": None, "tbl_name": "sl_stan_rekul", "null_val": False, "trigger": "trigger_rekultywacja()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_rekultywacja()", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
                     {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": False, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
@@ -847,19 +847,15 @@ class WyrCanvasPanel(QFrame):
             self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.set_value("False", signal=True)
 
     def trigger_rekultywacja(self):
-        """Wykonywane po zmianie wartości combobox'u 'stan_rekul'."""
-        val = self.widgets["cmb_stan_rekul_1"].valbox_1.cur_val
-        if not val:
+        """Wykonywane po zmianie wartości combobox'u 'stan_rekul', albo textbox'u 'rekultywacja'."""
+        val_1 = self.widgets["cmb_stan_rekul_1"].valbox_1.cur_val
+        if not val_1:
             return
-        if val[1:-1] == 'tak' or val[1:-1] == 'w_t':
+        val_2 = self.widgets["tb_rekultywacja_1"].txtbox.cur_val
+        if val_1[1:-1] == 'tak' or val_1[1:-1] == 'w_t' or val_2:
             dlg.wyr_panel.tab_box.widgets["btn_3"].active = True
-            self.widgets["tb_rekultywacja_1"].setVisible(True)
         else:
             dlg.wyr_panel.tab_box.widgets["btn_3"].active = False
-            self.widgets["tb_rekultywacja_1"].setVisible(False)
-            if self.widgets["tb_rekultywacja_1"].txtbox.cur_val:
-                self.widgets["tb_rekultywacja_1"].txtbox.cur_val = None
-                self.widgets["tb_rekultywacja_1"].txtbox.db_update(txt_val=None, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")
 
     def trigger_zgloszenie(self):
         """Wykonywane po zmianie wartości combobox'u 'zgloszenie'."""

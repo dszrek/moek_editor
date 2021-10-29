@@ -1,5 +1,13 @@
 # Changelog (dziennik zmian):
 
+## [0.5.5] - 2021-10-29 (hotfix)
+### Dodano
+- Wprowadzono do formularza wyrobisk potwierdzonych przycisk odpowiedzialny za zmianę atrybutu "CZY_PNE". Poprzednio ten atrybut był automatycznie ustalany na podstawie wartości atrybutu "STAN_PNE", jednak z uwagi na wyjątkowe sytuacje, zaistniała potrzeba ręcznego ustalania tego atrybutu. Domyślnie wartość ustawiona jest na "PRAWDA" ("TAK") i sygnalizowana jest kolorem zielonym.
+
+### Zmieniono
+- Rozbudowano reguły wykluczające związane ze stanem wyrobiska (w szczególności wybrania wartości "brak wyrobiska"), które dotyczą wymiarów i powierzchni wyrobiska.
+- Umożliwiono wpisywanie zakresu prac rekultywacyjnych niezależnie od wartości atrybutu "STAN_REKULT". Poprzednio pole do wpisywania zakresu prac rekultywacyjnych było dostępne wyłącznie po ustawieniu atrybutu "STAN_REKULT" na wartość "tak" lub "w trakcie".
+
 ## [0.5.4] - 2021-10-25 (hotfix)
 ### Zmieniono
 - Umożliwiono wprowadzanie wartości powyżej 1000 m dla długości i szerokości wyrobiska.

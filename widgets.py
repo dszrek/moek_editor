@@ -574,7 +574,9 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "kopalina_wiek_1", "page": 1, "subpage": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "kop_wiek"},
 
-                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "pne_1", "page": 1, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "type": "pne"},
+
+                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 11, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 368, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
                     {"name": "dlug_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
@@ -676,6 +678,11 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_gd, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 gd_name = 'gd_1'
                 self.widgets[gd_name] = _gd
+            if dict["type"] == "pne":
+                _pn = PneBox(self)
+                exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_pn, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                pn_name = 'pn_1'
+                self.widgets[pn_name] = _pn
             if dict["type"] == "odpady":
                 _os = OdpadySelector(self)
                 exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_os, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
@@ -718,6 +725,7 @@ class WyrCanvasPanel(QFrame):
             {'type': 'text_2', 'name': 'okres_zloze', 'value': _dict[45], 'value_2': _dict[46], 'pages': [0, 1]},
             {'type': 'kw','values': [_dict[36], _dict[37], _dict[38], _dict[39]], 'pages': [1]},
             {'type': 'gd','values': [_dict[40], _dict[41], _dict[42]], 'pages': [1]},
+            {'type': 'pn','value': _dict[56], 'pages': [1]},
             {'type': 'ab', 'name': 'autor', 'value': _dict[50], 'pages': [1]},
             {'type': 'combo', 'name': 'droga', 'value': _dict[31], 'pages': [1]},
             {'type': 'combo', 'name': 'hydro', 'value': _dict[19], 'pages': [1]},
@@ -755,6 +763,8 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.widgets["kw_1"].set_values({param["values"]})')
             if param["type"] == "gd":
                 exec(f'self.widgets["gd_1"].set_values({param["values"]})')
+            if param["type"] == "pn":
+                exec(f'self.widgets["pn_1"].set_value({param["value"]})')
             if param["type"] == "os":
                 exec(f'self.widgets["os_1"].set_values({param["values"]})')
         if self.trigger_void:
@@ -2504,6 +2514,37 @@ class AutorBox(QFrame):
         d_x = 363 if slide else 397
         self.txtbox.setFixedWidth(t_width)
         self.drawer.setGeometry(d_x, 4, self.drawer.width(), self.drawer.height())
+
+
+class PneBox(QFrame):
+    """Widget ustalania dla wyrobiska atrybutu 'b_pne' ('CZY_PNE')."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(34, 26)
+        self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
+        self.btn = MoekButton(self, name="pne", size=34, hsize=26, checkable=True, tooltip="CZY_PNE = NIE", tooltip_on="CZY_PNE = TAK")
+        self.btn.clicked.connect(self.btn_clicked)
+        self.val_void = True
+        self.btn_val = False
+        self.val_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "btn_val" and not self.val_void:
+            if self.btn.isChecked != val:
+                self.btn.setChecked(val)
+
+    def set_value(self, val):
+        """Ustawienie wartości z db."""
+        self.btn_val = val
+
+    def btn_clicked(self):
+        """Aktualizacja wartości 'b_pne' w tabeli 'wyr_dane'."""
+        self.btn_val = self.btn.isChecked()
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_pne", val=self.btn_val, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
 
 
 class TerminBox(QFrame):

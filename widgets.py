@@ -764,7 +764,7 @@ class WyrCanvasPanel(QFrame):
             if param["type"] == "gd":
                 exec(f'self.widgets["gd_1"].set_values({param["values"]})')
             if param["type"] == "pn":
-                exec(f'self.widgets["pn_1"].set_value({param["value"]})')
+                exec(f'self.widgets["pn_1"].btn_val = {param["value"]}')
             if param["type"] == "os":
                 exec(f'self.widgets["os_1"].set_values({param["values"]})')
         if self.trigger_void:
@@ -2536,10 +2536,6 @@ class PneBox(QFrame):
         if attr == "btn_val" and not self.val_void:
             if self.btn.isChecked != val:
                 self.btn.setChecked(val)
-
-    def set_value(self, val):
-        """Ustawienie wartości z db."""
-        self.btn_val = val
 
     def btn_clicked(self):
         """Aktualizacja wartości 'b_pne' w tabeli 'wyr_dane'."""

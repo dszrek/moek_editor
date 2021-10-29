@@ -1,9 +1,12 @@
 #!/usr/bin/python
 import os
+import shutil
 import time as tm
 import pandas as pd
 import numpy as np
 
+from win32com import client
+from docxtpl import DocxTemplate
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
 from qgis.PyQt.QtCore import Qt, QDir
 from qgis.core import QgsApplication, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext, QgsFeature, QgsGeometry, edit
@@ -1508,3 +1511,91 @@ def seq(_num):
             dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].cfg_clicked()
         else:  # Sekwencja nie jest pusta, następuje jej aktywacja
             dlg.seq_dock.widgets["sqb_seq"].num = _num
+
+def pictures_export():
+    """Eksport zdjęć wyrobisk potwierdzonych z danego powiatu, połączony z nadaniem im odpowiednich nazw."""
+    pow_grp = dlg.powiat_i
+    pow_name = dlg.powiat_t
+    source_path = f"C:{os.path.sep}nef{os.path.sep}punkty"
+    dest_path = f"C:{os.path.sep}MOEK_2020{os.path.sep}FOTO{os.path.sep}{pow_name}_foto"
+    if not os.path.isdir(dest_path):
+        os.makedirs(dest_path, exist_ok=True)
+    df = wyr_from_pow_for_pict(pow_grp)
+    for index in df.to_records():  # index[1]: wyr_id, index[2]: id_punkt
+        wyr_source_path = os.path.join(source_path, str(index[1]))
+        if not os.path.isdir(wyr_source_path):
+            print(f"!!!!!!!!!!!!!!! Brak folderu ze zdjęciami dla wyrobiska {index[1]}")
+            continue
+        for cnt, filename in enumerate(os.listdir(wyr_source_path), 1):
+            dst = f"{index[2]}_{str(cnt).zfill(2)}.jpg"
+            shutil.copy2(os.path.join(wyr_source_path, filename), os.path.join(dest_path, dst))
+
+def card_export():
+    """Generator kart wyrobisk z danego powiatu."""
+    pow_grp = dlg.powiat_i
+    pow_name = dlg.powiat_t
+    doc_path = f"C:{os.path.sep}MOEK_2020{os.path.sep}{pow_name}{os.path.sep}{pow_name}_karty_docx"
+    pdf_path = f"C:{os.path.sep}MOEK_2020{os.path.sep}{pow_name}{os.path.sep}{pow_name}_karty_pdf"
+    dest_excel = f"C:{os.path.sep}MOEK_2020{os.path.sep}karty_{pow_name}.xlsx"
+    temp_doc = f"C:{os.path.sep}MOEK_2020{os.path.sep}karta_szablon.docx"
+    if not os.path.isdir(doc_path):
+        os.makedirs(doc_path, exist_ok=True)
+    if not os.path.isdir(pdf_path):
+        os.makedirs(pdf_path, exist_ok=True)
+    df = wyr_for_card(pow_grp)
+    df['STAN_MIDAS'] = np.where((df['STAN_MIDAS'] == 'RW') | (df['STAN_MIDAS'] == 'RS'), 'R', df['STAN_MIDAS'])
+    df['ID'] = df['ID'].str.pad(width=5, side='left', fillchar=' ')
+    df[['ID_0', 'ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6']] = df['ID'].str.split(pat ="", expand=True)
+    df = df.drop(columns=['ID_0', 'ID_6'])
+    df['DATA'] = pd.to_datetime(df['DATA'])
+    df['DD'] = df['DATA'].dt.day.astype('str').str.zfill(2)
+    df['MM'] = df['DATA'].dt.month.astype('str').str.zfill(2)
+    df['RR'] = df['DATA'].dt.year
+    df['GODZ'] = pd.to_datetime(df['GODZ'], format='%H:%M:%S')
+    df['GODZ_1'] = df['GODZ'].dt.hour.astype('str').str.zfill(2)
+    df['GODZ_2'] = df['GODZ'].dt.minute.astype('str').str.zfill(2)
+    df[['ID_P0', 'ID_P1', 'ID_P2', 'ID_P3', 'ID_P4', 'ID_P5', 'ID_P6', 'ID_P_', 'ID_P7', 'ID_P8', 'ID_P9', 'ID_P10']] = df['ID_PUNKT'].str.split(pat ="", expand=True)
+    df = df.drop(columns=['ID_P0', 'ID_P_', 'ID_P10'])
+    df['ID_ARKUSZ'] = df['ID_ARKUSZ'].fillna('        ')
+    df[['ID_A0', 'ID_A1', 'ID_A2', 'ID_A3', 'ID_A4', 'ID_A_', 'ID_A5', 'ID_A6', 'ID_A7', 'ID_A8']] = df['ID_ARKUSZ'].str.split(pat ="", expand=True)
+    df = df.drop(columns=['ID_A0', 'ID_A_', 'ID_A8'])
+    df['POW_M2'] = np.where(df['STAN_PNE'] == 'brak', '–', df['POW_M2'])
+    df['KOPALINY'] = np.where(df['KOPALINA_2'].isna(), df['KOPALINA'], df['KOPALINA'] + ' / ' + df['KOPALINA_2'])
+    df['WIEKI'] = np.where(df['WIEK_2'].isna(), df['WIEK'], df['WIEK'] + ' / ' + df['WIEK_2'])
+    o_list = ['e', 'rb', 'p', 'op', 'k', 'czp', 'wg', 'el', 'r', 'i']
+    for o in o_list:
+        df[f'O_{o}'] = np.where((df['ODPADY_1'] == o) | (df['ODPADY_2'] == o) | (df['ODPADY_3'] == o) | (df['ODPADY_4'] == o), 1, 0)
+    for r_index, row in df.iterrows():
+        cust_name = row['ID_PUNKT']
+        tpl = DocxTemplate(temp_doc)
+        x = df.to_dict(orient='records')
+        context = x
+        tpl.render(context[r_index])
+        tpl.save(f'{doc_path}{os.path.sep}{cust_name}.docx')
+        word_app = client.Dispatch("Word.Application")
+        doc = word_app.Documents.Open(f'{doc_path}{os.path.sep}{cust_name}.docx')
+        doc.SaveAs(f'{pdf_path}{os.path.sep}{cust_name}.pdf', FileFormat=17)
+        doc.Close()
+    df.to_excel(dest_excel)
+
+def wyr_from_pow_for_pict(pow_grp):
+    """Zwraca dataframe z potwierdzonymi wyrobiskami z danego powiatu i wygenerowanymi numerami id_punkt."""
+    db = PgConn()
+    sql = f"SELECT wyr_id, concat(pow_id, '_', order_id) as id_punkt FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{pow_grp}' and order_id IS NOT NULL ORDER BY order_id;"
+    if db:
+        mdf = db.query_pd(sql, ['wyr_id', 'id_punkt'])
+        if isinstance(mdf, pd.DataFrame):
+            return mdf if len(mdf) > 0 else None
+        else:
+            return None
+
+def wyr_for_card(pow_grp):
+    """Zwraca dataframe z potwierdzonymi wyrobiskami z danego powiatu i atrybutami potrzebnymi do wygenerowania kart."""
+    db = PgConn()
+    sql = f"SELECT COALESCE(w.t_teren_id, p.wyr_id::varchar) AS id, CONCAT(p.pow_id, '_', p.order_id) AS id_punkt, d.date_fchk, d.time_fchk, w.t_wn_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, ST_X(w.centroid) as x_92, ST_Y(w.centroid) as y_92, CASE WHEN w.t_midas_id is null THEN false ELSE true END AS czy_zloze, w.t_midas_id, d.t_stan_midas, d.b_pne_zloze, d.b_pne_poza, d.t_stan_pne, d.t_zloze_od, d.t_zloze_do, d.t_wyr_od, d.t_wyr_do, (SELECT s.t_desc FROM public.sl_kopalina AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_kopalina AND d.wyr_id = p.wyr_id) AS kopalina, (SELECT s.t_desc FROM public.sl_kopalina AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_kopalina_2 AND d.wyr_id = p.wyr_id) AS kopalina_2, (SELECT s.t_desc FROM public.sl_wiek AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wiek AND d.wyr_id = p.wyr_id) AS wiek, (SELECT s.t_desc FROM public.sl_wiek AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wiek_2 AND d.wyr_id = p.wyr_id) AS wiek_2, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.i_area_m2, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_wyp_odpady, d.t_odpady_opak, d.t_odpady_inne, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.i_ile_zalacz, w.t_notatki, d.t_autor FROM team_{dlg.team_i}.wyrobiska AS w INNER JOIN team_{dlg.team_i}.wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_{dlg.team_i}.wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE p.pow_grp = '{pow_grp}' and p.order_id IS NOT NULL ORDER BY p.order_id;"
+    if db:
+        mdf = db.query_pd(sql, ['ID', 'ID_PUNKT', 'DATA', 'GODZ', 'ID_ARKUSZ', 'MIEJSCE', 'GMINA', 'POWIAT', 'WOJEWODZTWO', 'X_92', 'Y_92', 'CZY_ZLOZE', 'ID_MIDAS', 'STAN_MIDAS', 'PNE_ZLOZE', 'PNE_POZA', 'STAN_PNE', 'ZLOZE_OD', 'ZLOZE_DO', 'PNE_OD', 'PNE_DO', 'KOPALINA', 'KOPALINA_2', 'WIEK', 'WIEK_2', 'NADKL_MIN', 'NADKL_MAX', 'MIAZSZ_MIN', 'MIAZSZ_MAX', 'DLUG_MIN', 'DLUG_MAX', 'SZER_MIN', 'SZER_MAX', 'WYS_MIN', 'WYS_MAX', 'POW_M2', 'WYROBISKO', 'ZAWODN', 'EXPLOAT', 'WYDOBYCIE', 'ODPADY_1', 'ODPADY_2', 'ODPADY_3', 'ODPADY_4', 'WYP_ODPADY', 'O_OPAK', 'O_INNE', 'REKULTYW', 'DOJAZD', 'ZAGROZENIA', 'ZGLOSZENIE', 'POWOD', 'ILE_ZALACZ', 'UWAGI', 'AUTORZY'])
+        if isinstance(mdf, pd.DataFrame):
+            return mdf if len(mdf) > 0 else None
+        else:
+            return None

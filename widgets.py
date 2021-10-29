@@ -515,7 +515,7 @@ class WyrCanvasPanel(QFrame):
         self.areabox = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], alpha=0.71)
         self.areabox.setFixedWidth(150)
         self.sp_main.lay.addWidget(self.areabox)
-        self.area_icon = MoekButton(self, name="wyr_area", size=30, checkable=False, enabled=False, tooltip="powierzchnia wyrobiska")
+        self.area_icon = MoekButton(self, name="wyr_area", size=30, checkable=False, enabled=True, tooltip="powierzchnia wyrobiska")
         self.areabox.lay.addWidget(self.area_icon)
         spacer_1 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
         self.areabox.lay.addItem(spacer_1)
@@ -574,7 +574,9 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "kopalina_wiek_1", "page": 1, "subpage": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "kop_wiek"},
 
-                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "pne_1", "page": 1, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "type": "pne"},
+
+                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 11, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 368, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
                     {"name": "dlug_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
@@ -618,7 +620,7 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "stan_rekul_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan rekultywacji:", "title_down": None, "tbl_name": "sl_stan_rekul", "null_val": False, "trigger": "trigger_rekultywacja()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_rekultywacja()", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
                     {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": False, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
@@ -676,6 +678,11 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_gd, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 gd_name = 'gd_1'
                 self.widgets[gd_name] = _gd
+            if dict["type"] == "pne":
+                _pn = PneBox(self)
+                exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_pn, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                pn_name = 'pn_1'
+                self.widgets[pn_name] = _pn
             if dict["type"] == "odpady":
                 _os = OdpadySelector(self)
                 exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_os, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
@@ -718,6 +725,7 @@ class WyrCanvasPanel(QFrame):
             {'type': 'text_2', 'name': 'okres_zloze', 'value': _dict[45], 'value_2': _dict[46], 'pages': [0, 1]},
             {'type': 'kw','values': [_dict[36], _dict[37], _dict[38], _dict[39]], 'pages': [1]},
             {'type': 'gd','values': [_dict[40], _dict[41], _dict[42]], 'pages': [1]},
+            {'type': 'pn','value': _dict[56], 'pages': [1]},
             {'type': 'ab', 'name': 'autor', 'value': _dict[50], 'pages': [1]},
             {'type': 'combo', 'name': 'droga', 'value': _dict[31], 'pages': [1]},
             {'type': 'combo', 'name': 'hydro', 'value': _dict[19], 'pages': [1]},
@@ -755,6 +763,8 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.widgets["kw_1"].set_values({param["values"]})')
             if param["type"] == "gd":
                 exec(f'self.widgets["gd_1"].set_values({param["values"]})')
+            if param["type"] == "pn":
+                exec(f'self.widgets["pn_1"].btn_val = {param["value"]}')
             if param["type"] == "os":
                 exec(f'self.widgets["os_1"].set_values({param["values"]})')
         if self.trigger_void:
@@ -783,16 +793,46 @@ class WyrCanvasPanel(QFrame):
                 self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value(None, signal=True)
             if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val == "'brak'":
                 self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+            # Kontrola 'pne_poza', jeśli nie ma złoża:
+            if not self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val:
+                if self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val == "'False'":
+                    self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("True", signal=True)
         if val[1:-1] == "Z" or val[1:-1] == "brak":  # Wyrobisko zaniechane lub brak wyrobiska
             if self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.cur_val != "0":
                 self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value("0", signal=True)
             if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val != "brak":
                 self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value("brak", signal=True)
+            # Kontrola 'pne_poza', jeśli nie ma złoża:
+            if not self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val:
+                if self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val == "'True'":
+                    self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("False", signal=True)
         if val[1:-1] == "brak" or val == "Null":  # Nie ma wyrobiska
             if self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].valbox_1.cur_val != "Null":
                 self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].valbox_1.set_value(None, signal=True)
             if self.widgets[f"cmb_hydro_{self.cur_page}"].valbox_1.cur_val != "Null":
                 self.widgets[f"cmb_hydro_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+        if val[1:-1] == "E" or val[1:-1] == "Z" or val[1:-1] == "nd" or val == "Null":
+            # Odblokowanie wymiarów wyrobiska, jeśli zablokowane:
+            p_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
+            for p in p_list:
+                if not self.widgets[f"txt2_{p}_{self.cur_page}"].is_enabled:
+                    self.widgets[f"txt2_{p}_{self.cur_page}"].set_enabled(True)
+            # Wyświetlenie powierzchni wyrobiska:
+            area_txt = f"{dlg.obj.wyr_data[4]} m\u00b2 "
+            dlg.wyr_panel.area_icon.setEnabled(True)
+            dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
+        elif val[1:-1] == "brak":
+            # Kasowanie i blokowanie wymiarów wyrobiska:
+            p_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
+            for p in p_list:
+                if self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_1.cur_val:
+                    self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_1.value_change(None)
+                if self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_2.cur_val:
+                    self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_2.value_change(None)
+                self.widgets[f"txt2_{p}_{self.cur_page}"].set_enabled(False)
+            # Wyłączenie powierzchni wyrobiska:
+            dlg.wyr_panel.area_icon.setEnabled(False)
+            dlg.wyr_panel.area_label.setText("")
 
     def trigger_midas(self):
         """Wykonywane po zmianie wartości combobox'u 'stan_rekul'."""
@@ -817,19 +857,15 @@ class WyrCanvasPanel(QFrame):
             self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.set_value("False", signal=True)
 
     def trigger_rekultywacja(self):
-        """Wykonywane po zmianie wartości combobox'u 'stan_rekul'."""
-        val = self.widgets["cmb_stan_rekul_1"].valbox_1.cur_val
-        if not val:
+        """Wykonywane po zmianie wartości combobox'u 'stan_rekul', albo textbox'u 'rekultywacja'."""
+        val_1 = self.widgets["cmb_stan_rekul_1"].valbox_1.cur_val
+        if not val_1:
             return
-        if val[1:-1] == 'tak' or val[1:-1] == 'w_t':
+        val_2 = self.widgets["tb_rekultywacja_1"].txtbox.cur_val
+        if val_1[1:-1] == 'tak' or val_1[1:-1] == 'w_t' or val_2:
             dlg.wyr_panel.tab_box.widgets["btn_3"].active = True
-            self.widgets["tb_rekultywacja_1"].setVisible(True)
         else:
             dlg.wyr_panel.tab_box.widgets["btn_3"].active = False
-            self.widgets["tb_rekultywacja_1"].setVisible(False)
-            if self.widgets["tb_rekultywacja_1"].txtbox.cur_val:
-                self.widgets["tb_rekultywacja_1"].txtbox.cur_val = None
-                self.widgets["tb_rekultywacja_1"].txtbox.db_update(txt_val=None, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")
 
     def trigger_zgloszenie(self):
         """Wykonywane po zmianie wartości combobox'u 'zgloszenie'."""
@@ -2480,6 +2516,33 @@ class AutorBox(QFrame):
         self.drawer.setGeometry(d_x, 4, self.drawer.width(), self.drawer.height())
 
 
+class PneBox(QFrame):
+    """Widget ustalania dla wyrobiska atrybutu 'b_pne' ('CZY_PNE')."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(34, 26)
+        self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
+        self.btn = MoekButton(self, name="pne", size=34, hsize=26, checkable=True, tooltip="CZY_PNE = NIE", tooltip_on="CZY_PNE = TAK")
+        self.btn.clicked.connect(self.btn_clicked)
+        self.val_void = True
+        self.btn_val = False
+        self.val_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "btn_val" and not self.val_void:
+            if self.btn.isChecked != val:
+                self.btn.setChecked(val)
+
+    def btn_clicked(self):
+        """Aktualizacja wartości 'b_pne' w tabeli 'wyr_dane'."""
+        self.btn_val = self.btn.isChecked()
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_pne", val=self.btn_val, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+
+
 class TerminBox(QFrame):
     """Widget ustalania dla wyrobiska godziny i daty kontroli terenowej, albo oznaczenia braku kontroli terenowej."""
     def __init__(self, *args):
@@ -3057,6 +3120,7 @@ class ParamBox(QFrame):
         self.val_width_2 = val_width_2 if title_left or icon else _width
         self.focus_switch = False
         self.setFixedSize(width, all_height)
+        self.is_enabled = True
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
         lay = QVBoxLayout()
         lay.setContentsMargins(0, 4, 0, 4) if margins else lay.setContentsMargins(0, 0, 0, 0)
@@ -3112,6 +3176,7 @@ class ParamBox(QFrame):
 
     def set_enabled(self, _bool):
         """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        self.is_enabled = _bool
         widgets = (self.box.glay.itemAt(i).widget() for i in range(self.box.glay.count()))
         for widget in widgets:
             if isinstance(widget, MoekButton):
@@ -5069,7 +5134,8 @@ class MoekSlideButton(MoekButton):
         self.setGeometry(self.parent().width() - 6 - offset, (self.parent().height()/2) - (self.height()/2), self.width(), self.height())
 
     def enterEvent(self, event):
-        self.slided = True
+        if self.parent().parent().parent().is_enabled:
+            self.slided = True
 
     def leaveEvent(self, event):
         self.slided = False

@@ -35,7 +35,7 @@ from qgis.utils import iface
 from .classes import PgConn
 from .layers import dlg_layers, PanelManager, LayerManager
 from .maptools import dlg_maptools, MapToolManager, ObjectManager
-from .main import dlg_main, vn_mode_changed, data_export_init, sequences_load, prev_map, next_map, seq
+from .main import dlg_main, pow_export, vn_mode_changed, data_export_init, sequences_load, prev_map, next_map, seq
 from .viewnet import dlg_viewnet, change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
 from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
 from .basemaps import dlg_basemaps, MoekMapPanel, basemaps_load
@@ -647,7 +647,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
         self.p_pow_mask.box.widgets["btn_pow_mask"].clicked.connect(lambda: self.cfg.set_val(name="powiaty_mask", val=self.p_pow_mask.box.widgets["btn_pow_mask"].isChecked()))
-        self.p_team_export.box.widgets["btn_data_export"].clicked.connect(data_export_init)
+        self.p_team_export.box.widgets["btn_data_export"].clicked.connect(pow_export) #(data_export_init)
         self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))

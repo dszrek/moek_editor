@@ -4,6 +4,7 @@ import shutil
 import time as tm
 import pandas as pd
 import numpy as np
+import xlsxwriter as xls
 
 from win32com import client
 from docxtpl import DocxTemplate
@@ -1512,15 +1513,22 @@ def seq(_num):
         else:  # Sekwencja nie jest pusta, następuje jej aktywacja
             dlg.seq_dock.widgets["sqb_seq"].num = _num
 
-def pictures_export():
-    """Eksport zdjęć wyrobisk potwierdzonych z danego powiatu, połączony z nadaniem im odpowiednich nazw."""
+def pow_export():
+    """Eksport danych powiatu do bazy mdb, kart wyrobisk, zdjęć i załączników."""
     pow_grp = dlg.powiat_i
     pow_name = dlg.powiat_t
+    pictures_export(pow_grp, pow_name)
+    mdb_export(pow_grp, pow_name)
+    card_export(pow_grp, pow_name)
+    zal_export(pow_grp, pow_name)
+
+def pictures_export(pow_grp, pow_name):
+    """Eksport zdjęć wyrobisk potwierdzonych z danego powiatu, połączony z nadaniem im odpowiednich nazw."""
     source_path = f"C:{os.path.sep}nef{os.path.sep}punkty"
     dest_path = f"C:{os.path.sep}MOEK_2020{os.path.sep}FOTO{os.path.sep}{pow_name}_foto"
     if not os.path.isdir(dest_path):
         os.makedirs(dest_path, exist_ok=True)
-    df = wyr_from_pow_for_pict(pow_grp)
+    df = wyr_for_pict(pow_grp)
     for index in df.to_records():  # index[1]: wyr_id, index[2]: id_punkt
         wyr_source_path = os.path.join(source_path, str(index[1]))
         if not os.path.isdir(wyr_source_path):
@@ -1530,10 +1538,22 @@ def pictures_export():
             dst = f"{index[2]}_{str(cnt).zfill(2)}.jpg"
             shutil.copy2(os.path.join(wyr_source_path, filename), os.path.join(dest_path, dst))
 
-def card_export():
+def mdb_export(pow_grp, pow_name):
+    """Export do mdb wyrobisk z danego powiatu."""
+    dest_excel = f"C:{os.path.sep}MOEK_2020{os.path.sep}mdb_{pow_name}.xls"
+    df = wyr_for_mdb(pow_grp)
+    df['NADKL_MIN'] = pd.to_numeric(df['NADKL_MIN'], downcast='float')
+    df['NADKL_MAX'] = pd.to_numeric(df['NADKL_MAX'], downcast='float')
+    df['MIAZSZ_MIN'] = pd.to_numeric(df['MIAZSZ_MIN'], downcast='float')
+    df['MIAZSZ_MAX'] = pd.to_numeric(df['MIAZSZ_MAX'], downcast='float')
+    df['WYS_MIN'] = pd.to_numeric(df['WYS_MIN'], downcast='float')
+    df['WYS_MAX'] = pd.to_numeric(df['WYS_MAX'], downcast='float')
+    df['STAN_MIDAS'] = np.where((df['STAN_MIDAS'] == 'RW') | (df['STAN_MIDAS'] == 'RS'), 'R', df['STAN_MIDAS'])
+    df['POW_M2'] = np.where(df['STAN_PNE'] == 'brak', np.nan, df['POW_M2'])
+    df.to_excel(dest_excel, index=False, sheet_name='mdb_import')
+
+def card_export(pow_grp, pow_name):
     """Generator kart wyrobisk z danego powiatu."""
-    pow_grp = dlg.powiat_i
-    pow_name = dlg.powiat_t
     doc_path = f"C:{os.path.sep}MOEK_2020{os.path.sep}{pow_name}{os.path.sep}{pow_name}_karty_docx"
     pdf_path = f"C:{os.path.sep}MOEK_2020{os.path.sep}{pow_name}{os.path.sep}{pow_name}_karty_pdf"
     dest_excel = f"C:{os.path.sep}MOEK_2020{os.path.sep}karty_{pow_name}.xlsx"
@@ -1543,17 +1563,31 @@ def card_export():
     if not os.path.isdir(pdf_path):
         os.makedirs(pdf_path, exist_ok=True)
     df = wyr_for_card(pow_grp)
+    df['NADKL_MIN'] = pd.to_numeric(df['NADKL_MIN'], downcast='float')
+    df['NADKL_MAX'] = pd.to_numeric(df['NADKL_MAX'], downcast='float')
+    df['MIAZSZ_MIN'] = pd.to_numeric(df['MIAZSZ_MIN'], downcast='float')
+    df['MIAZSZ_MAX'] = pd.to_numeric(df['MIAZSZ_MAX'], downcast='float')
+    df['WYS_MIN'] = pd.to_numeric(df['WYS_MIN'], downcast='float')
+    df['WYS_MAX'] = pd.to_numeric(df['WYS_MAX'], downcast='float')
+    df['DLUG_MIN'] = pd.to_numeric(df['DLUG_MIN'], downcast='integer')
+    df['DLUG_MAX'] = pd.to_numeric(df['DLUG_MAX'], downcast='integer')
+    df['SZER_MIN'] = pd.to_numeric(df['SZER_MIN'], downcast='integer')
+    df['SZER_MAX'] = pd.to_numeric(df['SZER_MAX'], downcast='integer')
+    df = df.where(pd.notnull(df), None)
     df['STAN_MIDAS'] = np.where((df['STAN_MIDAS'] == 'RW') | (df['STAN_MIDAS'] == 'RS'), 'R', df['STAN_MIDAS'])
     df['ID'] = df['ID'].str.pad(width=5, side='left', fillchar=' ')
     df[['ID_0', 'ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6']] = df['ID'].str.split(pat ="", expand=True)
     df = df.drop(columns=['ID_0', 'ID_6'])
+    # df['DATA'] = df['DATA'].where(pd.notnull(df['DATA']), "00:00:00")
+    df['DATA'] = df['DATA'].where(pd.notnull(df['DATA']), "2000-01-01")
     df['DATA'] = pd.to_datetime(df['DATA'])
-    df['DD'] = df['DATA'].dt.day.astype('str').str.zfill(2)
-    df['MM'] = df['DATA'].dt.month.astype('str').str.zfill(2)
-    df['RR'] = df['DATA'].dt.year
+    df['DD'] = np.where((df['DATA'].dt.day == 1) & (df['DATA'].dt.month == 1) & (df['DATA'].dt.year == 2000), None, df['DATA'].dt.day.astype('str').str.zfill(2))
+    df['MM'] = np.where((df['DATA'].dt.day == 1) & (df['DATA'].dt.month == 1) & (df['DATA'].dt.year == 2000), None, df['DATA'].dt.month.astype('str').str.zfill(2))
+    df['RR'] = np.where((df['DATA'].dt.day == 1) & (df['DATA'].dt.month == 1) & (df['DATA'].dt.year == 2000), None, df['DATA'].dt.year)
+    df['GODZ'] = df['GODZ'].where(pd.notnull(df['GODZ']), "00:00:00")
     df['GODZ'] = pd.to_datetime(df['GODZ'], format='%H:%M:%S')
-    df['GODZ_1'] = df['GODZ'].dt.hour.astype('str').str.zfill(2)
-    df['GODZ_2'] = df['GODZ'].dt.minute.astype('str').str.zfill(2)
+    df['GODZ_1'] = np.where((df['GODZ'].dt.hour == 0) & (df['GODZ'].dt.minute == 0), None, df['GODZ'].dt.hour.astype('str').str.zfill(2))
+    df['GODZ_2'] = np.where((df['GODZ'].dt.hour == 0) & (df['GODZ'].dt.minute == 0), None, df['GODZ'].dt.minute.astype('str').str.zfill(2))
     df[['ID_P0', 'ID_P1', 'ID_P2', 'ID_P3', 'ID_P4', 'ID_P5', 'ID_P6', 'ID_P_', 'ID_P7', 'ID_P8', 'ID_P9', 'ID_P10']] = df['ID_PUNKT'].str.split(pat ="", expand=True)
     df = df.drop(columns=['ID_P0', 'ID_P_', 'ID_P10'])
     df['ID_ARKUSZ'] = df['ID_ARKUSZ'].fillna('        ')
@@ -1565,6 +1599,7 @@ def card_export():
     o_list = ['e', 'rb', 'p', 'op', 'k', 'czp', 'wg', 'el', 'r', 'i']
     for o in o_list:
         df[f'O_{o}'] = np.where((df['ODPADY_1'] == o) | (df['ODPADY_2'] == o) | (df['ODPADY_3'] == o) | (df['ODPADY_4'] == o), 1, 0)
+    df = df.where(pd.notnull(df), None)
     for r_index, row in df.iterrows():
         cust_name = row['ID_PUNKT']
         tpl = DocxTemplate(temp_doc)
@@ -1578,7 +1613,104 @@ def card_export():
         doc.Close()
     df.to_excel(dest_excel)
 
-def wyr_from_pow_for_pict(pow_grp):
+def zal_export(pow_grp, pow_name):
+    """Export danych do załączników."""
+    dest_excel = f"C:{os.path.sep}MOEK_2020{os.path.sep}zal1_3_{pow_name}.xlsx"
+    wb = xls.Workbook(dest_excel)
+    ws_1 = wb.add_worksheet('Załącznik 1')
+    ws_3 = wb.add_worksheet('Załącznik 3')
+    wss = []
+    wss.append(ws_1)
+    wss.append(ws_3)
+    for ws in wss:
+        ws.set_paper(8)
+        ws.set_landscape()
+        ws.center_horizontally()
+        ws.set_margins(0.3, 0.3, 0.3, 0.3)
+        ws.set_header(margin=0)
+        ws.set_footer(margin=0)
+    title_1 = "Załącznik 1. Zestawienie zinwentaryzowanych wyrobisk na terenie powiatu starachowickiego – stan na wrzesień 2020 r."
+    title_3 = "Załącznik 3. Zestawienie miejsc zinwentaryzowanych w powiecie starachowickim we wrześniu 2020 r. wymagających pilnej interwencji"
+    head_1 = "PUNKTY NIEKONCESJONOWANEJ EKSPLOATACJI"
+    header = ['Lp.', 'ID PUNKTU', 'MIEJSCOWOŚĆ', 'GMINA', 'ID MIDAS', 'STAN WG MIDAS', 'STWIERDZONY STAN WYROBISKA', 'WYDOBYCIE OD', 'WYDOBYCIE DO', 'KOPALINA', 'WIEK', 'POW (m²)', 'ORIENTACYJNA SKALA EKSPLOATACJI', 'LOKALIZACJA POLA EKSPLOATACJI', 'OBECNOŚĆ ODPADÓW', 'RODZAJE ODPADÓW', 'REKULTYWACJA', 'ZAGROŻENIA', 'PROBLEM DO ZGŁOSZENIA', 'OPIS POWODU ZGŁOSZENIA', 'DATA WIZJI TERENOWEJ', 'DATA POPRZEDNIEJ WIZJI TERENOWEJ', 'UWAGI']
+    col_widths = [1.86, 6.43, 8.71, 5.71, 3.86, 6.14, 8.29, 7.29, 7.29, 6.14, 5.86, 3.29, 10.43, 8.43, 6.71, 9.29, 9.71, 8.29, 7.43, 11.43, 7.43, 7.57, 28.86]
+    cols = enumerate(col_widths)
+    head_2 = "NIEZREKULTYWOWANE WYROBISKA, W KTÓRYCH NIE STWIERDZONO NIEKONCESJONOWANEJ EKSPLOATACJI"
+    title_fm = wb.add_format({'font_name': 'Times New Roman', 'font_size': 10, 'bold': True})
+    header_fm = wb.add_format({'font_name': 'Times New Roman', 'font_size': 6, 'bold': False, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter', 'bg_color': '#d9d9d9', 'border': 7})
+    head_fm = wb.add_format({'font_name': 'Times New Roman', 'font_size': 10, 'bold': False,'align': 'center', 'valign': 'vcenter', 'border': 7})
+    cell_fm = wb.add_format({'font_name': 'Times New Roman', 'font_size': 6, 'bold': False, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter', 'border': 7})
+    date_fm = wb.add_format({'num_format': 'dd.mm.yyyy', 'font_name': 'Times New Roman', 'font_size': 6, 'bold': False, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter', 'border': 7})
+    ws_1.merge_range(0, 0, 0, 22, title_1, title_fm)
+    for col in cols:
+        ws_1.set_column(col[0], col[0], col[1])
+    ws_1.set_row(1, 8)
+    ws_1.write_row(2, 0, header, header_fm)
+    r = 2
+    df = wyr_for_zal(pow_grp)
+    odp_cols = ['ODPADY_1', 'ODPADY_2', 'ODPADY_3', 'ODPADY_4']
+    df["ODPADY"] = df[odp_cols].apply(lambda x: '; '.join(x.dropna()), axis=1)
+    df.drop(odp_cols, axis=1, inplace=True)
+    df['POW_M2'] = np.where(df['STAN_PNE'] == 'brak wyrobiska', '–', df['POW_M2'])
+    df['KOPALINA'] = np.where(df['KOPALINA_2'].isna(), df['KOPALINA'], df['KOPALINA'] + ' / ' + df['KOPALINA_2'])
+    df['WIEK'] = np.where(df['WIEK_2'].isna(), df['WIEK'], df['WIEK'] + ' / ' + df['WIEK_2'])
+    df.drop(['KOPALINA_2', 'WIEK_2'], axis=1, inplace=True)
+    df_cols = df.columns.tolist()
+    df_cols = df_cols[:17] + df_cols[-1:] + df_cols[17:-1]
+    df = df[df_cols]
+    # df_nopne = df[(df['CZY_PNE'] == False) & (df['CZY_ZLOZE'] == True) & (df['STAN_REKUL'] == 'nie') & (df['WYP_ODPADY'] == 'brak')]
+    df_nopne = df[(df['CZY_PNE'] == False) & (df['CZY_ZLOZE'] == True) & ((df['STAN_MIDAS'] == 'Z') | (df['STAN_MIDAS'] == 'ZWB'))]
+    df_pne = df[~df.index.isin(df_nopne.index)]
+    df_zal3 = df[df['ZGLOSZENIE'] != 'brak']
+    if len(df_pne) > 0:
+        df_pne = df_pne.reset_index(drop=True)
+        df_pne.index += 1
+        df_pne.drop(['CZY_PNE', 'CZY_ZLOZE', 'STAN_REKUL'], axis=1, inplace=True)
+        r += 1
+        ws_1.set_row(r, 19.5)
+        ws_1.merge_range(r, 0, r, 22, head_1, head_fm)
+        df_pne = df_pne.where(pd.notnull(df_pne), None)
+        for index in df_pne.to_records():
+            r += 1
+            ws_1.write_row(r, 0, index, cell_fm)
+            date_vals = (index[20], index[21])
+            ws_1.write_row(r, 20, date_vals, date_fm)
+    if len(df_nopne) > 0:
+        df_nopne = df_nopne.reset_index(drop=True)
+        df_nopne.index += 1
+        df_nopne.drop(['CZY_PNE', 'CZY_ZLOZE', 'STAN_REKUL'], axis=1, inplace=True)
+        r += 1
+        ws_1.set_row(r, 19.5)
+        ws_1.merge_range(r, 0, r, 22, head_2, head_fm)
+        df_nopne = df_nopne.where(pd.notnull(df_nopne), None)
+        for index in df_nopne.to_records():
+            r += 1
+            ws_1.write_row(r, 0, index, cell_fm)
+            date_vals = (index[20], index[21])
+            ws_1.write_row(r, 20, date_vals, date_fm)
+    if len(df_zal3) > 0:
+        df_zal3 = df_zal3.reset_index(drop=True)
+        df_zal3.index += 1
+        df_zal3.drop(['CZY_PNE', 'CZY_ZLOZE', 'STAN_REKUL'], axis=1, inplace=True)
+        ws_3.merge_range(0, 0, 0, 22, title_3, title_fm)
+        cols = enumerate(col_widths)
+        for col in cols:
+            ws_3.set_column(col[0], col[0], col[1])
+        ws_3.set_row(1, 8)
+        ws_3.write_row(2, 0, header, header_fm)
+        r = 2
+        df_zal3 = df_zal3.where(pd.notnull(df_zal3), None)
+        for index in df_zal3.to_records():
+            r += 1
+            ws_3.write_row(r, 0, index, cell_fm)
+            date_vals = (index[20], index[21])
+            ws_3.write_row(r, 20, date_vals, date_fm)
+    try:
+        wb.close()
+    except Exception as err:
+        QMessageBox.warning(None, "Generator załączników", f"Plik {dest_excel} jest zablokowany dla zapisu. Sprawdź, czy nie jest otwarty - jeśli tak, zamknij go i ponów eksport.")
+
+def wyr_for_pict(pow_grp):
     """Zwraca dataframe z potwierdzonymi wyrobiskami z danego powiatu i wygenerowanymi numerami id_punkt."""
     db = PgConn()
     sql = f"SELECT wyr_id, concat(pow_id, '_', order_id) as id_punkt FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{pow_grp}' and order_id IS NOT NULL ORDER BY order_id;"
@@ -1595,6 +1727,28 @@ def wyr_for_card(pow_grp):
     sql = f"SELECT COALESCE(w.t_teren_id, p.wyr_id::varchar) AS id, CONCAT(p.pow_id, '_', p.order_id) AS id_punkt, d.date_fchk, d.time_fchk, w.t_wn_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, ST_X(w.centroid) as x_92, ST_Y(w.centroid) as y_92, CASE WHEN w.t_midas_id is null THEN false ELSE true END AS czy_zloze, w.t_midas_id, d.t_stan_midas, d.b_pne_zloze, d.b_pne_poza, d.t_stan_pne, d.t_zloze_od, d.t_zloze_do, d.t_wyr_od, d.t_wyr_do, (SELECT s.t_desc FROM public.sl_kopalina AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_kopalina AND d.wyr_id = p.wyr_id) AS kopalina, (SELECT s.t_desc FROM public.sl_kopalina AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_kopalina_2 AND d.wyr_id = p.wyr_id) AS kopalina_2, (SELECT s.t_desc FROM public.sl_wiek AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wiek AND d.wyr_id = p.wyr_id) AS wiek, (SELECT s.t_desc FROM public.sl_wiek AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wiek_2 AND d.wyr_id = p.wyr_id) AS wiek_2, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.i_area_m2, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_wyp_odpady, d.t_odpady_opak, d.t_odpady_inne, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.i_ile_zalacz, w.t_notatki, d.t_autor FROM team_{dlg.team_i}.wyrobiska AS w INNER JOIN team_{dlg.team_i}.wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_{dlg.team_i}.wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE p.pow_grp = '{pow_grp}' and p.order_id IS NOT NULL ORDER BY p.order_id;"
     if db:
         mdf = db.query_pd(sql, ['ID', 'ID_PUNKT', 'DATA', 'GODZ', 'ID_ARKUSZ', 'MIEJSCE', 'GMINA', 'POWIAT', 'WOJEWODZTWO', 'X_92', 'Y_92', 'CZY_ZLOZE', 'ID_MIDAS', 'STAN_MIDAS', 'PNE_ZLOZE', 'PNE_POZA', 'STAN_PNE', 'ZLOZE_OD', 'ZLOZE_DO', 'PNE_OD', 'PNE_DO', 'KOPALINA', 'KOPALINA_2', 'WIEK', 'WIEK_2', 'NADKL_MIN', 'NADKL_MAX', 'MIAZSZ_MIN', 'MIAZSZ_MAX', 'DLUG_MIN', 'DLUG_MAX', 'SZER_MIN', 'SZER_MAX', 'WYS_MIN', 'WYS_MAX', 'POW_M2', 'WYROBISKO', 'ZAWODN', 'EXPLOAT', 'WYDOBYCIE', 'ODPADY_1', 'ODPADY_2', 'ODPADY_3', 'ODPADY_4', 'WYP_ODPADY', 'O_OPAK', 'O_INNE', 'REKULTYW', 'DOJAZD', 'ZAGROZENIA', 'ZGLOSZENIE', 'POWOD', 'ILE_ZALACZ', 'UWAGI', 'AUTORZY'])
+        if isinstance(mdf, pd.DataFrame):
+            return mdf if len(mdf) > 0 else None
+        else:
+            return None
+
+def wyr_for_mdb(pow_grp):
+    """Zwraca dataframe z potwierdzonymi wyrobiskami z danego powiatu i atrybutami potrzebnymi do eksportu mdb."""
+    db = PgConn()
+    sql = f"SELECT CONCAT(p.pow_id, '_', p.order_id) AS id_punkt, w.t_wn_id, CASE WHEN d.time_fchk IS NOT NULL THEN (d.date_fchk + d.time_fchk) ELSE d.date_fchk END AS data, p.t_mie_name, d.b_teren, d.b_pne, CASE COALESCE(w.t_midas_id, 'null_val') WHEN 'null_val' THEN false ELSE true END AS czy_zloze, w.t_midas_id, d.t_stan_midas, d.b_pne_zloze, d.b_pne_poza, d.t_stan_pne, d.t_zloze_od, d.t_zloze_do, d.t_wyr_od, d.t_wyr_do, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.i_area_m2, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, w.t_notatki, (SELECT t_autor FROM public.teams WHERE team_id = {dlg.team_i}), ST_X(w.centroid) as x_92, ST_Y(w.centroid) as y_92 FROM team_{dlg.team_i}.wyrobiska AS w INNER JOIN team_{dlg.team_i}.wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_{dlg.team_i}.wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE p.pow_grp = '{pow_grp}' and p.order_id IS NOT NULL ORDER BY p.order_id;"
+    if db:
+        mdf = db.query_pd(sql, ['ID_PUNKT', 'ID_ARKUSZ', 'DATA', 'MIEJSCE', 'CZY_TEREN', 'CZY_PNE', 'CZY_ZLOZE', 'ID_MIDAS', 'STAN_MIDAS', 'PNE_ZLOZE', 'PNE_POZA', 'STAN_PNE', 'ZLOZE_OD', 'ZLOZE_DO', 'PNE_OD', 'PNE_DO', 'KOPALINA', 'KOPALINA_2', 'WIEK', 'WIEK_2', 'NADKL_MIN', 'NADKL_MAX', 'MIAZSZ_MIN', 'MIAZSZ_MAX', 'DLUG_MIN', 'DLUG_MAX', 'SZER_MIN', 'SZER_MAX', 'WYS_MIN', 'WYS_MAX', 'POW_M2', 'WYROBISKO', 'ZAWODN', 'EXPLOAT', 'WYDOBYCIE', 'WYP_ODPADY', 'ODPADY_1', 'ODPADY_2', 'ODPADY_3', 'ODPADY_4', 'STAN_REKUL', 'REKULTYW', 'DOJAZD', 'ZAGROZENIA', 'ZGLOSZENIE', 'POWOD', 'UWAGI', 'AUTOR', 'X_92', 'Y_92'])
+        if isinstance(mdf, pd.DataFrame):
+            return mdf if len(mdf) > 0 else None
+        else:
+            return None
+
+def wyr_for_zal(pow_grp):
+    """Zwraca dataframe z potwierdzonymi wyrobiskami z danego powiatu i atrybutami potrzebnymi do załącznika nr 1."""
+    db = PgConn()
+    sql = f"SELECT CONCAT(p.pow_id, '_', p.order_id) AS id_punkt, p.t_mie_name, p.t_gmi_name, d.b_pne, CASE COALESCE(w.t_midas_id, 'null_val') WHEN 'null_val' THEN false ELSE true END AS czy_zloze, w.t_midas_id, (SELECT s.t_desc FROM public.sl_stan_midas AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_stan_midas AND d.wyr_id = p.wyr_id) AS stan_midas, (SELECT s.t_desc FROM public.sl_stan_pne AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_stan_pne AND d.wyr_id = p.wyr_id) AS stan_pne, d.t_wyr_od, d.t_wyr_do, (SELECT s.t_desc FROM public.sl_kopalina AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_kopalina AND d.wyr_id = p.wyr_id) AS kopalina, (SELECT s.t_desc FROM public.sl_kopalina AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_kopalina_2 AND d.wyr_id = p.wyr_id) AS kopalina_2, (SELECT s.t_desc FROM public.sl_wiek AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wiek AND d.wyr_id = p.wyr_id) AS wiek, (SELECT s.t_desc FROM public.sl_wiek AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wiek_2 AND d.wyr_id = p.wyr_id) AS wiek_2, d.i_area_m2, (SELECT s.t_desc FROM public.sl_eksploatacja AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_eksploat AND d.wyr_id = p.wyr_id) AS eksploatacja, (SELECT s.t_desc FROM public.sl_wydobycie AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wydobycie AND d.wyr_id = p.wyr_id) AS wydobycie, (SELECT s.t_desc FROM public.sl_wyp_odp AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wyp_odpady AND d.wyr_id = p.wyr_id) AS wyp_odpady, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_odpady_1 AND d.wyr_id = p.wyr_id) AS odpady_1, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_odpady_2 AND d.wyr_id = p.wyr_id) AS odpady_2, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_odpady_3 AND d.wyr_id = p.wyr_id) AS odpady_3, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_odpady_4 AND d.wyr_id = p.wyr_id) AS odpady_4, d.t_stan_rekul, d.t_rekultyw, d.t_zagrozenia, (SELECT s.t_desc FROM public.sl_zgloszenie AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_zgloszenie AND d.wyr_id = p.wyr_id) AS zgloszenie, d.t_powod, d.date_fchk, CASE COALESCE(w.t_wn_id, 'null_val') WHEN 'null_val' THEN Null ELSE (SELECT e.data_kontrol FROM external.wn_pne AS e, team_{dlg.team_i}.wyrobiska AS w WHERE e.id_arkusz = w.t_wn_id AND w.wyr_id = p.wyr_id) END AS prev_date, w.t_notatki FROM team_{dlg.team_i}.wyrobiska AS w INNER JOIN team_{dlg.team_i}.wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_{dlg.team_i}.wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE p.pow_grp = '{pow_grp}' and p.order_id IS NOT NULL ORDER BY p.order_id;"
+    if db:
+        mdf = db.query_pd(sql, ['ID_PUNKT', 'MIEJSCE', 'GMINA', 'CZY_PNE', 'CZY_ZLOZE', 'ID_MIDAS', 'STAN_MIDAS', 'STAN_PNE', 'PNE_OD', 'PNE_DO', 'KOPALINA', 'KOPALINA_2', 'WIEK', 'WIEK_2', 'POW_M2', 'EXPLOAT', 'WYDOBYCIE', 'WYP_ODPADY', 'ODPADY_1', 'ODPADY_2', 'ODPADY_3', 'ODPADY_4', 'STAN_REKUL', 'REKULTYW', 'ZAGROZENIA', 'ZGLOSZENIE', 'POWOD', 'DATE', 'PREV_DATE', 'UWAGI'])
         if isinstance(mdf, pd.DataFrame):
             return mdf if len(mdf) > 0 else None
         else:

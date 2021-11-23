@@ -6,11 +6,13 @@ import pandas as pd
 import numpy as np
 import xlsxwriter as xls
 
+from PIL import Image, ImageQt, ImageEnhance
 from win32com import client
 from docxtpl import DocxTemplate
+from qgis.core import QgsApplication, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext, QgsFeature, QgsGeometry, QgsRectangle, QgsMapSettings, QgsMapRendererCustomPainterJob, edit
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
-from qgis.PyQt.QtCore import Qt, QDir
-from qgis.core import QgsApplication, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext, QgsFeature, QgsGeometry, edit
+from qgis.PyQt.QtCore import Qt, QDir, QSize, QRectF, QPointF
+from qgis.PyQt.QtGui import QImage, QPainter, QPen, QFont, QPainterPath, QPolygonF
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
@@ -1552,6 +1554,218 @@ def mdb_export(pow_grp, pow_name):
     df['POW_M2'] = np.where(df['STAN_PNE'] == 'brak', np.nan, df['POW_M2'])
     df.to_excel(dest_excel, index=False, sheet_name='mdb_import')
 
+def szkic_creator(pow_grp, pow_name):
+    """Tworzy szkice sytuacyjne wyrobisk."""
+    map_cm = 9.21  # Wymiar mapki w cm
+    map_px = int(round(map_cm / 0.008465, 0))  # Wymiar mapki w px
+    dest_path = f"C:{os.path.sep}MOEK_2021{os.path.sep}{pow_name}{os.path.sep}{pow_name}_karty_szkice"
+    STYLE_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'styles' + os.path.sep
+    if not os.path.isdir(dest_path):
+        os.makedirs(dest_path, exist_ok=True)
+    # Zdefiniowanie i symbolizacja warstw, które mają się znaleźć na szkicu sytuacyjnym:
+    near_lyrs = []
+    far_lyrs = []
+    near_basemap = dlg.proj.mapLayersByName("Geoportal")[0]
+    far_basemap = dlg.proj.mapLayersByName("OpenStreetMap")[0]
+    lyr_names = ["midas_zloza", "midas_wybilansowane", "midas_obszary", "midas_tereny"]
+    for lyr_name in lyr_names:
+        lyr = dlg.proj.mapLayersByName(lyr_name)[0]
+        near_lyrs.append(lyr)
+        far_lyrs.append(lyr)
+        lyr.loadNamedStyle(f'{STYLE_PATH}{lyr_name}_szkic.qml')
+    near_lyrs.append(near_basemap)
+    far_lyrs.append(far_basemap)
+    df = wyr_for_pict(pow_grp)  # Stworzenie listy wyrobisk
+    for index in df.to_records():
+        # Wygenerowanie szkicu sytuacyjnego dla wszystkich wyrobisk z powiatu:
+        wyr_lyr = wyr_to_lyr(index[1])  # Stworzenie warstwy z geometrią wyrobiska
+        if not wyr_lyr.isValid():
+            print(f"szkic_creator: warstwa z geometrią wyrobiska {index[1]} nie jest prawidłowa")
+            continue
+        # Dodanie warstwy z wyrobiskiem do listy pozostałych warstw:
+        near_lyrs.insert(0, wyr_lyr)
+        far_lyrs.insert(0, wyr_lyr)
+        wyr_lyr.loadNamedStyle(f'{STYLE_PATH}wyr_szkic.qml')
+        box = wyr_bbox(wyr_lyr)  # Określenie zasięgu przestrzennego wyrobiska
+        if not box:
+            print(f"szkic_creator: nie udało się określić zasięgu geometrii wyrobiska {index[1]}")
+            continue
+        near_val = max(box.width(), box.height())  # Wybór szerokości albo długości wyrobiska w m
+        far_val = 2302  # Sztuczne ustawienie wymiaru, aby rozszerzyć widok mapki orientacyjnej do skali 1: 25 000
+        near_m = scale_interval(near_val)  # Wartość podziałki w m dla mapki zasadniczej
+        far_m = 1000  # Wartość podziałki w m dla mapki orientacyjnej
+        if near_val < 92.1:  # Wyrobisko zbyt małe i przez to szkic byłby zbyt przybliżony, rozszerzamy widok do skali 1:2000
+            near_val = 92.1
+        near_ext = sketchmap_extent(box, near_val)  # Ustalenie zasięgu widoku mapki zasadniczej
+        far_ext = sketchmap_extent(box, far_val)  # Ustalenie zasięgu widoku mapki orientacyjnej w skali 1:25 000
+        near_scl = scale_width(map_cm, map_px, near_val, near_m)  # Długość podziałki liniowej w px
+        far_scl = scale_width(map_cm, map_px, far_val, far_m)  # Długość podziałki liniowej w px
+        near_img = img_create(map_px, map_px)  # Obiekt obrazka mapki zasadniczej
+        far_img = img_create(map_px, map_px)  # Obiekt obrazka mapki orientacyjnej
+        comp_img = img_create(map_px * 2, map_px)  # Obiekt obrazka szkicu orientacyjnego
+        near_ms = ms_create(near_lyrs, near_ext, near_img.size())  # Obiekt mapki zasadniczej
+        far_ms = ms_create(far_lyrs, far_ext, far_img.size())  # Obiekt mapki orientacyjnej
+        map_drawing(map_px, near_m, near_scl, near_img, near_ms, True)  # Narysowanie mapki zasadniczej
+        map_drawing(map_px, far_m, far_scl, far_img, far_ms, False)  # Narysowanie mapki orientacyjnej
+        # Postprodukcja (wyostrzenie) podkładu z mapki orientacyjnej:
+        data = far_img.constBits().asstring(far_img.byteCount())
+        pil_img = Image.frombuffer('RGB', (far_img.width(), far_img.height()), data, 'raw', 'BGRX')
+        pil_img = ImageEnhance.Brightness(pil_img).enhance(0.95)
+        pil_img = ImageEnhance.Contrast(pil_img).enhance(1.5)
+        pil_img = ImageEnhance.Sharpness(pil_img).enhance(4.0)
+        far_img = ImageQt.ImageQt(pil_img)
+        # pil_img.save(f"{dest_path}{os.path.sep}{index[2]}.png")
+        # Rysowanie szkicu sytuacyjnego:
+        src_rect = QRectF(0.0, 0.0, map_px, map_px)
+        far_rect = QRectF(0.0, 0.0, map_px, map_px)
+        near_rect = QRectF(map_px, 0.0, map_px, map_px)
+        p = QPainter()
+        p.setRenderHint(QPainter.Antialiasing)
+        p.begin(comp_img)
+        p.drawImage(far_rect, far_img, src_rect)
+        p.drawImage(near_rect, near_img, src_rect)
+        p.setPen(QPen(Qt.black, 4, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin))
+        p.drawRect(2, 2, (map_px * 2) - 4, map_px - 4)
+        p.drawLine(map_px, 0, map_px, map_px)
+        p.setPen(QPen(Qt.black, 4, Qt.SolidLine, Qt.FlatCap, Qt.RoundJoin))
+        title_rect = QRectF(831, 2, 514, 80)
+        p.fillRect(title_rect, Qt.white)
+        p.drawRect(title_rect)
+        f = QFont()
+        f.setPixelSize(40)
+        p.setPen(Qt.black)
+        p.setFont(f)
+        title_rect.moveTop(0)
+        p.drawText(title_rect, Qt.AlignCenter, "SZKIC LOKALIZACYJNY")
+        p.end()
+        comp_img.save(f"{dest_path}{os.path.sep}{index[2]}.png", "PNG")
+        # Usunięcie warstwy z wyrobiskiem:
+        del wyr_lyr
+        near_lyrs = near_lyrs[1:]
+        far_lyrs = far_lyrs[1:]
+    for lyr_name in lyr_names:
+        dlg.proj.mapLayersByName(lyr_name)[0].loadNamedStyle(f'{STYLE_PATH}{lyr_name}.qml')
+
+def map_drawing(map_px, near_m, scl_px, img, ms, is_near):
+    """Rysuje mapkę szkicu lokalizacyjnego. Jeśli is_near == True - rysowanie mapki zasadniczej, False - mapki orientacyjnej."""
+    p = QPainter()
+    p.setRenderHint(QPainter.Antialiasing)
+    p.begin(img)
+    # Rendering warstw i etykiet:
+    render = QgsMapRendererCustomPainterJob(ms, p)
+    render.start()
+    render.waitForFinished()
+    # Rysowanie podziałki liniowej:
+    scl_path = QPainterPath()
+    scl_start = 980 if is_near else 267
+    y = 50 if is_near else 1052
+    x1 = scl_start - scl_px  # Wspólrzędna X początku podziałki
+    x2 = x1 + scl_px  # Wspólrzędna X końca podziałki
+    scl_pg = scale_shape(x1, x2, y)  # Utworzenie kształtu podziałki
+    scl_path.addPolygon(scl_pg)  # Dodanie kształtu do ścieżki
+        # Utworzenie napisu dla podziałki liniowej:
+    f = QFont()
+    f.setPixelSize(24)
+    f.setBold(True)
+    # Dodanie napisu do ścieżki:
+    if is_near:
+        scl_path.addText(x2 + 10, 58, f, f"{near_m} m")
+    else:
+        scl_path.addText(x2 + 10, 1060, f, "1 km")
+    p.setPen(QPen(Qt.white, 4, Qt.SolidLine, Qt.RoundCap))
+    p.drawPath(scl_path)  # Narysowanie konturu (halo) podziałki białym kolorem
+    p.fillPath(scl_path, Qt.black)  # Wypełnienie podziałki czarnym kolorem
+        #  Utworzenie napisu informacyjnego o źródle podkładu:
+    f.setBold(False)
+    f.setPixelSize(28)
+    src_path = QPainterPath()
+    bm_name = "Geoportal" if is_near else "OpenStreetMap"
+    src_path.addText(0, 1070, f, f"źródło: {bm_name}")
+    x_off = int(round(map_px - src_path.boundingRect().width() - 30, 0))
+    src_path.translate(x_off, 0)
+    pen_color = Qt.black if is_near else Qt.white
+    fill_color = Qt.white if is_near else Qt.black
+    p.setPen(QPen(pen_color, 3, Qt.SolidLine, Qt.RoundCap))
+    p.drawPath(src_path)
+    p.fillPath(src_path, fill_color)
+    p.end()
+
+def scale_width(map_cm, map_px, m_val, a):
+    """Zwraca długość podziałki liniowej w px."""
+    scl_m = (m_val * 2) / map_cm  # Ilość metrów w 1 cm szkicu
+    scl_cm = a / scl_m  # Długość ustalonego odcinka podziałki na szkicu podana w cm
+    scl_px = int(round(scl_cm * map_px / map_cm, 0))  # Przeliczenie odcinka podziałki z cm na px
+    return scl_px
+
+def ms_create(lyrs, ext, img_size):
+    """Zwraca obiekt mapki."""
+    ms = QgsMapSettings()
+    ms.setOutputDpi(300)
+    ms.setLayers(lyrs)
+    ms.setExtent(ext)
+    ms.setOutputSize(img_size)
+    ms.setDestinationCrs(lyrs[0].crs())
+    return ms
+
+def img_create(width_px, height_px):
+    """Tworzy i konfiguruje obiekt obrazka mapki."""
+    img = QImage(QSize(width_px, height_px), QImage.Format_RGB32)
+    img.setDotsPerMeterX(11811.0236220472)
+    img.setDotsPerMeterY(11811.0236220472)
+    return img
+
+def wyr_bbox(wyr_lyr):
+    """Zwraca bbox wyrobiska."""
+    if wyr_lyr.featureCount() > 0:
+        for feat in wyr_lyr.getFeatures():
+            return feat.geometry().boundingBox()
+
+def sketchmap_extent(box, m_val):
+    """Zwraca zakres widoku mapki szkicu sytuacyjnego"""
+    w_off = (m_val * 2 - box.width())/2
+    h_off = (m_val * 2 - box.height())/2
+    return QgsRectangle(box.xMinimum() - w_off, box.yMinimum() - h_off, box.xMaximum() + w_off, box.yMaximum() + h_off)
+
+def scale_interval(m_val):
+    """Zwraca wartość odcinka podziałki na skali metrowej."""
+    if m_val <= 25:
+        return 5
+    elif m_val <= 75:
+        return 10
+    elif m_val <= 250:
+        return 50
+    elif m_val <= 500:
+        return 100
+    else:
+        return 500
+
+def scale_shape(x1, x2, y):
+    """Zwraca geometrię do narysowania skali metrowej."""
+    h = 8.0  # Wysokość "wąsów" na podziałce w px
+    pts = [
+            (x1 - 1, y - h),
+            (x1 + 1, y - h),
+            (x1 + 1, y - 2),
+            (x2 - 1, y - 2),
+            (x2 - 1, y - h),
+            (x2 + 1, y - h),
+            (x2 + 1, y + h),
+            (x2 - 1, y + h),
+            (x2 - 1, y + 2),
+            (x1 + 1, y + 2),
+            (x1 + 1, y + h),
+            (x1 - 1, y + h),
+            (x1 - 1, y - h)
+            ]
+    return QPolygonF([QPointF(p[0], p[1]) for p in pts])
+
+def wyr_to_lyr(wyr_id):
+    """Tworzy warstwę tymczasową dla geometrii wyrobiska."""
+    with CfgPars() as cfg:
+        params = cfg.uri()
+    uri = params + f'table="team_{dlg.team_i}"."wyr_geom" (geom) sql=wyr_id = {wyr_id}'
+    return QgsVectorLayer(uri, "wyr_szkic", "postgres")
+
 def card_export(pow_grp, pow_name):
     """Generator kart wyrobisk z danego powiatu."""
     doc_path = f"C:{os.path.sep}MOEK_2020{os.path.sep}{pow_name}{os.path.sep}{pow_name}_karty_docx"
@@ -1578,7 +1792,6 @@ def card_export(pow_grp, pow_name):
     df['ID'] = df['ID'].str.pad(width=5, side='left', fillchar=' ')
     df[['ID_0', 'ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6']] = df['ID'].str.split(pat ="", expand=True)
     df = df.drop(columns=['ID_0', 'ID_6'])
-    # df['DATA'] = df['DATA'].where(pd.notnull(df['DATA']), "00:00:00")
     df['DATA'] = df['DATA'].where(pd.notnull(df['DATA']), "2000-01-01")
     df['DATA'] = pd.to_datetime(df['DATA'])
     df['DD'] = np.where((df['DATA'].dt.day == 1) & (df['DATA'].dt.month == 1) & (df['DATA'].dt.year == 2000), None, df['DATA'].dt.day.astype('str').str.zfill(2))
@@ -1595,7 +1808,7 @@ def card_export(pow_grp, pow_name):
     df = df.drop(columns=['ID_A0', 'ID_A_', 'ID_A8'])
     df['POW_M2'] = np.where(df['STAN_PNE'] == 'brak', '–', df['POW_M2'])
     df['KOPALINY'] = np.where(df['KOPALINA_2'].isna(), df['KOPALINA'], df['KOPALINA'] + ' / ' + df['KOPALINA_2'])
-    df['WIEKI'] = np.where(df['WIEK_2'].isna(), df['WIEK'], df['WIEK'] + ' / ' + df['WIEK_2'])
+    df['WIEKI'] = np.where(df['WIEK_2'].isna(), df['WIEK'], np.where(df['WIEK'] == df['WIEK_2'], df['WIEK'], df['WIEK'] + ' / ' + df['WIEK_2']))
     o_list = ['e', 'rb', 'p', 'op', 'k', 'czp', 'wg', 'el', 'r', 'i']
     for o in o_list:
         df[f'O_{o}'] = np.where((df['ODPADY_1'] == o) | (df['ODPADY_2'] == o) | (df['ODPADY_3'] == o) | (df['ODPADY_4'] == o), 1, 0)
@@ -1603,6 +1816,10 @@ def card_export(pow_grp, pow_name):
     for r_index, row in df.iterrows():
         cust_name = row['ID_PUNKT']
         tpl = DocxTemplate(temp_doc)
+        jpg_path = f"{szkice_path}{os.path.sep}{cust_name}.png"
+        if os.path.isfile(jpg_path):
+            # Wczytanie szkicu lokalizacyjnego, jeśli jest:
+            tpl.replace_pic("szkic.jpg", jpg_path)
         x = df.to_dict(orient='records')
         context = x
         tpl.render(context[r_index])
@@ -1632,8 +1849,8 @@ def zal_export(pow_grp, pow_name):
     title_1 = "Załącznik 1. Zestawienie zinwentaryzowanych wyrobisk na terenie powiatu starachowickiego – stan na wrzesień 2020 r."
     title_3 = "Załącznik 3. Zestawienie miejsc zinwentaryzowanych w powiecie starachowickim we wrześniu 2020 r. wymagających pilnej interwencji"
     head_1 = "PUNKTY NIEKONCESJONOWANEJ EKSPLOATACJI"
-    header = ['Lp.', 'ID PUNKTU', 'MIEJSCOWOŚĆ', 'GMINA', 'ID MIDAS', 'STAN WG MIDAS', 'STWIERDZONY STAN WYROBISKA', 'WYDOBYCIE OD', 'WYDOBYCIE DO', 'KOPALINA', 'WIEK', 'POW (m²)', 'ORIENTACYJNA SKALA EKSPLOATACJI', 'LOKALIZACJA POLA EKSPLOATACJI', 'OBECNOŚĆ ODPADÓW', 'RODZAJE ODPADÓW', 'REKULTYWACJA', 'ZAGROŻENIA', 'PROBLEM DO ZGŁOSZENIA', 'OPIS POWODU ZGŁOSZENIA', 'DATA WIZJI TERENOWEJ', 'DATA POPRZEDNIEJ WIZJI TERENOWEJ', 'UWAGI']
-    col_widths = [1.86, 6.43, 8.71, 5.71, 3.86, 6.14, 8.29, 7.29, 7.29, 6.14, 5.86, 3.29, 10.43, 8.43, 6.71, 9.29, 9.71, 8.29, 7.43, 11.43, 7.43, 7.57, 28.86]
+    header = ['Lp.', 'ID PUNKTU', 'MIEJSCOWOŚĆ', 'GMINA', 'ID MIDAS', 'STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS', 'STWIERDZONY STAN ZAGOSPODAROWANIA WYROBISKA', 'WYDOBYCIE OD', 'WYDOBYCIE DO', 'KOPALINA', 'WIEK', 'POW (m²)', 'ORIENTACYJNA SKALA EKSPLOATACJI', 'LOKALIZACJA POLA EKSPLOATACJI', 'OBECNOŚĆ ODPADÓW', 'RODZAJE ODPADÓW', 'REKULTYWACJA', 'ZAGROŻENIA', 'PROBLEM DO ZGŁOSZENIA', 'OPIS POWODU ZGŁOSZENIA', 'DATA WIZJI TERENOWEJ', 'DATA POPRZEDNIEJ WIZJI TERENOWEJ', 'UWAGI']
+    col_widths = [1.86, 6.43, 8.71, 5.71, 3.86, 6.29, 8.29, 7.29, 7.29, 6.14, 5.86, 3.29, 10.43, 8.43, 6.71, 9.29, 9.71, 8.29, 7.43, 11.43, 7.43, 7.57, 28.86]
     cols = enumerate(col_widths)
     head_2 = "NIEZREKULTYWOWANE WYROBISKA, W KTÓRYCH NIE STWIERDZONO NIEKONCESJONOWANEJ EKSPLOATACJI"
     title_fm = wb.add_format({'font_name': 'Times New Roman', 'font_size': 10, 'bold': True})
@@ -1653,13 +1870,12 @@ def zal_export(pow_grp, pow_name):
     df.drop(odp_cols, axis=1, inplace=True)
     df['POW_M2'] = np.where(df['STAN_PNE'] == 'brak wyrobiska', '–', df['POW_M2'])
     df['KOPALINA'] = np.where(df['KOPALINA_2'].isna(), df['KOPALINA'], df['KOPALINA'] + ' / ' + df['KOPALINA_2'])
-    df['WIEK'] = np.where(df['WIEK_2'].isna(), df['WIEK'], df['WIEK'] + ' / ' + df['WIEK_2'])
+    df['WIEK'] = np.where(df['WIEK_2'].isna(), df['WIEK'], np.where(df['WIEK'] == df['WIEK_2'], df['WIEK'], df['WIEK'] + ' / ' + df['WIEK_2']))
     df.drop(['KOPALINA_2', 'WIEK_2'], axis=1, inplace=True)
     df_cols = df.columns.tolist()
     df_cols = df_cols[:17] + df_cols[-1:] + df_cols[17:-1]
     df = df[df_cols]
-    # df_nopne = df[(df['CZY_PNE'] == False) & (df['CZY_ZLOZE'] == True) & (df['STAN_REKUL'] == 'nie') & (df['WYP_ODPADY'] == 'brak')]
-    df_nopne = df[(df['CZY_PNE'] == False) & (df['CZY_ZLOZE'] == True) & ((df['STAN_MIDAS'] == 'Z') | (df['STAN_MIDAS'] == 'ZWB'))]
+    df_nopne = df[df['CZY_PNE'] == False]
     df_pne = df[~df.index.isin(df_nopne.index)]
     df_zal3 = df[df['ZGLOSZENIE'] != 'brak']
     if len(df_pne) > 0:

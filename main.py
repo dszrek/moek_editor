@@ -448,6 +448,8 @@ def wyr_powiaty_check():
     Jeśli nie, to przypisuje je na podstawie geometrii poligonalnej lub punktowej."""
     wyr_ids = get_wyr_ids_with_pows("wyrobiska")
     wyr_pow_ids = get_wyr_ids_with_pows("wyr_prg")
+    if not wyr_ids:
+        return
     wyr_pow_to_add = list_diff(wyr_ids, wyr_pow_ids)
     if not wyr_pow_to_add:
         return
@@ -474,7 +476,8 @@ def wyr_dane_check():
     Jeśli nie, to tworzy odpowiednie wpisy."""
     wyr_ids = get_wyr_ids_with_pows("wyrobiska")
     wyr_dane_ids = get_wyr_ids_with_pows("wyr_dane")
-    # wyr_dane_to_add = ()
+    if not wyr_ids:
+        return
     wyr_dane_to_add = list(zip((list_diff(wyr_ids, wyr_dane_ids))))
     if not wyr_dane_to_add:
         return
@@ -1044,6 +1047,8 @@ def marsz_powiaty_check():
     Jeśli nie, to przypisuje je na podstawie geometrii liniowej."""
     marsz_ids = get_marsz_ids_with_pows("marsz")
     marsz_pow_ids = get_marsz_ids_with_pows("marsz_pow")
+    if not marsz_ids:
+        return
     marsz_pow_to_add = list_diff(marsz_ids, marsz_pow_ids)
     if not marsz_pow_to_add:
         return

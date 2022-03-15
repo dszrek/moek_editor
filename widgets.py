@@ -648,7 +648,7 @@ class WyrCanvasPanel(QFrame):
                 self.widgets[cmb_name] = _cmb
                 self.sl_load(dict["tbl_name"], self.widgets[cmb_name].valbox_1, dict["null_val"])
             if dict["type"] == "text_2":
-                _txt2 = ParamBox(self, margins=True, item=dict["item"], max_len=dict["max_len"], validator=dict["validator"], placeholder=dict["placeholder"], zero_allowed=dict["zero_allowed"], width=dict["width"], value_2=dict["value_2"], val_width=dict["val_width"], val_width_2=dict["val_width_2"], sep_width=dict["sep_width"], sep_txt=dict["sep_txt"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], icon=dict["icon"], tooltip=dict["tooltip"], trigger=dict["trigger"], fn=dict["fn"])
+                _txt2 = ParamBox(self, margins=True, item=dict["item"], max_len=dict["max_len"], validator=dict["validator"], placeholder=dict["placeholder"], zero_allowed=dict["zero_allowed"], min_max=dict["min_max"], width=dict["width"], value_2=dict["value_2"], val_width=dict["val_width"], val_width_2=dict["val_width_2"], sep_width=dict["sep_width"], sep_txt=dict["sep_txt"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], icon=dict["icon"], tooltip=dict["tooltip"], trigger=dict["trigger"], fn=dict["fn"])
                 if "subpage" in dict:
                     exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_txt2, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 else:
@@ -917,22 +917,37 @@ class WyrCanvasPanel(QFrame):
             else:
                 dlg.obj.wyr = None
 
-    def miaz_fill(self, min_max):
-        """Uzupełnia wartość miąższości kopaliny jako różnicy wysokości i nadkładu."""
-        wys_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_1.cur_val if min_max == "min" else dlg.wyr_panel.widgets["txt2_wys_1"].valbox_2.cur_val
-        nadkl_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.cur_val if min_max == "min" else dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_2.cur_val
-        if wys_txt == None or nadkl_txt == None:
-            miaz_val = None
+    def miaz_fill(self):
+        """Uzupełnia wartość miąższości kopaliny jako różnicy wysokości i nadkładu. Dodatkowo kasuje wartość nadkładu, jeśli przewyższa wysokość."""
+        print("[miaz_fill]")
+        wys_min_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_1.cur_val
+        wys_max_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_2.cur_val
+        nadkl_min_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.cur_val
+        nadkl_max_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_2.cur_val
+        if wys_min_txt == None or nadkl_min_txt == None:
+            miaz_min = None
         else:
-            wys_val = float(wys_txt)
-            nadkl_val = float(nadkl_txt)
-            miaz_val = wys_val - nadkl_val
-            if miaz_val < 0.0:
-                miaz_val = None
-            else:
-                miaz_val = miaz_val
+            wys_min = float(wys_min_txt)
+            nadkl_min = float(nadkl_min_txt)
+            miaz_min = wys_min - nadkl_min
+            if miaz_min < 0.0:
+                dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.value_change(None)
+                return
+        if wys_max_txt == None or nadkl_max_txt == None:
+            miaz_max = None
+        else:
+            wys_max = float(wys_max_txt)
+            nadkl_max = float(nadkl_max_txt)
+            miaz_max = wys_max - nadkl_max
+            if miaz_max < 0.0:
+                dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_2.value_change(None)
+                return
+        # Sprawdzenie, czy nie ma potrzeby odwrócić wartości:
+        if miaz_min and miaz_max and miaz_min > miaz_max:
+            miaz_min, miaz_max = miaz_max, miaz_min
         dlg.wyr_panel.focus_void = True
-        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.value_change(miaz_val) if min_max == "min" else dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.value_change(miaz_val)
+        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.value_change(miaz_min)
+        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.value_change(miaz_max)
         dlg.wyr_panel.focus_void = False
 
     def wdf_sel_update(self):
@@ -3106,7 +3121,7 @@ class TabButton(QPushButton):
 class ParamBox(QFrame):
     """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem).
     item: label, line_edit, ruler."""
-    def __init__(self, *args, margins=False, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, trigger=None, fn=None):
+    def __init__(self, *args, margins=False, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, min_max=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, trigger=None, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.item = item
@@ -3121,6 +3136,7 @@ class ParamBox(QFrame):
         self.focus_switch = False
         self.setFixedSize(width, all_height)
         self.is_enabled = True
+        self.min_max = min_max
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
         lay = QVBoxLayout()
         lay.setContentsMargins(0, 4, 0, 4) if margins else lay.setContentsMargins(0, 0, 0, 0)
@@ -3267,6 +3283,18 @@ class ParamBox(QFrame):
         elif self.valbox_2.cur_val == val and not self.valbox_1.cur_val:
             if not dlg.wyr_panel.focus_void:
                 self.valbox_1.setFocus()
+
+    def minmax_check(self):
+        """Sprawdza, czy wartości min i max nie są odwrócone oraz zamienia je, jeśli trzeba."""
+        if not self.min_max:
+            return
+        val_1 = self.valbox_1.cur_val
+        val_2 = self.valbox_2.cur_val
+        if val_1 == None or val_2 == None:
+            return
+        if float(val_1) > float(val_2):
+            self.valbox_1.value_change(val_2)
+            self.valbox_2.value_change(val_1)
 
 
 class ParamTextBox(QFrame):
@@ -3669,8 +3697,10 @@ class CanvasLineEdit(QLineEdit):
         self.setText(self.placeholder) if self.placeholder and self.cur_val == None else self.setText(self.cur_val)
         if self.trigger and hasattr(dlg, "wyr_panel"):
             exec(f'dlg.wyr_panel.{self.trigger}')
-        if isinstance(self.parent().parent(), ParamBox) and self.cur_val != None:
-            self.parent().parent().focus_switcher(self.cur_val)
+        if isinstance(self.parent().parent(), ParamBox):
+            if self.cur_val != None:
+                self.parent().parent().focus_switcher(self.cur_val)
+            self.parent().parent().minmax_check()
 
     def set_grey(self):
         """Ustalenie, czy wartość powinna zostać wyszarzona."""

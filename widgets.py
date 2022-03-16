@@ -656,7 +656,7 @@ class WyrCanvasPanel(QFrame):
                 txt2_name = f'txt2_{dict["name"]}'
                 self.widgets[txt2_name] = _txt2
             if dict["type"] == "text_box":
-                _tb = ParamTextBox(self, margins=True, height=dict["height"], width=402, edit=True, title=dict["title"], trigger=dict["trigger"], fn=dict["fn"])
+                _tb = ParamTextBox(self, margins=True, height=dict["height"], width=402, edit=True, title=dict["title"], trigger=dict["trigger"], txt_limiter=dict["txt_limiter"], fn=dict["fn"])
                 if "subpage" in dict:
                     exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_tb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 else:
@@ -3299,8 +3299,8 @@ class ParamBox(QFrame):
 
 
 class ParamTextBox(QFrame):
-    """Widget do wyświetlania i edycji parametru tekstowego (np. uwagi) wraz z nagłówkiem."""
-    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, fn=None):
+    """Widget do wyświetlania i edycji parametru tekstowego (np. uwagi) wraz z nagłówkiem i opcjonalnym licznikiem użytch znaków."""
+    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, txt_limiter=False, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setObjectName("main")
@@ -3316,14 +3316,20 @@ class ParamTextBox(QFrame):
         self.setLayout(lay)
         self.box = MoekVBox(self, margins=[0, 0, 0, 0], spacing=0)
         lay.addWidget(self.box)
-        self.txtbox = TextBox(self, height=_height, width=_width, edit=edit, trigger=trigger, fn=fn)
+        self.txtbox = TextBox(self, height=_height, width=_width, edit=edit, trigger=trigger, txt_limiter=txt_limiter, fn=fn)
         self.box.lay.addWidget(self.txtbox)
         self.line = MoekHLine(self)
         self.box.lay.addWidget(self.line)
+        self.txt_limiter = txt_limiter
         if title:
+            self.title = title
             self.titlebox = TextItemLabel(self, height=down_height, width=_width, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title)
             self.box.lay.addWidget(self.titlebox)
         self.setStyleSheet(" QFrame#main{background-color: transparent; border: none} ")
+
+    def counter_update(self, cnt):
+        """Aktualizacja licznika użytych znaków."""
+        self.titlebox.setText(f"{self.title}  ({cnt} / 255)")
 
     def value_change(self, val):
         """Zmienia wyświetlany tekst."""
@@ -3337,12 +3343,13 @@ class ParamTextBox(QFrame):
 
 
 class TextBox(QPlainTextEdit):
-    """Wyświetla tekst z możliwością edycji."""
-    def __init__(self, *args, width, height, edit, trigger, fn):
+    """Wyświetla tekst z możliwością edycji i opcjonalnym liczeniem użytych znaków."""
+    def __init__(self, *args, width, height, edit, trigger, fn, txt_limiter=False):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
         self.setBackgroundVisible(False)
+        self.txt_limiter = txt_limiter
         self.fn = fn
         self.edit = edit
         self.trigger = trigger
@@ -3366,6 +3373,8 @@ class TextBox(QPlainTextEdit):
                 self.set_style()
         if attr == "cur_val" and not self.attr_void:
             self.value_changed()
+            if self.txt_limiter:
+                self.counter_update()
             if self.trigger:
                 exec(f'dlg.wyr_panel.{self.trigger}')
 
@@ -3460,6 +3469,15 @@ class TextBox(QPlainTextEdit):
             self.clearFocus()
         else:
             super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        super().keyReleaseEvent(event)
+        if self.txt_limiter:
+            self.counter_update()
+
+    def counter_update(self):
+        """Odświeża licznik wykorzystanych znaków."""
+        self.parent().parent().counter_update(len(self.toPlainText()))
 
     def run_fn(self):
         """Odpalenie funkcji po zmianie wartości."""

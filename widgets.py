@@ -919,7 +919,6 @@ class WyrCanvasPanel(QFrame):
 
     def miaz_fill(self):
         """Uzupełnia wartość miąższości kopaliny jako różnicy wysokości i nadkładu. Dodatkowo kasuje wartość nadkładu, jeśli przewyższa wysokość."""
-        print("[miaz_fill]")
         wys_min_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_1.cur_val
         wys_max_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_2.cur_val
         nadkl_min_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.cur_val
@@ -3293,8 +3292,10 @@ class ParamBox(QFrame):
         if val_1 == None or val_2 == None:
             return
         if float(val_1) > float(val_2):
+            dlg.wyr_panel.focus_void = True
             self.valbox_1.value_change(val_2)
             self.valbox_2.value_change(val_1)
+            dlg.wyr_panel.focus_void = False
 
 
 class ParamTextBox(QFrame):
@@ -3700,7 +3701,8 @@ class CanvasLineEdit(QLineEdit):
         if isinstance(self.parent().parent(), ParamBox):
             if self.cur_val != None:
                 self.parent().parent().focus_switcher(self.cur_val)
-            self.parent().parent().minmax_check()
+            if not dlg.wyr_panel.focus_void:
+                self.parent().parent().minmax_check()
 
     def set_grey(self):
         """Ustalenie, czy wartość powinna zostać wyszarzona."""

@@ -47,6 +47,7 @@ class ObjectManager:
         self.wyr = None
         self.wyr_data = []
         self.order_ids = []
+        self.order_data = []
         self.order = None
         self.wn_ids = []
         self.wn = None
@@ -100,7 +101,17 @@ class ObjectManager:
             if dlg.mt.mt_name == "wn_pick" or dlg.wyr_panel.mt_enabled:
                 dlg.mt.init("multi_tool")
             if val:
+                if dlg.wyr_panel.order_drawer.edited and not dlg.wyr_panel.order_drawer.attr_void:
+                    dlg.wyr_panel.order_drawer.edited = False
                 self.wyr_data = self.wyr_update()
+                if dlg.wyr_panel.pow_all:
+                    self.order_data = [None, False]
+                else:
+                    self.order_data = self.wyr_order_update()
+                if self.order_ids_check():
+                    self.order = self.order_data[0]
+                else:
+                    wyr_layer_update(False)
                 self.list_position_check("wyr")
                 self.dlg.wyr_panel.lok.set_tooltip(f'<html><head/><body><p style="text-indent:11px; margin:4px">MIEJSCOWOŚĆ: &nbsp;{self.wyr_data[52]}</p><p style="text-indent: 53px; margin:4px">GMINA: &nbsp;{self.wyr_data[53]}</p><p style="text-indent: 48px; margin:4px">POWIAT: &nbsp;{self.wyr_data[54]}</p><p style="text-indent: 0px; margin:4px">WOJEWÓDZTWO: &nbsp;{self.wyr_data[55]}</p></body></html>')
                 # self.dlg.wyr_panel.lok.set_tooltip(f'<html><head/><body><p>&nbsp;&nbsp;&nbsp;MIEJSCOWOŚĆ &nbsp;{self.wyr_data[52]}<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;GMINA &nbsp;{self.wyr_data[53]}<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;POWIAT &nbsp;{self.wyr_data[54]}<br>WOJEWÓDZTWO &nbsp;{self.wyr_data[55]}</p></body></html>')
@@ -113,8 +124,6 @@ class ObjectManager:
                 dlg.wyr_panel.focus_void = False
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
-            if dlg.wyr_panel.status_selector.case == 1:
-                self.set_order_id()
         elif attr == "wyr_ids":
             # Zmiana listy dostępnych wyrobisk:
             wyr_check = self.list_position_check("wyr")
@@ -140,10 +149,10 @@ class ObjectManager:
             dlg.wn_panel.id_box.id = val if val else None
             dlg.wn_panel.show() if val else dlg.wn_panel.hide()
         elif attr == "order" and val:
-            self.list_position_check("order")
             dlg.wyr_panel.order_box.id = val
-        elif attr == "order_ids" and val:
-            self.set_order_id()
+            dlg.wyr_panel.order_drawer.locked = self.order_data[1]
+            if not dlg.wyr_panel.order_box.edited:
+                self.list_position_check("order")
         elif attr == "wn_ids":
             # Zmiana listy dostępnych punktów WN_PNE:
             wn_check = self.list_position_check("wn")
@@ -369,6 +378,17 @@ class ObjectManager:
             else:
                 return res
 
+    def wyr_order_update(self):
+        """Zwraca dane dotyczące order_id i order_lock wyrobiska."""
+        db = PgConn()
+        sql = f"SELECT order_id, order_lock FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{dlg.powiat_i}' AND wyr_id = {self.wyr};"
+        if db:
+            res = db.query_sel(sql, True)
+            if res:
+                return [res[0][0], res[0][1]]
+            else:
+                return [None, False]
+
     def wn_update(self):
         """Zwraca dane punktu WN_PNE."""
         db = PgConn()
@@ -411,7 +431,7 @@ class ObjectManager:
             id_box = "dlg.wyr_panel.id_box.id"
             is_int = True
         elif _obj == "order":
-            self.set_wyr_id(_id)
+            self.wyr_from_order_change(_id)
             return
         elif _obj == "wn":
             obj = "self.wn"
@@ -428,12 +448,48 @@ class ObjectManager:
         else:
             exec(id_box + ' = ' + obj)
 
-    def set_order_id(self):
-        """Ustawia wartość order_box'a po zmianie wyrobiska."""
+    def order_ids_check(self):
+        """Sprawdza, czy dane dla wyrobiska w self.order_ids są aktualne."""
+        order_from_list = self.extract_order_data_from_list()
+        if order_from_list != self.order_data:
+            return False
+        else:
+            return True
+
+    def extract_order_data_from_list(self):
+        """Zwraca order_data dla wyrobiska z self.order_ids."""
         for ord in self.order_ids:
             if ord[1] == self.wyr:
-                self.order = ord[0]
+                return [ord[0], ord[2]]
+        return [None, False]
+
+    def wyr_from_order_change(self, _order):
+        """Zarządza zmianą order_id w zależności, czy jest właczony tryb edycji."""
+        if dlg.wyr_panel.order_drawer.edited:
+            duplicate = self.locked_order_id_exist(_order)
+            if duplicate:
+                QMessageBox.warning(None, "MOEK_Editor", f"Numer {_order} jest już zarezerwowany dla wyrobiska {duplicate}.")
+                self.order = self.order
                 return
+            # Zmiana order_id dla aktualnego wyrobiska:
+            order_id = f"'{_order}'"
+            db_attr_change(tbl=f'team_{dlg.team_i}.wyr_prg', attr='order_id', val=order_id, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+            dlg.wyr_panel.order_drawer.edited = False
+            wyr_layer_update(False)
+            dlg.obj.wyr = dlg.obj.wyr
+        else:
+            self.set_wyr_id(_order)
+
+    def locked_order_id_exist(self, order_id):
+        """Sprawdza, czy podany zablokowany order_id jest wykorzystany."""
+        db = PgConn()
+        sql = f"SELECT wyr_id FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{dlg.powiat_i}' AND order_id = '{order_id}' AND order_lock = true;"
+        if db:
+            res = db.query_sel(sql, False)
+            if res:
+                return res[0]
+            else:
+                return None
 
     def set_wyr_id(self, _order):
         """Zmienia wyrobisko po zmianie order_id w box'ie"""
@@ -3656,10 +3712,10 @@ def wyr_point_update(wyr_id, geom):
         except Exception as err:
             print(f"maptools/wyr_point_update[2]: {err}")
     db_attr_change(tbl=f"team_{dlg.team_i}.wyr_dane", attr="i_area_m2", val=area, sql_bns=f" WHERE wyr_id = {wyr_id}", user=False)
-    wyr_point_lyrs_repaint()
     if temp_lyr:
         del lyr_point
     dlg.wyr_panel.wn_df = pd.DataFrame(columns=dlg.wyr_panel.wn_df.columns)  # Wyczyszczenie dataframe'a z połączeniami wyrobiska-wn_pne
+    wyr_layer_update(False)
     dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych wyrobiska
 
 def wyr_point_lyrs_repaint():

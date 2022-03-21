@@ -185,7 +185,6 @@ def powiaty_load():
                 dlg.powiat_t = dlg.powiaty[0][1]
                 print("team nie ma aktywnego powiatu. Ustawiony pierwszy: ", str(dlg.powiat_i), " | ", str(dlg.powiat_t))
             dlg.p_pow.box.widgets["cmb_pow_act"].setCurrentText(dlg.powiat_t)  # Ustawienie cb na aktualny dlg.powiat_t
-            dlg.wyr_panel.status_indicator.order_check()
         else:  # Do team'u nie ma przypisanych powiatów
             QMessageBox.warning(None, "Problem", "Podany zespół nie ma przypisanych powiatów. Skontaktuj się z administratorem systemu.")
 
@@ -318,6 +317,7 @@ def wyr_layer_update(check=True):
     if dlg.wyr_panel.pow_all:
         dlg.obj.order_ids = []
     else:
+        dlg.wyr_panel.status_indicator.order_check()
         dlg.obj.order_ids = get_order_ids()
     # Aktualizacja wdf:
     wdf_update()
@@ -526,9 +526,9 @@ def wyr_poly_exist(wyr_id):
             return None
 
 def get_order_ids():
-    """Zwraca listę unikalnych order_id wraz z wyr_id w obrębie aktywnego powiatu."""
+    """Zwraca listę unikalnych order_id wraz z wyr_id i order_lock w obrębie aktywnego powiatu."""
     db = PgConn()
-    sql = f"SELECT order_id, wyr_id FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{dlg.powiat_i}' AND order_id IS NOT NULL ORDER BY order_id;"
+    sql = f"SELECT order_id, wyr_id, order_lock FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{dlg.powiat_i}' AND order_id IS NOT NULL ORDER BY order_id;"
     if db:
         res = db.query_sel(sql, True)
         if res:

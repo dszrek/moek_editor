@@ -490,8 +490,10 @@ class WyrCanvasPanel(QFrame):
         self.head.lay.addWidget(self.head_right)
         self.sp_status = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], spacing=1, alpha=0.71)
         self.head_left.lay.addWidget(self.sp_status)
-        self.order_box = IdSpinBox(self, _obj="order", width=91, le_width=46, height=28, max_len=3, validator="order", placeholder="001", theme="green")
+        self.order_box = IdSpinBox(self, _obj="order", width=90, le_width=46, height=28, max_len=3, validator="order", placeholder="001", theme="green")
         self.sp_status.lay.addWidget(self.order_box)
+        self.order_drawer = OrderDrawer(self)
+        self.sp_status.lay.addWidget(self.order_drawer)
         self.status_indicator = WyrStatusIndicator(self)
         self.sp_status.lay.addWidget(self.status_indicator)
         self.status_selector = WyrStatusSelector(self)
@@ -537,6 +539,8 @@ class WyrCanvasPanel(QFrame):
         self.sb.setFixedWidth(414)
         self.box.lay.addWidget(self.sb)
         self.sb.currentChanged.connect(self.page_change)
+        self.has_midas = None
+        self.locked = None
         self.pages = {}
         self.subpages = {}
         self.widgets = {}
@@ -549,26 +553,26 @@ class WyrCanvasPanel(QFrame):
         self.ssb.setFixedWidth(408)
         self.pages["page_1"].glay.glay.addWidget(self.ssb, 1, 0, 1, 1)
         for s in range(6):
-            _subpage = CanvasGridBox(self, height=438, margins=[0, 6, 0, 0], spacing=0)
+            _subpage = CanvasGridBox(self, height=468, margins=[0, 6, 0, 0], spacing=0)
             subpage_id = f'subpage_{s}'
             self.subpages[subpage_id] = _subpage
             self.ssb.addWidget(_subpage)
         self.tab_box.cur_idx = 0
         self.dicts = [
 
-                    {"name": "midas_id_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
+                    {"name": "midas_id_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
                     {"name": "stan_midas_0", "page": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "okres_zloze_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_zloze_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
                     {"name": "pne_zloze_0", "page": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "pne_poza_0", "page": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "okres_eksp_0", "page": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_eksp_0", "page": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "notepad_0", "page": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "NOTATKI", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "notepad_0", "page": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "NOTATKI", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
                     {"name": "termin_1", "page": 1, "subpage": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 8, "type": "termin"},
 
@@ -576,65 +580,67 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "pne_1", "page": 1, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "type": "pne"},
 
-                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 11, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 368, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 11, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 368, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "dlug_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "pne_poza_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=False)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "szer_1", "page": 1, "subpage": 0, "row": 2, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "dlug_1", "page": 1, "subpage": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "wys_1", "page": 1, "subpage": 0, "row": 2, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
+                    {"name": "szer_1", "page": 1, "subpage": 0, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "nadkl_1", "page": 1, "subpage": 0, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
+                    {"name": "wys_1", "page": 1, "subpage": 0, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()']]},
 
-                    {"name": "miaz_1", "page": 1, "subpage": 0, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "nadkl_1", "page": 1, "subpage": 0, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()']]},
 
-                    {"name": "droga_1", "page": 1, "subpage": 0, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "miaz_1", "page": 1, "subpage": 0, "row": 5, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "rodz_wyr_1", "page": 1, "subpage": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "droga_1", "page": 1, "subpage": 0, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "hydro_1", "page": 1, "subpage": 0, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "rodz_wyr_1", "page": 1, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "stan_1", "page": 1, "subpage": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "null_val": True, "trigger": "trigger_wyrobisko()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "hydro_1", "page": 1, "subpage": 0, "row": 5, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "eksploatacja_1", "page": 1, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "% POW. OBECNIE EKSPLOAT.", "tbl_name": "sl_eksploatacja", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_eksploat", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "stan_1", "page": 1, "subpage": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "null_val": True, "trigger": "trigger_wyrobisko()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "wydobycie_1", "page": 1, "subpage": 0, "row": 5, "col": 4, "r_span": 1, "c_span": 5, "type": "combo", "width": 164, "val_width": None, "title_left": None, "title_down": "POLE EKSPLOATACYJNE CZYNNE", "tbl_name": "sl_wydobycie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wydobycie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "eksploatacja_1", "page": 1, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "% POW. OBECNIE EKSPLOAT.", "tbl_name": "sl_eksploatacja", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_eksploat", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "fotki_1", "page": 1, "subpage": 0, "row": 5, "col": 9, "r_span": 1, "c_span": 3, "type": "text_2", "item": "line_edit", "max_len": 2, "validator": "id", "placeholder": "0", "zero_allowed": True, "width": 96, "val_width": 24, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": " ", "title_down_2": None, "title_left": "Ilość zdjęć:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "wydobycie_1", "page": 1, "subpage": 0, "row": 6, "col": 4, "r_span": 1, "c_span": 5, "type": "combo", "width": 164, "val_width": None, "title_left": None, "title_down": "POLE EKSPLOATACYJNE CZYNNE", "tbl_name": "sl_wydobycie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wydobycie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "notepad_1", "page": 1, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "fotki_1", "page": 1, "subpage": 0, "row": 6, "col": 9, "r_span": 1, "c_span": 3, "type": "text_2", "item": "line_edit", "max_len": 2, "validator": "000", "placeholder": "0", "zero_allowed": True, "min_max": False, "width": 96, "val_width": 24, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": " ", "title_down_2": None, "title_left": "Ilość zdjęć:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "autor_1", "page": 1, "subpage": 0, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "autor"},
+                    {"name": "notepad_1", "page": 1, "subpage": 0, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
+                    {"name": "autor_1", "page": 1, "subpage": 0, "row": 8, "col": 0, "r_span": 1, "c_span": 12, "type": "autor"},
+
+                    {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
                     {"name": "stan_midas_1", "page": 1, "subpage": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "okres_zloze_1", "page": 1, "subpage": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "width": 402, "val_width": 132, "val_width_2": 133, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_zloze_1", "page": 1, "subpage": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 132, "val_width_2": 133, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
                     {"name": "pne_zloze_1", "page": 1, "subpage": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "pne_poza_1", "page": 1, "subpage": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "pne_poza_m_1", "page": 1, "subpage": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=True)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "zagrozenia_1", "page": 1, "subpage": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI", "trigger": "trigger_empty('zagrozenia', 2)", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_zagrozenia", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "zagrozenia_1", "page": 1, "subpage": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI", "trigger": "trigger_empty('zagrozenia', 2)", "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_zagrozenia", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "stan_rekul_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan rekultywacji:", "title_down": None, "tbl_name": "sl_stan_rekul", "null_val": False, "trigger": "trigger_rekultywacja()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "stan_rekul_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan rekultywacji:", "title_down": None, "tbl_name": "sl_stan_rekul", "null_val": True, "trigger": "trigger_rekultywacja()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_rekultywacja()", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_rekultywacja()", "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": False, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": True, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "odpady_1", "page": 1, "subpage": 4, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "odpady"},
 
-                    {"name": "odpady_opak_1", "page": 1, "subpage": 4, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE ODPADÓW OPAKOWANIOWYCH", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_opak", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "odpady_opak_1", "page": 1, "subpage": 4, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE ODPADÓW OPAKOWANIOWYCH", "trigger": None, "txt_limiter": False, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_opak", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "odpady_inne_1", "page": 1, "subpage": 4, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE INNYCH ODPADÓW", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_inne", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "odpady_inne_1", "page": 1, "subpage": 4, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE INNYCH ODPADÓW", "trigger": None, "txt_limiter": False, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_inne", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
                     {"name": "zgloszenie_1", "page": 1, "subpage": 5, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Zgłoszenie do OUG, Starosty lub WIOŚ, inne:", "title_down": None, "tbl_name": "sl_zgloszenie", "null_val": False, "trigger": "trigger_zgloszenie()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zgloszenie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "powod_1", "page": 1, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "powod_1", "page": 1, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
+                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
                     ]
 
         for dict in self.dicts:
@@ -720,7 +726,9 @@ class WyrCanvasPanel(QFrame):
             {'type': 'text_2', 'name': 'wys', 'value': _dict[12], 'value_2': _dict[13], 'pages': [1]},
             {'type': 'text_2', 'name': 'nadkl', 'value': _dict[14], 'value_2': _dict[15], 'pages': [1]},
             {'type': 'text_2', 'name': 'miaz', 'value': _dict[16], 'value_2': _dict[17], 'pages': [1]},
-            {'type': 'text_2', 'name': 'midas_id', 'value': _dict[43], 'pages': [0, 1]},
+            {'type': 'combo', 'name': 'pne_zloze', 'value': _dict[47], 'pages': [0, 1]},
+            {'type': 'combo', 'name': 'pne_poza', 'value': _dict[48], 'pages': [0, 1]},
+            {'type': 'combo', 'name': 'pne_poza_m', 'value': _dict[48], 'pages': [1]},
             {'type': 'text_2', 'name': 'fotki', 'value': _dict[49], 'pages': [1]},
             {'type': 'text_2', 'name': 'okres_zloze', 'value': _dict[45], 'value_2': _dict[46], 'pages': [0, 1]},
             {'type': 'kw','values': [_dict[36], _dict[37], _dict[38], _dict[39]], 'pages': [1]},
@@ -732,14 +740,13 @@ class WyrCanvasPanel(QFrame):
             {'type': 'combo', 'name': 'eksploatacja', 'value': _dict[20], 'pages': [1]},
             {'type': 'combo', 'name': 'wydobycie', 'value': _dict[21], 'pages': [1]},
             {'type': 'combo', 'name': 'rodz_wyr', 'value': _dict[18], 'pages': [1]},
-            {'type': 'combo', 'name': 'stan', 'value': _dict[35], 'pages': [1]},
-            {'type': 'combo', 'name': 'stan_midas', 'value': _dict[44], 'pages': [0, 1]},
-            {'type': 'combo', 'name': 'pne_zloze', 'value': _dict[47], 'pages': [0, 1]},
-            {'type': 'combo', 'name': 'pne_poza', 'value': _dict[48], 'pages': [0, 1]},
             {'type': 'combo', 'name': 'stan_rekul', 'value': _dict[29], 'pages': [1]},
             {'type': 'combo', 'name': 'wyp_odpady', 'value': _dict[22], 'pages': [1]},
             {'type': 'combo', 'name': 'zgloszenie', 'value': _dict[33], 'pages': [1]},
-            {'type': 'os','values': [_dict[23], _dict[24], _dict[25], _dict[26], _dict[27], _dict[28]], 'pages': [1]}
+            {'type': 'os','values': [_dict[23], _dict[24], _dict[25], _dict[26], _dict[27], _dict[28]], 'pages': [1]},
+            {'type': 'combo', 'name': 'stan_midas', 'value': _dict[44], 'pages': [0, 1]},
+            {'type': 'text_2', 'name': 'midas_id', 'value': _dict[43], 'pages': [0, 1]},
+            {'type': 'combo', 'name': 'stan', 'value': _dict[35], 'pages': [1]}
         ]
         for param in params:
             if not self.cur_page in param["pages"]:
@@ -1970,22 +1977,21 @@ class WyrStatusIndicator(QLabel):
 
     def order_check(self):
         """Ustalenie order_id wyrobisk potwierdzonych we wszystkich powiatach."""
+        self.order_clear_not_green()  # wyczyszczenie order_id w wyrobiskach niepotwierdzonych
         odf = self.order_pd_load()
         odf = odf.sort_values(by=['pow_grp', 'Y_92'], ascending=[True, False])
+        # Pogrupowanie wszystkich wyrobisk na powiaty:
         odf_pows = dict(tuple(odf.groupby('pow_grp')))
         odf_pows_list = [odf_pows[x] for x in odf_pows]
+        # Działania na poszczególnych powiatach:
         for odf_pow in odf_pows_list:
             odf_pow = odf_pow.reset_index(drop=True)
-            # Podział na pasy o szerokości 3 km:
-            odf_pow['row'] = odf_pow['Y_92'].diff(periods=1).abs().cumsum().fillna(0).div(3000).floordiv(1).astype(int)
-            # Sortowanie po współrzędnej X wewnątrz pasów:
-            odf_pow = odf_pow.sort_values(by=['row', 'X_92'], ascending=[True, True]).reset_index(drop=True)
-            # Ponumerowanie wszystkich wyrobisk:
-            odf_pow['order_new'] = odf_pow.index + 1
-            odf_pow['order_new'] = odf_pow['order_new'].map(lambda x: f'{x:0>3}')
+            if odf_pow[odf_pow['order_lock'] == True].any().all():
+                odf_pow = self.complex_numbering(odf_pow)
+            else:
+                odf_pow = self.simple_numbering(odf_pow)
             # Sprawdzenie, czy jest różnica pomiędzy ustaloną numeracją, a nową:
             not_same = np.any( odf_pow['order_id'].values != odf_pow['order_new'].values)
-            pow_id = odf_pow.loc[0, 'pow_grp']
             if not_same:
                 # Konieczność aktualizacji order_id w tym powiecie:
                 udf = odf_pow[['wyr_id', 'pow_grp', 'order_new']]
@@ -1993,16 +1999,52 @@ class WyrStatusIndicator(QLabel):
                 self.order_clear()
                 self.order_update(udf_list)
 
+    def simple_numbering(self, odf_pow):
+        """Proste przenumerowanie wyrobisk w obrębie powiatu, jeśli nie ma zablokowanych numerów order_id."""
+        # Podział na pasy o szerokości 3 km:
+        odf_pow['row'] = odf_pow['Y_92'].diff(periods=1).abs().cumsum().fillna(0).div(3000).floordiv(1).astype(int)
+        # Sortowanie po współrzędnej X wewnątrz pasów:
+        odf_pow = odf_pow.sort_values(by=['row', 'X_92'], ascending=[True, True]).reset_index(drop=True)
+        # Ponumerowanie wszystkich wyrobisk:
+        odf_pow['order_new'] = odf_pow.index + 1
+        odf_pow['order_new'] = odf_pow['order_new'].map(lambda x: f'{x:0>3}')
+        return odf_pow
+
+    def complex_numbering(self, odf_pow):
+        """Zlożone przenumerowanie wyrobisk w obrębie powiatu, jeśli są zablokowane numery order_id"""
+        odf_pow['order_new'] = 0
+        odf_pow_locked = odf_pow[odf_pow['order_lock'] == True]
+        odf_pow_locked['order_new'] = odf_pow_locked['order_id']
+        odf_pow_unlocked = odf_pow[odf_pow['order_lock'] == False]
+        order_locked_ids = sorted(odf_pow_locked['order_id'].astype(int).tolist())
+        # Podział na pasy o szerokości 3 km:
+        odf_pow_unlocked['row'] = odf_pow_unlocked['Y_92'].diff(periods=1).abs().cumsum().fillna(0).div(3000).floordiv(1).astype(int)
+        # Sortowanie po współrzędnej X wewnątrz pasów:
+        odf_pow_unlocked = odf_pow_unlocked.sort_values(by=['row', 'X_92'], ascending=[True, True])
+        i = 0
+        # Przenumerowanie odblokowanych wyrobisk:
+        for index in odf_pow_unlocked.to_records():
+            i += 1
+            while i in order_locked_ids:
+                i += 1
+            odf_pow_unlocked.loc[index[0], 'order_new'] = i
+        odf_pow_unlocked['order_new'] = odf_pow_unlocked['order_new'].map(lambda x: f'{x:0>3}')
+        odf_pow_unlocked.drop(columns=['row'], inplace=True)
+        odf_pow.update(odf_pow_unlocked)
+        odf_pow.update(odf_pow_locked)
+        odf_pow['wyr_id'] = odf_pow['wyr_id'].astype('int')
+        return odf_pow
+
     def order_pd_load(self):
         """Zwraca dataframe z danymi wyrobisk potwierdzonych dla ustalenia order_id."""
         db = PgConn()
-        sql = f"SELECT w.wyr_id, ST_X(w.centroid) as X_92, ST_Y(w.centroid) as Y_92, p.pow_grp, p.order_id FROM team_{dlg.team_i}.wyr_prg AS p INNER JOIN team_{dlg.team_i}.wyrobiska AS w USING(wyr_id) WHERE w.b_confirmed IS TRUE;"
+        sql = f"SELECT w.wyr_id, ST_X(w.centroid) as X_92, ST_Y(w.centroid) as Y_92, p.pow_grp, p.order_id, p.order_lock FROM team_{dlg.team_i}.wyr_prg AS p INNER JOIN team_{dlg.team_i}.wyrobiska AS w USING(wyr_id) WHERE w.b_confirmed IS TRUE;"
         if db:
-            df = db.query_pd(sql, ['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id'])
+            df = db.query_pd(sql, ['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id', 'order_lock'])
             if isinstance(df, pd.DataFrame):
                 return df
             else:
-                return pd.DataFrame(columns=['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id'])
+                return pd.DataFrame(columns=['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id', 'order_lock'])
 
     def order_update(self, list):
         """Aktualizacja order_id w db."""
@@ -2014,7 +2056,14 @@ class WyrStatusIndicator(QLabel):
     def order_clear(self):
         """Wyczyszczenie order_id dla wyrobisk z bieżącego powiatu."""
         db = PgConn()
-        sql = f"UPDATE team_{dlg.team_i}.wyr_prg SET order_id = Null WHERE pow_grp = '{dlg.powiat_i}'"
+        sql = f"UPDATE team_{dlg.team_i}.wyr_prg SET order_id = Null WHERE pow_grp = '{dlg.powiat_i}' AND order_lock IS FALSE"
+        if db:
+            res = db.query_upd(sql)
+
+    def order_clear_not_green(self):
+        """Wyczyszczenie order_id i order_lock dla wyrobisk innych niż potwierdzone."""
+        db = PgConn()
+        sql = f"UPDATE team_{dlg.team_i}.wyr_prg AS a SET order_id = Null, order_lock = false FROM team_{dlg.team_i}.wyrobiska AS b WHERE a.wyr_id = b.wyr_id and b.b_confirmed = false"
         if db:
             res = db.query_upd(sql)
 
@@ -2100,6 +2149,7 @@ class WyrStatusSelector(QFrame):
             self.case_change()
             dlg.wyr_panel.tab_box.setVisible(True) if val == 1 else dlg.wyr_panel.tab_box.setVisible(False)
             dlg.wyr_panel.order_box.setVisible(True) if val == 1 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_box.setVisible(False)
+            dlg.wyr_panel.order_drawer.setVisible(True) if val == 1 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_drawer.setVisible(False)
 
     def set_case(self, after_fchk, confirmed):
         """Ustala 'case' na podstawie atrybutów wyrobiska."""
@@ -2139,10 +2189,9 @@ class WyrStatusSelector(QFrame):
                 result = self.db_update(status["after_fchk"], status["confirmed"])
                 if result:
                     self.vis_check(status["layer"])
-                    dlg.obj.wyr = dlg.obj.wyr
         if self.case == 1 or old_id == 1:
-            dlg.wyr_panel.status_indicator.order_check()
             wyr_layer_update(False)
+        dlg.obj.wyr = dlg.obj.wyr
 
     def vis_check(self, lyr_name):
         """Włącza dany typ wyrobisk, jeśli nie jest włączony."""
@@ -2188,6 +2237,106 @@ class WyrStatusSelectorItem(QToolButton):
             icon.addFile(ICON_PATH + name + "_1_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.On)
             icon.addFile(ICON_PATH + name + "_1.png", size=QSize(wsize, hsize), mode=QIcon.Selected, state=QIcon.On)
         self.setIcon(icon)
+
+
+class OrderDrawer(QFrame):
+    """Wysuwane menu z przyciskami do ręcznego ustalania order_id."""
+
+    def __init__(self, *args, height=28):
+        super().__init__(*args)
+        self.setCursor(Qt.ArrowCursor)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(1, height)
+        self.setObjectName("main")
+        self.v_line = QFrame(self)
+        self.v_line.setFixedSize(1, height - 6)
+        self.v_line.setObjectName("v_line")
+        self.btn_edit = MoekButton(self, name="order_edit", size=16, checkable=True, tooltip="włącz tryb edycji ręcznego przypisania numeru dla tego wyrobiska", tooltip_on="wyłącz tryb edycji ręcznego przypisanie numeru dla tego wyrobiska")
+        self.btn_edit.clicked.connect(self.order_edit_clicked)
+        self.btn_lock = MoekButton(self, name="order_lock", size=16, checkable=True, tooltip="włącz ręczne przypisanie numeru dla tego wyrobiska", tooltip_on="wyłącz ręczne przypisanie numeru dla tego wyrobiska")
+        self.btn_lock.clicked.connect(self.order_lock_clicked)
+        self.v_line.setGeometry(0, 3, self.v_line.width(), self.v_line.height())
+        self.btn_lock.setGeometry(-1, 6, self.btn_lock.width(), self.btn_lock.height())
+        self.btn_edit.setGeometry(-17, 6, self.btn_edit.width(), self.btn_edit.height())
+        self.set_style()
+        self.attr_void = True
+        self.slided = False
+        self.locked = False
+        self.edited = False
+        self.attr_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "slided" and not self.attr_void:
+            self.sliding()
+        elif attr == "locked" and not self.attr_void:
+            dlg.wyr_panel.order_box.locked = val
+            if self.btn_lock.isChecked() != val:
+                self.btn_lock.setChecked(val)
+            self.slided = val
+            if not val and self.edited:
+                self.edited = False
+        elif attr == "edited" and not self.attr_void:
+            dlg.wyr_panel.order_box.edited = val
+            if self.btn_edit.isChecked() != val:
+                self.btn_edit.setChecked(val)
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        alpha = 0.6 if self.isEnabled() else 0.1
+        self.setStyleSheet("""
+                    QFrame#main {background-color: transparent; border: none}
+                    QFrame#v_line {background-color: rgba(255, 255, 255, """ + str(alpha) + """); border: none}
+                    """)
+
+    def sliding(self):
+        self.composer(slide=self.slided)
+
+    def enterEvent(self, event):
+        if self.isEnabled():
+            self.slided = True
+
+    def leaveEvent(self, event):
+        if not self.locked and self.slided:
+            self.slided = False
+
+    def order_edit_clicked(self):
+        """Włączenie/wyłączenie edycji order_id."""
+        self.edited = self.btn_edit.isChecked()
+        if self.edited and not self.locked:
+            self.locked = True
+
+    def order_lock_clicked(self):
+        """Zablokowanie/odblokowanie order_id."""
+        self.locked = self.btn_lock.isChecked()
+        if self.locked and not self.edited:
+            self.edited = True
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_prg', attr='order_lock', val=self.locked, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        if not self.locked:
+            self.slided = False
+            self.attr_void = True
+            wyr_layer_update(False)
+            dlg.obj.wyr = dlg.obj.wyr
+            self.attr_void = False
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        self.setEnabled(_bool)
+        self.set_style()
+
+    def composer(self, slide=False):
+        """Ustalenie rozmieszczenia i widoczności widget'ów."""
+        if slide:
+            self.setFixedWidth(34)
+            self.v_line.setGeometry(33, 3, self.v_line.width(), self.v_line.height())
+            self.btn_lock.setGeometry(17, 6, self.btn_lock.width(), self.btn_lock.height())
+            self.btn_edit.setGeometry(1, 6, self.btn_edit.width(), self.btn_edit.height())
+        else:
+            self.setFixedWidth(1)
+            self.v_line.setGeometry(0, 3, self.v_line.width(), self.v_line.height())
+            self.btn_lock.setGeometry(-1, 6, self.btn_lock.width(), self.btn_lock.height())
+            self.btn_edit.setGeometry(-17, 6, self.btn_edit.width(), self.btn_edit.height())
 
 
 class KopalinaWiekBox(QFrame):
@@ -3570,12 +3719,22 @@ class IdSpinBox(QFrame):
         self.hlay.addWidget(self.next_btn)
         self.setLayout(self.hlay)
         self.id = None
+        self.attr_void = True
+        self.locked = False
+        self.edited = False
+        self.attr_void = False
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "id":
             self.idbox.set_value(str(val))
+        if attr == "locked" and not self.attr_void:
+            self.idbox.locked = val
+        if attr == "edited" and not self.attr_void:
+            self.idbox.edited = val
+            self.prev_btn.setEnabled(not val)
+            self.next_btn.setEnabled(not val)
 
     def prev_clicked(self):
         """Uruchomienie funkcji po kliknięciu na przycisk prev_btn."""
@@ -3621,6 +3780,10 @@ class CanvasLineEdit(QLineEdit):
         elif self.validator == "years":
             self.setValidator(QRegExpValidator(QRegExp("^1[8-9]$|^2[0-3]$|^201[8-9]$|^202[0-3]$")))
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
+        self.attr_void = True
+        self.locked = False
+        self.edited = False
+        self.attr_void = False
         self.trigger = trigger
         self.fn = fn
         self.placeholder = placeholder
@@ -3653,6 +3816,8 @@ class CanvasLineEdit(QLineEdit):
             if val == None:
                 self.numerical = False
             self.value_changed()
+        if (attr == "edited" or attr == "locked") and not self.attr_void:
+            self.set_style()
 
     def sql_parser(self, val):
         """Zwraca wartość prawidłową dla formuły sql."""
@@ -3749,12 +3914,18 @@ class CanvasLineEdit(QLineEdit):
             font_color = "0, 0, 0, 0.3" if self.grey else self.color
         else:
             font_color = self.color
+        if self.locked and not self.edited:
+            border = "1px solid black"
+        elif self.edited:
+            border = "1px solid red"
+        else:
+            border = "none"
         self.setStyleSheet("""
                     QLineEdit {
                         background-color: rgba(""" + self.color + """, """ + str(alpha) + """);
                         color: rgba(""" + font_color + """);
                         font-size: """ + str(self.font_size) + """pt;
-                        border: none;
+                        border: """ + border + """;
                         padding: 0px 0px 2px 2px;
                         qproperty-alignment: """ + str(self.align) + """;
                         }

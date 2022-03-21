@@ -439,14 +439,14 @@ class WyrCanvasPanel(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(516, 575)
+        self.setFixedSize(516, 605)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
         shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow_1)
         self.focus_void = True
         self.trigger_void = True
-        self.p_heights = [468, 435, 468]
+        self.p_heights = [498, 465, 498]
         self.mt_enabled = False
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
         self.list_box = MoekVBox(self, spacing=0)
@@ -506,7 +506,7 @@ class WyrCanvasPanel(QFrame):
         self.sp_main.lay.addWidget(self.hashbox)
         self.hash_icon = MoekButton(self, name="hash", size=30, checkable=False, enabled=False, tooltip="numer roboczy, terenowy")
         self.hashbox.lay.addWidget(self.hash_icon)
-        self.hash = CanvasLineEdit(self, width=56, height=28, font_size=10, max_len=5, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_teren_id", val="'"{self.cur_val}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], placeholder="XXXXX")
+        self.hash = CanvasLineEdit(self, width=56, height=28, font_size=10, max_len=5, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], placeholder="XXXXX")
         self.hashbox.lay.addWidget(self.hash)
         self.wn_picker = WyrWnPicker(self)
         self.sp_main.lay.addWidget(self.wn_picker)
@@ -788,80 +788,132 @@ class WyrCanvasPanel(QFrame):
     def trigger_wyrobisko(self):
         """Wykonane po zmianie wartości combobox'u 'stan_1'."""
         val = self.widgets[f"cmb_stan_{self.cur_page}"].valbox_1.cur_val
-        bool_1 = False if val == "Null" or val[1:-1] == "brak" else True
-        bool_2 = False if val[1:-1] == "Z" or val[1:-1] == "brak" or val == "Null" else True
+        bool_1 = False if val[1:-1] == "brak" else True
+        bool_2 = False if val[1:-1] == "Z" or val[1:-1] == "brak" or val[1:-1] == "nd" or val == "Null" else True
+        # Wyświetlenie powierzchni wyrobiska:
+        area_txt = f"{dlg.obj.wyr_data[4]} m\u00b2 "
+        dlg.wyr_panel.area_icon.setEnabled(True)
+        dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
         # Blokada combobox'ów w zależności, czy ustalono 't_stan_pne':
         self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].set_enabled(bool_1)
         self.widgets[f"cmb_hydro_{self.cur_page}"].set_enabled(bool_1)
+        self.widgets[f"cmb_droga_{self.cur_page}"].set_enabled(bool_1)
         self.widgets[f"cmb_eksploatacja_{self.cur_page}"].set_enabled(bool_2)
         self.widgets[f"cmb_wydobycie_{self.cur_page}"].set_enabled(bool_2)
-        if val[1:-1] == "E" or val == "Null":  # Wyrobisko eksploatowane
+        if val[1:-1] == "E":  # Wyrobisko eksploatowane
             if self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.cur_val == "'0'":
                 self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value(None, signal=True)
             if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val == "'brak'":
                 self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value(None, signal=True)
-            # Kontrola 'pne_poza', jeśli nie ma złoża:
-            if not self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val:
-                if self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val == "'False'":
-                    self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("True", signal=True)
-        if val[1:-1] == "Z" or val[1:-1] == "brak":  # Wyrobisko zaniechane lub brak wyrobiska
+            if not self.has_midas and self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val != "'True'":
+                self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("True", signal=True)
+        if val[1:-1] == "Z":  # Wyrobisko zaniechane
             if self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.cur_val != "0":
                 self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value("0", signal=True)
             if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val != "brak":
                 self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value("brak", signal=True)
-            # Kontrola 'pne_poza', jeśli nie ma złoża:
-            if not self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val:
-                if self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val == "'True'":
-                    self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("False", signal=True)
-        if val[1:-1] == "brak" or val == "Null":  # Nie ma wyrobiska
-            if self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].valbox_1.cur_val != "Null":
-                self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].valbox_1.set_value(None, signal=True)
-            if self.widgets[f"cmb_hydro_{self.cur_page}"].valbox_1.cur_val != "Null":
-                self.widgets[f"cmb_hydro_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+        if val[1:-1] == "nd":  # Nie dotyczy (koncesja)
+            if self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.cur_val != None:
+                self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+            if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val != None:
+                self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value(None, signal=True)
         if val[1:-1] == "E" or val[1:-1] == "Z" or val[1:-1] == "nd" or val == "Null":
             # Odblokowanie wymiarów wyrobiska, jeśli zablokowane:
-            p_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
-            for p in p_list:
-                if not self.widgets[f"txt2_{p}_{self.cur_page}"].is_enabled:
-                    self.widgets[f"txt2_{p}_{self.cur_page}"].set_enabled(True)
-            # Wyświetlenie powierzchni wyrobiska:
-            area_txt = f"{dlg.obj.wyr_data[4]} m\u00b2 "
-            dlg.wyr_panel.area_icon.setEnabled(True)
-            dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
-        elif val[1:-1] == "brak":
+            p1_list = ["dlug", "szer"]
+            p2_list = ["wys", "nadkl", "miaz"]
+            b_teren = self.widgets["gd_1"].fchk_val  # Czy przeprowadzono kontrolę terenową?
+            for p1 in p1_list:
+                if not self.widgets[f"txt2_{p1}_{self.cur_page}"].is_enabled:
+                    self.widgets[f"txt2_{p1}_{self.cur_page}"].set_enabled(True)
+            for p2 in p2_list:
+                if b_teren and not self.widgets[f"txt2_{p2}_{self.cur_page}"].is_enabled:
+                    self.widgets[f"txt2_{p2}_{self.cur_page}"].set_enabled(True)
+            if not self.widgets[f"cmb_pne_poza_{self.cur_page}"].isEnabled():
+                self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
+            if self.cur_page == 1:
+                if not self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].isEnabled():
+                    self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(True)
+            if not self.widgets[f"cmb_pne_zloze_{self.cur_page}"].isEnabled():
+                self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setEnabled(True)
+        elif val[1:-1] == "brak":  # Brak wyrobiska
             # Kasowanie i blokowanie wymiarów wyrobiska:
-            p_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
-            for p in p_list:
-                if self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_1.cur_val:
-                    self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_1.value_change(None)
-                if self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_2.cur_val:
-                    self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_2.value_change(None)
-                self.widgets[f"txt2_{p}_{self.cur_page}"].set_enabled(False)
+            txt_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
+            for t in txt_list:
+                if self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_1.cur_val:
+                    self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_1.value_change(None)
+                if self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_2.cur_val:
+                    self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_2.value_change(None)
+                self.widgets[f"txt2_{t}_{self.cur_page}"].set_enabled(False)
+            # Kasowanie i blokowanie parametrów wyrobiska:
+            cmb_list = ["rodz_wyr", "hydro", "eksploatacja", "wydobycie", "droga"]
+            for c in cmb_list:
+                if self.widgets[f"cmb_{c}_{self.cur_page}"].valbox_1.cur_val != "Null":
+                    self.widgets[f"cmb_{c}_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+            # Kasowanie odpadów:
+            odp_val = self.widgets["cmb_wyp_odpady_1"].valbox_1.cur_val
+            if odp_val != 'Null' and odp_val[1:-1] != '0':
+                self.widgets["cmb_wyp_odpady_1"].valbox_1.set_value(None, signal=True)
             # Wyłączenie powierzchni wyrobiska:
             dlg.wyr_panel.area_icon.setEnabled(False)
             dlg.wyr_panel.area_label.setText("")
+            # Automatyczne ustawienie 'pne_zloze' i 'pne_poza' na NIE:
+            self.set_pne_to_false()
+        # if val[1:-1] == "nd":
+        #     self.set_pne_to_false()
 
     def trigger_midas(self):
-        """Wykonywane po zmianie wartości combobox'u 'stan_rekul'."""
+        """Wykonywane po zmianie wartości textbox'u 'midas_id'."""
         val = self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val
-        _bool = True if val else False
+        self.has_midas = True if val else False
         if self.cur_page == 1:
-            dlg.wyr_panel.tab_box.widgets["btn_1"].active = _bool
-        self.widgets[f"cmb_stan_midas_{self.cur_page}"].setVisible(_bool)
-        self.widgets[f"txt2_okres_zloze_{self.cur_page}"].setVisible(_bool)
-        self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setVisible(_bool)
-        self.widgets[f"cmb_pne_poza_{self.cur_page}"].setVisible(_bool)
-        if self.trigger_void or _bool:
-            return
-        # Wykasowano numer midas_id - konieczność zmian atrybutów:
-        if self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.cur_val != "Null":
-            self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.set_value(None, signal=True)
-        if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.cur_val:
-            self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.value_change(None)
-        if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.cur_val:
-            self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.value_change(None)
-        if self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.cur_val == "'True'":
+            # Kontrola podświetlenia tytułu zakładki:
+            dlg.wyr_panel.tab_box.widgets["btn_1"].active = self.has_midas
+            # Ustawienie widoczności cmb_pne_poza_m:
+            self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setVisible(self.has_midas)
+        # Ustawienie widoczności widgetów:
+        self.widgets[f"cmb_stan_midas_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"txt2_okres_zloze_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setVisible(self.has_midas)
+        if not self.has_midas:
+            # Brak podanego midas_id - wyczyszczenie parametrów związanych ze złożami, jeśli są wypełnione:
+            if self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.cur_val != "Null":
+                self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+            if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.cur_val:
+                self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.value_change(None)
+            if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.cur_val:
+                self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.value_change(None)
+            # Odblokowanie cmb_pne_poza_1, jeśli jest zablokowane:
+            if not self.widgets[f"cmb_pne_poza_{self.cur_page}"].isEnabled() and self.widgets[f"cmb_stan_{self.cur_page}"].valbox_1.cur_val != "brak":
+                self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
+            # Sztywne ustawienie atrybutów PNE_ZLOZE i CZY_PNE, jeśli mają nieprawidłowe wartości:
+            if self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.cur_val != "'False'":
+                # PNE_ZLOZE = NIE
+                self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.set_value("False", signal=True)
+            if not self.widgets['pn_1'].btn_val:  # Wyrobisko nie powiązane ze złożem MUSI być PNE
+                # CZY_PNE = TAK
+                self.widgets['pn_1'].btn_val = True
+                db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_pne", val=True, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        else:  # Wyrobisko jest powiązane ze złożem
+            if not self.widgets['pn_1'].btn_val:  # Wyrobisko dotyczy ZŁOŻA NIEZREKULTYWOWANEGO (CZY_PNE = NIE)
+                self.set_pne_to_false()
+            else:  # Wyrobisko dotyczy PNE (CZY_PNE = TAK)
+                self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setEnabled(True)
+                self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
+                if self.cur_page == 1:
+                    self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(True)
+
+    def set_pne_to_false(self):
+        """Automatyczne ustawienie PNE_ZLOZE i PNE_POZA na wartość NIE."""
+        if self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.cur_val != "'False'":
             self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.set_value("False", signal=True)
+        if self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val != "'False'":
+            self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("False", signal=True)
+        self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setEnabled(False)
+        self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(False)
+        if self.cur_page == 1:
+            if self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].valbox_1.cur_val != "'False'":
+                self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].valbox_1.set_value("False")
+            self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(False)
 
     def trigger_rekultywacja(self):
         """Wykonywane po zmianie wartości combobox'u 'stan_rekul', albo textbox'u 'rekultywacja'."""
@@ -894,11 +946,24 @@ class WyrCanvasPanel(QFrame):
         val = self.widgets["cmb_wyp_odpady_1"].valbox_1.cur_val
         if not val:
             return
-        _bool = False if val[1:-1] == '0' else True
+        _bool = False if val == 'Null' or val[1:-1] == '0' else True
         dlg.wyr_panel.tab_box.widgets["btn_4"].active = _bool
         self.widgets["os_1"].setVisible(_bool)
         if not _bool:
             self.widgets["os_1"].clear_all()
+
+    def trigger_pne_poza(self, m):
+        """Wykonywane po zmianie 'cmb_pne_poza_1' (m=False) lub 'cmb_pne_poza_m_1' (m=True)."""
+        if self.widgets["cmb_pne_poza_1"].valbox_1.cur_val != self.widgets["cmb_pne_poza_m_1"].valbox_1.cur_val:
+            # Wartości w dwóch cmb są różne (po zmianie jednego, trzeba zaktualizować drugie)
+            if m:  # Trzeba zaktualizować 'cmb_pne_poza_1' do wartości z 'cmb_pne_poza_m_1'
+                val = self.widgets["cmb_pne_poza_m_1"].valbox_1.cur_val
+                val = val[1:-1] if val != "Null" else None
+                self.widgets[f"cmb_pne_poza_1"].valbox_1.set_value(val)
+            else:  # Trzeba zaktualizować 'cmb_pne_poza_m_1' do wartości z 'cmb_pne_poza_1'
+                val = self.widgets["cmb_pne_poza_1"].valbox_1.cur_val
+                val = val[1:-1] if val != "Null" else None
+                self.widgets[f"cmb_pne_poza_m_1"].valbox_1.set_value(val)
 
     def trigger_empty(self, tb_name, tab_idx):
         """Zmiana stanu 'active' dla przycisku tabbox'u po zmianie wartości paramtextbox'u'."""
@@ -1028,7 +1093,7 @@ class FlagCanvasPanel(QFrame):
         self.sp_main.lay.addWidget(self.hashbox)
         self.hash_icon = MoekButton(self, name="hash", size=30, checkable=False, enabled=False, tooltip="numer roboczy, terenowy")
         self.hashbox.lay.addWidget(self.hash_icon)
-        self.hash = CanvasLineEdit(self, width=117, height=28, font_size=12, max_len=10, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.flagi", attr="t_teren_id", val="'"{self.cur_val}"'", sql_bns=" WHERE id = {dlg.obj.flag}", user=False, quotes=True)'], placeholder="XXXXXXXXXX")
+        self.hash = CanvasLineEdit(self, width=117, height=28, font_size=12, max_len=10, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.flagi", attr="t_teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE id = {dlg.obj.flag}", user=False)'], placeholder="XXXXXXXXXX")
         self.hashbox.lay.addWidget(self.hash)
         self.toolbox = CanvasHSubPanel(self, height=32, margins=[0, 0, 0, 0], spacing=0, alpha=0.71)
         self.sp_main.lay.addWidget(self.toolbox)
@@ -1648,11 +1713,11 @@ class OdpadySelector(QFrame):
         if attr == "op_bool" and not self.attr_void:
             dlg.wyr_panel.widgets["tb_odpady_opak_1"].setVisible(val)
             if not val and dlg.wyr_panel.widgets["tb_odpady_opak_1"].txtbox.cur_val:
-                dlg.wyr_panel.widgets["tb_odpady_opak_1"].txtbox.cur_val = None
+                dlg.wyr_panel.widgets["tb_odpady_opak_1"].txtbox.value_change(None)
         if attr == "i_bool" and not self.attr_void:
             dlg.wyr_panel.widgets["tb_odpady_inne_1"].setVisible(val)
             if not val and dlg.wyr_panel.widgets["tb_odpady_inne_1"].txtbox.cur_val:
-                dlg.wyr_panel.widgets["tb_odpady_inne_1"].txtbox.cur_val = None
+                dlg.wyr_panel.widgets["tb_odpady_inne_1"].txtbox.value_change(None)
         if attr == "o1_val" and not self.attr_void:
             val_sql = self.sql_parser(val)
             db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_odpady_1", val=val_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
@@ -1700,7 +1765,7 @@ class OdpadySelector(QFrame):
                 exec(f'{odp_vals[i]} = new_val')
 
     def clear_all(self):
-        """Odznaczenie wszystkich przycisków po ustawieniu combobox'a na wartość 'brak'."""
+        """Odznaczenie wszystkich przycisków po ustawieniu combobox'a na wartość 'brak' albo 'Null'."""
         for btn_name in self.itms:
             btn = self.itms[btn_name]
             if btn.isChecked():
@@ -2685,25 +2750,61 @@ class PneBox(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(34, 26)
+        self.setFixedSize(34, 44)
         self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
-        self.btn = MoekButton(self, name="pne", size=34, hsize=26, checkable=True, tooltip="CZY_PNE = NIE", tooltip_on="CZY_PNE = TAK")
-        self.btn.clicked.connect(self.btn_clicked)
+        self.pne_btn = MoekButton(self, name="pne", size=34, hsize=26, checkable=False, tooltip="CZY_PNE = TAK")
+        self.zl_btn = MoekButton(self, name="zl_nrekul", size=187, hsize=26, checkable=False, tooltip="CZY_PNE = NIE")
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(0)
+        hlay.addWidget(self.pne_btn)
+        hlay.addWidget(self.zl_btn)
+        self.setLayout(hlay)
+        self.pne_btn.clicked.connect(self.btn_clicked)
+        self.zl_btn.clicked.connect(self.btn_clicked)
         self.val_void = True
         self.btn_val = False
+        self.cur_val = None
         self.val_void = False
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "btn_val" and not self.val_void:
-            if self.btn.isChecked != val:
-                self.btn.setChecked(val)
+            if val != self.cur_val:
+                self.cur_val = val
+                if val:  # Wyrobisko jest związane z PNE
+                    self.pne_btn.setVisible(True)
+                    self.zl_btn.setVisible(False)
+                    self.setFixedWidth(34)
+                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.addWidget(dlg.wyr_panel.widgets["pn_1"], 1, 0, 1, 1)
+                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.addWidget(dlg.wyr_panel.widgets["txt2_okres_eksp_1"], 1, 1, 1, 11)
+                    dlg.wyr_panel.widgets["txt2_okres_eksp_1"].setVisible(True)
+                else:  # Wyrobisko jest związane ze złożem niezrekultywowanym
+                    self.pne_btn.setVisible(False)
+                    self.zl_btn.setVisible(True)
+                    self.setFixedWidth(402)
+                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.removeWidget(dlg.wyr_panel.widgets["txt2_okres_eksp_1"])
+                    dlg.wyr_panel.widgets["txt2_okres_eksp_1"].setVisible(False)
+                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.addWidget(dlg.wyr_panel.widgets["pn_1"], 1, 0, 1, 12)
 
     def btn_clicked(self):
         """Aktualizacja wartości 'b_pne' w tabeli 'wyr_dane'."""
-        self.btn_val = self.btn.isChecked()
+        if not dlg.wyr_panel.has_midas:
+            self.btn_val = True  # Jeżeli wyrobisko nie jest powiązane ze złożem, musi być PNE
+            QMessageBox.warning(None, "MOEK_Editor", f"Jeżeli wyrobisko nie jest powiązane ze złożem, musi być PNE. Wypełnij ID złoża w zakładce MIDAS, jeżeli chcesz ustawić atrybut CZY_PNE na wartość NIE (co będzie oznaczało, że wyrobisko dotyczy złoża niezrekultywowanego).")
+            return
+        self.btn_val = not self.btn_val
         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_pne", val=self.btn_val, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        dlg.wyr_panel.trigger_midas()
+        # Wyczyszczenie PNE_OD i PNE_DO, jeśli są wypełnione oraz CZY_PNE = NIE:
+        if not self.btn_val and dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_1.cur_val:
+            dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_1.value_change(None)
+        if not self.btn_val and dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_2.cur_val:
+            dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_2.value_change(None)
+        # Ustawienie stanu wyrobiska na "zaniechany", jeśli wyrobisko dotyczy złoża niezrekultywowanego:
+        if self.btn_val and dlg.wyr_panel.widgets["cmb_stan_1"].valbox_1.cur_val != "Z":
+            dlg.wyr_panel.widgets["cmb_stan_1"].valbox_1.set_value("Z", signal=True)
 
 
 class TerminBox(QFrame):
@@ -2760,10 +2861,10 @@ class TerminBox(QFrame):
             if self.fchk.isChecked != val:
                 self.fchk.setChecked(val)
             self.enable_fn(val)
-            if not val and self.t_val:
-                self.time_reset()
-            if not val and self.d_val:
-                self.date_reset()
+            # if not val and self.t_val:
+            #     self.time_reset()
+            # if not val and self.d_val:
+            #     self.date_reset()
         if attr == "d_val" and not self.val_void:
             self.drawer.val_copy.setToolTip(f"kopiuj datę: {val}") if val else self.drawer.val_copy.setToolTip(f"brak daty do skopiowania")
             self.drawer.val_copy.setEnabled(True) if val else self.drawer.val_copy.setEnabled(False)
@@ -2782,13 +2883,13 @@ class TerminBox(QFrame):
 
     def enable_fn(self, _bool):
         """Włączenie/wyłączenie poszczególnych elementów box'u i innych parambox'ów, w zależności czy przeprowadzono kontrolę terenową."""
-        inner_widgets = [self.clock, self.calendar, self.th, self.tm, self.dd, self.dm, self.dy, self.drawer]
+        # inner_widgets = [self.clock, self.calendar, self.th, self.tm, self.dd, self.dm, self.dy, self.drawer]
         outer_widgets = [dlg.wyr_panel.widgets["txt2_wys_1"], dlg.wyr_panel.widgets["txt2_nadkl_1"], dlg.wyr_panel.widgets["txt2_miaz_1"]]
-        for widget in inner_widgets:
-            if isinstance(widget, MoekButton):
-                widget.setEnabled(_bool)
-            else:
-                widget.set_enabled(_bool)
+        # for widget in inner_widgets:
+        #     if isinstance(widget, MoekButton):
+        #         widget.setEnabled(_bool)
+        #     else:
+        #         widget.set_enabled(_bool)
         for widget in outer_widgets:
             widget.set_enabled(_bool)
             if not _bool and widget.valbox_1.cur_val:
@@ -3409,9 +3510,7 @@ class ParamBox(QFrame):
     def value_change(self, attrib, val):
         """Zmienia wyświetlaną wartość parametru."""
         if attrib == "value":
-            if isinstance(self.valbox_1, CanvasLineEdit):
-                self.valbox_1.set_value(val)
-            elif isinstance(self.valbox_1, CanvasArrowlessComboBox):
+            if isinstance(self.valbox_1, (CanvasLineEdit, CanvasArrowlessComboBox)):
                 self.valbox_1.set_value(val)
             else:
                 self.valbox_1.setText(str(val)) if val else self.valbox_1.setText("")
@@ -3540,7 +3639,7 @@ class TextBox(QPlainTextEdit):
             self.cur_val = val
 
     def db_update(self, txt_val, tbl, attr, sql_bns):
-        """Aktualizacja wartości 't_notatki' w db."""
+        """Aktualizacja wartości w db."""
         if not txt_val:
             sql_text = "NULL"
         else:
@@ -3609,7 +3708,10 @@ class TextBox(QPlainTextEdit):
         if not self.edit:
             return
         self.focus = False
-        self.set_value(self.toPlainText())
+        self.value_change(self.toPlainText())
+
+    def value_change(self, txt):
+        self.set_value(txt)
         if self.fn:
             self.run_fn()
 

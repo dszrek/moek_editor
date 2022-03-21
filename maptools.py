@@ -114,9 +114,13 @@ class ObjectManager:
                     wyr_layer_update(False)
                 self.list_position_check("wyr")
                 self.dlg.wyr_panel.lok.set_tooltip(f'<html><head/><body><p style="text-indent:11px; margin:4px">MIEJSCOWOŚĆ: &nbsp;{self.wyr_data[52]}</p><p style="text-indent: 53px; margin:4px">GMINA: &nbsp;{self.wyr_data[53]}</p><p style="text-indent: 48px; margin:4px">POWIAT: &nbsp;{self.wyr_data[54]}</p><p style="text-indent: 0px; margin:4px">WOJEWÓDZTWO: &nbsp;{self.wyr_data[55]}</p></body></html>')
-                # self.dlg.wyr_panel.lok.set_tooltip(f'<html><head/><body><p>&nbsp;&nbsp;&nbsp;MIEJSCOWOŚĆ &nbsp;{self.wyr_data[52]}<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;GMINA &nbsp;{self.wyr_data[53]}<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;POWIAT &nbsp;{self.wyr_data[54]}<br>WOJEWÓDZTWO &nbsp;{self.wyr_data[55]}</p></body></html>')
                 self.dlg.wyr_panel.hash.set_value(self.wyr_data[51])  # Aktualizacja teren_id
                 self.dlg.wyr_panel.status_selector.set_case(self.wyr_data[1], self.wyr_data[2])  # Aktualizacja statusu wyrobiska
+                # Aktualizacja powierzchni wyrobiska, jeżeli wyrobisko niepotwierdzone:
+                if self.dlg.wyr_panel.status_selector.case != 1:
+                    area_txt = f"{self.wyr_data[4]} m\u00b2 "
+                    dlg.wyr_panel.area_icon.setEnabled(True)
+                    dlg.wyr_panel.area_label.setText(area_txt)
                 self.dlg.wyr_panel.wn_picker.wn_id = self.wyr_data[3]  # Aktualizacja wn_id
                 self.dlg.wyr_panel.wdf_sel_update()  # Aktualizacja zaznaczenia wiersza w tv_wdf
                 dlg.wyr_panel.focus_void = True

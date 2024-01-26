@@ -436,9 +436,15 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             self.resize_canvas()
         if obj is iface.mainWindow() and event.type() == QEvent.WindowTitleChange:
             # Zmiana tytułu okna QGIS:
-            title = self.app.windowTitle()
-            new_title = title.replace('- QGIS', '| MOEK_Editor')
-            self.app.setWindowTitle(new_title)
+            title = iface.mainWindow().windowTitle()
+            dashes = ['-', '—']  # W różnych wersjach QGIS występują inne dywizory w tytule
+            _dash = ''
+            for dash in dashes:
+                if dash in title:
+                    _dash = dash
+                    break
+            new_title = title.replace(f'{dash} QGIS', '| MOEK_Editor')
+            iface.mainWindow().setWindowTitle(new_title)
         if obj is iface.mainWindow() and event.type() == QEvent.Close:
             # Zamknięcie QGIS'a:
             self.closing = True

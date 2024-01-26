@@ -616,9 +616,13 @@ class MapToolManager:
         ]
 
     def maptool_change(self, new_tool, old_tool):
-        if not new_tool and not old_tool:
+        if not new_tool:
             # Jeśli wyłączany jest maptool o klasie QgsMapToolIdentify,
-            # event jest puszczany dwukrotnie (pierwszy raz z wartościami None, None)
+            # event jest puszczany dwukrotnie (pierwszy raz z new_tool: None):
+            return
+        if type(old_tool).__name__ == 'QObject':
+            # Workaround dla QGIS > 3.10:
+            # event jest puszczany dwukrotnie przy włączaniu MOEK maptool'a
             return
         try:
             dlg.marsz_panel.setVisible(False)
@@ -699,8 +703,8 @@ class MapToolManager:
         elif self.params["class"] == PolyDrawMapTool:
             self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"])
             self.maptool.drawn.connect(self.params["fn"])
-        self.canvas.setMapTool(self.maptool)
         self.mt_name = self.params["name"]
+        self.canvas.setMapTool(self.maptool)
 
     def dict_name(self, maptool):
         """Wyszukuje na liście wybrany toolmap na podstawie nazwy i zwraca słownik z jego parametrami."""
@@ -1814,8 +1818,9 @@ class PolyEditMapTool(QgsMapTool):
             geom = self.get_geom_from_part(i)
             poly = geom.asPolygon()[0]
             for j in range(len(poly) - 1):
-                self.area_rbs[i].addPoint(poly[j])
-                self.vertex_rbs[i].addPoint(poly[j])
+                if poly[j].x() != 0:  # Naprawa problemu, kiedy do geometrii dostanie się zły punkt
+                    self.area_rbs[i].addPoint(poly[j])
+                    self.vertex_rbs[i].addPoint(poly[j])
             self.vertex_rbs[i].setVisible(False)
 
     def snap_to_layer(self, event):
@@ -1967,8 +1972,8 @@ class PolyEditMapTool(QgsMapTool):
                     self.node_sel = True  # Zaznaczenie wierzchołka
                 else:
                     self.node_sel = False  # Odzaznaczenie wierzchołka
-            # Przemieszczenie wierzchołka:
             elif self.moving:
+                # Przemieszczenie wierzchołka:
                 map_point = self.toMapCoordinates(event.pos())
                 if self.change_is_valid:
                     self.vertex_rbs[self.node_idx[0]].movePoint(self.node_idx[1], map_point)
@@ -2038,6 +2043,8 @@ class PolyEditMapTool(QgsMapTool):
         if not self.change_is_valid:
             return
         new_poly = self.area_painter.asGeometry()
+        if new_poly.isMultipart():
+            new_poly.convertToSingleType()
         overlaps = self.area_overlap_check(new_poly)
         if self.mode == "add":
             if len(overlaps[0]) == 0:  # Geometria area_painter nie przecina się z żadnym poligonem
@@ -2084,6 +2091,8 @@ class PolyEditMapTool(QgsMapTool):
         for i in range(len(self.area_rbs)):
             if i in overlaps:  # Poligon znajduje się na liście
                 poly = self.area_rbs[i].asGeometry()
+                if poly.isMultipart():
+                    poly.convertToSingleType()
                 try:
                     new_poly = poly.difference(sub_poly)
                 except Exception as err:
@@ -2114,6 +2123,8 @@ class PolyEditMapTool(QgsMapTool):
         for i in range(len(self.area_rbs)):
             if i in overlaps:  # Poligon znajduje się na liście
                 poly = self.area_rbs[i].asGeometry()
+                if poly.isMultipart():
+                    poly.convertToSingleType()
                 # Sprawdzenie, czy geometria jest poprawna:
                 err = poly.validateGeometry()
                 if not err:
@@ -2153,6 +2164,8 @@ class PolyEditMapTool(QgsMapTool):
             rb_geom = self.get_geom_from_vertex_rb(rb)
         else:
             rb_geom = area_rb.asGeometry()
+            if rb_geom.isMultipart():
+                rb_geom.convertToSingleType()
             rb = self.get_nodes_from_area_rb(rb_geom)
         # Sprawdzenie, czy nowa geometria jest poprawna:
         rb_check = self.rubberband_check(rb_geom)
@@ -2193,6 +2206,8 @@ class PolyEditMapTool(QgsMapTool):
                 if i == self.node_idx[0]:  # Wykluczenie aktualnie edytowanego poligonu
                     continue
                 poly = self.area_rbs[i].asGeometry()
+                if poly.isMultipart():
+                    poly.convertToSingleType()
                 overlap_geom = rb_geom.intersection(poly).asGeometryCollection()
                 for geom in overlap_geom:
                     if geom and geom.type() == QgsWkbTypes.PolygonGeometry:
@@ -2211,6 +2226,8 @@ class PolyEditMapTool(QgsMapTool):
         touches = []
         for i in range(len(self.area_rbs)):
             poly = self.area_rbs[i].asGeometry()
+            if poly.isMultipart():
+                poly.convertToSingleType()
             overlap_geom = new_poly.intersection(poly).asGeometryCollection()
             appended = False
             for geom in overlap_geom:
@@ -2229,6 +2246,8 @@ class PolyEditMapTool(QgsMapTool):
         touches = []
         for i in range(len(self.area_rbs)):
             poly = self.area_rbs[i].asGeometry()
+            if poly.isMultipart():
+                poly.convertToSingleType()
             polyline = self.line_from_polygon(poly)
             overlap_geom = new_poly.intersection(polyline).asGeometryCollection()
             appended = False
@@ -3240,7 +3259,13 @@ class PolyDrawMapTool(QgsMapTool):
             self.area_painter.removeLastPoint(0)
             if self.area_painter.numberOfVertices() > 2:
                 self.valid_check()
-                self.drawn.emit(self.area_painter.asGeometry()) if self.change_is_valid else self.drawn.emit(None)
+                if self.change_is_valid:
+                    geom = self.area_painter.asGeometry()
+                    if geom.isMultipart():
+                        geom.convertToSingleType()
+                    self.drawn.emit(geom)
+                else:
+                    self.drawn.emit(None)
                 self.reset()
             else:
                 self.reset()
@@ -3276,6 +3301,8 @@ class PolyDrawMapTool(QgsMapTool):
         self.node_valider.reset(QgsWkbTypes.PointGeometry)
         # Przygotowanie geometrii valid_checker'a:
         rb_geom = self.area_painter.asGeometry()
+        if rb_geom.isMultipart():
+            rb_geom.convertToSingleType()
         nodes = self.get_nodes_from_area_rb(rb_geom)
         # Sprawdzenie, czy nowa geometria jest poprawna:
         rb_check = self.rubberband_check(rb_geom)

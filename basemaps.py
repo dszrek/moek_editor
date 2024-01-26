@@ -123,7 +123,6 @@ class MoekMapPanel(QFrame):
         self.cat = ""
         self.map = int()
         self.loaded = False
-        self.ge = False
         self.layers = []
         self.all = []
         self.map_changed.connect(self.map_change)
@@ -331,7 +330,10 @@ class MoekMapButtons(QFrame):
         self.topo_btn = MoekMapButton(self, name="topo", icon="map_topo", tooltip="mapy topograficzne")
         self.ge_btn = MoekButton(self, size=50, name="ge", tooltip="pokaż widok mapy w Google Earth Pro")
         self.snmt_btn = MoekMapButton(self, name="snmt", icon="map_snmt", wsize=24, hsize=24, l=18)
+        self.ge_sync_btn = MoekButton(self, size=24, name="ge_sync", checkable=True, tooltip="wyłączona synchronizacja widoku Google Earth Pro", tooltip_on="włączona synchronizacja widoku Google Earth Pro")
+        self.ge_light = MoekGeLight(self)
         self.ge_btn.clicked.connect(self.ge_clicked)
+        self.ge_sync_btn.clicked.connect(self.ge_sync_clicked)
 
     def setEnabled(self, value):
         """Ustawienie koloru linii w MoekMapButtons w zależności od parametru setEnabled."""
@@ -353,15 +355,42 @@ class MoekMapButtons(QFrame):
         self.topo_btn.setGeometry(2 * w_4 + marg_2, 0, b, b)
         self.ge_btn.setGeometry(3 * w_4 + marg_2, 0, b, b)
         self.snmt_btn.setGeometry(w_4 - 12, 13, 24, 37)
+        self.ge_sync_btn.setGeometry(3 * w_4 - 2, 13, 24, 24)
+        self.ge_light.setGeometry(4 * w_4 - 12, 4, 24, 24)
 
     def ge_clicked(self):
         """Synchronizacja widoku QGIS'a i Google Earth Pro."""
-        if dlg.p_map.ge:  # Warstwa z Google Earth Pro jest włączona
-            dlg.ge.ge_sync()  # Synchronizacja widoków
-        else:
-            # print(f"4. q2ge")
-            dlg.ge.q2ge(False)  # Pokazanie widoku QGIS'a w Google Earth Pro
+        # if dlg.p_map.ge:  # Warstwa z Google Earth Pro jest włączona
+        #     dlg.ge.ge_sync()  # Synchronizacja widoków
+        # else:
+        #     # print(f"4. q2ge")
+        dlg.ge.q2ge()  # Pokazanie widoku QGIS'a w Google Earth Pro
 
+    def ge_sync_clicked(self):
+        """Zmiana trybu synchronizacji widoku QGIS'a i Google Earth Pro."""
+        dlg.bm_panel.ge_sync = self.ge_sync_btn.isChecked()
+
+
+class MoekGeLight(QFrame):
+    """Kontrolka pokazująca, czy GEP jest uruchomiony."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.is_on = False
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(8, 8)
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "is_on":
+            color = "40, 170, 70" if val else "224, 0, 0"
+            self.setStyleSheet("""
+                            QFrame {
+                                border: 1px solid rgba(0, 0, 0, 0);
+                                border-radius: 4px;
+                                background: rgb(""" + color  + """);
+                            }
+                            """)
 
 class MoekMapButton(QFrame):
     """Przycisk panelu mapowego."""

@@ -321,6 +321,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.export_panel = ExportCanvasPanel(self.canvas)
         self.export_panel.hide()
 
+        self.mon = MonitorManager(dlg=self)
+        self.ge = GESync(dlg=self)  # Integracja z Google Earth Pro
         self.cfg = PanelManager(dlg=self)
         self.mt = MapToolManager(dlg=self, canvas=self.canvas)
         self.obj = ObjectManager(dlg=self, canvas=self.canvas)
@@ -712,8 +714,6 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         # Deaktywacja skrótów klawiszowych:
         self.hk_vn = False
         self.hk_seq = False
-        # Usunięcie połączenia z Google Earth Pro:
-        self.ge = None
         # Odblokowanie messagebar'u:
         try:
             iface.messageBar().widgetAdded.disconnect(self.msgbar_blocker)
@@ -780,6 +780,10 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         except Exception as err:
             print(f"closeEvent/self.mt: {err}")
         try:
+            self.mon = None
+        except Exception as err:
+            print(f"closeEvent/self.mt: {err}")
+        try:
             self.lyr = None
         except Exception as err:
             print(f"closeEvent/self.lyr: {err}")
@@ -787,6 +791,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             self.cfg = None
         except Exception as err:
             print(f"closeEvent/self.cfg: {err}")
+        # Usunięcie połączenia z Google Earth Pro:
+        self.ge = None
+        QgsSettings().setValue("/qgis/map_update_interval", 250)
         # Przełączenie na QGIS'owy maptool:
         map_tool_pan = QgsMapToolPan(self.canvas)
         self.canvas.setMapTool(map_tool_pan)

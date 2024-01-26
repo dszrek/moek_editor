@@ -4583,13 +4583,13 @@ class MoekSeqBox(QFrame):
         except Exception as err:
             print(f"player: {err}")
         vn_zoom(player=True)  # Przybliżenie widoku mapy do nowego vn'a
-        print(f'seq_ge: {self.sqb_btns["sqb_" + str(self.num)].ge}, is_ge: {dlg.ge.is_ge}')
-        if self.sqb_btns["sqb_" + str(self.num)].ge:  # W sekwencji jest Google Earth Pro
-            print(f"+++++++++++++++++++++++++  1  +++++++++++++++++++++++++++++")
-            dlg.ge.q2ge(player=True, back=True)
-        elif dlg.ge.is_ge:  # Google Earth Pro jest włączony
-            print(f"+++++++++++++++++++++++++  2  +++++++++++++++++++++++++++++")
-            dlg.ge.q2ge(player=True, back=True)
+        # print(f'seq_ge: {self.sqb_btns["sqb_" + str(self.num)].ge}, is_ge: {dlg.ge.is_ge}')
+        # if self.sqb_btns["sqb_" + str(self.num)].ge:  # W sekwencji jest Google Earth Pro
+        #     print(f"+++++++++++++++++++++++++  1  +++++++++++++++++++++++++++++")
+        #     dlg.ge.q2ge(player=True, back=True)
+        # elif dlg.ge.is_ge:  # Google Earth Pro jest włączony
+        #     print(f"+++++++++++++++++++++++++  2  +++++++++++++++++++++++++++++")
+        #     dlg.ge.q2ge(player=True, back=True)
         self.i = 0  # Przejście do pierwszego podkładu mapowego z sekwencji
         delay = self.sqb_btns["sqb_" + str(self.num)].maps[self.i][1]  # Pobranie opóźnienia
         self.set_timer(delay)  # Uruchomienie stopera

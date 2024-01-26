@@ -261,7 +261,6 @@ class MoekEditor:
         self.title_change()  # Zmiana tytułu okna QGIS
         self.dockwidget.splash_screen.p_bar.setMaximum(0)
         QgsApplication.processEvents()
-        self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
         teams_cb_changed()  # Załadowanie powiatów
         # show the dockwidget
         # TODO: fix to allow choice of dock location

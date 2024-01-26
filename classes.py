@@ -4,6 +4,8 @@ import sys
 import psycopg2
 import psycopg2.extras
 import os.path
+import os
+import win32api
 import win32gui
 import win32ui
 import win32con
@@ -11,10 +13,17 @@ import win32process
 import tempfile
 import codecs
 import time
+import math
+try:
+    from osgeo import gdal, osr
+except:
+    import gdal
+    import osr
 import pandas as pd
+import numpy as np
 
-from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsPointXY
-from qgis.PyQt.QtCore import Qt, pyqtSlot, pyqtProperty, QTimer, QAbstractTableModel, QVariant, QModelIndex, QRect
+from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsPointXY, QgsSettings, QgsRasterDataProvider, QgsRasterBlock, QgsRasterFileWriter, QgsRasterPipe, QgsRasterInterface
+from qgis.PyQt.QtCore import Qt, pyqtSlot, pyqtProperty, QTimer, QAbstractTableModel, QVariant, QModelIndex, QRect, QObject, pyqtSignal, QFileSystemWatcher
 from qgis.PyQt.QtWidgets import QMessageBox, QHeaderView, QStyledItemDelegate, QStyle
 from qgis.PyQt.QtGui import QColor, QFont, QLinearGradient, QBrush, QPen, QPainter
 from qgis.utils import iface
@@ -22,6 +31,8 @@ from threading import Thread
 from PIL import Image
 from win32com.client import GetObject
 from configparser import ConfigParser
+from win32con import MONITOR_DEFAULTTONEAREST
+# from contextlib import contextmanager
 
 DB_SOURCE = "MOEK"
 TEMP_PATH = tempfile.gettempdir()
@@ -191,112 +202,191 @@ class CfgPars(ConfigParser):
         return result
 
 
+class MonitorManager:
+    """Menedżer ustawień monitorów."""
+    def __init__(self, dlg):
+        self.dlg = dlg
+        self.monitors = []
+        self.monitors_props = []
+        self.test_monitors = []
+        self.test_monitors_props = []
+        self.create_monitors()
+
+    def create_monitors(self, check=False):
+        """Tworzenie monitorów lub monitorów testowych (jeśli check=True)."""
+        monitors = self.test_monitors if check else self.monitors
+        monitors_props = self.test_monitors_props if check else self.monitors_props
+        monitors.clear()
+        monitors_props.clear()
+        try:
+            i = 0
+            for hMonitor, hdcMonitor, pyRect in win32api.EnumDisplayMonitors():
+                mon_props = self.monitor_properties(hMonitor)
+                if not mon_props:
+                    continue
+                hmon, device, scale_factor = mon_props
+                _mon = Monitor(i, hmon, device, scale_factor)
+                monitors.append(_mon)
+                monitors_props.append([i, hmon, device, scale_factor])
+                i += 1
+        except win32api.error:
+            return None
+
+    def check_monitors(self):
+        """Sprawdza, czy ustawienia monitorów się nie zmieniły. Jeśli tak, to tworzy monitory od nowa."""
+        self.create_monitors(check=True)  # Aktualizacja listy monitorów testowych
+        if self.monitors_props != self.test_monitors_props:
+            self.create_monitors()
+
+    def monitor_properties(self, hmon):
+        """Zwraca ustawienia monitora."""
+        try:
+            device = win32api.GetMonitorInfo(hmon)["Device"]
+        except win32api.error:
+            return None
+        try:
+            l,t,r,b = win32api.GetMonitorInfo(hmon)["Monitor"]
+        except win32api.error:
+            return None
+        v_w = r - l
+        try:
+            r_w = win32api.EnumDisplaySettings(device, win32con.ENUM_CURRENT_SETTINGS).PelsWidth
+        except win32api.error:
+            return None
+        if v_w > 0:
+            scale_factor = r_w / v_w
+        else:
+            return
+        return hmon, device, scale_factor
+
+    def monitor_from_window(self, window):
+        """Zwraca id monitora, na którym znajduje się wskazane okno."""
+        for monitor in self.monitors:
+            if monitor.contains_window(window):
+                return monitor.id
+        return None
+
+    def scale_factor_from_window(self, window):
+        "Zwraca scale_factor monitora, na którym znajduje się wskazane okno."
+        for monitor in self.monitors:
+            if monitor.contains_window(window):
+                return monitor.scale_factor
+        return None
+
+class Monitor:
+    """Obiekt reprezentujący monitor."""
+    def __init__(self, id, handle, device, scale_factor):
+        self.id = id
+        self.handle = handle
+        self.device = device
+        self.scale_factor = scale_factor
+        self.prop_list = [self.id]
+
+    def contains_window(self, window):
+        """Sprawdza, czy podane okno znajduje się w obrębie tego monitora."""
+        try:
+            if win32api.MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST) == self.handle:
+                return True
+            else:
+                return False
+        except win32api.error:
+            return None
+
+
 class GESync:
     """Integracja QGIS'a z Google Earth Pro."""
-    def __init__(self):
-        self.screen_scale = 1  # Wartość skalowania rozdzielczości ekranowej
+    def __init__(self, dlg):
+        self.dlg = dlg
         self.q_id = None  # Id procesu QGIS'a
         self.ge_id = None  # Id procesu Google Earth Pro
         self.q_hwnd = None  # Handler okna QGIS'a
         self.ge_hwnd = None  # Handler okna Google Earth Pro
-        self.bmp_hwnd = None  # Handler subokna Google Earth Pro z widokiem samej mapy
-        self.bytes = int()  # Rozmiar aktualnego pliku jpg
-        self.is_ge = False  # Czy Google Earth Pro jest uruchomiony?
+        self.tif_hwnd = None  # Handler subokna Google Earth Pro z widokiem samej mapy
+        self.downscale = None  # Mnożnik obniżenia rozdzielczości podkładu GEP
+        # self.loaded = False
+        self.t0 = None
+        self.t1 = None
+        self.update_timer = None  # Obiekt stopera aktualizacji screengraba GEP
+        self.data_source = "/vsimem/ge.tif"  # Tymczasowy plik geotiff (zapisywany bezpośrednio do pamięci)
+        # self.data_source = TEMP_PATH + "\\ge.tif"  # Tymczasowy plik geotiff
+        self.blocker = False
         self.is_on = False  # Czy warstwa 'Google Earth Pro' jest włączona?
-        self.tmp_num = 0  # Numer pliku tymczasowego
-        self.extent = None  # Zasięg geoprzestrzenny aktualnego widoku mapy
-        self.t_void = False  # Blokada stopera
-        self.player = False  # Czy w danym momencie uruchomiony jest player sekwencji?
-        self.loaded = False  # Czy widok mapy się załadował?
-        self.ge_layer = QgsProject.instance().mapLayersByName('Google Earth Pro')[0]  # Referencja warstwy 'Google Earth Pro'
-        self.ge_legend = QgsProject.instance().layerTreeRoot().findLayer(self.ge_layer.id())  # Referencja warstwy w legendzie
-        self.bmp_w = int()  # Szerokość bmp
-        self.bmp_h = int()  # Wysokość bmp
-        self.jpg_file = ""  # Ścieżka do pliku jpg
+        self.tif_w = None  # Szerokość geotiff'a
+        self.tif_h = None  # Wysokość geotiff'a
+        self.img_array = np.array([])  # Macierz numpy przechwyconego obrazu GEP
+        self.img_matrix = np.array([])  # Uproszczona matryca z macierzy numpy przechwyconego obrazu GEP
         self.get_handlers()
-        iface.mapCanvas().extentsChanged.connect(self.extent_changed)
+        self.dlg.bm_panel.ge_sync = False
+        self.dlg.bm_panel.date_selector.init_void = False
 
-    def extent_changed(self):
-        """Zmiana zakresu geoprzestrzennego widoku mapy."""
-        # Wyjście z funkcji, jeśli stoper obecnie pracuje:
-        if self.t_void:
-            return
-        self.t_void = True
-        if self.is_on:
-            self.extent = iface.mapCanvas().extent()
-            self.loaded = False
-        # print(f"loaded: {self.loaded}")
-        # Wyłączenie warstwy z maską powiatu (QGIS zawiesza się przy częstym zoomowaniu z tą włączoną warstwą):
-        # QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("powiaty_mask")[0].id()).setItemVisibilityChecked(False)
-        self.timer = QTimer()
-        self.timer.setInterval(200)
-        self.timer.timeout.connect(self.check_extent)
-        self.timer.start()  # Odpalenie stopera
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "ge_hwnd":
+            print(f"ge_hwnd: {val}")
+            self.dlg.p_map.btns.ge_light.is_on = True if val else False
+        # elif attr == "blocker":
+        #     print(f"blocker: {val}")
+            # iface.mapCanvas().freeze(val)  # Zablokowanie odświeżania canvas'u
+        elif attr == "is_on":
+            if val:
+                QgsSettings().setValue("/qgis/map_update_interval", 750) #  Redukcja flickering'u podkładu GEP
+                self.dlg.bm_panel.check_extent()
+            else:
+                QgsSettings().setValue("/qgis/map_update_interval", 250)
+                self.update_timer_reset()
 
-    def check_extent(self):
-        """Sprawdzenie, czy widok mapy przestał się zmieniać."""
-        if self.extent != iface.mapCanvas().extent():  # Zmienił się
-            self.extent = iface.mapCanvas().extent()
-        else:
-            # Kasowanie licznika:
-            self.timer.stop()
-            self.timer.deleteLater()
-            self.t_void = False
-            self.extent = iface.mapCanvas().extent()
-            # self.loaded = True
-            # print(f"loaded: {self.loaded}")
-            # Włączenie warstwy z maską powiatu:
-            # QgsProject.instance().layerTreeRoot().findLayer(QgsProject.instance().mapLayersByName("powiaty_mask")[0].id()).setItemVisibilityChecked(True)
-            if self.is_on:
-                self.ge_sync()
+    def ge_probe(self):
+        """Sprawdza, czy GEP jest uruchomiony."""
+        if self.ge_hwnd and not win32gui.IsWindow(self.ge_hwnd):
+            self.ge_hwnd = None
+            self.tif_hwnd = None
+            self.dlg.bm_panel.check_extent()
 
-    def visible_changed(self, value):
-        """Włączenie / wyłączenie warstwy 'Google Earth Pro'."""
-        # print(f"[visible_changed]")
-        if value:  # Włączono warstwę
-            self.is_on = True
-            if self.extent != iface.mapCanvas().extent():
-                self.extent = iface.mapCanvas().extent()
-                self.ge_sync()
-            if self.player or not self.loaded:
-                self.ge_grabber()
-        else:  # Wyłączono warstwę
-            self.is_on = False
+    def ge_reset(self):
+        """Próba naprawienia ewentualnych błędów."""
+        # print(f"[ge_reset]")
+        self.get_handlers()
+        if not self.ge_hwnd:
+            self.q2ge()
+        time.sleep(3)  # Czas uruchomienia GEP
+        self.dlg.bm_panel.check_extent()
 
     def get_handlers(self):
         """Ustalenie id procesów i handlerów okien QGIS'a i Google Earth Pro (jeśli jest uruchomiony)."""
         # Utworzenie listy uruchomionych procesów:
         processes = GetObject('winmgmts:').InstancesOf('Win32_Process')
         process_list = [(p.Properties_("ProcessID").Value, p.Properties_("Name").Value) for p in processes]
+        q_flag = False
         ge_flag = False
         for p in process_list:
             if p[1] == "qgis-bin-g7.exe" or p[1] == "qgis-bin.exe" or p[1] == "qgis-ltr-bin.exe" or p[1] == "qgis-ltr-bin-g7.exe":
+                q_flag = True
                 self.q_id = p[0]
                 # print(f"qgis: {p[1]}")
             elif p[1] == "googleearth.exe":
                 ge_flag = True
-                self.is_ge = True
                 self.ge_id = p[0]
-                # print(f"is_ge: {self.is_ge}, ge_id: {self.ge_id}")
+        if not q_flag:
+            self.q_id = None
+            self.q_hwnd = None
         if not ge_flag:  # Google Earth Pro nie jest uruchomiony
             self.ge_id = None
-            self.is_ge = False
+            self.ge_hwnd = None
         # Pętla przeszukująca okna uruchomionych programów:
         win32gui.EnumWindows(self._enum_callback, None)
 
     def _enum_callback(self, hwnd, extras):
         """Ustalenie handlerów dla QGIS i Google Earth Pro."""
         # Wyszukanie handlera QGIS'a:
-        # if win32process.GetWindowThreadProcessId(hwnd)[1] == self.q_id:
         w_title = win32gui.GetWindowText(hwnd)
         # print(f"w_title: {w_title}")
         if w_title.find("| MOEK_Editor") != -1:  # W nazwie otwartego pliku .qgz musi być fraza "*MOEK_editor"
             self.q_hwnd = hwnd
-            # print(f"self.q_hwnd: {self.q_hwnd}")
+            print(f"self.q_hwnd: {self.q_hwnd}")
         # Wyszukanie handlera Google Earth Pro:
-        if self.is_ge and w_title == "Google Earth Pro":
+        if w_title == "Google Earth Pro":
             self.ge_hwnd = hwnd
-            # print(f"self.ge_hwnd: {self.ge_hwnd}")
             # Wyszukanie handlera subokna Google Earth Pro z obrazem mapy:
             self.child = 0
             try:
@@ -312,58 +402,150 @@ class GESync:
         rect = win32gui.GetWindowRect(hwnd)
         # print(f"ge_width: {rect[2] - rect[0]}, ge_height: {rect[3] - rect[1]}")
         if self.child == 12:
-            self.bmp_hwnd = hwnd
+            self.tif_hwnd = hwnd
 
-    def ge_sync(self):
-        """Wyświetlenie w Google Earth Pro obszaru mapy z QGIS'a."""
-        # print("[ge_sync]")
-        if not self.is_ge:
-            # print(f"2. q2ge")
-            self.q2ge()
+    def start_updater(self):
+        """Uruchomienie stopera odświeżania podkładu GEP"""
+        print("[start_updater]")
+        if self.update_timer != None:
+            self.update_timer_reset()
+        # self.loaded = False
+        self.blocker = False
+        self.update_timer = QTimer(interval=300)
+        self.update_timer.timeout.connect(self.ge_grabber)
+        self.update_timer.start()  # Odpalenie stopera
+
+    def update_timer_reset(self):
+        """Kasowanie stopera odświeżenia podkładu GEP."""
+        print("[update_timer_reset]")
+        if self.update_timer:
+            # self.loaded = False
+            self.update_timer.stop()
+            self.update_timer = None
+
+    def on_top_off(self):
+        """Wyłączenie dla QGIS'a funkcji always on top."""
+        # print(f"[on_top_off]")
+        try:
+            win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
+            # print(f"qgis on top: False")
+        except:
+            print(f"q_hwnd ({self.q_hwnd}) exception!")
             self.get_handlers()
             return
-        # Sprawdzenie, czy Google Earth Pro jeszcze działa:
         try:
-            win32gui.GetClientRect(self.bmp_hwnd)
-        except:
-            self.is_ge = False
+            win32gui.SetForegroundWindow(self.q_hwnd)
+        except Exception as err:
+            print(err)
+
+    def limit_pixel_size(self, px_limit):
+        """Pomniejszenie wymiarów tiff'a, aby nie przekraczał dopuszczalnej ilość pikseli
+        - redukcja flickeringu podczas ładowania obrazka do warstwy."""
+        w_0, h_0 = self.tif_w, self.tif_h
+        w, h = w_0, h_0
+        pxs = w * h
+        if pxs < px_limit:
             return
-        # print(f"3. q2ge")
-        self.q2ge()
-        self.ge_grabber()
+        w_min = 0
+        w_max = w_0
+        while w_max - w_min > 1:
+            w = w_min + int(round((w_max - w_min) / 2))
+            h = int(round(w * h_0 / w_0))
+            pxs = w * h
+            if pxs < px_limit:
+                w_min = w
+            else:
+                w_max = w
+            # print(f"w_min: {w_min}, w_max: {w_max}, w: {w}, h: {h}, pxs: {pxs}")
+        self.tif_w, self.tif_h = w, h
+
+    def get_tif_size(self, ge_w, ge_h, q_w):
+        """Ustala wymiary tif'a w zależności od rozmiarów mapcanvas'u."""
+        if ge_w < q_w:
+            # Szerokość obrazka z GEP jest mniejsza od QGIS
+            # nie ma sensu go upscalować
+            return ge_w, ge_h
+        else:
+            # Obrazek z GEP jest większy od QGIS
+            # zmniejszamy go, żeby plik był lżejszy
+            tif_w = q_w
+            tif_h = round(ge_h * tif_w / ge_w)
+            return tif_w, tif_h
+
+    def calculate_ge_size(self, l, t, r, b):
+        """Ustalenie rzeczywistych wymiarów przechwyconego z GEP obrazu."""
+        # print("[calculate_ge_size]")
+        # Ustalenie współczynników skalowania monitorów:
+        try:
+            q_scale_factor = self.dlg.mon.scale_factor_from_window(self.q_hwnd)
+        except Exception as e:
+            print(f"scale_factor_from_window [self.q_hwnd] exception: {e}")
+        try:
+            ge_scale_factor = self.dlg.mon.scale_factor_from_window(self.tif_hwnd)
+        except Exception as e:
+            print(f"scale_factor_from_window [self.tif_hwnd] exception: {e}")
+        if not q_scale_factor or not ge_scale_factor:
+            self.ge_reset()
+            return
+        # Szerokość i wysokość przechwytywanego obrazu:
+        ge_w_0 = int(r - l)
+        ge_h_0 = int(b - t)
+        # Rzeczywista (niezależna od ustawionego skalowania) szerokość i wysokość przechwytywanego obrazu:
+        ge_w_scaled = int(ge_w_0 * ge_scale_factor)
+        ge_h_scaled = int(ge_h_0 * ge_scale_factor)
+        # Ustalenie wymiarów tiff'a:
+        q_w_scaled = int(iface.mapCanvas().width() * q_scale_factor)
+        self.tif_w, self.tif_h = self.get_tif_size(ge_w_scaled, ge_h_scaled, q_w_scaled)
+        self.limit_pixel_size(3000000)
+        # Ustalenie mnożnika obniżenia rozdzielczości przechwyconego obrazu w zależności od wymiarów mapcanvas'u:
+        self.downscale = ge_w_scaled / self.tif_w
+        # print(f"downscale: {self.downscale}")
+        # self.downscale = 1 if downscale < 1 else downscale
+        # # Ostateczne ustalenie szerokości i wysokości przechwyconego obrazu:
+        # self.tif_w = int(self.tif_w / self.downscale)
+        # self.tif_h = int(self.tif_h / self.downscale)
+        # print(f"{self.tif_w}x{self.tif_h} x{self.downscale}, q_w_scaled: {q_w_scaled}")
+
+    def matrix_is_equal(self, tmp_matrix):
+        """Sprawdza, czy podobieństwa w matrycach nowego i poprzednio ustalonego przechwycownego obrazu GEP są na poziomie 98%."""
+        number_of_equal_elements = np.sum(self.img_matrix==tmp_matrix)
+        total_elements = self.img_matrix.size
+        equality = round(number_of_equal_elements/total_elements*100, 2)
+        return False if equality < 98 or np.isnan(equality) else True
+
+    def array_merger(self, array):
+        """Tworzy 2D matrycę z 3D macierzy."""
+        return array[:,:,0] + array[:,:,1] + array[:,:,2]
 
     def q2ge(self, back=True, player=False):
         """Przejście w Google Earth Pro do widoku mapy z QGIS'a."""
         # print(f"[q2ge]")
-        if not self.is_ge:
-            self.get_handlers()
         canvas = iface.mapCanvas()
-        crs_src = canvas.mapSettings().destinationCrs()  # PL1992
-        crs_dest = QgsCoordinateReferenceSystem(4326)  # WGS84
-        xform = QgsCoordinateTransform(crs_src, crs_dest, QgsProject.instance())  # Transformacja między układami
-        if not self.extent or not back or player:
-            # print("extent changed")
-            self.loaded = False
-            self.extent = iface.mapCanvas().extent()
+        extent = self.dlg.bm_panel.extent
+        if not extent:
+            extent.check_extent()
+            return
         # Współrzędne rogów widoku mapy:
-        x1 = self.extent.xMinimum()
-        x2 = self.extent.xMaximum()
-        y1 = self.extent.yMinimum()
-        y2 = self.extent.yMaximum()
+        x1 = extent.xMinimum()
+        x2 = extent.xMaximum()
+        y1 = extent.yMinimum()
+        y2 = extent.yMaximum()
         # Wyznaczenie punktu centralnego:
         x = (x1 + x2) / 2
         y = (y1 + y2) / 2
         proj = QgsPointXY(x, y)  # Punkt centralny w PL1992
         # Transformacja punktu centralnego do WGS84:
+        crs_src = canvas.mapSettings().destinationCrs()  # PL1992
+        crs_dest = QgsCoordinateReferenceSystem(4326)  # WGS84
+        xform = QgsCoordinateTransform(crs_src, crs_dest, QgsProject.instance())  # Transformacja między układami
         geo = xform.transform(QgsPointXY(proj.x(), proj.y()))
         # Współrzędne geograficzne punktu centralnego:
         lon = geo.x()
         lat = geo.y()
-        # Ustalenie kąta obrotu mapy w GE:
+        # Ustalenie kąta obrotu mapy w GEP:
         rot = -3.85 + (lon-14.11677234)*7.85/10.02872526
-        # Ustalenie wysokości kamery w GE:
-        rng = canvas.scale() * (canvas.width()/100) * (0.022875 / self.screen_scale)
-        TEMP_PATH = tempfile.gettempdir()  # Ścieżka do folderu TEMP
+        # Ustalenie wysokości kamery w GEP:
+        rng = canvas.scale() * (canvas.width()/100) * 0.022875
         # Utworzenie pliku kml:
         kml = codecs.open(TEMP_PATH + '/moek.kml', 'w', encoding='utf-8')
         kml.write('<?xml version="1.0" encoding="UTF-8"?>\n')
@@ -385,131 +567,148 @@ class GESync:
         kml.write('    </Document>\n')
         kml.write('</kml>\n')
         kml.close()
-        # Włączenie dla QGIS'a funkcji always on top:
-        if back and self.is_ge:
+        # Włączenie dla QGIS'a trybu always on top:
+        if back and self.ge_hwnd:
             # print(f"qgis on top: True")
             try:
                 win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
             except:
                 print(f"q_hwnd ({self.q_hwnd}) exception!")
-                pass
+                self.ge_reset()
+                return
         # Odpalenie pliku w Google Earth Pro:
         os.startfile(TEMP_PATH + '/moek.kml')
-        if back and self.is_ge:
+        if not self.ge_hwnd:
+            self.get_handlers()
+        # Opóźnione wyłączenie dla QGIS'a trybu always on top:
+        if back and self.ge_hwnd:
             QTimer.singleShot(1000, self.on_top_off)
 
-    def on_top_off(self):
-        """Wyłączenie dla QGIS'a funkcji always on top."""
-        # print(f"[on_top_off]")
-        try:
-            win32gui.SetWindowPos(self.q_hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
-            win32gui.SetForegroundWindow(self.q_hwnd)
-            # print(f"qgis on top: False")
-        except:
-            print(f"q_hwnd ({self.q_hwnd}) exception!")
-            self.get_handlers()
-
     def ge_grabber(self):
-        """Główna funkcja przechwytywania obrazu z Google Earth Pro."""
-        # Ekranowe wymiary obrazka do przechwycenia:
-        # print("[ge_grabber]")
+        """Przechwyca obraz z Google Earth Pro i wczytuje go do warstwy Google Earth Pro."""
+        if self.blocker or self.dlg.bm_panel.rendering:
+            # print("============> blocked")
+            return
+        self.dlg.mon.check_monitors()  # Sprawdza, czy ustawienia monitorów się nie zmieniły
+        # Ustalenie wymiarów okna GEP:
         try:
-            l,t,r,b = win32gui.GetClientRect(self.bmp_hwnd)
+            l,t,r,b = win32gui.GetClientRect(self.tif_hwnd)
         except:
             print("ge_grabber exception!")
-            self.get_handlers()
-            self.ge_sync()
+            self.ge_reset()
             return
-        self.bmp_w = int((r - l) / self.screen_scale)
-        self.bmp_h = int((b - t)  / self.screen_scale)
-        # print(f"bmp_w: {self.bmp_w}, bmp_h: {self.bmp_h}")
-        self.tmp_num = 0
-        self.bytes = 0
-        # Przechwycenie obrazu i określenie ile waży zapisany jpg:
-        tmp_bytes = self.create_jpg()
-        # Tworzenie obrazów w pętli, aż do momentu braku zmian w rozmiarze pliku:
-        while self.bytes != tmp_bytes:
-            if self.tmp_num == 10:
-                break
-            self.tmp_num += 1
-            self.bytes = tmp_bytes
-            time.sleep(0.2)
-            tmp_bytes = self.create_jpg()
-        self.create_jpg()  # Ostateczne zapisanie pliku
-        self.wld_creator()  # Utworzenie pliku z georeferencjami
-        self.layer_update()  # Wczytanie jpg'a do warstwy
-        self.loaded = True
-        # print(f"loaded: {self.loaded}")
-        # Wyłączenie dla QGIS'a funkcji always on top:
-        self.on_top_off()
+        # Ustalenie rzeczywistej rozdzielczości (niezależnej od skalowania) i downscalingu przechwyconego obrazu GEP:
+        self.calculate_ge_size(l, t, r ,b)
+        # Przechwycenie obrazu w formie macierzy:
+        tmp_array = self.create_img()
+        # Konwersja macierzy do matrycy:
+        tmp_matrix = self.array_merger(tmp_array)
+        # Określenie % podobieństwa aktualnego obrazu z poprzednio ustalonym.
+        # Przerwanie funkcji, jeśli podobieństwa są na poziomie 98%:
+        if self.matrix_is_equal(tmp_matrix):
+            return
+        # Zachowanie aktualnej macierzy i matrycy:
+        self.img_array = tmp_array
+        self.img_matrix = tmp_matrix
+        # Utworzenie geotiff'a:
+        self.create_tif()
+        # Aktualizacja warstwy Google Earth Pro:
+        self.layer_update()
 
-    def create_jpg(self):
-        """Przechwycenie obrazu z Google Earth Pro i zapisanie go do .jpg."""
-        # print(f"[create_jpg]")
-        dc = win32gui.GetDC(self.bmp_hwnd)
+    def create_img(self):
+        """Przechwycenie obrazu z Google Earth Pro do macierzy numpy."""
+        # print(f"[create_img]")
+        try:
+            dc = win32gui.GetDC(self.tif_hwnd)
+        except:
+            print("create_img exception!")
+            self.ge_reset()
+            return
         hdc = win32ui.CreateDCFromHandle(dc)
         new_dc = hdc.CreateCompatibleDC()
-        new_bmp = win32ui.CreateBitmap()
-        new_bmp.CreateCompatibleBitmap(hdc, self.bmp_w, self.bmp_h)
-        new_dc.SelectObject(new_bmp)
-        new_dc.BitBlt((0,0),(self.bmp_w, self.bmp_h) , hdc, (0,0), win32con.SRCCOPY)
-        bmp_bits = new_bmp.GetBitmapBits(True)
-        img = Image.frombytes('RGB', (self.bmp_w, self.bmp_h), bmp_bits, 'raw', 'BGRX')
-        self.jpg_file = TEMP_PATH + "\\ge.jpg"
-        img.save(self.jpg_file, "JPEG", quality=75, optimize=False, progressive=False)
-        win32gui.DeleteObject(new_bmp.GetHandle())
+        new_img = win32ui.CreateBitmap()
+        new_img.CreateCompatibleBitmap(hdc, self.tif_w, self.tif_h)
+        new_dc.SelectObject(new_img)
+        if self.downscale == 1:
+            new_dc.BitBlt((0,0),(self.tif_w, self.tif_h) , hdc, (0,0), win32con.SRCCOPY)
+        else:
+            new_dc.StretchBlt((0,0),(self.tif_w, self.tif_h) , hdc, (0,0), (int(self.tif_w * self.downscale), int(self.tif_h * self.downscale)), win32con.SRCCOPY)
+        img_bits = new_img.GetBitmapBits(True)
+        img = Image.frombytes('RGB', (self.tif_w, self.tif_h), img_bits, 'raw', 'BGRX')
+        win32gui.DeleteObject(new_img.GetHandle())
         new_dc.DeleteDC()
         hdc.DeleteDC()
-        win32gui.ReleaseDC(self.bmp_hwnd, dc)
-        time.sleep(0.2)
-        return os.stat(self.jpg_file).st_size
+        win32gui.ReleaseDC(self.tif_hwnd, dc)
+        return np.array(img)
 
-    def wld_creator(self):
-        """Tworzenie pliku georeferencyjnego dla jpg'a."""
+    def create_tif(self):
+        """Tworzy geotiff z przechwycownego obrazu GEP i zapisuje go na dysku."""
+        x_pixs = self.img_array.shape[1]
+        y_pixs = self.img_array.shape[0]
+        bands = self.img_array.shape[2]
+        # Stworzenie pustego geotiff'a:
+        driver = gdal.GetDriverByName('GTiff')
+        options=["COMPRESS=NONE", "NUM_THREADS=ALL_CPUS", "TILED=YES", "BLOCKXSIZE=16", "BLOCKYSIZE=16"]
+        ds = driver.Create(self.data_source, x_pixs, y_pixs, bands, gdal.GDT_Byte, options=options)
+        if not ds:
+            return
+        # Przeniesienie danych z macierzy do geotiff'a:
+        for i in range(bands):
+            ds.GetRasterBand(i+1).WriteArray(self.img_array[:, :, i])
+            ds.GetRasterBand(i+1).SetNoDataValue(np.nan)
+        # Nadanie georeferencji:
+        ds.SetGeoTransform(self.georef_params())
+        # Nadanie układu współrzędnych:
+        out_srs = osr.SpatialReference()
+        out_srs.ImportFromEPSG(2180)
+        ds.SetProjection(out_srs.ExportToWkt())
+        # Zapis pliku na dysku:
+        ds.FlushCache()
+        ds = None
+        # print("----------> flushed")
+
+    def georef_params(self):
+        """Zwraca parametry georeferencyjne geotiff'a."""
+        extent = self.dlg.bm_panel.extent
+        if not extent:
+            extent.check_extent()
+            return
         # Współrzędne rogów widoku mapy [m]:
-        x1 = self.extent.xMinimum()
-        x2 = self.extent.xMaximum()
-        y1 = self.extent.yMinimum()
-        y2 = self.extent.yMaximum()
+        x1 = extent.xMinimum()
+        x2 = extent.xMaximum()
+        y1 = extent.yMinimum()
+        y2 = extent.yMaximum()
         # Wymiary geoprzestrzenne mapy [m]:
         width = x2 - x1
         height = y2 - y1
         # Wymiary ekranowe mapy [px]:
         cnv_w = iface.mapCanvas().width()
         cnv_h = iface.mapCanvas().height()
-        # Skalowanie bmp do szerokości ekranowej mapy:
-        bmp_h_scaled = (cnv_w * self.bmp_h) / self.bmp_w
-        # Wysokość geoprzestrzenna zeskalowanej bmp:
-        height_scaled = (bmp_h_scaled * height) / cnv_h
-        # Różnica wysokości geoprzestrzennej mapy i przeskalowanej bmp:
+        # Skalowanie tif do szerokości ekranowej mapy:
+        tif_h_scaled = (cnv_w * self.tif_h) / self.tif_w
+        # Wysokość geoprzestrzenna zeskalowanego tif'a:
+        height_scaled = (tif_h_scaled * height) / cnv_h
+        # Różnica wysokości geoprzestrzennej mapy i przeskalowanego tif'a:
         height_diff = height_scaled - height
-        # Współrzędna y2 przeskalowanej bmp:
-        y2_bmp = y2 + (height_diff / 2)
-        # Utworzenie pliku wld:
-        wld = codecs.open(TEMP_PATH + '\\ge.wld', 'w', encoding='utf-8')
-        wld.write(f'{width / self.bmp_w}\n')
-        wld.write('0\n')
-        wld.write('0\n')
-        wld.write(f'{-height_scaled / self.bmp_h}\n')
-        wld.write(f'{x1}\n')
-        wld.write(f'{y2_bmp}\n')
-        wld.close()
+        # Współrzędna y2 przeskalowanego tif'a:
+        y2_tif = y2 + (height_diff / 2)
+        return x1, width / self.tif_w, 0, y2_tif, 0, -(height_scaled / self.tif_h)
 
     def layer_update(self):
         """Aktualizacja warstwy Google Earth Pro."""
-        time.sleep(0.2)  # Poczekanie, aż .jpg zapisze się na dysku
-        iface.mainWindow().blockSignals(True)  # Żeby QGIS nie monitował o braku crs'a
-        ge_layer = QgsProject.instance().mapLayersByName('Google Earth Pro')[0]
-        data_source = TEMP_PATH + "\\ge.jpg"
+        # print(f"[layer_update]: {self.blocker}")
+        canvas = iface.mapCanvas()
+        ge_layer = QgsProject.instance().mapLayersByName('Google Earth Pro')[0]  # Referencja warstwy 'Google Earth Pro'
         base_name = ge_layer.name()
         provider = ge_layer.providerType()
         options = ge_layer.dataProvider().ProviderOptions()
-        ge_layer.setDataSource(data_source, base_name, provider, options)
-        ge_layer.setCrs(QgsCoordinateReferenceSystem(2180, QgsCoordinateReferenceSystem.EpsgCrsId))
-        ge_layer.reload()
-        iface.mainWindow().blockSignals(False)
-        iface.actionDraw().trigger()
-        iface.mapCanvas().refresh()
+
+        ge_layer.setDataSource(self.data_source, base_name, provider, options)
+        if canvas.isCachingEnabled():
+            ge_layer.triggerRepaint()
+        else:
+            canvas.refresh()
+        # print("==========> updated")
 
 
 class DataFrameModel(QAbstractTableModel):

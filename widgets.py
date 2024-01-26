@@ -595,13 +595,13 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "midas_id_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
-                    {"name": "stan_midas_0", "page": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "stan_midas_0", "page": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "okres_zloze_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "pne_zloze_0", "page": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "pne_zloze_0", "page": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "pne_poza_0", "page": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "pne_poza_0", "page": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "okres_eksp_0", "page": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
@@ -615,7 +615,7 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 11, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 368, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "pne_poza_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=False)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "pne_poza_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=False)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "dlug_1", "page": 1, "subpage": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
@@ -627,17 +627,17 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "miaz_1", "page": 1, "subpage": 0, "row": 5, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "droga_1", "page": 1, "subpage": 0, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "droga_1", "page": 1, "subpage": 0, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "rodz_wyr_1", "page": 1, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "rodz_wyr_1", "page": 1, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "hydro_1", "page": 1, "subpage": 0, "row": 5, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "hydro_1", "page": 1, "subpage": 0, "row": 5, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "stan_1", "page": 1, "subpage": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "null_val": True, "trigger": "trigger_wyrobisko()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "stan_1", "page": 1, "subpage": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "null_val": True, "trigger": "trigger_wyrobisko()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "eksploatacja_1", "page": 1, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "% POW. OBECNIE EKSPLOAT.", "tbl_name": "sl_eksploatacja", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_eksploat", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "eksploatacja_1", "page": 1, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "% POW. OBECNIE EKSPLOAT.", "tbl_name": "sl_eksploatacja", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_eksploat", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "wydobycie_1", "page": 1, "subpage": 0, "row": 6, "col": 4, "r_span": 1, "c_span": 5, "type": "combo", "width": 164, "val_width": None, "title_left": None, "title_down": "POLE EKSPLOATACYJNE CZYNNE", "tbl_name": "sl_wydobycie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wydobycie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "wydobycie_1", "page": 1, "subpage": 0, "row": 6, "col": 4, "r_span": 1, "c_span": 5, "type": "combo", "list_width": 164, "width": 164, "val_width": None, "title_left": None, "title_down": "POLE EKSPLOATACYJNE CZYNNE", "tbl_name": "sl_wydobycie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wydobycie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "fotki_1", "page": 1, "subpage": 0, "row": 6, "col": 9, "r_span": 1, "c_span": 3, "type": "text_2", "item": "line_edit", "max_len": 2, "validator": "000", "placeholder": "0", "zero_allowed": True, "min_max": False, "width": 96, "val_width": 24, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": " ", "title_down_2": None, "title_left": "Ilość zdjęć:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
@@ -647,21 +647,21 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
-                    {"name": "stan_midas_1", "page": 1, "subpage": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "stan_midas_1", "page": 1, "subpage": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "okres_zloze_1", "page": 1, "subpage": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 132, "val_width_2": 133, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "pne_zloze_1", "page": 1, "subpage": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "pne_zloze_1", "page": 1, "subpage": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "pne_poza_m_1", "page": 1, "subpage": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=True)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "pne_poza_m_1", "page": 1, "subpage": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=True)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "zagrozenia_1", "page": 1, "subpage": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI", "trigger": "trigger_empty('zagrozenia', 2)", "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_zagrozenia", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "stan_rekul_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan rekultywacji:", "title_down": None, "tbl_name": "sl_stan_rekul", "null_val": True, "trigger": "trigger_rekultywacja()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "stan_rekul_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Stan rekultywacji:", "title_down": None, "tbl_name": "sl_stan_rekul", "null_val": True, "trigger": "trigger_rekultywacja()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_rekultywacja()", "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": True, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": True, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "odpady_1", "page": 1, "subpage": 4, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "odpady"},
 
@@ -669,7 +669,7 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "odpady_inne_1", "page": 1, "subpage": 4, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE INNYCH ODPADÓW", "trigger": None, "txt_limiter": False, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_inne", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "zgloszenie_1", "page": 1, "subpage": 5, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Zgłoszenie do OUG, Starosty lub WIOŚ, inne:", "title_down": None, "tbl_name": "sl_zgloszenie", "null_val": False, "trigger": "trigger_zgloszenie()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zgloszenie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "zgloszenie_1", "page": 1, "subpage": 5, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Zgłoszenie do OUG, Starosty lub WIOŚ, inne:", "title_down": None, "tbl_name": "sl_zgloszenie", "null_val": False, "trigger": "trigger_zgloszenie()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zgloszenie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "powod_1", "page": 1, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
@@ -678,7 +678,7 @@ class WyrCanvasPanel(QFrame):
 
         for dict in self.dicts:
             if dict["type"] == "combo":
-                _cmb = ParamBox(self, margins=True, item="combo", width=dict["width"], val_width=dict["val_width"], title_down=dict["title_down"], title_left=dict["title_left"], trigger=dict["trigger"], fn=dict["fn"])
+                _cmb = ParamBox(self, margins=True, item="combo", list_width=dict["list_width"], width=dict["width"], val_width=dict["val_width"], title_down=dict["title_down"], title_left=dict["title_left"], trigger=dict["trigger"], fn=dict["fn"])
                 if "subpage" in dict:
                     exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_cmb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 else:
@@ -820,7 +820,7 @@ class WyrCanvasPanel(QFrame):
 
     def trigger_wyrobisko(self):
         """Wykonane po zmianie wartości combobox'u 'stan_1'."""
-        val = self.widgets[f"cmb_stan_{self.cur_page}"].valbox_1.cur_val
+        val = self.widgets[f"cmb_stan_1"].valbox_1.cur_val
         bool_1 = False if val[1:-1] == "brak" else True
         bool_2 = False if val[1:-1] == "Z" or val[1:-1] == "brak" or val[1:-1] == "nd" or val == "Null" else True
         # Wyświetlenie powierzchni wyrobiska:
@@ -916,7 +916,7 @@ class WyrCanvasPanel(QFrame):
             if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.cur_val:
                 self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.value_change(None)
             # Odblokowanie cmb_pne_poza_1, jeśli jest zablokowane:
-            if not self.widgets[f"cmb_pne_poza_{self.cur_page}"].isEnabled() and self.widgets[f"cmb_stan_{self.cur_page}"].valbox_1.cur_val != "brak":
+            if not self.widgets[f"cmb_pne_poza_{self.cur_page}"].isEnabled() and self.widgets[f"cmb_stan_1"].valbox_1.cur_val != "brak":
                 self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
             # Sztywne ustawienie atrybutów PNE_ZLOZE i CZY_PNE, jeśli mają nieprawidłowe wartości:
             if self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.cur_val != "'False'":
@@ -1725,6 +1725,36 @@ class CanvasHSubPanel(QFrame):
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)
         self.setLayout(self.lay)
+        self.alpha = alpha
+        self.color = color
+        self.disable_color = disable_color
+        self.disable_void = disable_void
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        if self.disable_void:
+            return
+        self.setEnabled(_bool)
+        self.children_enabled(_bool)
+        self.set_style()
+
+    def children_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        widgets = (self.lay.itemAt(i).widget() for i in range(self.lay.count()))
+        for widget in widgets:
+            if not widget:
+                continue
+            if isinstance(widget, (MoekButton, QProgressBar)):
+                widget.setEnabled(_bool)
+            else:
+                widget.set_enabled(_bool)
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        color = self.color if self.isEnabled() else self.disable_color
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(""" + color + """, """ + str(self.alpha) + """); border: none}
+                    """)
 
 
 class OdpadySelector(QFrame):
@@ -1916,6 +1946,7 @@ class OdpadySelectorItem(QPushButton):
                                 color: rgba(255, 255, 255, 0.2);
                                 font-size: 8pt;
                                 font-weight: normal;
+                            }
                            """)
         self.clicked.connect(lambda: self.parent().btn_clicked(self.id))
 
@@ -2031,91 +2062,9 @@ class PowSelectorItem(QPushButton):
                                 background: rgba(217, 0, 143, 0.7);
                                 color: rgb(255, 255, 255);
                                 font-size: 11pt;
+                            }
                            """)
         self.clicked.connect(lambda: self.parent().btn_clicked(self.id))
-
-
-class ExportSelector(QFrame):
-    """Belka wyboru typów danych do eksportu."""
-    def __init__(self, *args, width):
-        super().__init__(*args)
-        self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedHeight(34)
-        self.setFixedWidth(width)
-        self.setStyleSheet("""
-                    QFrame#main{background-color: transparent; border: none}
-                    """)
-        self.lay = QHBoxLayout()
-        self.lay.setContentsMargins(0, 0, 0, 0)
-        self.lay.setSpacing(4)
-        self.setLayout(self.lay)
-        self.valid_check = False
-        self.itms = {}
-        self.file_types = [
-            {'name' : 'gpkg', 'multiplier' : 1},
-            {'name' : 'kml', 'multiplier' : 2},
-            {'name' : 'shp', 'multiplier' : 4}
-            ]
-        for file_type in self.file_types:
-            _itm = ExportSelectorItem(self, name=file_type["name"])
-            self.lay.addWidget(_itm)
-            itm_name = f'btn_{file_type["name"]}'
-            self.itms[itm_name] = _itm
-
-    def btn_clicked(self):
-        """Zmiana wartości 'case' po naciśnięciu przycisku."""
-        case = 0
-        for i_dict in self.file_types:
-            btn = self.itms[f'btn_{i_dict["name"]}']
-            val = 1 if btn.isChecked() else 0
-            case = case + (val * i_dict["multiplier"])
-        self.parent().parent().parent().case = case
-
-
-class ExportSelectorItem(QPushButton):
-    """Guzik do wyboru aktywnych typów danych do eksportu."""
-    # checked_changed = pyqtSignal(bool)
-
-    def __init__(self, *args, name):
-        super().__init__(*args)
-        self.setCheckable(True)
-        self.setChecked(False)
-        self.name = name
-        self.setText(self.name)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.setStyleSheet("""
-                            QPushButton {
-                                border: 1px solid rgba(255, 255, 255, 0.4);
-                                background: rgba(255, 255, 255, 0.2);
-                                color: rgba(255, 255, 255, 1.0);
-                                font-size: 11pt;
-                            }
-                            QPushButton:hover {
-                                border: 1px solid rgba(255, 255, 255, 0.4);
-                                background: rgba(255, 255, 255, 0.4);
-                                color: rgba(255, 255, 255, 1.0);
-                                font-size: 11pt;
-                            }
-                            QPushButton:checked {
-                                border: 1px solid rgba(255, 255, 255, 0.8);
-                                background: rgba(255, 255, 255, 0.6);
-                                color: rgb(0, 0, 0);
-                                font-size: 11pt;
-                            }
-                            QPushButton:hover:checked {
-                                border: 1px solid rgba(255, 255, 255, 1.0);
-                                background: rgba(255, 255, 255, 1.0);
-                                color: rgb(0, 0, 0);
-                                font-size: 11pt;
-                            }
-                            QPushButton:disabled {
-                                border: 1px solid rgba(255, 255, 255, 1.0);
-                                background: rgba(255, 255, 255, 0.7);
-                                color: rgb(255, 255, 255);
-                                font-size: 11pt;
-                           """)
-        self.clicked.connect(self.parent().btn_clicked)
 
 
 class WyrStatusIndicator(QLabel):
@@ -3469,7 +3418,7 @@ class TabButton(QPushButton):
 class ParamBox(QFrame):
     """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem).
     item: label, line_edit, ruler."""
-    def __init__(self, *args, margins=False, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, min_max=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, trigger=None, fn=None):
+    def __init__(self, *args, margins=False, list_width = 200, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, min_max=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, trigger=None, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.item = item
@@ -3511,7 +3460,7 @@ class ParamBox(QFrame):
                 elif self.item == "ruler":
                     self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
                 elif self.item == "combo":
-                    self.valbox_1 = CanvasArrowlessComboBox(self, height=_height, font_size=8, trigger=trigger, fn=fn)
+                    self.valbox_1 = CanvasArrowlessComboBox(self, width=list_width, height=_height, font_size=8, trigger=trigger, fn=fn)
                 elif self.item == "combo_tv":
                     self.valbox_1 = CanvasArrowlessComboBox(self, height=_height, font_size=8, tv=True, val_display=val_display, trigger=trigger, fn=fn)
                 self.box.glay.addWidget(self.valbox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
@@ -3543,6 +3492,8 @@ class ParamBox(QFrame):
         self.is_enabled = _bool
         widgets = (self.box.glay.itemAt(i).widget() for i in range(self.box.glay.count()))
         for widget in widgets:
+            if not widget:
+                continue
             if isinstance(widget, MoekButton):
                 widget.setEnabled(_bool)
             else:
@@ -3647,7 +3598,7 @@ class ParamBox(QFrame):
 
 class ParamTextBox(QFrame):
     """Widget do wyświetlania i edycji parametru tekstowego (np. uwagi) wraz z nagłówkiem i opcjonalnym licznikiem użytch znaków."""
-    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, txt_limiter=False, fn=None):
+    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, txt_limiter=False, centered=False, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setObjectName("main")
@@ -3663,7 +3614,7 @@ class ParamTextBox(QFrame):
         self.setLayout(lay)
         self.box = MoekVBox(self, margins=[0, 0, 0, 0], spacing=0)
         lay.addWidget(self.box)
-        self.txtbox = TextBox(self, height=_height, width=_width, edit=edit, trigger=trigger, txt_limiter=txt_limiter, fn=fn)
+        self.txtbox = TextBox(self, height=_height, width=_width, edit=edit, trigger=trigger, txt_limiter=txt_limiter, centered=centered, fn=fn)
         self.box.lay.addWidget(self.txtbox)
         self.line = MoekHLine(self)
         self.box.lay.addWidget(self.line)
@@ -3689,17 +3640,18 @@ class ParamTextBox(QFrame):
             widget.set_enabled(_bool)
 
 
-class TextBox(QPlainTextEdit):
+class TextBox(QTextEdit):
     """Wyświetla tekst z możliwością edycji i opcjonalnym liczeniem użytych znaków."""
-    def __init__(self, *args, width, height, edit, trigger, fn, txt_limiter=False):
+    def __init__(self, *args, width, height, edit, trigger, fn, txt_limiter=False, centered=False):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
-        self.setBackgroundVisible(False)
+        self.setAlignment(Qt.AlignCenter)
         self.txt_limiter = txt_limiter
         self.fn = fn
         self.edit = edit
         self.trigger = trigger
+        self.centered = centered
         self.setReadOnly(not self.edit)
         if not self.edit:
             self.viewport().setCursor(Qt.ArrowCursor)
@@ -3749,18 +3701,22 @@ class TextBox(QPlainTextEdit):
     def value_changed(self):
         """Aktualizacja tekstu po zmianie wartości."""
         self.setPlainText(self.cur_val) if self.cur_val else self.clear()
+        self.set_style()
 
     def set_style(self):
         """Modyfikacja stylesheet."""
+        self.setAlignment(Qt.AlignCenter) if self.centered else self.setAlignment(Qt.AlignLeft)
         if self.isEnabled():
             alpha = 0.3 if self.hover or self.focus else 0.2
+            color = "white"
         else:
             alpha = 0.1
+            color = "grey"
         self.setStyleSheet("""
-                            QPlainTextEdit {
+                            QTextEdit {
                             border: none;
                             background-color: rgba(255, 255, 255, """ + str(alpha) + """);
-                            color: white;
+                            color: """ + color + """;
                             font-size: 8pt;
                             }
                             QScrollBar:vertical {
@@ -4406,12 +4362,12 @@ class MoekLeftBottomDock(QFrame):
         vlay.addWidget(self.box)
         vlay.setAlignment(self.box, Qt.AlignTop)
         self.setLayout(vlay)
-        self.set_style(0.6)
+        self.set_style(0.37)
 
     def page_change(self, index):
         """Zmiana aktywnej strony stackedbox'a."""
         self.cur_page = index
-        alpha = 0.8 if index > 0 else 0.6
+        alpha = 0.8 if index > 0 else 0.37
         self.set_style(alpha)  # Ustalenie przezroczystości tła seq_dock'a
         self.height_change()  # Aktualizacja wysokości dock'u
 
@@ -5456,6 +5412,15 @@ class MoekVBox(QFrame):
         self.lay.setSpacing(spacing)
         self.setLayout(self.lay)
 
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        widgets = (self.lay.itemAt(i).widget() for i in range(self.lay.count()))
+        for widget in widgets:
+            if isinstance(widget, (MoekButton, QProgressBar)):
+                widget.setEnabled(_bool)
+            else:
+                widget.set_enabled(_bool)
+
 
 class MoekStackedBox(QStackedWidget):
     """Widget dzielący zawartość panelu na strony."""
@@ -5478,6 +5443,14 @@ class CanvasStackedBox(QStackedWidget):
                             }"""
                             )
 
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        widgets = (self.widget(i) for i in range(self.count()))
+        for widget in widgets:
+            if isinstance(widget, (MoekButton, QProgressBar)):
+                widget.setEnabled(_bool)
+            else:
+                widget.set_enabled(_bool)
 
 class MoekButton(QToolButton):
     """Fabryka guzików."""
@@ -5570,7 +5543,6 @@ class MoekDummy(QFrame):
         self.setObjectName("main")
         self.lay = QVBoxLayout()
         self.setLayout(self.lay)
-        # self.box = MoekHBox(self)
         if not spacer:
             self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             self.setFixedSize(width, height)
@@ -5625,79 +5597,84 @@ class MoekComboBox(QComboBox):
             B_CSS = "border-radius: 6px;"
         else:
             B_CSS = ""
-
+        self.setMaxVisibleItems(20)
+        model = QStandardItemModel()
+        self.setModel(model)
+        de = CmbDelegate(self)
+        self.view().setItemDelegate(de)
+        self.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setStyleSheet("""
-                            QComboBox {
-                                border: """ + str(border) + """px solid rgb(52, 132, 240);
-                                """ + B_CSS + """
-                                padding: 0px 5px 0px 5px;
-                                min-width: 1px;
-                                min-height: """ + str(height) + """px;
-                                color: rgb(52, 132, 240);
-                                font-size: 8pt;
-                            }
-                            QComboBox:disabled {
-                                border: """ + str(border) + """px solid rgb(150, 150, 150);
-                                """ + B_CSS + """
-                                padding: 0px 5px 0px 5px;
-                                min-width: 1px;
-                                min-height: """ + str(height) + """px;
-                                color: rgb(140, 140, 140);
-                                font-size: 8pt;
-                            }
-                            QComboBox::indicator {
-                                background-color:transparent;
-                                selection-background-color:transparent;
-                                color:transparent;
-                                selection-color:transparent;
-                            }
-                            QComboBox::item:selected {
-                                padding-left: 0px;
-                                background-color: rgb(52, 132, 240);
-                                color: white;
-                            }
-                            QComboBox::item:!selected {
-                                background-color: white;
-                                color: rgb(52, 132, 240);
-                            }
-                            QComboBox:on {
-                                padding-top: 3px;
-                                padding-left: 4px;
-                                background-color: rgb(52, 132, 240);
-                                color: white;
-                            }
-                            QComboBox::drop-down {
-                                subcontrol-origin: padding;
-                                subcontrol-position: center right;
-                                width: 12px;
-                                right: 5px;
-                                border: none;
-                                background: transparent;
-                            }
-                            QComboBox::down-arrow {
-                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow.png');
-                            }
-                            QComboBox::down-arrow:disabled {
-                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow_dis.png');
-                            }
-                            QComboBox QAbstractItemView {
-                                border: """ + str(border) + """px solid rgb(52, 132, 240);
-                                background-color: white;
-                            }
-                            QComboBox QAbstractItemView::item {
-                                padding-top: 3px;
-                                padding-left: 4px;
-                                border: """ + str(border) + """px solid rgb(52, 132, 240);
-                                background-color: white;
-                            }
-                           """)
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
-        self.setAttribute(Qt.WA_NoSystemBackground | Qt.WA_TranslucentBackground | Qt.WA_PaintOnScreen)
+                    QComboBox {
+                        border: """ + str(border) + """px solid rgb(52, 132, 240);
+                        """ + B_CSS + """
+                        padding: 0px 5px 0px 5px;
+                        min-width: 1px;
+                        min-height: """ + str(height) + """px;
+                        color: rgb(52, 132, 240);
+                        font-size: 8pt;
+                        combobox-popup: 0;
+                    }
+                    QComboBox:disabled {
+                        """ + B_CSS + """
+                        border: """ + str(border) + """px solid rgb(140, 140, 140);
+                        padding: 0px 5px 0px 5px;
+                        min-width: 1px;
+                        min-height: """ + str(height) + """px;
+                        color: rgb(140, 140, 140);
+                        font-size: 8pt;
+                    }
+                    QComboBox::indicator {
+                        background-color:transparent;
+                        selection-background-color:transparent;
+                        color:transparent;
+                        selection-color:transparent;
+                    }
+                    QComboBox::drop-down {
+                        subcontrol-origin: padding;
+                        subcontrol-position: center right;
+                        width: 12px;
+                        right: 5px;
+                        border: none;
+                        background: transparent;
+                    }
+                    QComboBox::down-arrow {
+                        image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow.png');
+                    }
+                    QComboBox::down-arrow:disabled {
+                        image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow_dis.png');
+                    }
+                    QComboBox QAbstractItemView {
+                        border: """ + str(border) + """px solid rgb(52, 132, 240);
+                        outline: none;
+                        background-color: white;
+                    }
+                    """)
+        self.view().window().setStyleSheet("""
+                        QListView::item{
+                            border: none;
+                            padding-left: 5px;
+                            min-width: 300px;
+                            margin: 0px;
+                            height: 24px;
+                            color: rgb(52, 132, 240);
+                            background-color: white;
+                            show-decoration-selected: 0;
+                            font-size: 8pt;
+                        }
+                        QListView::item:selected {
+                            color: white;
+                            background-color: rgb(52, 132, 240);
+                        }
+                        QListView::item:!selected {
+                            background-color: white;
+                            color: rgb(52, 132, 240);
+                        }
+                    """)
 
 
 class CanvasArrowlessComboBox(QComboBox):
     """Fabryka rozwijanych bez strzałki."""
-    def __init__(self, *args, name="", height=24, border=1, font_size=8, icon_disable=False, b_round="none", tv=False, val_display=False, trigger=None, fn=None):
+    def __init__(self, *args, name="", width=200, height=24, border=1, font_size=8, icon_disable=False, b_round="none", tv=False, val_display=False, trigger=None, fn=None):
         super().__init__(*args)
         if b_round == "right":
             B_CSS = "border-top-right-radius: 3px; border-bottom-right-radius: 3px;"
@@ -5710,16 +5687,16 @@ class CanvasArrowlessComboBox(QComboBox):
         self.val_display = val_display
         self.trigger = trigger
         self.fn = fn
-        if tv:
-            popup = 0
-            self.setMaxVisibleItems(20)
-            model = QStandardItemModel()
-            self.setModel(model)
-            de = CmbDelegate(self)
-            self.view().setItemDelegate(de)
-            self.view().setFixedWidth(200)
-        else:
-            popup = 1
+        # if tv:
+        popup = 0
+        self.setMaxVisibleItems(20)
+        model = QStandardItemModel()
+        self.setModel(model)
+        de = CmbDelegate(self)
+        self.view().setItemDelegate(de)
+        self.view().setFixedWidth(width)
+        # else:
+        #     popup = 1
         self.setStyleSheet("""
                             QComboBox {
                                 """ + B_CSS + """
@@ -5771,7 +5748,7 @@ class CanvasArrowlessComboBox(QComboBox):
                                     margin: 0px;
                                     height: 24px;
                                     color: rgb(200, 200, 200);
-                                    background-color: rgb(30, 30, 30);;
+                                    background-color: rgb(30, 30, 30);
                                 }
                                 QListView::item:hover{
                                     color: black;
@@ -5816,7 +5793,7 @@ class CanvasArrowlessComboBox(QComboBox):
                                     margin: 0px;
                                     height: 24px;
                                     color: rgb(200, 200, 200);
-                                    background-color: rgb(30, 30, 30);;
+                                    background-color: rgb(30, 30, 30);
                                 }
                                 QListView::item:hover{
                                     color: black;

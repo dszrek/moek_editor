@@ -1,18 +1,12 @@
 #!/usr/bin/python
 import os
-import shutil
 import time as tm
 import pandas as pd
 import numpy as np
-import xlsxwriter as xls
 
-from PIL import Image, ImageQt, ImageEnhance
-from win32com import client
-from docxtpl import DocxTemplate
-from qgis.core import QgsApplication, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext, QgsFeature, QgsGeometry, QgsRectangle, QgsMapSettings, QgsMapRendererCustomPainterJob, edit
+from qgis.core import QgsApplication, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext, QgsFeature, QgsGeometry, edit
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
-from qgis.PyQt.QtCore import Qt, QDir, QSize, QRectF, QPointF
-from qgis.PyQt.QtGui import QImage, QPainter, QPen, QFont, QPainterPath, QPolygonF
+from qgis.PyQt.QtCore import Qt
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 

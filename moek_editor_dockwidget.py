@@ -308,6 +308,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             self.seq_dock.add_seqaddbox(widget)
                         elif widget["item"] == "seqcfgbox":
                             self.seq_dock.add_seqcfgbox(widget)
+
+        self.bm_panel = BasemapCanvasPanel(self.canvas, dlg=self)
+        self.bm_panel.hide()
         self.flag_panel = FlagCanvasPanel(self.canvas)
         self.flag_panel.hide()
         self.parking_panel = ParkingCanvasPanel(self.canvas)
@@ -328,6 +331,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.obj = ObjectManager(dlg=self, canvas=self.canvas)
         self.lyr = LayerManager(dlg=self)
 
+        self.bm_panel.move(9, 9)
         self.side_dock.move(1,0)
         bottom_y = self.canvas.height() - 52
         self.bottom_dock.move(0, bottom_y)
@@ -447,6 +451,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.bottom_dock.move(0, self.canvas.height() - 52)
         bottom_y = self.canvas.height() - self.seq_dock.height() - 53
         self.seq_dock.move(53, bottom_y)
+        self.bm_panel.move(9, 9)
         self.flag_panel.move(60, 60)
         self.parking_panel.move(60, 60)
         self.wyr_panel.move(60, 60)
@@ -740,6 +745,14 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             self.seq_dock.deleteLater()
         except:
             pass
+        try:
+            self.canvas.children().remove(self.bm_panel)
+            self.bm_panel.deleteLater()
+        except:
+            pass
+        self.canvas.extentsChanged.disconnect()
+        self.canvas.renderStarting.disconnect()
+        self.canvas.renderComplete.disconnect()
         try:
             self.canvas.children().remove(self.flag_panel)
             self.flag_panel.deleteLater()

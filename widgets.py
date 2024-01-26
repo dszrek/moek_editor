@@ -1058,6 +1058,347 @@ class WyrCanvasPanel(QFrame):
         wyr_layer_update(False)
 
 
+class BasemapCanvasPanel(QFrame):
+    """Zagnieżdżony w mapcanvas'ie panel do obsługi podkładów mapowych."""
+    def __init__(self, *args, dlg):
+        super().__init__(*args)
+        self.dlg = dlg
+        self.canvas = self.parent()
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedHeight(43)
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        self.date_box = MoekHBox(self, margins=[5, 5, 5, 5])
+        self.date_box.setObjectName("date_box")
+        self.box = MoekHBox(self, margins=[5, 5, 5, 5])
+        self.box.setObjectName("box")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    QFrame#date_box{background-color: rgba(30, 30, 30, 0.6); border: none}
+                    QFrame#box{background-color: rgba(30, 30, 30, 0.6); border: none}
+                    """)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(1)
+        self.setLayout(self.lay)
+        self.lay.addWidget(self.date_box)
+        self.lay.setAlignment(self.date_box, Qt.AlignLeft | Qt.AlignVCenter)
+        self.lay.addWidget(self.box)
+        self.lay.setAlignment(self.box, Qt.AlignLeft)
+        self.date_indicator = DateIndicator(self, dlg=self.dlg)
+        self.date_box.lay.addWidget(self.date_indicator)
+        self.date_box.lay.setAlignment(self.date_indicator, Qt.AlignLeft | Qt.AlignVCenter)
+        self.date_selector = DateSelector(self, dlg=self.dlg)
+        self.box.lay.addWidget(self.date_selector)
+        self.box.lay.setAlignment(self.date_selector, Qt.AlignLeft | Qt.AlignVCenter)
+        self.map = None
+        self.t_void = False  # Blokada stopera zmiany zasięgu mapcanvas'u
+        self.ge_sync = None  # Czy włączony jest tryb synchronizacji widoku QGIS w GEP
+        self.rendering = False  # Czy mapcanvas jest w trakcie odświeżania?
+        self.extent = None  # Zasięg geoprzestrzenny aktualnego widoku mapy
+        self.timer = None  # Obiekt stopera zmiany zasięgu mapcanvas'u
+        self.canvas.extentsChanged.connect(self.extent_changed)
+        self.canvas.renderStarting.connect(lambda: self.render_changed(True))
+        self.canvas.renderComplete.connect(lambda: self.render_changed(False))
+        # self.canvas.mapCanvasRefreshed.connect(self.canvas_refreshed)
+        self.date = None
+        self.ga_date = None
+        self.date_str = None
+        self.date_uri = None
+        self.ga_layer = None
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "map" and val != None:
+            self.check_extent()
+            if self.map == "Geoportal Archiwalny" and self.ga_date:
+                self.date = self.ga_date
+            elif self.map == "Google Earth Pro":
+                self.dlg.ge.is_on = True
+            else:
+                self.dlg.ge.is_on = False
+        elif attr == "extent" and not self.t_void:
+            # print("extent")
+            if self.ge_sync and self.map != "Google Earth Pro":
+                self.dlg.ge.q2ge()  # Aktualizacja zasięgu widoku w GEP
+            elif self.ge_sync or self.map == "Google Earth Pro":
+                # self.dlg.ge.loaded = False
+                # self.dlg.ge.load_status = None
+                self.dlg.ge.q2ge()  # Aktualizacja zasięgu widoku w GEP
+                # self.dlg.ge.start_updater()
+                QTimer.singleShot(10, self.dlg.ge.start_updater)
+                # self.dlg.ge.start_loader()  # Uruchomienie stopera ładowania
+            elif self.ge_sync == False and self.map != "Google Earth Pro":
+                self.dlg.ge.ge_probe()
+            if self.map == "Geoportal":
+                date_list = self.dates_from_extent(last=True)
+                self.date_selector.dates = date_list
+            elif self.map == "Geoportal Archiwalny":
+                if self.canvas.scale() > 50001:
+                    self.date_selector.dates = []
+                    return
+                date_list = self.dates_from_extent()
+                self.date_selector.dates = date_list
+            else:
+                self.date_selector.dates = []
+        elif attr == "date" and val != None:
+            self.date_str = f"{val.year}-{str(val.month).zfill(2)}-{str(val.day).zfill(2)}"
+            date_next = val + datetime.timedelta(days=1)
+            self.date_uri = f"{date_next.year}-{str(date_next.month).zfill(2)}-{str(date_next.day).zfill(2)}"
+            self.date_indicator.date = self.date_str
+            if self.map == "Geoportal Archiwalny":
+                self.ga_date_update()
+            self.date_checked_update()
+
+    # def canvas_refreshed(self):
+    #     print("---------------[canvas_refreshed]---------------")
+
+    def render_changed(self, flag):
+        """Ustala status renderowania mapcanvas'u."""
+        # print("[render_changed]")
+        if self.rendering != flag:
+            self.rendering = flag
+        # if self.rendering:
+        #     print("render start")
+
+    def extent_changed(self):
+        """Zmiana zasięgu geoprzestrzennego widoku mapy."""
+        if self.t_void:
+            # Wyjście z funkcji, jeśli stoper obecnie pracuje
+            return
+        # print("+++++++++++++++[extent_change start]+++++++++++++++")
+        self.dlg.ge.update_timer_reset()
+        self.dlg.ge.blocker = True
+        # print("freeze start")
+        self.t_void = True
+        self.extent = self.canvas.extent()
+        self.timer = QTimer()
+        self.timer.setInterval(250)
+        self.timer.timeout.connect(self.check_extent)
+        self.timer.start()  # Odpalenie stopera
+
+    def check_extent(self):
+        """Sprawdzenie, czy zakres widoku mapy przestał się zmieniać."""
+        if self.extent != self.canvas.extent():  # Zmienił się
+            self.extent = self.canvas.extent()
+        else:
+            # Kasowanie stopera:
+            if self.timer:
+                self.timer.stop()
+                self.timer = None
+            self.t_void = False
+            # self.dlg.ge.blocker = False
+            print("+++++++++++++++[extent_change stop]+++++++++++++++")
+            self.extent = self.canvas.extent()
+
+    def dates_from_extent(self, last=False):
+        x1 = self.extent.xMinimum()
+        x2 = self.extent.xMaximum()
+        y1 = self.extent.yMinimum()
+        y2 = self.extent.yMaximum()
+        x_dif = abs(x2 - x1)
+        y_dif = abs(y2 - y1)
+        x1 = x1 + x_dif/4
+        x2 = x2 - x_dif/4
+        y1 = y1 + y_dif/4
+        y2 = y2 - y_dif/4
+        extent_bound = f'ST_MakeEnvelope({x1}, {y1}, {x2}, {y2}, 2180)'
+        db = PgConn()
+        if last:
+            sql = f"SELECT akt_data FROM external.skorowidz_geoportal AS s WHERE ST_Intersects(s.geom, {extent_bound}) ORDER BY akt_data DESC;"
+        else:
+            sql = f"SELECT akt_data FROM external.skorowidz_geoportal AS s WHERE ST_Intersects(s.geom, {extent_bound}) ORDER BY akt_data;"
+        if db:
+            res = db.query_sel(sql, False) if last else db.query_sel(sql, True)
+            if res:
+                if len(res) > 1:
+                    return list(zip(*res))[0]
+                else:
+                    return list(res)
+            else:
+                return None
+
+    def ga_date_update(self):
+        """Aktualizacja URI dla warstwy Geoportal Archiwalny."""
+        uri = f'IgnoreGetFeatureInfoUrl=1&IgnoreGetMapUrl=0&contextualWMSLegend=0&SmoothPixmapTransform=1&IgnoreReportedLayerExtents=1&crs=EPSG:2180&format=image/jpeg&layers=Raster&styles=&version=1.1.1&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMS/StandardResolutionTime?TIME={self.date_uri}T00%3A00%3A00.000%2B01%3A00'
+        ga_layer = dlg.proj.mapLayersByName("Geoportal Archiwalny")[0]
+        ga_layer.dataProvider().setDataSourceUri(uri)
+        self.ga_date = self.date
+        self.canvas.zoomScale(self.canvas.scale() + 0.001)  # Sposó☺b na odświeżenie warstwy, bez wyczyszczenia cache'u (białe tło w trakcie ładowania)
+
+    def date_checked_update(self):
+        """Aktualizacja stanów DateSelectorItem."""
+        sync = False
+        for widget in self.date_selector.widgets:
+            if widget.date_str == self.date_str:
+                widget.setChecked(True)
+                sync = True
+            else:
+                widget.setChecked(False)
+        if not sync:
+            self.set_closest_date()
+
+    def set_closest_date(self):
+        """Wybór daty z listy dostępnych dat, która jest najbliższa do obecnie ustalonej."""
+        date_list = self.date_selector.dates
+        if len(date_list) == 0:
+            return
+        res = min(date_list, key=lambda sub: abs(sub - self.date))
+        self.date = res
+        self.date_checked_update()
+
+
+class DateIndicator(QFrame):
+    """Widget wyboru dat dla podkładu Geoportal Archiwalny."""
+    def __init__(self, *args, dlg):
+        super().__init__(*args)
+        self.dlg = dlg
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(96, 33)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: 1px solid white}
+                    """)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(5, 5, 5, 5)
+        self.lay.setSpacing(0)
+        self.setLayout(self.lay)
+        self.date_label = PanelLabel(self, size=11)
+        self.lay.addWidget(self.date_label)
+        self.lay.setAlignment(self.date_label, Qt.AlignCenter)
+        self.date = None
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "date" and val != None:
+            self.date_label.setText(val)
+
+
+class DateSelector(QFrame):
+    """Widget wyboru dat dla podkładu Geoportal Archiwalny."""
+    def __init__(self, *args, dlg):
+        super().__init__(*args)
+        self.dlg = dlg
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(0, 33)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(0)
+        self.setLayout(self.lay)
+        self.widgets = []
+        self.init_void = True
+        self.d_cnt = 1
+        self.dates = []
+        # self.init_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "dates" and not self.init_void:
+            d_cnt = len(val)
+            # print(f"d_cnt: {d_cnt}, self.d_cnt: {self.d_cnt}")
+            if d_cnt == 0 and self.d_cnt == 0:
+                return
+            elif d_cnt == 0 and self.d_cnt > 0:
+                self.dlg.bm_panel.hide()
+                self.dlg.bm_panel.setFixedWidth(110)
+                self.clear_all_dates()
+                self.d_cnt = 0
+                return
+            elif d_cnt == 1:# and self.d_cnt > 0:
+                self.dlg.bm_panel.box.setVisible(False)
+                self.dlg.bm_panel.setFixedWidth(110)
+            if self.dlg.bm_panel.isHidden():
+                self.dlg.bm_panel.show()
+            if not self.dlg.bm_panel.box.isVisible() and d_cnt > 1:
+                self.dlg.bm_panel.box.setVisible(True)
+            self.clear_all_dates()
+            for date in val:
+                _date = DateSelectorItem(self, dlg=self.dlg, date=date)
+                self.dlg.bm_panel.date_selector.lay.addWidget(_date)
+                # self.lay.setAlignment(_date, Qt.AlignHCenter | Qt.AlignTop)
+                self.widgets.append(_date)
+            self.setFixedWidth(d_cnt * 48)
+            self.dlg.bm_panel.setFixedWidth(117 + d_cnt * 48)
+            self.d_cnt = d_cnt
+            self.dlg.bm_panel.date_checked_update()
+
+    def clear_all_dates(self):
+        """Wyczyszczenie wszystkich obiektów dat."""
+        for widget in self.widgets:
+            widget.setParent(None)
+            del widget
+        self.widgets = []
+
+    def btn_clicked(self, date):
+        """Włączenie/wyłączenie powiatu po naciśnięciu przycisku."""
+        self.dlg.bm_panel.date = date
+
+
+class DateSelectorItem(QPushButton):
+    """Guzik do wyboru daty aktualności podkładu Geoportal Archiwalny."""
+    def __init__(self, *args, dlg, date):
+        super().__init__(*args)
+        self.dlg = dlg
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setCheckable(True)
+        self.setFixedSize(48, 33)
+        self.setText(str(date.year))
+        self.date = date
+        self.date_str = f"{date.year}-{str(date.month).zfill(2)}-{str(date.day).zfill(2)}"
+        if self.dlg.bm_panel.date_indicator.date == self.date_str:
+            self.setChecked(True)
+        self.setToolTip(self.date_str)
+        self.setStyleSheet("""
+                            QPushButton {
+                                border: none;
+                                background: transparent;
+                                color: rgba(255, 255, 255, 0.8);
+                                font-size: 10pt;
+                                font-weight: normal;
+                                padding-top: -2px;
+                            }
+                            QPushButton:checked {
+                                border: 1px solid white;
+                                background: transparent;
+                                color: rgba(255, 255, 255, 1.0);
+                                font-size: 10pt;
+                                font-weight: normal;
+                                padding-top: -2px;
+                            }
+                            QPushButton:hover {
+                                border: none;
+                                background: rgba(255, 255, 255, 0.4);
+                                color: rgba(0, 0, 0, 1.0);
+                                font-size: 10pt;
+                                font-weight: normal;
+                                padding-top: -2px;
+                            }
+                            QPushButton:hover:checked {
+                                border: 1px solid white;
+                                background: transparent;
+                                color: rgba(255, 255, 255, 1.0);
+                                font-size: 10pt;
+                                font-weight: normal;
+                                padding-top: -2px;
+                            }
+                            QToolTip {
+                                border: 1px solid rgb(50, 50, 50);
+                                padding: 5px;
+                                background-color: rgb(30, 30, 30);
+                                color: rgb(200, 200, 200);
+                            }
+                           """)
+        self.clicked.connect(lambda: self.parent().btn_clicked(self.date))
+
+
 class FlagCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi flag."""
     def __init__(self, *args):

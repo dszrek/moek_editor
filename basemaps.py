@@ -140,18 +140,15 @@ class MoekMapPanel(QFrame):
         self.cat_change()  # Zmiana kategorii, jeśli potrzebna
         # Zmiana wyświetlanego w spinbox'ie tytułu podkładu mapowego:
         self.box.pages["page_0"].label.setText(self.map_attr(self.map)["name"])
-        if self.map == 6 or self.map == 11:  # Włączenie warstwy "Google Earth Pro"
-            if not self.ge:
-                # iface.mapCanvas().extentsChanged.connect(dlg.ge.extent_changed)
-                dlg.ge.visible_changed(True)
-                self.ge = True
-                # print("warstwa GEP włączona")
+        print(f"map: {self.map}")
+        if self.map == 4:
+            dlg.bm_panel.map = 'Geoportal'
+        elif self.map == 5:
+            dlg.bm_panel.map = 'Geoportal Archiwalny'
+        elif self.map == 6 or self.map == 11:
+            dlg.bm_panel.map = 'Google Earth Pro'
         else:
-            if self.ge:
-                # iface.mapCanvas().extentsChanged.disconnect(dlg.ge.extent_changed)
-                dlg.ge.visible_changed(False)
-                self.ge = False
-                # print("warstwa GEP wyłączona")
+            dlg.bm_panel.map = 'Inny'
         # Ustawienie widoczności warstw z podkładami mapowymi:
         for layer in self.layers:
             if layer == self.map_attr(self.map)["lyr_1"] or layer == self.map_attr(self.map)["lyr_2"]:

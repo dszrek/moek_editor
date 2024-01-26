@@ -24,7 +24,7 @@
 
 import os
 
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsSettings, QgsApplication
 from qgis.gui import QgsMapToolPan
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QTimer
@@ -32,13 +32,14 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QDockWidget, QShortcut, QMessageBox, QSizePolicy
 from qgis.utils import iface
 
-from .classes import PgConn
+from .classes import PgConn, MonitorManager, GESync
 from .layers import dlg_layers, PanelManager, LayerManager
 from .maptools import dlg_maptools, MapToolManager, ObjectManager
-from .main import dlg_main, pow_export, vn_mode_changed, data_export_init, sequences_load, prev_map, next_map, seq
+from .main import dlg_main, vn_mode_changed, data_export_init, sequences_load, prev_map, next_map, seq
 from .viewnet import dlg_viewnet, change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
+from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, BasemapCanvasPanel, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel
 from .basemaps import dlg_basemaps, MoekMapPanel, basemaps_load
+from .export import dlg_export, ExportCanvasPanel
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -373,9 +374,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         dlg_maptools(self)  # Przekazanie referencji interfejsu wtyczki do maptools.py
         dlg_viewnet(self)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
         dlg_basemaps(self)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
+        dlg_export(self)  # Przekazanie referencji interfejsu wtyczki do export.py
 
     def freeze_set(self, val, from_resize=False, delay=False):
         """Zarządza blokadą odświeżania dockwidget'u."""
+        return
         if val and self.freeze:
             # Blokada jest już włączona
             return
@@ -654,7 +657,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_add"].pressed.connect(vn_add)
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
         self.p_pow_mask.box.widgets["btn_pow_mask"].clicked.connect(lambda: self.cfg.set_val(name="powiaty_mask", val=self.p_pow_mask.box.widgets["btn_pow_mask"].isChecked()))
-        self.p_team_export.box.widgets["btn_data_export"].clicked.connect(pow_export) #(data_export_init)
+        self.p_team_export.box.widgets["btn_data_export"].clicked.connect(data_export_init)
         self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))

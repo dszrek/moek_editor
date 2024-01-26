@@ -920,6 +920,31 @@ class CmbDelegate(QStyledItemDelegate):
         return s
 
 
+class CurrentThread(QObject):
+    """Obiekt referencji głównego wątku QGIS'a - potrzebna do komunikacji wydzielonego wątku z wątkiem głównym."""
+
+    _on_execute = pyqtSignal(object, tuple, dict)
+
+    def __init__(self):
+        super(QObject, self).__init__()
+        self._on_execute.connect(self._execute_in_thread)
+
+    def execute(self, f, args, kwargs):
+        self._on_execute.emit(f, args, kwargs)
+
+    def _execute_in_thread(self, f, args, kwargs):
+        f(*args, **kwargs)
+
+main_thread = CurrentThread()
+
+
+def run_in_main_thread(f):
+    """Uruchamia funkcję w wątku głównym QGIS z poziomu wątku wydzielonego."""
+    def result(*args, **kwargs):
+        main_thread.execute(f, args, kwargs)
+    return result
+
+
 def threading_func(f):
     """Dekorator dla funkcji zwracającej wartość i działającej poza głównym wątkiem QGIS'a."""
     def start(*args, **kwargs):

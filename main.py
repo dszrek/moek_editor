@@ -187,6 +187,8 @@ def powiaty_mode_changed(clicked):
     # print("[powiaty_mode_changed:", clicked, "]")
     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
     dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
+    if dlg.export_panel.isVisible():
+        dlg.export_panel.hide()
     # if clicked:  # Zmiana trybu wyświetlania powiatów spowodowana kliknięciem w io_btn
     #     dlg.cfg.set_val(name="powiaty", val=dlg.p_pow.is_active())
     # else:  # Zmiana trybu wyświetlania powiatów spowodowana zmianą aktywnego team'u
@@ -200,6 +202,8 @@ def powiaty_cb_changed():
     t_powiat_t = dlg.p_pow.box.widgets["cmb_pow_act"].currentText()  # Zapamiętanie nazwy aktualnego powiatu
     list_srch = [t for t in dlg.powiaty if t_powiat_t in t]
     t_powiat_i = list_srch[0][0]  # Tymczasowy powiat_i
+    if dlg.export_panel.isVisible():
+        dlg.export_panel.hide()
     # Aktualizacja t_active_pow w db i zmiana globali:
     if db_attr_change(tbl="team_users", attr="t_active_pow", val=t_powiat_i, sql_bns=" AND team_id = " + str(dlg.team_i)):
         dlg.powiat_t = t_powiat_t
@@ -318,7 +322,7 @@ def wyr_layer_update(check=True):
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.obj.wyr_ids:
-        table = f'''"(SELECT row_number() OVER (ORDER BY w.wyr_id::int) AS row_num, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'''
+        table = f'''"(SELECT row_number() OVER (ORDER BY w.wyr_id::int) AS row_num, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, d.t_wyr_od AS wyr_od, d.t_wyr_do AS wyr_do, d.t_zloze_od AS zloze_od, d.t_zloze_do AS zloze_do, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'''
         if dlg.wyr_panel.pow_all:
             table_green = f'''"(SELECT row_number() OVER (ORDER BY w.wyr_id::int) AS row_num, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND w.b_after_fchk = True AND w.b_confirmed = True)"'''
         else:
@@ -1323,8 +1327,11 @@ def data_export_init():
     """Odpalony po naciśnięciu przycisku 'data_export'."""
     if dlg.export_panel.isVisible():
         return
-    export_path = db_attr_check("t_export_path")
-    dlg.export_panel.export_path = export_path
+    dlg.export_panel.path_check(db_attr_check("t_export_path"), True)
+    dlg.export_panel.path_check(db_attr_check("t_photo_path"), False)
+    dlg.export_panel.init_chkboxs()
+    dlg.export_panel.pow_update()
+    dlg.export_panel.zal_update()
     dlg.export_panel.show()
 
 def db_attr_check(attr):
@@ -1360,7 +1367,7 @@ def db_attr_change(tbl, attr, val, sql_bns, user=True, quotes=False):
     else:
         return False
 
-def pg_layer_change(uri, layer):
+def pg_layer_change(uri, layer, provider="postgres"):
     """Zmiana zawartości warstwy postgres na podstawie uri"""
     # print("[pg_layer_change:", uri, layer, "]")
     xml_document = QDomDocument("style")
@@ -1369,7 +1376,7 @@ def pg_layer_change(uri, layer):
     context = QgsReadWriteContext()
     layer.writeLayerXml(xml_maplayer,xml_document, context)
     xml_maplayer.firstChildElement("datasource").firstChild().setNodeValue(uri)
-    xml_maplayer.firstChildElement("provider").firstChild().setNodeValue("postgres")
+    xml_maplayer.firstChildElement("provider").firstChild().setNodeValue(provider)
     xml_maplayers.appendChild(xml_maplayer)
     xml_document.appendChild(xml_maplayers)
     layer.readLayerXml(xml_maplayer, context)
@@ -1513,458 +1520,3 @@ def seq(_num):
             dlg.seq_dock.widgets["sqb_seq"].sqb_btns["sqb_" + str(_num)].cfg_clicked()
         else:  # Sekwencja nie jest pusta, następuje jej aktywacja
             dlg.seq_dock.widgets["sqb_seq"].num = _num
-
-def pow_export():
-    """Eksport danych powiatu do bazy mdb, kart wyrobisk, zdjęć i załączników."""
-    pow_grp = dlg.powiat_i
-    pow_name = dlg.powiat_t
-    pictures_export(pow_grp, pow_name)
-    mdb_export(pow_grp, pow_name)
-    card_export(pow_grp, pow_name)
-    zal_export(pow_grp, pow_name)
-
-def pictures_export(pow_grp, pow_name):
-    """Eksport zdjęć wyrobisk potwierdzonych z danego powiatu, połączony z nadaniem im odpowiednich nazw."""
-    source_path = f"C:{os.path.sep}nef{os.path.sep}punkty"
-    dest_path = f"C:{os.path.sep}MOEK_2020{os.path.sep}FOTO{os.path.sep}{pow_name}_foto"
-    if not os.path.isdir(dest_path):
-        os.makedirs(dest_path, exist_ok=True)
-    df = wyr_for_pict(pow_grp)
-    for index in df.to_records():  # index[1]: wyr_id, index[2]: id_punkt
-        wyr_source_path = os.path.join(source_path, str(index[1]))
-        if not os.path.isdir(wyr_source_path):
-            print(f"!!!!!!!!!!!!!!! Brak folderu ze zdjęciami dla wyrobiska {index[1]}")
-            continue
-        for cnt, filename in enumerate(os.listdir(wyr_source_path), 1):
-            dst = f"{index[2]}_{str(cnt).zfill(2)}.jpg"
-            shutil.copy2(os.path.join(wyr_source_path, filename), os.path.join(dest_path, dst))
-
-def mdb_export(pow_grp, pow_name):
-    """Export do mdb wyrobisk z danego powiatu."""
-    dest_excel = f"C:{os.path.sep}MOEK_2020{os.path.sep}mdb_{pow_name}.xls"
-    df = wyr_for_mdb(pow_grp)
-    df['NADKL_MIN'] = pd.to_numeric(df['NADKL_MIN'], downcast='float')
-    df['NADKL_MAX'] = pd.to_numeric(df['NADKL_MAX'], downcast='float')
-    df['MIAZSZ_MIN'] = pd.to_numeric(df['MIAZSZ_MIN'], downcast='float')
-    df['MIAZSZ_MAX'] = pd.to_numeric(df['MIAZSZ_MAX'], downcast='float')
-    df['WYS_MIN'] = pd.to_numeric(df['WYS_MIN'], downcast='float')
-    df['WYS_MAX'] = pd.to_numeric(df['WYS_MAX'], downcast='float')
-    df['STAN_MIDAS'] = np.where((df['STAN_MIDAS'] == 'RW') | (df['STAN_MIDAS'] == 'RS'), 'R', df['STAN_MIDAS'])
-    df['POW_M2'] = np.where(df['STAN_PNE'] == 'brak', np.nan, df['POW_M2'])
-    df.to_excel(dest_excel, index=False, sheet_name='mdb_import')
-
-def szkic_creator(pow_grp, pow_name):
-    """Tworzy szkice sytuacyjne wyrobisk."""
-    map_cm = 9.21  # Wymiar mapki w cm
-    map_px = int(round(map_cm / 0.008465, 0))  # Wymiar mapki w px
-    dest_path = f"C:{os.path.sep}MOEK_2021{os.path.sep}{pow_name}{os.path.sep}{pow_name}_karty_szkice"
-    STYLE_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'styles' + os.path.sep
-    if not os.path.isdir(dest_path):
-        os.makedirs(dest_path, exist_ok=True)
-    # Zdefiniowanie i symbolizacja warstw, które mają się znaleźć na szkicu sytuacyjnym:
-    near_lyrs = []
-    far_lyrs = []
-    near_basemap = dlg.proj.mapLayersByName("Geoportal")[0]
-    far_basemap = dlg.proj.mapLayersByName("OpenStreetMap")[0]
-    lyr_names = ["midas_zloza", "midas_wybilansowane", "midas_obszary", "midas_tereny"]
-    for lyr_name in lyr_names:
-        lyr = dlg.proj.mapLayersByName(lyr_name)[0]
-        near_lyrs.append(lyr)
-        far_lyrs.append(lyr)
-        lyr.loadNamedStyle(f'{STYLE_PATH}{lyr_name}_szkic.qml')
-    near_lyrs.append(near_basemap)
-    far_lyrs.append(far_basemap)
-    df = wyr_for_pict(pow_grp)  # Stworzenie listy wyrobisk
-    for index in df.to_records():
-        # Wygenerowanie szkicu sytuacyjnego dla wszystkich wyrobisk z powiatu:
-        wyr_lyr = wyr_to_lyr(index[1])  # Stworzenie warstwy z geometrią wyrobiska
-        if not wyr_lyr.isValid():
-            print(f"szkic_creator: warstwa z geometrią wyrobiska {index[1]} nie jest prawidłowa")
-            continue
-        # Dodanie warstwy z wyrobiskiem do listy pozostałych warstw:
-        near_lyrs.insert(0, wyr_lyr)
-        far_lyrs.insert(0, wyr_lyr)
-        wyr_lyr.loadNamedStyle(f'{STYLE_PATH}wyr_szkic.qml')
-        box = wyr_bbox(wyr_lyr)  # Określenie zasięgu przestrzennego wyrobiska
-        if not box:
-            print(f"szkic_creator: nie udało się określić zasięgu geometrii wyrobiska {index[1]}")
-            continue
-        near_val = max(box.width(), box.height())  # Wybór szerokości albo długości wyrobiska w m
-        far_val = 2302  # Sztuczne ustawienie wymiaru, aby rozszerzyć widok mapki orientacyjnej do skali 1: 25 000
-        near_m = scale_interval(near_val)  # Wartość podziałki w m dla mapki zasadniczej
-        far_m = 1000  # Wartość podziałki w m dla mapki orientacyjnej
-        if near_val < 92.1:  # Wyrobisko zbyt małe i przez to szkic byłby zbyt przybliżony, rozszerzamy widok do skali 1:2000
-            near_val = 92.1
-        near_ext = sketchmap_extent(box, near_val)  # Ustalenie zasięgu widoku mapki zasadniczej
-        far_ext = sketchmap_extent(box, far_val)  # Ustalenie zasięgu widoku mapki orientacyjnej w skali 1:25 000
-        near_scl = scale_width(map_cm, map_px, near_val, near_m)  # Długość podziałki liniowej w px
-        far_scl = scale_width(map_cm, map_px, far_val, far_m)  # Długość podziałki liniowej w px
-        near_img = img_create(map_px, map_px)  # Obiekt obrazka mapki zasadniczej
-        far_img = img_create(map_px, map_px)  # Obiekt obrazka mapki orientacyjnej
-        comp_img = img_create(map_px * 2, map_px)  # Obiekt obrazka szkicu orientacyjnego
-        near_ms = ms_create(near_lyrs, near_ext, near_img.size())  # Obiekt mapki zasadniczej
-        far_ms = ms_create(far_lyrs, far_ext, far_img.size())  # Obiekt mapki orientacyjnej
-        map_drawing(map_px, near_m, near_scl, near_img, near_ms, True)  # Narysowanie mapki zasadniczej
-        map_drawing(map_px, far_m, far_scl, far_img, far_ms, False)  # Narysowanie mapki orientacyjnej
-        # Postprodukcja (wyostrzenie) podkładu z mapki orientacyjnej:
-        data = far_img.constBits().asstring(far_img.byteCount())
-        pil_img = Image.frombuffer('RGB', (far_img.width(), far_img.height()), data, 'raw', 'BGRX')
-        pil_img = ImageEnhance.Brightness(pil_img).enhance(0.95)
-        pil_img = ImageEnhance.Contrast(pil_img).enhance(1.5)
-        pil_img = ImageEnhance.Sharpness(pil_img).enhance(4.0)
-        far_img = ImageQt.ImageQt(pil_img)
-        # pil_img.save(f"{dest_path}{os.path.sep}{index[2]}.png")
-        # Rysowanie szkicu sytuacyjnego:
-        src_rect = QRectF(0.0, 0.0, map_px, map_px)
-        far_rect = QRectF(0.0, 0.0, map_px, map_px)
-        near_rect = QRectF(map_px, 0.0, map_px, map_px)
-        p = QPainter()
-        p.setRenderHint(QPainter.Antialiasing)
-        p.begin(comp_img)
-        p.drawImage(far_rect, far_img, src_rect)
-        p.drawImage(near_rect, near_img, src_rect)
-        p.setPen(QPen(Qt.black, 4, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin))
-        p.drawRect(2, 2, (map_px * 2) - 4, map_px - 4)
-        p.drawLine(map_px, 0, map_px, map_px)
-        p.setPen(QPen(Qt.black, 4, Qt.SolidLine, Qt.FlatCap, Qt.RoundJoin))
-        title_rect = QRectF(831, 2, 514, 80)
-        p.fillRect(title_rect, Qt.white)
-        p.drawRect(title_rect)
-        f = QFont()
-        f.setPixelSize(40)
-        p.setPen(Qt.black)
-        p.setFont(f)
-        title_rect.moveTop(0)
-        p.drawText(title_rect, Qt.AlignCenter, "SZKIC LOKALIZACYJNY")
-        p.end()
-        comp_img.save(f"{dest_path}{os.path.sep}{index[2]}.png", "PNG")
-        # Usunięcie warstwy z wyrobiskiem:
-        del wyr_lyr
-        near_lyrs = near_lyrs[1:]
-        far_lyrs = far_lyrs[1:]
-    for lyr_name in lyr_names:
-        dlg.proj.mapLayersByName(lyr_name)[0].loadNamedStyle(f'{STYLE_PATH}{lyr_name}.qml')
-
-def map_drawing(map_px, near_m, scl_px, img, ms, is_near):
-    """Rysuje mapkę szkicu lokalizacyjnego. Jeśli is_near == True - rysowanie mapki zasadniczej, False - mapki orientacyjnej."""
-    p = QPainter()
-    p.setRenderHint(QPainter.Antialiasing)
-    p.begin(img)
-    # Rendering warstw i etykiet:
-    render = QgsMapRendererCustomPainterJob(ms, p)
-    render.start()
-    render.waitForFinished()
-    # Rysowanie podziałki liniowej:
-    scl_path = QPainterPath()
-    scl_start = 980 if is_near else 267
-    y = 50 if is_near else 1052
-    x1 = scl_start - scl_px  # Wspólrzędna X początku podziałki
-    x2 = x1 + scl_px  # Wspólrzędna X końca podziałki
-    scl_pg = scale_shape(x1, x2, y)  # Utworzenie kształtu podziałki
-    scl_path.addPolygon(scl_pg)  # Dodanie kształtu do ścieżki
-        # Utworzenie napisu dla podziałki liniowej:
-    f = QFont()
-    f.setPixelSize(24)
-    f.setBold(True)
-    # Dodanie napisu do ścieżki:
-    if is_near:
-        scl_path.addText(x2 + 10, 58, f, f"{near_m} m")
-    else:
-        scl_path.addText(x2 + 10, 1060, f, "1 km")
-    p.setPen(QPen(Qt.white, 4, Qt.SolidLine, Qt.RoundCap))
-    p.drawPath(scl_path)  # Narysowanie konturu (halo) podziałki białym kolorem
-    p.fillPath(scl_path, Qt.black)  # Wypełnienie podziałki czarnym kolorem
-        #  Utworzenie napisu informacyjnego o źródle podkładu:
-    f.setBold(False)
-    f.setPixelSize(28)
-    src_path = QPainterPath()
-    bm_name = "Geoportal" if is_near else "OpenStreetMap"
-    src_path.addText(0, 1070, f, f"źródło: {bm_name}")
-    x_off = int(round(map_px - src_path.boundingRect().width() - 30, 0))
-    src_path.translate(x_off, 0)
-    pen_color = Qt.black if is_near else Qt.white
-    fill_color = Qt.white if is_near else Qt.black
-    p.setPen(QPen(pen_color, 3, Qt.SolidLine, Qt.RoundCap))
-    p.drawPath(src_path)
-    p.fillPath(src_path, fill_color)
-    p.end()
-
-def scale_width(map_cm, map_px, m_val, a):
-    """Zwraca długość podziałki liniowej w px."""
-    scl_m = (m_val * 2) / map_cm  # Ilość metrów w 1 cm szkicu
-    scl_cm = a / scl_m  # Długość ustalonego odcinka podziałki na szkicu podana w cm
-    scl_px = int(round(scl_cm * map_px / map_cm, 0))  # Przeliczenie odcinka podziałki z cm na px
-    return scl_px
-
-def ms_create(lyrs, ext, img_size):
-    """Zwraca obiekt mapki."""
-    ms = QgsMapSettings()
-    ms.setOutputDpi(300)
-    ms.setLayers(lyrs)
-    ms.setExtent(ext)
-    ms.setOutputSize(img_size)
-    ms.setDestinationCrs(lyrs[0].crs())
-    return ms
-
-def img_create(width_px, height_px):
-    """Tworzy i konfiguruje obiekt obrazka mapki."""
-    img = QImage(QSize(width_px, height_px), QImage.Format_RGB32)
-    img.setDotsPerMeterX(11811.0236220472)
-    img.setDotsPerMeterY(11811.0236220472)
-    return img
-
-def wyr_bbox(wyr_lyr):
-    """Zwraca bbox wyrobiska."""
-    if wyr_lyr.featureCount() > 0:
-        for feat in wyr_lyr.getFeatures():
-            return feat.geometry().boundingBox()
-
-def sketchmap_extent(box, m_val):
-    """Zwraca zakres widoku mapki szkicu sytuacyjnego"""
-    w_off = (m_val * 2 - box.width())/2
-    h_off = (m_val * 2 - box.height())/2
-    return QgsRectangle(box.xMinimum() - w_off, box.yMinimum() - h_off, box.xMaximum() + w_off, box.yMaximum() + h_off)
-
-def scale_interval(m_val):
-    """Zwraca wartość odcinka podziałki na skali metrowej."""
-    if m_val <= 25:
-        return 5
-    elif m_val <= 75:
-        return 10
-    elif m_val <= 250:
-        return 50
-    elif m_val <= 500:
-        return 100
-    else:
-        return 500
-
-def scale_shape(x1, x2, y):
-    """Zwraca geometrię do narysowania skali metrowej."""
-    h = 8.0  # Wysokość "wąsów" na podziałce w px
-    pts = [
-            (x1 - 1, y - h),
-            (x1 + 1, y - h),
-            (x1 + 1, y - 2),
-            (x2 - 1, y - 2),
-            (x2 - 1, y - h),
-            (x2 + 1, y - h),
-            (x2 + 1, y + h),
-            (x2 - 1, y + h),
-            (x2 - 1, y + 2),
-            (x1 + 1, y + 2),
-            (x1 + 1, y + h),
-            (x1 - 1, y + h),
-            (x1 - 1, y - h)
-            ]
-    return QPolygonF([QPointF(p[0], p[1]) for p in pts])
-
-def wyr_to_lyr(wyr_id):
-    """Tworzy warstwę tymczasową dla geometrii wyrobiska."""
-    with CfgPars() as cfg:
-        params = cfg.uri()
-    uri = params + f'table="team_{dlg.team_i}"."wyr_geom" (geom) sql=wyr_id = {wyr_id}'
-    return QgsVectorLayer(uri, "wyr_szkic", "postgres")
-
-def card_export(pow_grp, pow_name):
-    """Generator kart wyrobisk z danego powiatu."""
-    doc_path = f"C:{os.path.sep}MOEK_2020{os.path.sep}{pow_name}{os.path.sep}{pow_name}_karty_docx"
-    pdf_path = f"C:{os.path.sep}MOEK_2020{os.path.sep}{pow_name}{os.path.sep}{pow_name}_karty_pdf"
-    dest_excel = f"C:{os.path.sep}MOEK_2020{os.path.sep}karty_{pow_name}.xlsx"
-    temp_doc = f"C:{os.path.sep}MOEK_2020{os.path.sep}karta_szablon.docx"
-    if not os.path.isdir(doc_path):
-        os.makedirs(doc_path, exist_ok=True)
-    if not os.path.isdir(pdf_path):
-        os.makedirs(pdf_path, exist_ok=True)
-    df = wyr_for_card(pow_grp)
-    df['NADKL_MIN'] = pd.to_numeric(df['NADKL_MIN'], downcast='float')
-    df['NADKL_MAX'] = pd.to_numeric(df['NADKL_MAX'], downcast='float')
-    df['MIAZSZ_MIN'] = pd.to_numeric(df['MIAZSZ_MIN'], downcast='float')
-    df['MIAZSZ_MAX'] = pd.to_numeric(df['MIAZSZ_MAX'], downcast='float')
-    df['WYS_MIN'] = pd.to_numeric(df['WYS_MIN'], downcast='float')
-    df['WYS_MAX'] = pd.to_numeric(df['WYS_MAX'], downcast='float')
-    df['DLUG_MIN'] = pd.to_numeric(df['DLUG_MIN'], downcast='integer')
-    df['DLUG_MAX'] = pd.to_numeric(df['DLUG_MAX'], downcast='integer')
-    df['SZER_MIN'] = pd.to_numeric(df['SZER_MIN'], downcast='integer')
-    df['SZER_MAX'] = pd.to_numeric(df['SZER_MAX'], downcast='integer')
-    df = df.where(pd.notnull(df), None)
-    df['STAN_MIDAS'] = np.where((df['STAN_MIDAS'] == 'RW') | (df['STAN_MIDAS'] == 'RS'), 'R', df['STAN_MIDAS'])
-    df['ID'] = df['ID'].str.pad(width=5, side='left', fillchar=' ')
-    df[['ID_0', 'ID_1', 'ID_2', 'ID_3', 'ID_4', 'ID_5', 'ID_6']] = df['ID'].str.split(pat ="", expand=True)
-    df = df.drop(columns=['ID_0', 'ID_6'])
-    df['DATA'] = df['DATA'].where(pd.notnull(df['DATA']), "2000-01-01")
-    df['DATA'] = pd.to_datetime(df['DATA'])
-    df['DD'] = np.where((df['DATA'].dt.day == 1) & (df['DATA'].dt.month == 1) & (df['DATA'].dt.year == 2000), None, df['DATA'].dt.day.astype('str').str.zfill(2))
-    df['MM'] = np.where((df['DATA'].dt.day == 1) & (df['DATA'].dt.month == 1) & (df['DATA'].dt.year == 2000), None, df['DATA'].dt.month.astype('str').str.zfill(2))
-    df['RR'] = np.where((df['DATA'].dt.day == 1) & (df['DATA'].dt.month == 1) & (df['DATA'].dt.year == 2000), None, df['DATA'].dt.year)
-    df['GODZ'] = df['GODZ'].where(pd.notnull(df['GODZ']), "00:00:00")
-    df['GODZ'] = pd.to_datetime(df['GODZ'], format='%H:%M:%S')
-    df['GODZ_1'] = np.where((df['GODZ'].dt.hour == 0) & (df['GODZ'].dt.minute == 0), None, df['GODZ'].dt.hour.astype('str').str.zfill(2))
-    df['GODZ_2'] = np.where((df['GODZ'].dt.hour == 0) & (df['GODZ'].dt.minute == 0), None, df['GODZ'].dt.minute.astype('str').str.zfill(2))
-    df[['ID_P0', 'ID_P1', 'ID_P2', 'ID_P3', 'ID_P4', 'ID_P5', 'ID_P6', 'ID_P_', 'ID_P7', 'ID_P8', 'ID_P9', 'ID_P10']] = df['ID_PUNKT'].str.split(pat ="", expand=True)
-    df = df.drop(columns=['ID_P0', 'ID_P_', 'ID_P10'])
-    df['ID_ARKUSZ'] = df['ID_ARKUSZ'].fillna('        ')
-    df[['ID_A0', 'ID_A1', 'ID_A2', 'ID_A3', 'ID_A4', 'ID_A_', 'ID_A5', 'ID_A6', 'ID_A7', 'ID_A8']] = df['ID_ARKUSZ'].str.split(pat ="", expand=True)
-    df = df.drop(columns=['ID_A0', 'ID_A_', 'ID_A8'])
-    df['POW_M2'] = np.where(df['STAN_PNE'] == 'brak', '–', df['POW_M2'])
-    df['KOPALINY'] = np.where(df['KOPALINA_2'].isna(), df['KOPALINA'], df['KOPALINA'] + ' / ' + df['KOPALINA_2'])
-    df['WIEKI'] = np.where(df['WIEK_2'].isna(), df['WIEK'], np.where(df['WIEK'] == df['WIEK_2'], df['WIEK'], df['WIEK'] + ' / ' + df['WIEK_2']))
-    o_list = ['e', 'rb', 'p', 'op', 'k', 'czp', 'wg', 'el', 'r', 'i']
-    for o in o_list:
-        df[f'O_{o}'] = np.where((df['ODPADY_1'] == o) | (df['ODPADY_2'] == o) | (df['ODPADY_3'] == o) | (df['ODPADY_4'] == o), 1, 0)
-    df = df.where(pd.notnull(df), None)
-    for r_index, row in df.iterrows():
-        cust_name = row['ID_PUNKT']
-        tpl = DocxTemplate(temp_doc)
-        jpg_path = f"{szkice_path}{os.path.sep}{cust_name}.png"
-        if os.path.isfile(jpg_path):
-            # Wczytanie szkicu lokalizacyjnego, jeśli jest:
-            tpl.replace_pic("szkic.jpg", jpg_path)
-        x = df.to_dict(orient='records')
-        context = x
-        tpl.render(context[r_index])
-        tpl.save(f'{doc_path}{os.path.sep}{cust_name}.docx')
-        word_app = client.Dispatch("Word.Application")
-        doc = word_app.Documents.Open(f'{doc_path}{os.path.sep}{cust_name}.docx')
-        doc.SaveAs(f'{pdf_path}{os.path.sep}{cust_name}.pdf', FileFormat=17)
-        doc.Close()
-    df.to_excel(dest_excel)
-
-def zal_export(pow_grp, pow_name):
-    """Export danych do załączników."""
-    dest_excel = f"C:{os.path.sep}MOEK_2020{os.path.sep}zal1_3_{pow_name}.xlsx"
-    wb = xls.Workbook(dest_excel)
-    ws_1 = wb.add_worksheet('Załącznik 1')
-    ws_3 = wb.add_worksheet('Załącznik 3')
-    wss = []
-    wss.append(ws_1)
-    wss.append(ws_3)
-    for ws in wss:
-        ws.set_paper(8)
-        ws.set_landscape()
-        ws.center_horizontally()
-        ws.set_margins(0.3, 0.3, 0.3, 0.3)
-        ws.set_header(margin=0)
-        ws.set_footer(margin=0)
-    title_1 = "Załącznik 1. Zestawienie zinwentaryzowanych wyrobisk na terenie powiatu starachowickiego – stan na wrzesień 2020 r."
-    title_3 = "Załącznik 3. Zestawienie miejsc zinwentaryzowanych w powiecie starachowickim we wrześniu 2020 r. wymagających pilnej interwencji"
-    head_1 = "PUNKTY NIEKONCESJONOWANEJ EKSPLOATACJI"
-    header = ['Lp.', 'ID PUNKTU', 'MIEJSCOWOŚĆ', 'GMINA', 'ID MIDAS', 'STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS', 'STWIERDZONY STAN ZAGOSPODAROWANIA WYROBISKA', 'WYDOBYCIE OD', 'WYDOBYCIE DO', 'KOPALINA', 'WIEK', 'POW (m²)', 'ORIENTACYJNA SKALA EKSPLOATACJI', 'LOKALIZACJA POLA EKSPLOATACJI', 'OBECNOŚĆ ODPADÓW', 'RODZAJE ODPADÓW', 'REKULTYWACJA', 'ZAGROŻENIA', 'PROBLEM DO ZGŁOSZENIA', 'OPIS POWODU ZGŁOSZENIA', 'DATA WIZJI TERENOWEJ', 'DATA POPRZEDNIEJ WIZJI TERENOWEJ', 'UWAGI']
-    col_widths = [1.86, 6.43, 8.71, 5.71, 3.86, 6.29, 8.29, 7.29, 7.29, 6.14, 5.86, 3.29, 10.43, 8.43, 6.71, 9.29, 9.71, 8.29, 7.43, 11.43, 7.43, 7.57, 28.86]
-    cols = enumerate(col_widths)
-    head_2 = "NIEZREKULTYWOWANE WYROBISKA, W KTÓRYCH NIE STWIERDZONO NIEKONCESJONOWANEJ EKSPLOATACJI"
-    title_fm = wb.add_format({'font_name': 'Times New Roman', 'font_size': 10, 'bold': True})
-    header_fm = wb.add_format({'font_name': 'Times New Roman', 'font_size': 6, 'bold': False, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter', 'bg_color': '#d9d9d9', 'border': 7})
-    head_fm = wb.add_format({'font_name': 'Times New Roman', 'font_size': 10, 'bold': False,'align': 'center', 'valign': 'vcenter', 'border': 7})
-    cell_fm = wb.add_format({'font_name': 'Times New Roman', 'font_size': 6, 'bold': False, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter', 'border': 7})
-    date_fm = wb.add_format({'num_format': 'dd.mm.yyyy', 'font_name': 'Times New Roman', 'font_size': 6, 'bold': False, 'text_wrap': True, 'align': 'center', 'valign': 'vcenter', 'border': 7})
-    ws_1.merge_range(0, 0, 0, 22, title_1, title_fm)
-    for col in cols:
-        ws_1.set_column(col[0], col[0], col[1])
-    ws_1.set_row(1, 8)
-    ws_1.write_row(2, 0, header, header_fm)
-    r = 2
-    df = wyr_for_zal(pow_grp)
-    odp_cols = ['ODPADY_1', 'ODPADY_2', 'ODPADY_3', 'ODPADY_4']
-    df["ODPADY"] = df[odp_cols].apply(lambda x: '; '.join(x.dropna()), axis=1)
-    df.drop(odp_cols, axis=1, inplace=True)
-    df['POW_M2'] = np.where(df['STAN_PNE'] == 'brak wyrobiska', '–', df['POW_M2'])
-    df['KOPALINA'] = np.where(df['KOPALINA_2'].isna(), df['KOPALINA'], df['KOPALINA'] + ' / ' + df['KOPALINA_2'])
-    df['WIEK'] = np.where(df['WIEK_2'].isna(), df['WIEK'], np.where(df['WIEK'] == df['WIEK_2'], df['WIEK'], df['WIEK'] + ' / ' + df['WIEK_2']))
-    df.drop(['KOPALINA_2', 'WIEK_2'], axis=1, inplace=True)
-    df_cols = df.columns.tolist()
-    df_cols = df_cols[:17] + df_cols[-1:] + df_cols[17:-1]
-    df = df[df_cols]
-    df_nopne = df[df['CZY_PNE'] == False]
-    df_pne = df[~df.index.isin(df_nopne.index)]
-    df_zal3 = df[df['ZGLOSZENIE'] != 'brak']
-    if len(df_pne) > 0:
-        df_pne = df_pne.reset_index(drop=True)
-        df_pne.index += 1
-        df_pne.drop(['CZY_PNE', 'CZY_ZLOZE', 'STAN_REKUL'], axis=1, inplace=True)
-        r += 1
-        ws_1.set_row(r, 19.5)
-        ws_1.merge_range(r, 0, r, 22, head_1, head_fm)
-        df_pne = df_pne.where(pd.notnull(df_pne), None)
-        for index in df_pne.to_records():
-            r += 1
-            ws_1.write_row(r, 0, index, cell_fm)
-            date_vals = (index[20], index[21])
-            ws_1.write_row(r, 20, date_vals, date_fm)
-    if len(df_nopne) > 0:
-        df_nopne = df_nopne.reset_index(drop=True)
-        df_nopne.index += 1
-        df_nopne.drop(['CZY_PNE', 'CZY_ZLOZE', 'STAN_REKUL'], axis=1, inplace=True)
-        r += 1
-        ws_1.set_row(r, 19.5)
-        ws_1.merge_range(r, 0, r, 22, head_2, head_fm)
-        df_nopne = df_nopne.where(pd.notnull(df_nopne), None)
-        for index in df_nopne.to_records():
-            r += 1
-            ws_1.write_row(r, 0, index, cell_fm)
-            date_vals = (index[20], index[21])
-            ws_1.write_row(r, 20, date_vals, date_fm)
-    if len(df_zal3) > 0:
-        df_zal3 = df_zal3.reset_index(drop=True)
-        df_zal3.index += 1
-        df_zal3.drop(['CZY_PNE', 'CZY_ZLOZE', 'STAN_REKUL'], axis=1, inplace=True)
-        ws_3.merge_range(0, 0, 0, 22, title_3, title_fm)
-        cols = enumerate(col_widths)
-        for col in cols:
-            ws_3.set_column(col[0], col[0], col[1])
-        ws_3.set_row(1, 8)
-        ws_3.write_row(2, 0, header, header_fm)
-        r = 2
-        df_zal3 = df_zal3.where(pd.notnull(df_zal3), None)
-        for index in df_zal3.to_records():
-            r += 1
-            ws_3.write_row(r, 0, index, cell_fm)
-            date_vals = (index[20], index[21])
-            ws_3.write_row(r, 20, date_vals, date_fm)
-    try:
-        wb.close()
-    except Exception as err:
-        QMessageBox.warning(None, "Generator załączników", f"Plik {dest_excel} jest zablokowany dla zapisu. Sprawdź, czy nie jest otwarty - jeśli tak, zamknij go i ponów eksport.")
-
-def wyr_for_pict(pow_grp):
-    """Zwraca dataframe z potwierdzonymi wyrobiskami z danego powiatu i wygenerowanymi numerami id_punkt."""
-    db = PgConn()
-    sql = f"SELECT wyr_id, concat(pow_id, '_', order_id) as id_punkt FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{pow_grp}' and order_id IS NOT NULL ORDER BY order_id;"
-    if db:
-        mdf = db.query_pd(sql, ['wyr_id', 'id_punkt'])
-        if isinstance(mdf, pd.DataFrame):
-            return mdf if len(mdf) > 0 else None
-        else:
-            return None
-
-def wyr_for_card(pow_grp):
-    """Zwraca dataframe z potwierdzonymi wyrobiskami z danego powiatu i atrybutami potrzebnymi do wygenerowania kart."""
-    db = PgConn()
-    sql = f"SELECT COALESCE(w.t_teren_id, p.wyr_id::varchar) AS id, CONCAT(p.pow_id, '_', p.order_id) AS id_punkt, d.date_fchk, d.time_fchk, w.t_wn_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, ST_X(w.centroid) as x_92, ST_Y(w.centroid) as y_92, CASE WHEN w.t_midas_id is null THEN false ELSE true END AS czy_zloze, w.t_midas_id, d.t_stan_midas, d.b_pne_zloze, d.b_pne_poza, d.t_stan_pne, d.t_zloze_od, d.t_zloze_do, d.t_wyr_od, d.t_wyr_do, (SELECT s.t_desc FROM public.sl_kopalina AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_kopalina AND d.wyr_id = p.wyr_id) AS kopalina, (SELECT s.t_desc FROM public.sl_kopalina AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_kopalina_2 AND d.wyr_id = p.wyr_id) AS kopalina_2, (SELECT s.t_desc FROM public.sl_wiek AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wiek AND d.wyr_id = p.wyr_id) AS wiek, (SELECT s.t_desc FROM public.sl_wiek AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wiek_2 AND d.wyr_id = p.wyr_id) AS wiek_2, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.i_area_m2, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_wyp_odpady, d.t_odpady_opak, d.t_odpady_inne, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.i_ile_zalacz, w.t_notatki, d.t_autor FROM team_{dlg.team_i}.wyrobiska AS w INNER JOIN team_{dlg.team_i}.wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_{dlg.team_i}.wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE p.pow_grp = '{pow_grp}' and p.order_id IS NOT NULL ORDER BY p.order_id;"
-    if db:
-        mdf = db.query_pd(sql, ['ID', 'ID_PUNKT', 'DATA', 'GODZ', 'ID_ARKUSZ', 'MIEJSCE', 'GMINA', 'POWIAT', 'WOJEWODZTWO', 'X_92', 'Y_92', 'CZY_ZLOZE', 'ID_MIDAS', 'STAN_MIDAS', 'PNE_ZLOZE', 'PNE_POZA', 'STAN_PNE', 'ZLOZE_OD', 'ZLOZE_DO', 'PNE_OD', 'PNE_DO', 'KOPALINA', 'KOPALINA_2', 'WIEK', 'WIEK_2', 'NADKL_MIN', 'NADKL_MAX', 'MIAZSZ_MIN', 'MIAZSZ_MAX', 'DLUG_MIN', 'DLUG_MAX', 'SZER_MIN', 'SZER_MAX', 'WYS_MIN', 'WYS_MAX', 'POW_M2', 'WYROBISKO', 'ZAWODN', 'EXPLOAT', 'WYDOBYCIE', 'ODPADY_1', 'ODPADY_2', 'ODPADY_3', 'ODPADY_4', 'WYP_ODPADY', 'O_OPAK', 'O_INNE', 'REKULTYW', 'DOJAZD', 'ZAGROZENIA', 'ZGLOSZENIE', 'POWOD', 'ILE_ZALACZ', 'UWAGI', 'AUTORZY'])
-        if isinstance(mdf, pd.DataFrame):
-            return mdf if len(mdf) > 0 else None
-        else:
-            return None
-
-def wyr_for_mdb(pow_grp):
-    """Zwraca dataframe z potwierdzonymi wyrobiskami z danego powiatu i atrybutami potrzebnymi do eksportu mdb."""
-    db = PgConn()
-    sql = f"SELECT CONCAT(p.pow_id, '_', p.order_id) AS id_punkt, w.t_wn_id, CASE WHEN d.time_fchk IS NOT NULL THEN (d.date_fchk + d.time_fchk) ELSE d.date_fchk END AS data, p.t_mie_name, d.b_teren, d.b_pne, CASE COALESCE(w.t_midas_id, 'null_val') WHEN 'null_val' THEN false ELSE true END AS czy_zloze, w.t_midas_id, d.t_stan_midas, d.b_pne_zloze, d.b_pne_poza, d.t_stan_pne, d.t_zloze_od, d.t_zloze_do, d.t_wyr_od, d.t_wyr_do, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.i_area_m2, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, w.t_notatki, (SELECT t_autor FROM public.teams WHERE team_id = {dlg.team_i}), ST_X(w.centroid) as x_92, ST_Y(w.centroid) as y_92 FROM team_{dlg.team_i}.wyrobiska AS w INNER JOIN team_{dlg.team_i}.wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_{dlg.team_i}.wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE p.pow_grp = '{pow_grp}' and p.order_id IS NOT NULL ORDER BY p.order_id;"
-    if db:
-        mdf = db.query_pd(sql, ['ID_PUNKT', 'ID_ARKUSZ', 'DATA', 'MIEJSCE', 'CZY_TEREN', 'CZY_PNE', 'CZY_ZLOZE', 'ID_MIDAS', 'STAN_MIDAS', 'PNE_ZLOZE', 'PNE_POZA', 'STAN_PNE', 'ZLOZE_OD', 'ZLOZE_DO', 'PNE_OD', 'PNE_DO', 'KOPALINA', 'KOPALINA_2', 'WIEK', 'WIEK_2', 'NADKL_MIN', 'NADKL_MAX', 'MIAZSZ_MIN', 'MIAZSZ_MAX', 'DLUG_MIN', 'DLUG_MAX', 'SZER_MIN', 'SZER_MAX', 'WYS_MIN', 'WYS_MAX', 'POW_M2', 'WYROBISKO', 'ZAWODN', 'EXPLOAT', 'WYDOBYCIE', 'WYP_ODPADY', 'ODPADY_1', 'ODPADY_2', 'ODPADY_3', 'ODPADY_4', 'STAN_REKUL', 'REKULTYW', 'DOJAZD', 'ZAGROZENIA', 'ZGLOSZENIE', 'POWOD', 'UWAGI', 'AUTOR', 'X_92', 'Y_92'])
-        if isinstance(mdf, pd.DataFrame):
-            return mdf if len(mdf) > 0 else None
-        else:
-            return None
-
-def wyr_for_zal(pow_grp):
-    """Zwraca dataframe z potwierdzonymi wyrobiskami z danego powiatu i atrybutami potrzebnymi do załącznika nr 1."""
-    db = PgConn()
-    sql = f"SELECT CONCAT(p.pow_id, '_', p.order_id) AS id_punkt, p.t_mie_name, p.t_gmi_name, d.b_pne, CASE COALESCE(w.t_midas_id, 'null_val') WHEN 'null_val' THEN false ELSE true END AS czy_zloze, w.t_midas_id, (SELECT s.t_desc FROM public.sl_stan_midas AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_stan_midas AND d.wyr_id = p.wyr_id) AS stan_midas, (SELECT s.t_desc FROM public.sl_stan_pne AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_stan_pne AND d.wyr_id = p.wyr_id) AS stan_pne, d.t_wyr_od, d.t_wyr_do, (SELECT s.t_desc FROM public.sl_kopalina AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_kopalina AND d.wyr_id = p.wyr_id) AS kopalina, (SELECT s.t_desc FROM public.sl_kopalina AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_kopalina_2 AND d.wyr_id = p.wyr_id) AS kopalina_2, (SELECT s.t_desc FROM public.sl_wiek AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wiek AND d.wyr_id = p.wyr_id) AS wiek, (SELECT s.t_desc FROM public.sl_wiek AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wiek_2 AND d.wyr_id = p.wyr_id) AS wiek_2, d.i_area_m2, (SELECT s.t_desc FROM public.sl_eksploatacja AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_eksploat AND d.wyr_id = p.wyr_id) AS eksploatacja, (SELECT s.t_desc FROM public.sl_wydobycie AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wydobycie AND d.wyr_id = p.wyr_id) AS wydobycie, (SELECT s.t_desc FROM public.sl_wyp_odp AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_wyp_odpady AND d.wyr_id = p.wyr_id) AS wyp_odpady, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_odpady_1 AND d.wyr_id = p.wyr_id) AS odpady_1, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_odpady_2 AND d.wyr_id = p.wyr_id) AS odpady_2, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_odpady_3 AND d.wyr_id = p.wyr_id) AS odpady_3, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_odpady_4 AND d.wyr_id = p.wyr_id) AS odpady_4, d.t_stan_rekul, d.t_rekultyw, d.t_zagrozenia, (SELECT s.t_desc FROM public.sl_zgloszenie AS s, team_{dlg.team_i}.wyr_dane AS d WHERE s.t_val = d.t_zgloszenie AND d.wyr_id = p.wyr_id) AS zgloszenie, d.t_powod, d.date_fchk, CASE COALESCE(w.t_wn_id, 'null_val') WHEN 'null_val' THEN Null ELSE (SELECT e.data_kontrol FROM external.wn_pne AS e, team_{dlg.team_i}.wyrobiska AS w WHERE e.id_arkusz = w.t_wn_id AND w.wyr_id = p.wyr_id) END AS prev_date, w.t_notatki FROM team_{dlg.team_i}.wyrobiska AS w INNER JOIN team_{dlg.team_i}.wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_{dlg.team_i}.wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE p.pow_grp = '{pow_grp}' and p.order_id IS NOT NULL ORDER BY p.order_id;"
-    if db:
-        mdf = db.query_pd(sql, ['ID_PUNKT', 'MIEJSCE', 'GMINA', 'CZY_PNE', 'CZY_ZLOZE', 'ID_MIDAS', 'STAN_MIDAS', 'STAN_PNE', 'PNE_OD', 'PNE_DO', 'KOPALINA', 'KOPALINA_2', 'WIEK', 'WIEK_2', 'POW_M2', 'EXPLOAT', 'WYDOBYCIE', 'WYP_ODPADY', 'ODPADY_1', 'ODPADY_2', 'ODPADY_3', 'ODPADY_4', 'STAN_REKUL', 'REKULTYW', 'ZAGROZENIA', 'ZGLOSZENIE', 'POWOD', 'DATE', 'PREV_DATE', 'UWAGI'])
-        if isinstance(mdf, pd.DataFrame):
-            return mdf if len(mdf) > 0 else None
-        else:
-            return None

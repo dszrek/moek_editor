@@ -5,7 +5,7 @@ import math
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
 from qgis.core import QgsSettings, QgsGeometry, QgsVectorLayer, QgsFeature, QgsWkbTypes, QgsPointXY, QgsExpression, QgsExpressionContextUtils, QgsCoordinateReferenceSystem, QgsFeatureRequest, QgsRectangle, QgsPointLocator, edit
-from qgis.PyQt.QtCore import Qt, pyqtSignal, QTimer
+from qgis.PyQt.QtCore import Qt, pyqtSignal, QTimer, QObject
 from PyQt5.QtGui import QColor, QKeySequence, QCursor
 from qgis.utils import iface
 from itertools import combinations

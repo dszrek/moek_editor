@@ -5,6 +5,7 @@ from qgis.core import QgsApplication, QgsRasterLayer, QgsVectorLayer, QgsField, 
 from qgis.PyQt.QtWidgets import QMessageBox
 from PyQt5.QtCore import Qt, QVariant
 from qgis.utils import iface
+from datetime import datetime
 
 from .classes import CfgPars, PgConn
 from .main import flag_layer_update, wyr_layer_update, parking_layer_update, marsz_layer_update
@@ -13,7 +14,7 @@ from .main import flag_layer_update, wyr_layer_update, parking_layer_update, mar
 dlg = None
 with CfgPars() as cfg:
     PARAMS = cfg.uri()
-CRS_1992 = QgsCoordinateReferenceSystem(2180)
+CRS_1992 = QgsCoordinateReferenceSystem("EPSG:2180")
 UI_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 STYLE_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'styles' + os.path.sep
 

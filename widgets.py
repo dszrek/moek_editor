@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 import os
+import time as tm
 import pandas as pd
 import numpy as np
 import datetime
 
-from qgis.core import QgsApplication, QgsVectorLayer, QgsVectorFileWriter
-from qgis.PyQt.QtWidgets import QApplication, QWidget, QSpinBox, QMessageBox, QFrame, QToolButton, QPushButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect, QTableView, QAbstractItemView, QStyle, QStyleOptionComboBox
+from qgis.PyQt.QtWidgets import QApplication, QWidget, QMessageBox, QFrame, QToolButton, QPushButton, QComboBox, QLineEdit, QTextEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect, QTableView, QAbstractItemView, QStyle, QStyleOptionComboBox
 from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp, QRect, QTimer
 from qgis.PyQt.QtGui import QPen, QBrush, QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator, QStandardItemModel
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, file_dialog, sequences_load, db_sequence_update
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, pg_layer_change, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, sequences_load, db_sequence_update
 from .maptools import wyr_point_lyrs_repaint
-from .classes import PgConn, CfgPars, WDfModel, CmbDelegate
+from .classes import PgConn, WDfModel, CmbDelegate
 from .viewnet import vn_zoom
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
@@ -401,6 +401,39 @@ class MoekBar(QFrame):
     def exp_clicked(self):
         """Zwinięcie/rozwinięcie panelu po kliknięciu na przycisk exp."""
         self.parent().expanded = self.exp_btn.isChecked()
+
+
+class CanvasPanelTitleBar(QFrame):
+    """Belka panelu z box'em."""
+    def __init__(self, *args, width, title="", back=False, font_size=12):
+        super().__init__(*args)
+        self.setObjectName("bar")
+        self.setFixedHeight(34)
+        self.back = back
+        btn = "cp_back" if self.back else "cp_exit"
+        self.exit_btn = MoekButton(self, name=btn, size=34, enabled=True, checkable=False)
+        self.exit_btn.clicked.connect(self.exit_clicked)
+        if len(title) > 0:
+            self.l_title = PanelLabel(self, text=title, size=font_size)
+            self.l_title.setFixedWidth(width - 34)
+        self.setStyleSheet("""
+                    QFrame#bar{background-color: rgba(60, 60, 60, 0.95); border: none}
+                    QFrame#title {color: rgb(255, 255, 255); font-size: """ + str(font_size) + """pt; qproperty-alignment: AlignCenter}
+                    """)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(0)
+        if len(title) > 0:
+            hlay.addWidget(self.l_title)
+        hlay.addWidget(self.exit_btn)
+        self.setLayout(hlay)
+
+    def exit_clicked(self):
+        if self.back:
+            dlg.seq_dock.widgets["sqb_seq"].exit_setup()
+        else:
+            self.parent().exit_clicked()
+
 
 class SplashScreen(QFrame):
     """Ekran ładowania wtyczki."""
@@ -1679,284 +1712,9 @@ class WnCanvasPanel(QFrame):
         dlg.obj.wn = None
 
 
-class ExportCanvasPanel(QFrame):
-    """Zagnieżdżony w mapcanvas'ie panel do obsługi eksportu danych."""
-    path_changed = pyqtSignal(str)
-
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        self.setFixedWidth(500)
-        self.setCursor(Qt.ArrowCursor)
-        self.setMouseTracking(True)
-        shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
-        self.setGraphicsEffect(shadow_1)
-        self.bar = CanvasPanelTitleBar(self, title="Eksport danych", width=self.width())
-        self.box = MoekVBox(self)
-        self.box.setObjectName("box")
-        self.setStyleSheet("""
-                    QFrame#main{background-color: rgba(0, 0, 0, 0.6); border: none}
-                    QFrame#box{background-color: transparent; border: none}
-                    """)
-        vlay = QVBoxLayout()
-        vlay.setContentsMargins(3, 3, 3, 3)
-        vlay.setSpacing(1)
-        vlay.addWidget(self.bar)
-        vlay.addWidget(self.box)
-        self.setLayout(vlay)
-        self.path_box = CanvasHSubPanel(self, height=44, margins=[5, 5, 5, 5], spacing=5, alpha=0.71)
-        self.box.lay.addWidget(self.path_box)
-        self.path_pb = ParamBox(self, width=445, title_down="FOLDER EKSPORTU")
-        self.path_box.lay.addWidget(self.path_pb)
-        self.path_btn = MoekButton(self, name="export_path", size=34, checkable=False, tooltip="wybierz folder, do którego zostaną wyeksportowane dane")
-        self.path_btn.clicked.connect(self.set_path)
-        self.path_box.lay.addWidget(self.path_btn)
-        self.sp_ext = CanvasHSubPanel(self, height=46, margins=[0, 10, 0, 2], alpha=0.71)
-        self.box.lay.addWidget(self.sp_ext)
-        self.export_btn = MoekButton(self, name="export", size=34, checkable=False, enabled=False, tooltip="wyeksportuj dane")
-        self.export_btn.clicked.connect(self.layers_export)
-        self.export_selector = ExportSelector(self, width=445)
-        self.sp_ext.lay.addWidget(self.export_selector)
-        self.sp_ext.lay.addWidget(self.export_btn)
-        self.sp_progress = CanvasHSubPanel(self, height=8, margins=[5, 2, 5, 0], spacing=8, alpha=0.71)
-        self.box.lay.addWidget(self.sp_progress)
-        self.p_bar = QProgressBar()
-        self.p_bar.setFixedHeight(6)
-        self.p_bar.setRange(0, 100)
-        self.p_bar.setTextVisible(False)
-        self.p_bar.setVisible(False)
-        self.sp_progress.lay.addWidget(self.p_bar)
-        self.bottom_margin = CanvasHSubPanel(self, height=4, alpha=0.71)
-        self.box.lay.addWidget(self.bottom_margin)
-        self.pow_bbox = None
-        self.pow_all = None
-        self.path_void = None
-        self.case_void = True
-        self.case = 0
-        self.export_path = None
-        self.path_changed.connect(self.path_change)
-
-    def __setattr__(self, attr, val):
-        """Przechwycenie zmiany atrybutu."""
-        super().__setattr__(attr, val)
-        if attr == "export_path":
-            self.path_changed.emit(val)
-            self.path_void = False if val else True
-        if attr == "case":
-            self.case_void = False if val else True
-        if attr == "path_void" or attr == "case_void":
-            try:
-                self.export_btn.setEnabled(False) if self.path_void or self.case_void else self.export_btn.setEnabled(True)
-            except:
-                pass
-
-    def pow_reset(self):
-        """Kasuje zawartość zmiennych 'self.pow_bbox' i 'self.pow_all' po zmianie team'u."""
-        self.pow_bbox = None
-        self.pow_all = None
-
-    def path_change(self, path):
-        """Zmiana ścieżki eksportu danych."""
-        if path and not os.path.isdir(path):
-            self.export_path = None
-            self.path_void = True
-            return
-        self.path_pb.value_change("value","") if not path else self.path_pb.value_change("value", path)
-        db_path = "Null" if not path else f"'{path}'"
-        table = f"public.team_users"
-        bns = f" WHERE team_id = {dlg.team_i} and user_id = {dlg.user_id}"
-        db_attr_change(tbl=table, attr="t_export_path", val=db_path, sql_bns=bns, user=False)
-
-    def set_path(self):
-        """Ustawia ścieżkę do folderu eksportu przez okno dialogowe menedżera plików."""
-        path = file_dialog(is_folder=True)
-        if path:
-            self.export_path = path
-
-    def exit_clicked(self):
-        """Wyłączenie panelu po naciśnięciu na przycisk X."""
-        dlg.export_panel.hide()
-
-    def layers_export(self):
-        """Eksport danych na dysk lokalny."""
-        with CfgPars() as cfg:
-            PARAMS = cfg.uri()
-        file_types = []
-        if self.case in [1, 3, 5, 7]:
-            file_types.append({'driver' : 'GPKG', 'folder' : 'geopackage', 'extension' : '.gpkg'})
-        if self.case in [2, 3, 6, 7]:
-            file_types.append({'driver' : 'KML', 'folder' : 'kml', 'extension' : '.kml'})
-        if self.case in [4, 5, 6, 7]:
-            file_types.append({'driver' : 'ESRI Shapefile', 'folder' : 'shapefiles', 'extension' : '.shp'})
-        lyrs = [
-            {'lyr_name' : 'midas_zloza', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_zloza', 'tbl_sql' : '"external"."midas_zloza"', 'key' : 'id', 'n_field' : 'id_zloza', 'd_field' : 'nazwa_zloz'},
-            {'lyr_name' : 'midas_wybilansowane', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_wybilansowane', 'tbl_sql' : '"external"."midas_wybilansowane"', 'key' : 'id1', 'n_field' : 'id', 'd_field' : 'nazwa'},
-            {'lyr_name' : 'midas_obszary', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_obszary', 'tbl_sql' : '"external"."midas_obszary"', 'key' : 'id', 'n_field' : 'id_zloz', 'd_field' : 'nazwa'},
-            {'lyr_name' : 'midas_tereny', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_tereny', 'tbl_sql' : '"external"."midas_tereny"', 'key' : 'id1', 'n_field' : 'id_zloz', 'd_field' : 'nazwa'},
-            {'lyr_name' : 'wn_pne', 'spatial_filter': 'id_all', 'tbl_name' : f'team_{dlg.team_i}.wn_pne', 'tbl_sql' : f'"external"."wn_pne"', 'key' : 'id_arkusz', 'n_field' : 'id_arkusz', 'd_field' : 'uwagi'},
-            {'lyr_name' : 'parking', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."parking" (geom) sql=', 'n_field' : 'id', 'd_field' : 'description', 'fields' : [0, 3]},
-            {'lyr_name' : 'marsz', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."marsz" (geom) sql=', 'n_field' : 'id', 'd_field' : 'i_status', 'fields' : [0, 2, 3]},
-            {'lyr_name' : 'wyr_point', 'spatial_filter': None, 'uri' : '{PARAMS} key="row_num" table="(SELECT row_number() OVER (ORDER BY w.wyr_id) AS row_num, w.wyr_id, w.t_teren_id as roboczy_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id)" (point) sql=', 'n_field' : 'wyr_id', 'd_field' : 't_notatki', 'fields': [1, 2, 3, 4, 5, 6]},
-            {'lyr_name' : 'wyr_poly', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."wyr_geom" (geom) sql=', 'n_field' : 'wyr_id', 'd_field' : 'Description', 'fields' : [0]},
-            {'lyr_name' : 'flagi_z_teren', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."flagi" (geom) sql=b_fieldcheck = True', 'n_field' : 'id', 'd_field' : 't_notatki', 'fields' : [0, 3, 4]},
-            {'lyr_name' : 'flagi_bez_teren', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."flagi" (geom) sql=b_fieldcheck = False', 'n_field' : 'id', 'd_field' : 't_notatki', 'fields' : [0, 3, 4]}
-        ]
-        i_max = len(lyrs) * len(file_types) + 1
-        self.p_bar.setVisible(True)
-        i = 1
-        self.p_bar.setValue(i * 100 / i_max)
-        QgsApplication.processEvents()
-        if not self.pow_bbox:
-            self.set_pow_bbox()
-            self.set_pow_all()
-        i += 1
-        self.p_bar.setValue(i * 100 / i_max)
-        QgsApplication.processEvents()
-        for ft in file_types:
-            self.folder_create(ft["folder"])
-        for l_dict in lyrs:
-            if l_dict["spatial_filter"] == "pow_all":
-                ids = self.spatial_filtering(l_dict["tbl_name"], l_dict["key"])
-                f_lyr = self.filtered_layer(l_dict["lyr_name"], l_dict["tbl_sql"], l_dict["key"], ids)
-            elif l_dict["spatial_filter"] == "id_all":
-                ids = self.get_ids_from_table(l_dict["tbl_name"], l_dict["key"])
-                f_lyr = self.filtered_layer(l_dict["lyr_name"], l_dict["tbl_sql"], l_dict["key"], ids)
-            elif not l_dict["spatial_filter"]:
-                raw_uri = l_dict["uri"]
-                uri = eval("f'{}'".format(raw_uri))
-                f_lyr = QgsVectorLayer(uri, l_dict["lyr_name"], "postgres")
-            for ft in file_types:
-                dest_path = f'{self.export_path}/{ft["folder"]}/{l_dict["lyr_name"]}{ft["extension"]}'
-                options = QgsVectorFileWriter.SaveVectorOptions()
-                options.driverName = ft["driver"]
-                options.fileEncoding = 'utf-8'
-                if "fields" in l_dict:
-                    options.attributes = l_dict["fields"]
-                options.datasourceOptions = [f"NameField={l_dict['n_field']}", f"DescriptionField={l_dict['d_field']}"]
-                QgsVectorFileWriter.writeAsVectorFormatV2(layer=f_lyr, fileName=dest_path, transformContext=dlg.proj.transformContext(), options=options)
-                i += 1
-                self.p_bar.setValue(i * 100 / i_max)
-                QgsApplication.processEvents()
-        self.p_bar.setVisible(False)
-
-    def folder_create(self, folder):
-        """Tworzy folder o podanej nazwie, jeśli nie istnieje."""
-        if not os.path.isdir(f"{self.export_path}{os.path.sep}{folder}"):
-            os.makedirs(f"{self.export_path}{os.path.sep}{folder}")
-
-    def get_ids_from_table(self, tbl_name, key):
-        """Zwraca listę id z podanej tabeli."""
-        db = PgConn()
-        sql = f"SELECT {key} FROM {tbl_name} ORDER BY {key};"
-        if db:
-            res = db.query_sel(sql, True)
-            if res:
-                if len(res) > 1:
-                    return list(zip(*res))[0]
-                else:
-                    return list(res[0])
-            else:
-                return []
-
-    def filtered_layer(self, lyr_name, tbl_name, key, ids):
-        """Zwraca warstwę z obiektami na podstawie listy numerów ID."""
-        with CfgPars() as cfg:
-            params = cfg.uri()
-        sql = f"{key} IN ({str(ids)[1:-1]})"
-        uri = f'{params} table={tbl_name} (geom) sql={sql}'
-        lyr = QgsVectorLayer(uri, lyr_name, "postgres")
-        return lyr
-
-    def spatial_filtering(self, tbl_name, key):
-        """Zwraca listę z numerami ID obiektów z podanej tabeli, które występują w obrębie powiatów zespołu."""
-        f_list = []
-        with CfgPars() as cfg:
-            params = cfg.uri()
-        table = f'"(SELECT {key}, geom FROM {tbl_name})"'
-        _key = f'"{key}"'
-        sql = "ST_Intersects(ST_SetSRID(ST_GeomFromText('" + str(self.pow_bbox.asWkt()) + "'), 2180), geom)"
-        uri = f'{params} key={_key} table={table} (geom) sql={sql}'
-        lyr_pow = QgsVectorLayer(uri, "feat_bbox", "postgres")
-        feats = lyr_pow.getFeatures()
-        for feat in feats:
-            if feat.geometry().intersects(self.pow_all):
-                f_list.append(feat.attribute(key))
-        del lyr_pow
-        return f_list
-
-    def set_pow_bbox(self):
-        """Zwraca do zmiennej self.pow_bbox geometrię bbox powiatów zespołu."""
-        with CfgPars() as cfg:
-            params = cfg.uri()
-        table = f'(SELECT row_number() over () AS id, * FROM (select ST_Union(ST_Envelope(geom)) geom from team_{dlg.team_i}.powiaty) AS sq)'
-        key = "id"
-        uri = f'{params} key="{key}" table="{table}" (geom) sql='
-        lyr = QgsVectorLayer(uri, "temp_pow_bbox", "postgres")
-        if not lyr.isValid():
-            print(f"set_pow_bbox: warstwa z geometrią nie jest prawidłowa")
-            return
-        geom = None
-        feats = lyr.getFeatures()
-        for feat in feats:
-            geom = feat.geometry()
-        del lyr
-        self.pow_bbox = geom if geom.isGeosValid() else None
-
-    def set_pow_all(self):
-        """Zwraca do zmiennej self.pow_all złączoną geometrię powiatów zespołu."""
-        with CfgPars() as cfg:
-            params = cfg.uri()
-        table = f'(SELECT row_number() over () AS id, * FROM (select ST_Union(geom) geom from team_{dlg.team_i}.powiaty) AS sq)'
-        key = "id"
-        uri = f'{params} key="{key}" table="{table}" (geom) sql='
-        lyr = QgsVectorLayer(uri, "temp_pow_all", "postgres")
-        if not lyr.isValid():
-            print(f"set_pow_all: warstwa z geometrią nie jest prawidłowa")
-            return
-        geom = None
-        feats = lyr.getFeatures()
-        for feat in feats:
-            geom = feat.geometry()
-        del lyr
-        self.pow_all = geom if geom.isGeosValid() else None
-
-
-class CanvasPanelTitleBar(QFrame):
-    """Belka panelu z box'em."""
-    def __init__(self, *args, width, title="", back=False, font_size=12):
-        super().__init__(*args)
-        self.setObjectName("bar")
-        self.setFixedHeight(34)
-        self.back = back
-        btn = "cp_back" if self.back else "cp_exit"
-        self.exit_btn = MoekButton(self, name=btn, size=34, enabled=True, checkable=False)
-        self.exit_btn.clicked.connect(self.exit_clicked)
-        if len(title) > 0:
-            self.l_title = PanelLabel(self, text=title, size=font_size)
-            self.l_title.setFixedWidth(width - 34)
-        self.setStyleSheet("""
-                    QFrame#bar{background-color: rgba(60, 60, 60, 0.95); border: none}
-                    QFrame#title {color: rgb(255, 255, 255); font-size: """ + str(font_size) + """pt; qproperty-alignment: AlignCenter}
-                    """)
-        hlay = QHBoxLayout()
-        hlay.setContentsMargins(0, 0, 0, 0)
-        hlay.setSpacing(0)
-        if len(title) > 0:
-            hlay.addWidget(self.l_title)
-        hlay.addWidget(self.exit_btn)
-        self.setLayout(hlay)
-
-    def exit_clicked(self):
-        if self.back:
-            dlg.seq_dock.widgets["sqb_seq"].exit_setup()
-        else:
-            self.parent().exit_clicked()
-
-
 class CanvasHSubPanel(QFrame):
     """Belka canvaspanel'u z box'em."""
-    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, color="55, 55, 55", alpha=0.0):
+    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, color="55, 55, 55", disable_color="55, 55, 55", alpha=0.0, disable_void=True):
         super().__init__(*args)
         self.setObjectName("main")
         self.setFixedHeight(height)
@@ -6283,13 +6041,91 @@ class MoekCheckBox(QCheckBox):
                            """)
 
 
+class CanvasCheckBox(QCheckBox):
+    """Fabryka pstryczków w canvaspanelach."""
+    def __init__(self, *args, name="", checked=False, font=10, fn=None):
+        super().__init__(*args)
+        self.setText(name)
+        self.setChecked(checked)
+        self.fn = fn
+        self.stateChanged.connect(self.run_fn)
+        self.setStyleSheet("""
+                            QCheckBox {
+                                border: none;
+                                background: none;
+                                color: rgb(170, 170, 170);
+                                font-size: """ + str(font) + """pt;
+                                spacing: 3px;
+                            }
+                            QCheckBox:disabled {
+                                border: none;
+                                background: none;
+                                color: rgb(80, 80, 80);
+                                font-size: 10pt;
+                                spacing: 3px;
+                            }
+                            QCheckBox:focus {
+                                border: none;
+                                outline: none;
+                            }
+                            QCheckBox::indicator {
+                                width: 25px;
+                                height: 25px;
+                            }
+                            QCheckBox::indicator:unchecked {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_grey_0.png');
+                            }
+                            QCheckBox::indicator:unchecked:hover {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_grey_0_act.png');
+                            }
+                            QCheckBox::indicator:checked {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_grey_1.png');
+                            }
+                            QCheckBox::indicator:checked:hover {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_grey_1_act.png');
+                            }
+                            QCheckBox::indicator:disabled {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_grey_dis.png');
+                            }
+                           """)
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        self.setEnabled(_bool)
+
+    def run_fn(self):
+        """Odpalenie funkcji po zmianie wartości."""
+        if not self.fn:
+            return
+        for fn in self.fn:
+            try:
+                exec(eval("f'{}'".format(fn)))
+            except Exception as err:
+                print(f"[run_fn] Błąd zmiany wartości: {err}")
+
+
 class PanelLabel(QLabel):
     """Fabryka napisów do canvpaneli."""
-    def __init__(self, *args, text="", color="255, 255, 255", size=10):
+    def __init__(self, *args, text="", color="255, 255, 255", disable_color="80, 80, 80", size=10, bold=False):
         super().__init__(*args)
         self.setWordWrap(False)
-        self.setStyleSheet("QLabel {color: rgb(" + color + "); font-size: " + str(size) + "pt; qproperty-alignment: AlignCenter}")
         self.setText(text)
+        self.color = color
+        self.disable_color = disable_color
+        self.size = size
+        self.bold = bold
+        self.set_style()
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        self.setEnabled(_bool)
+        self.set_style()
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        color = self.color if self.isEnabled() else self.disable_color
+        weight = "bold" if self.bold else "normal"
+        self.setStyleSheet("QLabel {color: rgb(" + color + "); font-size: " + str(self.size) + "pt; font-weight: " + weight + "; qproperty-alignment: AlignCenter}")
 
 
 class MoekSpinLabel(QLabel):

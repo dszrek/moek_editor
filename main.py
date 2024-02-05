@@ -4,9 +4,9 @@ import time as tm
 import pandas as pd
 import numpy as np
 
-from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
-from qgis.PyQt.QtCore import Qt, QDir
 from qgis.core import QgsApplication, QgsVectorLayer, QgsWkbTypes, QgsReadWriteContext, QgsFeature, QgsGeometry, edit
+from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog, QDialog
+from qgis.PyQt.QtCore import Qt
 from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
@@ -179,7 +179,6 @@ def powiaty_load():
                 dlg.powiat_t = dlg.powiaty[0][1]
                 print("team nie ma aktywnego powiatu. Ustawiony pierwszy: ", str(dlg.powiat_i), " | ", str(dlg.powiat_t))
             dlg.p_pow.box.widgets["cmb_pow_act"].setCurrentText(dlg.powiat_t)  # Ustawienie cb na aktualny dlg.powiat_t
-            dlg.wyr_panel.status_indicator.order_check()
         else:  # Do team'u nie ma przypisanych powiatów
             QMessageBox.warning(None, "Problem", "Podany zespół nie ma przypisanych powiatów. Skontaktuj się z administratorem systemu.")
 
@@ -188,6 +187,8 @@ def powiaty_mode_changed(clicked):
     # print("[powiaty_mode_changed:", clicked, "]")
     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
     dlg.obj.clear_sel()  # Odznaczenie flag, wyrobisk i punktów WN_PNE
+    if dlg.export_panel.isVisible():
+        dlg.export_panel.hide()
     # if clicked:  # Zmiana trybu wyświetlania powiatów spowodowana kliknięciem w io_btn
     #     dlg.cfg.set_val(name="powiaty", val=dlg.p_pow.is_active())
     # else:  # Zmiana trybu wyświetlania powiatów spowodowana zmianą aktywnego team'u
@@ -201,6 +202,8 @@ def powiaty_cb_changed():
     t_powiat_t = dlg.p_pow.box.widgets["cmb_pow_act"].currentText()  # Zapamiętanie nazwy aktualnego powiatu
     list_srch = [t for t in dlg.powiaty if t_powiat_t in t]
     t_powiat_i = list_srch[0][0]  # Tymczasowy powiat_i
+    if dlg.export_panel.isVisible():
+        dlg.export_panel.hide()
     # Aktualizacja t_active_pow w db i zmiana globali:
     if db_attr_change(tbl="team_users", attr="t_active_pow", val=t_powiat_i, sql_bns=" AND team_id = " + str(dlg.team_i)):
         dlg.powiat_t = t_powiat_t
@@ -312,13 +315,14 @@ def wyr_layer_update(check=True):
     if dlg.wyr_panel.pow_all:
         dlg.obj.order_ids = []
     else:
+        dlg.wyr_panel.status_indicator.order_check()
         dlg.obj.order_ids = get_order_ids()
     # Aktualizacja wdf:
     wdf_update()
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.obj.wyr_ids:
-        table = f'''"(SELECT row_number() OVER (ORDER BY w.wyr_id::int) AS row_num, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'''
+        table = f'''"(SELECT row_number() OVER (ORDER BY w.wyr_id::int) AS row_num, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, d.t_wyr_od AS wyr_od, d.t_wyr_do AS wyr_do, d.t_zloze_od AS zloze_od, d.t_zloze_do AS zloze_do, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'''
         if dlg.wyr_panel.pow_all:
             table_green = f'''"(SELECT row_number() OVER (ORDER BY w.wyr_id::int) AS row_num, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND w.b_after_fchk = True AND w.b_confirmed = True)"'''
         else:
@@ -442,6 +446,8 @@ def wyr_powiaty_check():
     Jeśli nie, to przypisuje je na podstawie geometrii poligonalnej lub punktowej."""
     wyr_ids = get_wyr_ids_with_pows("wyrobiska")
     wyr_pow_ids = get_wyr_ids_with_pows("wyr_prg")
+    if not wyr_ids:
+        return
     wyr_pow_to_add = list_diff(wyr_ids, wyr_pow_ids)
     if not wyr_pow_to_add:
         return
@@ -468,7 +474,8 @@ def wyr_dane_check():
     Jeśli nie, to tworzy odpowiednie wpisy."""
     wyr_ids = get_wyr_ids_with_pows("wyrobiska")
     wyr_dane_ids = get_wyr_ids_with_pows("wyr_dane")
-    # wyr_dane_to_add = ()
+    if not wyr_ids:
+        return
     wyr_dane_to_add = list(zip((list_diff(wyr_ids, wyr_dane_ids))))
     if not wyr_dane_to_add:
         return
@@ -517,9 +524,9 @@ def wyr_poly_exist(wyr_id):
             return None
 
 def get_order_ids():
-    """Zwraca listę unikalnych order_id wraz z wyr_id w obrębie aktywnego powiatu."""
+    """Zwraca listę unikalnych order_id wraz z wyr_id i order_lock w obrębie aktywnego powiatu."""
     db = PgConn()
-    sql = f"SELECT order_id, wyr_id FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{dlg.powiat_i}' AND order_id IS NOT NULL ORDER BY order_id;"
+    sql = f"SELECT order_id, wyr_id, order_lock FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{dlg.powiat_i}' AND order_id IS NOT NULL ORDER BY order_id;"
     if db:
         res = db.query_sel(sql, True)
         if res:
@@ -1038,6 +1045,8 @@ def marsz_powiaty_check():
     Jeśli nie, to przypisuje je na podstawie geometrii liniowej."""
     marsz_ids = get_marsz_ids_with_pows("marsz")
     marsz_pow_ids = get_marsz_ids_with_pows("marsz_pow")
+    if not marsz_ids:
+        return
     marsz_pow_to_add = list_diff(marsz_ids, marsz_pow_ids)
     if not marsz_pow_to_add:
         return
@@ -1318,8 +1327,11 @@ def data_export_init():
     """Odpalony po naciśnięciu przycisku 'data_export'."""
     if dlg.export_panel.isVisible():
         return
-    export_path = db_attr_check("t_export_path")
-    dlg.export_panel.export_path = export_path
+    dlg.export_panel.path_check(db_attr_check("t_export_path"), True)
+    dlg.export_panel.path_check(db_attr_check("t_photo_path"), False)
+    dlg.export_panel.init_chkboxs()
+    dlg.export_panel.pow_update()
+    dlg.export_panel.zal_update()
     dlg.export_panel.show()
 
 def db_attr_check(attr):
@@ -1355,7 +1367,7 @@ def db_attr_change(tbl, attr, val, sql_bns, user=True, quotes=False):
     else:
         return False
 
-def pg_layer_change(uri, layer):
+def pg_layer_change(uri, layer, provider="postgres"):
     """Zmiana zawartości warstwy postgres na podstawie uri"""
     # print("[pg_layer_change:", uri, layer, "]")
     xml_document = QDomDocument("style")
@@ -1364,7 +1376,7 @@ def pg_layer_change(uri, layer):
     context = QgsReadWriteContext()
     layer.writeLayerXml(xml_maplayer,xml_document, context)
     xml_maplayer.firstChildElement("datasource").firstChild().setNodeValue(uri)
-    xml_maplayer.firstChildElement("provider").firstChild().setNodeValue("postgres")
+    xml_maplayer.firstChildElement("provider").firstChild().setNodeValue(provider)
     xml_maplayers.appendChild(xml_maplayer)
     xml_document.appendChild(xml_maplayers)
     layer.readLayerXml(xml_maplayer, context)

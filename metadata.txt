@@ -6,7 +6,7 @@
 name=MOEK Editor
 qgisMinimumVersion=3.0
 description=Wtyczka do obsługi systemu MOEK (PIG-PIB).
-version=0.5.5
+version=0.6.0
 author=Dominik Szrek / PIG-PIB
 email=dszr@pgi.gov.pl
 
@@ -20,7 +20,22 @@ repository=https://github.com/dszrek/moek_editor
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-changelog=[0.5.5] - 2021-10-29 (hotfix)
+changelog=[0.6.0] - 2024-02-05
+
+  * Dodano:
+ - Dodano podkład mapowy 'Geoportal Archiwalny' z możliwością przeglądania historycznych fotomap z repozytorium Geoportalu. Umożliwiono bezpośrednie sprawdzenie daty aktualności wyświetlanej fotomapy.
+ - Dodano moduł odpowiedzialny za ustalenie i identyfikowanie zmian parametrów monitorów podłączonych do komputera (ilość aktywnych ekranów, ich rozdzielczość, skalowanie itp.). Dzieki temu udało się wyeliminować wszystkie błędy związane z synchronizacją i wyświetlaniem treści z Google Earth Pro. Obecnie wtyczka współpracuje ze wszystkimi wersjami GEP, automatycznie dostosowuje się do ustawień systemowych, w razie potrzeby prawidłowo skaluje obraz, jeśli dwa monitory mają różne ustawienia. Dodatkowo, umożliwiono automatyczną synchronizację widoków QGIS-GEP podczas wyświetlania podkładów mapowych innych niż Google Earth Pro.
+ - Dodano moduł eksportu danych umożliwiający: automatyczne nadawanie prawidłowych nazw plików fotografii wyrobisk,tworzenie szkiców lokalizacyjnych (kontury wyrobisk na tle fotomapy oraz lokalizacja punktu na tle mapy topograficznej w mniejszej skali), generowanie kart wyrobisk w formacie .pdf, generowanie załączników tabelarycznych oraz wynikowej bazy danych w formacie .mdb.
+
+  * Zmieniono:
+ - Do pól tekstowych wprowadzono licznik ilości użytych znaków, aby kontrolować czy tekst nie przekracza limitu 255 znaków.
+ - Wprowadzono szereg licznych zmian i poprawek do formularza wyrobisk, dostosowujący go do obowiązującej metodyki.
+ - Dodano możliwość ręcznego przypisania numerów porządkowych wybranych wyrobisk.
+
+  * Poprawiono:
+ - Poprawiono błędy występujące, gdy lista wyrobisk, flag lub marszrut jest pusta.
+
+  [0.5.5] - 2021-10-29 (hotfix)
 
   * Dodano:
  - Wprowadzono do formularza wyrobisk potwierdzonych przycisk odpowiedzialny za zmianę atrybutu "CZY_PNE". Poprzednio ten atrybut był automatycznie ustalany na podstawie wartości atrybutu "STAN_PNE", jednak z uwagi na wyjątkowe sytuacje, zaistniała potrzeba ręcznego ustalania tego atrybutu. Domyślnie wartość ustawiona jest na "PRAWDA" ("TAK") i sygnalizowana jest kolorem zielonym.

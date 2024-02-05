@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 import os
+import time as tm
 import pandas as pd
 import numpy as np
 import datetime
 
-from qgis.core import QgsApplication, QgsVectorLayer, QgsVectorFileWriter
-from qgis.PyQt.QtWidgets import QApplication, QWidget, QSpinBox, QMessageBox, QFrame, QToolButton, QPushButton, QComboBox, QLineEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect, QTableView, QAbstractItemView, QStyle, QStyleOptionComboBox
+from qgis.PyQt.QtWidgets import QApplication, QWidget, QMessageBox, QFrame, QToolButton, QPushButton, QComboBox, QLineEdit, QTextEdit, QPlainTextEdit, QCheckBox, QLabel, QProgressBar, QStackedWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect, QTableView, QAbstractItemView, QStyle, QStyleOptionComboBox
 from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp, QRect, QTimer
 from qgis.PyQt.QtGui import QPen, QBrush, QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator, QStandardItemModel
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, file_dialog, sequences_load, db_sequence_update
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, pg_layer_change, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, sequences_load, db_sequence_update
 from .maptools import wyr_point_lyrs_repaint
-from .classes import PgConn, CfgPars, WDfModel, CmbDelegate
+from .classes import PgConn, WDfModel, CmbDelegate
 from .viewnet import vn_zoom
 
 ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
@@ -402,6 +402,39 @@ class MoekBar(QFrame):
         """Zwinięcie/rozwinięcie panelu po kliknięciu na przycisk exp."""
         self.parent().expanded = self.exp_btn.isChecked()
 
+
+class CanvasPanelTitleBar(QFrame):
+    """Belka panelu z box'em."""
+    def __init__(self, *args, width, title="", back=False, font_size=12):
+        super().__init__(*args)
+        self.setObjectName("bar")
+        self.setFixedHeight(34)
+        self.back = back
+        btn = "cp_back" if self.back else "cp_exit"
+        self.exit_btn = MoekButton(self, name=btn, size=34, enabled=True, checkable=False)
+        self.exit_btn.clicked.connect(self.exit_clicked)
+        if len(title) > 0:
+            self.l_title = PanelLabel(self, text=title, size=font_size)
+            self.l_title.setFixedWidth(width - 34)
+        self.setStyleSheet("""
+                    QFrame#bar{background-color: rgba(60, 60, 60, 0.95); border: none}
+                    QFrame#title {color: rgb(255, 255, 255); font-size: """ + str(font_size) + """pt; qproperty-alignment: AlignCenter}
+                    """)
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(0)
+        if len(title) > 0:
+            hlay.addWidget(self.l_title)
+        hlay.addWidget(self.exit_btn)
+        self.setLayout(hlay)
+
+    def exit_clicked(self):
+        if self.back:
+            dlg.seq_dock.widgets["sqb_seq"].exit_setup()
+        else:
+            self.parent().exit_clicked()
+
+
 class SplashScreen(QFrame):
     """Ekran ładowania wtyczki."""
     def __init__(self, *args):
@@ -439,14 +472,14 @@ class WyrCanvasPanel(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(516, 575)
+        self.setFixedSize(516, 605)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
         shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow_1)
         self.focus_void = True
         self.trigger_void = True
-        self.p_heights = [468, 435, 468]
+        self.p_heights = [498, 465, 498]
         self.mt_enabled = False
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
         self.list_box = MoekVBox(self, spacing=0)
@@ -490,8 +523,10 @@ class WyrCanvasPanel(QFrame):
         self.head.lay.addWidget(self.head_right)
         self.sp_status = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], spacing=1, alpha=0.71)
         self.head_left.lay.addWidget(self.sp_status)
-        self.order_box = IdSpinBox(self, _obj="order", width=91, le_width=46, height=28, max_len=3, validator="order", placeholder="001", theme="green")
+        self.order_box = IdSpinBox(self, _obj="order", width=90, le_width=46, height=28, max_len=3, validator="order", placeholder="001", theme="green")
         self.sp_status.lay.addWidget(self.order_box)
+        self.order_drawer = OrderDrawer(self)
+        self.sp_status.lay.addWidget(self.order_drawer)
         self.status_indicator = WyrStatusIndicator(self)
         self.sp_status.lay.addWidget(self.status_indicator)
         self.status_selector = WyrStatusSelector(self)
@@ -504,7 +539,7 @@ class WyrCanvasPanel(QFrame):
         self.sp_main.lay.addWidget(self.hashbox)
         self.hash_icon = MoekButton(self, name="hash", size=30, checkable=False, enabled=False, tooltip="numer roboczy, terenowy")
         self.hashbox.lay.addWidget(self.hash_icon)
-        self.hash = CanvasLineEdit(self, width=56, height=28, font_size=10, max_len=5, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_teren_id", val="'"{self.cur_val}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False, quotes=True)'], placeholder="XXXXX")
+        self.hash = CanvasLineEdit(self, width=56, height=28, font_size=10, max_len=5, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], placeholder="XXXXX")
         self.hashbox.lay.addWidget(self.hash)
         self.wn_picker = WyrWnPicker(self)
         self.sp_main.lay.addWidget(self.wn_picker)
@@ -537,6 +572,8 @@ class WyrCanvasPanel(QFrame):
         self.sb.setFixedWidth(414)
         self.box.lay.addWidget(self.sb)
         self.sb.currentChanged.connect(self.page_change)
+        self.has_midas = None
+        self.locked = None
         self.pages = {}
         self.subpages = {}
         self.widgets = {}
@@ -549,26 +586,26 @@ class WyrCanvasPanel(QFrame):
         self.ssb.setFixedWidth(408)
         self.pages["page_1"].glay.glay.addWidget(self.ssb, 1, 0, 1, 1)
         for s in range(6):
-            _subpage = CanvasGridBox(self, height=438, margins=[0, 6, 0, 0], spacing=0)
+            _subpage = CanvasGridBox(self, height=468, margins=[0, 6, 0, 0], spacing=0)
             subpage_id = f'subpage_{s}'
             self.subpages[subpage_id] = _subpage
             self.ssb.addWidget(_subpage)
         self.tab_box.cur_idx = 0
         self.dicts = [
 
-                    {"name": "midas_id_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
+                    {"name": "midas_id_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
-                    {"name": "stan_midas_0", "page": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "stan_midas_0", "page": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "okres_zloze_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_zloze_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "pne_zloze_0", "page": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "pne_zloze_0", "page": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "pne_poza_0", "page": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "pne_poza_0", "page": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "okres_eksp_0", "page": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_eksp_0", "page": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "notepad_0", "page": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "NOTATKI", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "notepad_0", "page": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "NOTATKI", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
                     {"name": "termin_1", "page": 1, "subpage": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 8, "type": "termin"},
 
@@ -576,70 +613,72 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "pne_1", "page": 1, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "type": "pne"},
 
-                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 11, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "width": 368, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 11, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 368, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "dlug_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "pne_poza_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=False)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "szer_1", "page": 1, "subpage": 0, "row": 2, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "dlug_1", "page": 1, "subpage": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "wys_1", "page": 1, "subpage": 0, "row": 2, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
+                    {"name": "szer_1", "page": 1, "subpage": 0, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "nadkl_1", "page": 1, "subpage": 0, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("min")'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill("max")']]},
+                    {"name": "wys_1", "page": 1, "subpage": 0, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()']]},
 
-                    {"name": "miaz_1", "page": 1, "subpage": 0, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "nadkl_1", "page": 1, "subpage": 0, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()']]},
 
-                    {"name": "droga_1", "page": 1, "subpage": 0, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "miaz_1", "page": 1, "subpage": 0, "row": 5, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "rodz_wyr_1", "page": 1, "subpage": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "droga_1", "page": 1, "subpage": 0, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "hydro_1", "page": 1, "subpage": 0, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "rodz_wyr_1", "page": 1, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "stan_1", "page": 1, "subpage": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "null_val": True, "trigger": "trigger_wyrobisko()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "hydro_1", "page": 1, "subpage": 0, "row": 5, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "eksploatacja_1", "page": 1, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "width": 130, "val_width": None, "title_left": None, "title_down": "% POW. OBECNIE EKSPLOAT.", "tbl_name": "sl_eksploatacja", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_eksploat", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "stan_1", "page": 1, "subpage": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "null_val": True, "trigger": "trigger_wyrobisko()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "wydobycie_1", "page": 1, "subpage": 0, "row": 5, "col": 4, "r_span": 1, "c_span": 5, "type": "combo", "width": 164, "val_width": None, "title_left": None, "title_down": "POLE EKSPLOATACYJNE CZYNNE", "tbl_name": "sl_wydobycie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wydobycie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "eksploatacja_1", "page": 1, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "% POW. OBECNIE EKSPLOAT.", "tbl_name": "sl_eksploatacja", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_eksploat", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "fotki_1", "page": 1, "subpage": 0, "row": 5, "col": 9, "r_span": 1, "c_span": 3, "type": "text_2", "item": "line_edit", "max_len": 2, "validator": "id", "placeholder": "0", "zero_allowed": True, "width": 96, "val_width": 24, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": " ", "title_down_2": None, "title_left": "Ilość zdjęć:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "wydobycie_1", "page": 1, "subpage": 0, "row": 6, "col": 4, "r_span": 1, "c_span": 5, "type": "combo", "list_width": 164, "width": 164, "val_width": None, "title_left": None, "title_down": "POLE EKSPLOATACYJNE CZYNNE", "tbl_name": "sl_wydobycie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wydobycie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "notepad_1", "page": 1, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "fotki_1", "page": 1, "subpage": 0, "row": 6, "col": 9, "r_span": 1, "c_span": 3, "type": "text_2", "item": "line_edit", "max_len": 2, "validator": "000", "placeholder": "0", "zero_allowed": True, "min_max": False, "width": 96, "val_width": 24, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": " ", "title_down_2": None, "title_left": "Ilość zdjęć:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "autor_1", "page": 1, "subpage": 0, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "autor"},
+                    {"name": "notepad_1", "page": 1, "subpage": 0, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
+                    {"name": "autor_1", "page": 1, "subpage": 0, "row": 8, "col": 0, "r_span": 1, "c_span": 12, "type": "autor"},
 
-                    {"name": "stan_midas_1", "page": 1, "subpage": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
-                    {"name": "okres_zloze_1", "page": 1, "subpage": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "width": 402, "val_width": 132, "val_width_2": 133, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "stan_midas_1", "page": 1, "subpage": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "pne_zloze_1", "page": 1, "subpage": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "okres_zloze_1", "page": 1, "subpage": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 132, "val_width_2": 133, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "pne_poza_1", "page": 1, "subpage": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "pne_zloze_1", "page": 1, "subpage": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "zagrozenia_1", "page": 1, "subpage": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI", "trigger": "trigger_empty('zagrozenia', 2)", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_zagrozenia", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "pne_poza_m_1", "page": 1, "subpage": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=True)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "stan_rekul_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan rekultywacji:", "title_down": None, "tbl_name": "sl_stan_rekul", "null_val": False, "trigger": "trigger_rekultywacja()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "zagrozenia_1", "page": 1, "subpage": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI", "trigger": "trigger_empty('zagrozenia', 2)", "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_zagrozenia", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_rekultywacja()", "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "stan_rekul_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Stan rekultywacji:", "title_down": None, "tbl_name": "sl_stan_rekul", "null_val": True, "trigger": "trigger_rekultywacja()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": False, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_rekultywacja()", "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": True, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
                     {"name": "odpady_1", "page": 1, "subpage": 4, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "odpady"},
 
-                    {"name": "odpady_opak_1", "page": 1, "subpage": 4, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE ODPADÓW OPAKOWANIOWYCH", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_opak", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "odpady_opak_1", "page": 1, "subpage": 4, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE ODPADÓW OPAKOWANIOWYCH", "trigger": None, "txt_limiter": False, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_opak", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "odpady_inne_1", "page": 1, "subpage": 4, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE INNYCH ODPADÓW", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_inne", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "odpady_inne_1", "page": 1, "subpage": 4, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE INNYCH ODPADÓW", "trigger": None, "txt_limiter": False, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_inne", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "zgloszenie_1", "page": 1, "subpage": 5, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "width": 402, "val_width": 160, "title_left": "Zgłoszenie do OUG, Starosty lub WIOŚ, inne:", "title_down": None, "tbl_name": "sl_zgloszenie", "null_val": False, "trigger": "trigger_zgloszenie()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zgloszenie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "zgloszenie_1", "page": 1, "subpage": 5, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Zgłoszenie do OUG, Starosty lub WIOŚ, inne:", "title_down": None, "tbl_name": "sl_zgloszenie", "null_val": False, "trigger": "trigger_zgloszenie()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zgloszenie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "powod_1", "page": 1, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "powod_1", "page": 1, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
+                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
                     ]
 
         for dict in self.dicts:
             if dict["type"] == "combo":
-                _cmb = ParamBox(self, margins=True, item="combo", width=dict["width"], val_width=dict["val_width"], title_down=dict["title_down"], title_left=dict["title_left"], trigger=dict["trigger"], fn=dict["fn"])
+                _cmb = ParamBox(self, margins=True, item="combo", list_width=dict["list_width"], width=dict["width"], val_width=dict["val_width"], title_down=dict["title_down"], title_left=dict["title_left"], trigger=dict["trigger"], fn=dict["fn"])
                 if "subpage" in dict:
                     exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_cmb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 else:
@@ -648,7 +687,7 @@ class WyrCanvasPanel(QFrame):
                 self.widgets[cmb_name] = _cmb
                 self.sl_load(dict["tbl_name"], self.widgets[cmb_name].valbox_1, dict["null_val"])
             if dict["type"] == "text_2":
-                _txt2 = ParamBox(self, margins=True, item=dict["item"], max_len=dict["max_len"], validator=dict["validator"], placeholder=dict["placeholder"], zero_allowed=dict["zero_allowed"], width=dict["width"], value_2=dict["value_2"], val_width=dict["val_width"], val_width_2=dict["val_width_2"], sep_width=dict["sep_width"], sep_txt=dict["sep_txt"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], icon=dict["icon"], tooltip=dict["tooltip"], trigger=dict["trigger"], fn=dict["fn"])
+                _txt2 = ParamBox(self, margins=True, item=dict["item"], max_len=dict["max_len"], validator=dict["validator"], placeholder=dict["placeholder"], zero_allowed=dict["zero_allowed"], min_max=dict["min_max"], width=dict["width"], value_2=dict["value_2"], val_width=dict["val_width"], val_width_2=dict["val_width_2"], sep_width=dict["sep_width"], sep_txt=dict["sep_txt"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], icon=dict["icon"], tooltip=dict["tooltip"], trigger=dict["trigger"], fn=dict["fn"])
                 if "subpage" in dict:
                     exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_txt2, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 else:
@@ -656,7 +695,7 @@ class WyrCanvasPanel(QFrame):
                 txt2_name = f'txt2_{dict["name"]}'
                 self.widgets[txt2_name] = _txt2
             if dict["type"] == "text_box":
-                _tb = ParamTextBox(self, margins=True, height=dict["height"], width=402, edit=True, title=dict["title"], trigger=dict["trigger"], fn=dict["fn"])
+                _tb = ParamTextBox(self, margins=True, height=dict["height"], width=402, edit=True, title=dict["title"], trigger=dict["trigger"], txt_limiter=dict["txt_limiter"], fn=dict["fn"])
                 if "subpage" in dict:
                     exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_tb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 else:
@@ -720,7 +759,9 @@ class WyrCanvasPanel(QFrame):
             {'type': 'text_2', 'name': 'wys', 'value': _dict[12], 'value_2': _dict[13], 'pages': [1]},
             {'type': 'text_2', 'name': 'nadkl', 'value': _dict[14], 'value_2': _dict[15], 'pages': [1]},
             {'type': 'text_2', 'name': 'miaz', 'value': _dict[16], 'value_2': _dict[17], 'pages': [1]},
-            {'type': 'text_2', 'name': 'midas_id', 'value': _dict[43], 'pages': [0, 1]},
+            {'type': 'combo', 'name': 'pne_zloze', 'value': _dict[47], 'pages': [0, 1]},
+            {'type': 'combo', 'name': 'pne_poza', 'value': _dict[48], 'pages': [0, 1]},
+            {'type': 'combo', 'name': 'pne_poza_m', 'value': _dict[48], 'pages': [1]},
             {'type': 'text_2', 'name': 'fotki', 'value': _dict[49], 'pages': [1]},
             {'type': 'text_2', 'name': 'okres_zloze', 'value': _dict[45], 'value_2': _dict[46], 'pages': [0, 1]},
             {'type': 'kw','values': [_dict[36], _dict[37], _dict[38], _dict[39]], 'pages': [1]},
@@ -732,14 +773,13 @@ class WyrCanvasPanel(QFrame):
             {'type': 'combo', 'name': 'eksploatacja', 'value': _dict[20], 'pages': [1]},
             {'type': 'combo', 'name': 'wydobycie', 'value': _dict[21], 'pages': [1]},
             {'type': 'combo', 'name': 'rodz_wyr', 'value': _dict[18], 'pages': [1]},
-            {'type': 'combo', 'name': 'stan', 'value': _dict[35], 'pages': [1]},
-            {'type': 'combo', 'name': 'stan_midas', 'value': _dict[44], 'pages': [0, 1]},
-            {'type': 'combo', 'name': 'pne_zloze', 'value': _dict[47], 'pages': [0, 1]},
-            {'type': 'combo', 'name': 'pne_poza', 'value': _dict[48], 'pages': [0, 1]},
             {'type': 'combo', 'name': 'stan_rekul', 'value': _dict[29], 'pages': [1]},
             {'type': 'combo', 'name': 'wyp_odpady', 'value': _dict[22], 'pages': [1]},
             {'type': 'combo', 'name': 'zgloszenie', 'value': _dict[33], 'pages': [1]},
-            {'type': 'os','values': [_dict[23], _dict[24], _dict[25], _dict[26], _dict[27], _dict[28]], 'pages': [1]}
+            {'type': 'os','values': [_dict[23], _dict[24], _dict[25], _dict[26], _dict[27], _dict[28]], 'pages': [1]},
+            {'type': 'combo', 'name': 'stan_midas', 'value': _dict[44], 'pages': [0, 1]},
+            {'type': 'text_2', 'name': 'midas_id', 'value': _dict[43], 'pages': [0, 1]},
+            {'type': 'combo', 'name': 'stan', 'value': _dict[35], 'pages': [1]}
         ]
         for param in params:
             if not self.cur_page in param["pages"]:
@@ -780,81 +820,133 @@ class WyrCanvasPanel(QFrame):
 
     def trigger_wyrobisko(self):
         """Wykonane po zmianie wartości combobox'u 'stan_1'."""
-        val = self.widgets[f"cmb_stan_{self.cur_page}"].valbox_1.cur_val
-        bool_1 = False if val == "Null" or val[1:-1] == "brak" else True
-        bool_2 = False if val[1:-1] == "Z" or val[1:-1] == "brak" or val == "Null" else True
+        val = self.widgets[f"cmb_stan_1"].valbox_1.cur_val
+        bool_1 = False if val[1:-1] == "brak" else True
+        bool_2 = False if val[1:-1] == "Z" or val[1:-1] == "brak" or val[1:-1] == "nd" or val == "Null" else True
+        # Wyświetlenie powierzchni wyrobiska:
+        area_txt = f"{dlg.obj.wyr_data[4]} m\u00b2 "
+        dlg.wyr_panel.area_icon.setEnabled(True)
+        dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
         # Blokada combobox'ów w zależności, czy ustalono 't_stan_pne':
         self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].set_enabled(bool_1)
         self.widgets[f"cmb_hydro_{self.cur_page}"].set_enabled(bool_1)
+        self.widgets[f"cmb_droga_{self.cur_page}"].set_enabled(bool_1)
         self.widgets[f"cmb_eksploatacja_{self.cur_page}"].set_enabled(bool_2)
         self.widgets[f"cmb_wydobycie_{self.cur_page}"].set_enabled(bool_2)
-        if val[1:-1] == "E" or val == "Null":  # Wyrobisko eksploatowane
+        if val[1:-1] == "E":  # Wyrobisko eksploatowane
             if self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.cur_val == "'0'":
                 self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value(None, signal=True)
             if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val == "'brak'":
                 self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value(None, signal=True)
-            # Kontrola 'pne_poza', jeśli nie ma złoża:
-            if not self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val:
-                if self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val == "'False'":
-                    self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("True", signal=True)
-        if val[1:-1] == "Z" or val[1:-1] == "brak":  # Wyrobisko zaniechane lub brak wyrobiska
+            if not self.has_midas and self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val != "'True'":
+                self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("True", signal=True)
+        if val[1:-1] == "Z":  # Wyrobisko zaniechane
             if self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.cur_val != "0":
                 self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value("0", signal=True)
             if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val != "brak":
                 self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value("brak", signal=True)
-            # Kontrola 'pne_poza', jeśli nie ma złoża:
-            if not self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val:
-                if self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val == "'True'":
-                    self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("False", signal=True)
-        if val[1:-1] == "brak" or val == "Null":  # Nie ma wyrobiska
-            if self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].valbox_1.cur_val != "Null":
-                self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].valbox_1.set_value(None, signal=True)
-            if self.widgets[f"cmb_hydro_{self.cur_page}"].valbox_1.cur_val != "Null":
-                self.widgets[f"cmb_hydro_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+        if val[1:-1] == "nd":  # Nie dotyczy (koncesja)
+            if self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.cur_val != None:
+                self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+            if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val != None:
+                self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value(None, signal=True)
         if val[1:-1] == "E" or val[1:-1] == "Z" or val[1:-1] == "nd" or val == "Null":
             # Odblokowanie wymiarów wyrobiska, jeśli zablokowane:
-            p_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
-            for p in p_list:
-                if not self.widgets[f"txt2_{p}_{self.cur_page}"].is_enabled:
-                    self.widgets[f"txt2_{p}_{self.cur_page}"].set_enabled(True)
-            # Wyświetlenie powierzchni wyrobiska:
-            area_txt = f"{dlg.obj.wyr_data[4]} m\u00b2 "
-            dlg.wyr_panel.area_icon.setEnabled(True)
-            dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
-        elif val[1:-1] == "brak":
+            p1_list = ["dlug", "szer"]
+            p2_list = ["wys", "nadkl", "miaz"]
+            b_teren = self.widgets["gd_1"].fchk_val  # Czy przeprowadzono kontrolę terenową?
+            for p1 in p1_list:
+                if not self.widgets[f"txt2_{p1}_{self.cur_page}"].is_enabled:
+                    self.widgets[f"txt2_{p1}_{self.cur_page}"].set_enabled(True)
+            for p2 in p2_list:
+                if b_teren and not self.widgets[f"txt2_{p2}_{self.cur_page}"].is_enabled:
+                    self.widgets[f"txt2_{p2}_{self.cur_page}"].set_enabled(True)
+            if not self.widgets[f"cmb_pne_poza_{self.cur_page}"].isEnabled():
+                self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
+            if self.cur_page == 1:
+                if not self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].isEnabled():
+                    self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(True)
+            if not self.widgets[f"cmb_pne_zloze_{self.cur_page}"].isEnabled():
+                self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setEnabled(True)
+        elif val[1:-1] == "brak":  # Brak wyrobiska
             # Kasowanie i blokowanie wymiarów wyrobiska:
-            p_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
-            for p in p_list:
-                if self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_1.cur_val:
-                    self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_1.value_change(None)
-                if self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_2.cur_val:
-                    self.widgets[f"txt2_{p}_{self.cur_page}"].valbox_2.value_change(None)
-                self.widgets[f"txt2_{p}_{self.cur_page}"].set_enabled(False)
+            txt_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
+            for t in txt_list:
+                if self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_1.cur_val:
+                    self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_1.value_change(None)
+                if self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_2.cur_val:
+                    self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_2.value_change(None)
+                self.widgets[f"txt2_{t}_{self.cur_page}"].set_enabled(False)
+            # Kasowanie i blokowanie parametrów wyrobiska:
+            cmb_list = ["rodz_wyr", "hydro", "eksploatacja", "wydobycie", "droga"]
+            for c in cmb_list:
+                if self.widgets[f"cmb_{c}_{self.cur_page}"].valbox_1.cur_val != "Null":
+                    self.widgets[f"cmb_{c}_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+            # Kasowanie odpadów:
+            odp_val = self.widgets["cmb_wyp_odpady_1"].valbox_1.cur_val
+            if odp_val != 'Null' and odp_val[1:-1] != '0':
+                self.widgets["cmb_wyp_odpady_1"].valbox_1.set_value(None, signal=True)
             # Wyłączenie powierzchni wyrobiska:
             dlg.wyr_panel.area_icon.setEnabled(False)
             dlg.wyr_panel.area_label.setText("")
+            # Automatyczne ustawienie 'pne_zloze' i 'pne_poza' na NIE:
+            self.set_pne_to_false()
+        # if val[1:-1] == "nd":
+        #     self.set_pne_to_false()
 
     def trigger_midas(self):
-        """Wykonywane po zmianie wartości combobox'u 'stan_rekul'."""
+        """Wykonywane po zmianie wartości textbox'u 'midas_id'."""
         val = self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val
-        _bool = True if val else False
+        self.has_midas = True if val else False
         if self.cur_page == 1:
-            dlg.wyr_panel.tab_box.widgets["btn_1"].active = _bool
-        self.widgets[f"cmb_stan_midas_{self.cur_page}"].setVisible(_bool)
-        self.widgets[f"txt2_okres_zloze_{self.cur_page}"].setVisible(_bool)
-        self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setVisible(_bool)
-        self.widgets[f"cmb_pne_poza_{self.cur_page}"].setVisible(_bool)
-        if self.trigger_void or _bool:
-            return
-        # Wykasowano numer midas_id - konieczność zmian atrybutów:
-        if self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.cur_val != "Null":
-            self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.set_value(None, signal=True)
-        if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.cur_val:
-            self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.value_change(None)
-        if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.cur_val:
-            self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.value_change(None)
-        if self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.cur_val == "'True'":
+            # Kontrola podświetlenia tytułu zakładki:
+            dlg.wyr_panel.tab_box.widgets["btn_1"].active = self.has_midas
+            # Ustawienie widoczności cmb_pne_poza_m:
+            self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setVisible(self.has_midas)
+        # Ustawienie widoczności widgetów:
+        self.widgets[f"cmb_stan_midas_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"txt2_okres_zloze_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setVisible(self.has_midas)
+        if not self.has_midas:
+            # Brak podanego midas_id - wyczyszczenie parametrów związanych ze złożami, jeśli są wypełnione:
+            if self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.cur_val != "Null":
+                self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+            if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.cur_val:
+                self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.value_change(None)
+            if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.cur_val:
+                self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.value_change(None)
+            # Odblokowanie cmb_pne_poza_1, jeśli jest zablokowane:
+            if not self.widgets[f"cmb_pne_poza_{self.cur_page}"].isEnabled() and self.widgets[f"cmb_stan_1"].valbox_1.cur_val != "brak":
+                self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
+            # Sztywne ustawienie atrybutów PNE_ZLOZE i CZY_PNE, jeśli mają nieprawidłowe wartości:
+            if self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.cur_val != "'False'":
+                # PNE_ZLOZE = NIE
+                self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.set_value("False", signal=True)
+            if not self.widgets['pn_1'].btn_val:  # Wyrobisko nie powiązane ze złożem MUSI być PNE
+                # CZY_PNE = TAK
+                self.widgets['pn_1'].btn_val = True
+                db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_pne", val=True, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        else:  # Wyrobisko jest powiązane ze złożem
+            if not self.widgets['pn_1'].btn_val:  # Wyrobisko dotyczy ZŁOŻA NIEZREKULTYWOWANEGO (CZY_PNE = NIE)
+                self.set_pne_to_false()
+            else:  # Wyrobisko dotyczy PNE (CZY_PNE = TAK)
+                self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setEnabled(True)
+                self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
+                if self.cur_page == 1:
+                    self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(True)
+
+    def set_pne_to_false(self):
+        """Automatyczne ustawienie PNE_ZLOZE i PNE_POZA na wartość NIE."""
+        if self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.cur_val != "'False'":
             self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.set_value("False", signal=True)
+        if self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.cur_val != "'False'":
+            self.widgets[f"cmb_pne_poza_{self.cur_page}"].valbox_1.set_value("False", signal=True)
+        self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setEnabled(False)
+        self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(False)
+        if self.cur_page == 1:
+            if self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].valbox_1.cur_val != "'False'":
+                self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].valbox_1.set_value("False")
+            self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(False)
 
     def trigger_rekultywacja(self):
         """Wykonywane po zmianie wartości combobox'u 'stan_rekul', albo textbox'u 'rekultywacja'."""
@@ -887,11 +979,24 @@ class WyrCanvasPanel(QFrame):
         val = self.widgets["cmb_wyp_odpady_1"].valbox_1.cur_val
         if not val:
             return
-        _bool = False if val[1:-1] == '0' else True
+        _bool = False if val == 'Null' or val[1:-1] == '0' else True
         dlg.wyr_panel.tab_box.widgets["btn_4"].active = _bool
         self.widgets["os_1"].setVisible(_bool)
         if not _bool:
             self.widgets["os_1"].clear_all()
+
+    def trigger_pne_poza(self, m):
+        """Wykonywane po zmianie 'cmb_pne_poza_1' (m=False) lub 'cmb_pne_poza_m_1' (m=True)."""
+        if self.widgets["cmb_pne_poza_1"].valbox_1.cur_val != self.widgets["cmb_pne_poza_m_1"].valbox_1.cur_val:
+            # Wartości w dwóch cmb są różne (po zmianie jednego, trzeba zaktualizować drugie)
+            if m:  # Trzeba zaktualizować 'cmb_pne_poza_1' do wartości z 'cmb_pne_poza_m_1'
+                val = self.widgets["cmb_pne_poza_m_1"].valbox_1.cur_val
+                val = val[1:-1] if val != "Null" else None
+                self.widgets[f"cmb_pne_poza_1"].valbox_1.set_value(val)
+            else:  # Trzeba zaktualizować 'cmb_pne_poza_m_1' do wartości z 'cmb_pne_poza_1'
+                val = self.widgets["cmb_pne_poza_1"].valbox_1.cur_val
+                val = val[1:-1] if val != "Null" else None
+                self.widgets[f"cmb_pne_poza_m_1"].valbox_1.set_value(val)
 
     def trigger_empty(self, tb_name, tab_idx):
         """Zmiana stanu 'active' dla przycisku tabbox'u po zmianie wartości paramtextbox'u'."""
@@ -917,22 +1022,36 @@ class WyrCanvasPanel(QFrame):
             else:
                 dlg.obj.wyr = None
 
-    def miaz_fill(self, min_max):
-        """Uzupełnia wartość miąższości kopaliny jako różnicy wysokości i nadkładu."""
-        wys_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_1.cur_val if min_max == "min" else dlg.wyr_panel.widgets["txt2_wys_1"].valbox_2.cur_val
-        nadkl_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.cur_val if min_max == "min" else dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_2.cur_val
-        if wys_txt == None or nadkl_txt == None:
-            miaz_val = None
+    def miaz_fill(self):
+        """Uzupełnia wartość miąższości kopaliny jako różnicy wysokości i nadkładu. Dodatkowo kasuje wartość nadkładu, jeśli przewyższa wysokość."""
+        wys_min_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_1.cur_val
+        wys_max_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_2.cur_val
+        nadkl_min_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.cur_val
+        nadkl_max_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_2.cur_val
+        if wys_min_txt == None or nadkl_min_txt == None:
+            miaz_min = None
         else:
-            wys_val = float(wys_txt)
-            nadkl_val = float(nadkl_txt)
-            miaz_val = wys_val - nadkl_val
-            if miaz_val < 0.0:
-                miaz_val = None
-            else:
-                miaz_val = miaz_val
+            wys_min = float(wys_min_txt)
+            nadkl_min = float(nadkl_min_txt)
+            miaz_min = wys_min - nadkl_min
+            if miaz_min < 0.0:
+                dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.value_change(None)
+                return
+        if wys_max_txt == None or nadkl_max_txt == None:
+            miaz_max = None
+        else:
+            wys_max = float(wys_max_txt)
+            nadkl_max = float(nadkl_max_txt)
+            miaz_max = wys_max - nadkl_max
+            if miaz_max < 0.0:
+                dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_2.value_change(None)
+                return
+        # Sprawdzenie, czy nie ma potrzeby odwrócić wartości:
+        if miaz_min and miaz_max and miaz_min > miaz_max:
+            miaz_min, miaz_max = miaz_max, miaz_min
         dlg.wyr_panel.focus_void = True
-        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.value_change(miaz_val) if min_max == "min" else dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.value_change(miaz_val)
+        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.value_change(miaz_min)
+        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.value_change(miaz_max)
         dlg.wyr_panel.focus_void = False
 
     def wdf_sel_update(self):
@@ -972,6 +1091,347 @@ class WyrCanvasPanel(QFrame):
         wyr_layer_update(False)
 
 
+class BasemapCanvasPanel(QFrame):
+    """Zagnieżdżony w mapcanvas'ie panel do obsługi podkładów mapowych."""
+    def __init__(self, *args, dlg):
+        super().__init__(*args)
+        self.dlg = dlg
+        self.canvas = self.parent()
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedHeight(43)
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        self.date_box = MoekHBox(self, margins=[5, 5, 5, 5])
+        self.date_box.setObjectName("date_box")
+        self.box = MoekHBox(self, margins=[5, 5, 5, 5])
+        self.box.setObjectName("box")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    QFrame#date_box{background-color: rgba(30, 30, 30, 0.6); border: none}
+                    QFrame#box{background-color: rgba(30, 30, 30, 0.6); border: none}
+                    """)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(1)
+        self.setLayout(self.lay)
+        self.lay.addWidget(self.date_box)
+        self.lay.setAlignment(self.date_box, Qt.AlignLeft | Qt.AlignVCenter)
+        self.lay.addWidget(self.box)
+        self.lay.setAlignment(self.box, Qt.AlignLeft)
+        self.date_indicator = DateIndicator(self, dlg=self.dlg)
+        self.date_box.lay.addWidget(self.date_indicator)
+        self.date_box.lay.setAlignment(self.date_indicator, Qt.AlignLeft | Qt.AlignVCenter)
+        self.date_selector = DateSelector(self, dlg=self.dlg)
+        self.box.lay.addWidget(self.date_selector)
+        self.box.lay.setAlignment(self.date_selector, Qt.AlignLeft | Qt.AlignVCenter)
+        self.map = None
+        self.t_void = False  # Blokada stopera zmiany zasięgu mapcanvas'u
+        self.ge_sync = None  # Czy włączony jest tryb synchronizacji widoku QGIS w GEP
+        self.rendering = False  # Czy mapcanvas jest w trakcie odświeżania?
+        self.extent = None  # Zasięg geoprzestrzenny aktualnego widoku mapy
+        self.timer = None  # Obiekt stopera zmiany zasięgu mapcanvas'u
+        self.canvas.extentsChanged.connect(self.extent_changed)
+        self.canvas.renderStarting.connect(lambda: self.render_changed(True))
+        self.canvas.renderComplete.connect(lambda: self.render_changed(False))
+        # self.canvas.mapCanvasRefreshed.connect(self.canvas_refreshed)
+        self.date = None
+        self.ga_date = None
+        self.date_str = None
+        self.date_uri = None
+        self.ga_layer = None
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "map" and val != None:
+            self.check_extent()
+            if self.map == "Geoportal Archiwalny" and self.ga_date:
+                self.date = self.ga_date
+            elif self.map == "Google Earth Pro":
+                self.dlg.ge.is_on = True
+            else:
+                self.dlg.ge.is_on = False
+        elif attr == "extent" and not self.t_void:
+            # print("extent")
+            if self.ge_sync and self.map != "Google Earth Pro":
+                self.dlg.ge.q2ge()  # Aktualizacja zasięgu widoku w GEP
+            elif self.ge_sync or self.map == "Google Earth Pro":
+                # self.dlg.ge.loaded = False
+                # self.dlg.ge.load_status = None
+                self.dlg.ge.q2ge()  # Aktualizacja zasięgu widoku w GEP
+                # self.dlg.ge.start_updater()
+                QTimer.singleShot(10, self.dlg.ge.start_updater)
+                # self.dlg.ge.start_loader()  # Uruchomienie stopera ładowania
+            elif self.ge_sync == False and self.map != "Google Earth Pro":
+                self.dlg.ge.ge_probe()
+            if self.map == "Geoportal":
+                date_list = self.dates_from_extent(last=True)
+                self.date_selector.dates = date_list
+            elif self.map == "Geoportal Archiwalny":
+                if self.canvas.scale() > 50001:
+                    self.date_selector.dates = []
+                    return
+                date_list = self.dates_from_extent()
+                self.date_selector.dates = date_list
+            else:
+                self.date_selector.dates = []
+        elif attr == "date" and val != None:
+            self.date_str = f"{val.year}-{str(val.month).zfill(2)}-{str(val.day).zfill(2)}"
+            date_next = val + datetime.timedelta(days=1)
+            self.date_uri = f"{date_next.year}-{str(date_next.month).zfill(2)}-{str(date_next.day).zfill(2)}"
+            self.date_indicator.date = self.date_str
+            if self.map == "Geoportal Archiwalny":
+                self.ga_date_update()
+            self.date_checked_update()
+
+    # def canvas_refreshed(self):
+    #     print("---------------[canvas_refreshed]---------------")
+
+    def render_changed(self, flag):
+        """Ustala status renderowania mapcanvas'u."""
+        # print("[render_changed]")
+        if self.rendering != flag:
+            self.rendering = flag
+        # if self.rendering:
+        #     print("render start")
+
+    def extent_changed(self):
+        """Zmiana zasięgu geoprzestrzennego widoku mapy."""
+        if self.t_void:
+            # Wyjście z funkcji, jeśli stoper obecnie pracuje
+            return
+        # print("+++++++++++++++[extent_change start]+++++++++++++++")
+        self.dlg.ge.update_timer_reset()
+        self.dlg.ge.blocker = True
+        # print("freeze start")
+        self.t_void = True
+        self.extent = self.canvas.extent()
+        self.timer = QTimer()
+        self.timer.setInterval(250)
+        self.timer.timeout.connect(self.check_extent)
+        self.timer.start()  # Odpalenie stopera
+
+    def check_extent(self):
+        """Sprawdzenie, czy zakres widoku mapy przestał się zmieniać."""
+        if self.extent != self.canvas.extent():  # Zmienił się
+            self.extent = self.canvas.extent()
+        else:
+            # Kasowanie stopera:
+            if self.timer:
+                self.timer.stop()
+                self.timer = None
+            self.t_void = False
+            # self.dlg.ge.blocker = False
+            print("+++++++++++++++[extent_change stop]+++++++++++++++")
+            self.extent = self.canvas.extent()
+
+    def dates_from_extent(self, last=False):
+        x1 = self.extent.xMinimum()
+        x2 = self.extent.xMaximum()
+        y1 = self.extent.yMinimum()
+        y2 = self.extent.yMaximum()
+        x_dif = abs(x2 - x1)
+        y_dif = abs(y2 - y1)
+        x1 = x1 + x_dif/4
+        x2 = x2 - x_dif/4
+        y1 = y1 + y_dif/4
+        y2 = y2 - y_dif/4
+        extent_bound = f'ST_MakeEnvelope({x1}, {y1}, {x2}, {y2}, 2180)'
+        db = PgConn()
+        if last:
+            sql = f"SELECT akt_data FROM external.skorowidz_geoportal AS s WHERE ST_Intersects(s.geom, {extent_bound}) ORDER BY akt_data DESC;"
+        else:
+            sql = f"SELECT akt_data FROM external.skorowidz_geoportal AS s WHERE ST_Intersects(s.geom, {extent_bound}) ORDER BY akt_data;"
+        if db:
+            res = db.query_sel(sql, False) if last else db.query_sel(sql, True)
+            if res:
+                if len(res) > 1:
+                    return list(zip(*res))[0]
+                else:
+                    return list(res)
+            else:
+                return None
+
+    def ga_date_update(self):
+        """Aktualizacja URI dla warstwy Geoportal Archiwalny."""
+        uri = f'IgnoreGetFeatureInfoUrl=1&IgnoreGetMapUrl=0&contextualWMSLegend=0&SmoothPixmapTransform=1&IgnoreReportedLayerExtents=1&crs=EPSG:2180&format=image/jpeg&layers=Raster&styles=&version=1.1.1&url=https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMS/StandardResolutionTime?TIME={self.date_uri}T00%3A00%3A00.000%2B01%3A00'
+        ga_layer = dlg.proj.mapLayersByName("Geoportal Archiwalny")[0]
+        ga_layer.dataProvider().setDataSourceUri(uri)
+        self.ga_date = self.date
+        self.canvas.zoomScale(self.canvas.scale() + 0.001)  # Sposó☺b na odświeżenie warstwy, bez wyczyszczenia cache'u (białe tło w trakcie ładowania)
+
+    def date_checked_update(self):
+        """Aktualizacja stanów DateSelectorItem."""
+        sync = False
+        for widget in self.date_selector.widgets:
+            if widget.date_str == self.date_str:
+                widget.setChecked(True)
+                sync = True
+            else:
+                widget.setChecked(False)
+        if not sync:
+            self.set_closest_date()
+
+    def set_closest_date(self):
+        """Wybór daty z listy dostępnych dat, która jest najbliższa do obecnie ustalonej."""
+        date_list = self.date_selector.dates
+        if len(date_list) == 0:
+            return
+        res = min(date_list, key=lambda sub: abs(sub - self.date))
+        self.date = res
+        self.date_checked_update()
+
+
+class DateIndicator(QFrame):
+    """Widget wyboru dat dla podkładu Geoportal Archiwalny."""
+    def __init__(self, *args, dlg):
+        super().__init__(*args)
+        self.dlg = dlg
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(96, 33)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: 1px solid white}
+                    """)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(5, 5, 5, 5)
+        self.lay.setSpacing(0)
+        self.setLayout(self.lay)
+        self.date_label = PanelLabel(self, size=11)
+        self.lay.addWidget(self.date_label)
+        self.lay.setAlignment(self.date_label, Qt.AlignCenter)
+        self.date = None
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "date" and val != None:
+            self.date_label.setText(val)
+
+
+class DateSelector(QFrame):
+    """Widget wyboru dat dla podkładu Geoportal Archiwalny."""
+    def __init__(self, *args, dlg):
+        super().__init__(*args)
+        self.dlg = dlg
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(0, 33)
+        self.setStyleSheet("""
+                    QFrame#main{background-color: transparent; border: none}
+                    """)
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(0)
+        self.setLayout(self.lay)
+        self.widgets = []
+        self.init_void = True
+        self.d_cnt = 1
+        self.dates = []
+        # self.init_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "dates" and not self.init_void:
+            d_cnt = len(val)
+            # print(f"d_cnt: {d_cnt}, self.d_cnt: {self.d_cnt}")
+            if d_cnt == 0 and self.d_cnt == 0:
+                return
+            elif d_cnt == 0 and self.d_cnt > 0:
+                self.dlg.bm_panel.hide()
+                self.dlg.bm_panel.setFixedWidth(110)
+                self.clear_all_dates()
+                self.d_cnt = 0
+                return
+            elif d_cnt == 1:# and self.d_cnt > 0:
+                self.dlg.bm_panel.box.setVisible(False)
+                self.dlg.bm_panel.setFixedWidth(110)
+            if self.dlg.bm_panel.isHidden():
+                self.dlg.bm_panel.show()
+            if not self.dlg.bm_panel.box.isVisible() and d_cnt > 1:
+                self.dlg.bm_panel.box.setVisible(True)
+            self.clear_all_dates()
+            for date in val:
+                _date = DateSelectorItem(self, dlg=self.dlg, date=date)
+                self.dlg.bm_panel.date_selector.lay.addWidget(_date)
+                # self.lay.setAlignment(_date, Qt.AlignHCenter | Qt.AlignTop)
+                self.widgets.append(_date)
+            self.setFixedWidth(d_cnt * 48)
+            self.dlg.bm_panel.setFixedWidth(117 + d_cnt * 48)
+            self.d_cnt = d_cnt
+            self.dlg.bm_panel.date_checked_update()
+
+    def clear_all_dates(self):
+        """Wyczyszczenie wszystkich obiektów dat."""
+        for widget in self.widgets:
+            widget.setParent(None)
+            del widget
+        self.widgets = []
+
+    def btn_clicked(self, date):
+        """Włączenie/wyłączenie powiatu po naciśnięciu przycisku."""
+        self.dlg.bm_panel.date = date
+
+
+class DateSelectorItem(QPushButton):
+    """Guzik do wyboru daty aktualności podkładu Geoportal Archiwalny."""
+    def __init__(self, *args, dlg, date):
+        super().__init__(*args)
+        self.dlg = dlg
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setCheckable(True)
+        self.setFixedSize(48, 33)
+        self.setText(str(date.year))
+        self.date = date
+        self.date_str = f"{date.year}-{str(date.month).zfill(2)}-{str(date.day).zfill(2)}"
+        if self.dlg.bm_panel.date_indicator.date == self.date_str:
+            self.setChecked(True)
+        self.setToolTip(self.date_str)
+        self.setStyleSheet("""
+                            QPushButton {
+                                border: none;
+                                background: transparent;
+                                color: rgba(255, 255, 255, 0.8);
+                                font-size: 10pt;
+                                font-weight: normal;
+                                padding-top: -2px;
+                            }
+                            QPushButton:checked {
+                                border: 1px solid white;
+                                background: transparent;
+                                color: rgba(255, 255, 255, 1.0);
+                                font-size: 10pt;
+                                font-weight: normal;
+                                padding-top: -2px;
+                            }
+                            QPushButton:hover {
+                                border: none;
+                                background: rgba(255, 255, 255, 0.4);
+                                color: rgba(0, 0, 0, 1.0);
+                                font-size: 10pt;
+                                font-weight: normal;
+                                padding-top: -2px;
+                            }
+                            QPushButton:hover:checked {
+                                border: 1px solid white;
+                                background: transparent;
+                                color: rgba(255, 255, 255, 1.0);
+                                font-size: 10pt;
+                                font-weight: normal;
+                                padding-top: -2px;
+                            }
+                            QToolTip {
+                                border: 1px solid rgb(50, 50, 50);
+                                padding: 5px;
+                                background-color: rgb(30, 30, 30);
+                                color: rgb(200, 200, 200);
+                            }
+                           """)
+        self.clicked.connect(lambda: self.parent().btn_clicked(self.date))
+
+
 class FlagCanvasPanel(QFrame):
     """Zagnieżdżony w mapcanvas'ie panel do obsługi flag."""
     def __init__(self, *args):
@@ -1007,7 +1467,7 @@ class FlagCanvasPanel(QFrame):
         self.sp_main.lay.addWidget(self.hashbox)
         self.hash_icon = MoekButton(self, name="hash", size=30, checkable=False, enabled=False, tooltip="numer roboczy, terenowy")
         self.hashbox.lay.addWidget(self.hash_icon)
-        self.hash = CanvasLineEdit(self, width=117, height=28, font_size=12, max_len=10, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.flagi", attr="t_teren_id", val="'"{self.cur_val}"'", sql_bns=" WHERE id = {dlg.obj.flag}", user=False, quotes=True)'], placeholder="XXXXXXXXXX")
+        self.hash = CanvasLineEdit(self, width=117, height=28, font_size=12, max_len=10, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.flagi", attr="t_teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE id = {dlg.obj.flag}", user=False)'], placeholder="XXXXXXXXXX")
         self.hashbox.lay.addWidget(self.hash)
         self.toolbox = CanvasHSubPanel(self, height=32, margins=[0, 0, 0, 0], spacing=0, alpha=0.71)
         self.sp_main.lay.addWidget(self.toolbox)
@@ -1252,284 +1712,9 @@ class WnCanvasPanel(QFrame):
         dlg.obj.wn = None
 
 
-class ExportCanvasPanel(QFrame):
-    """Zagnieżdżony w mapcanvas'ie panel do obsługi eksportu danych."""
-    path_changed = pyqtSignal(str)
-
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        self.setFixedWidth(500)
-        self.setCursor(Qt.ArrowCursor)
-        self.setMouseTracking(True)
-        shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
-        self.setGraphicsEffect(shadow_1)
-        self.bar = CanvasPanelTitleBar(self, title="Eksport danych", width=self.width())
-        self.box = MoekVBox(self)
-        self.box.setObjectName("box")
-        self.setStyleSheet("""
-                    QFrame#main{background-color: rgba(0, 0, 0, 0.6); border: none}
-                    QFrame#box{background-color: transparent; border: none}
-                    """)
-        vlay = QVBoxLayout()
-        vlay.setContentsMargins(3, 3, 3, 3)
-        vlay.setSpacing(1)
-        vlay.addWidget(self.bar)
-        vlay.addWidget(self.box)
-        self.setLayout(vlay)
-        self.path_box = CanvasHSubPanel(self, height=44, margins=[5, 5, 5, 5], spacing=5, alpha=0.71)
-        self.box.lay.addWidget(self.path_box)
-        self.path_pb = ParamBox(self, width=445, title_down="FOLDER EKSPORTU")
-        self.path_box.lay.addWidget(self.path_pb)
-        self.path_btn = MoekButton(self, name="export_path", size=34, checkable=False, tooltip="wybierz folder, do którego zostaną wyeksportowane dane")
-        self.path_btn.clicked.connect(self.set_path)
-        self.path_box.lay.addWidget(self.path_btn)
-        self.sp_ext = CanvasHSubPanel(self, height=46, margins=[0, 10, 0, 2], alpha=0.71)
-        self.box.lay.addWidget(self.sp_ext)
-        self.export_btn = MoekButton(self, name="export", size=34, checkable=False, enabled=False, tooltip="wyeksportuj dane")
-        self.export_btn.clicked.connect(self.layers_export)
-        self.export_selector = ExportSelector(self, width=445)
-        self.sp_ext.lay.addWidget(self.export_selector)
-        self.sp_ext.lay.addWidget(self.export_btn)
-        self.sp_progress = CanvasHSubPanel(self, height=8, margins=[5, 2, 5, 0], spacing=8, alpha=0.71)
-        self.box.lay.addWidget(self.sp_progress)
-        self.p_bar = QProgressBar()
-        self.p_bar.setFixedHeight(6)
-        self.p_bar.setRange(0, 100)
-        self.p_bar.setTextVisible(False)
-        self.p_bar.setVisible(False)
-        self.sp_progress.lay.addWidget(self.p_bar)
-        self.bottom_margin = CanvasHSubPanel(self, height=4, alpha=0.71)
-        self.box.lay.addWidget(self.bottom_margin)
-        self.pow_bbox = None
-        self.pow_all = None
-        self.path_void = None
-        self.case_void = True
-        self.case = 0
-        self.export_path = None
-        self.path_changed.connect(self.path_change)
-
-    def __setattr__(self, attr, val):
-        """Przechwycenie zmiany atrybutu."""
-        super().__setattr__(attr, val)
-        if attr == "export_path":
-            self.path_changed.emit(val)
-            self.path_void = False if val else True
-        if attr == "case":
-            self.case_void = False if val else True
-        if attr == "path_void" or attr == "case_void":
-            try:
-                self.export_btn.setEnabled(False) if self.path_void or self.case_void else self.export_btn.setEnabled(True)
-            except:
-                pass
-
-    def pow_reset(self):
-        """Kasuje zawartość zmiennych 'self.pow_bbox' i 'self.pow_all' po zmianie team'u."""
-        self.pow_bbox = None
-        self.pow_all = None
-
-    def path_change(self, path):
-        """Zmiana ścieżki eksportu danych."""
-        if path and not os.path.isdir(path):
-            self.export_path = None
-            self.path_void = True
-            return
-        self.path_pb.value_change("value","") if not path else self.path_pb.value_change("value", path)
-        db_path = "Null" if not path else f"'{path}'"
-        table = f"public.team_users"
-        bns = f" WHERE team_id = {dlg.team_i} and user_id = {dlg.user_id}"
-        db_attr_change(tbl=table, attr="t_export_path", val=db_path, sql_bns=bns, user=False)
-
-    def set_path(self):
-        """Ustawia ścieżkę do folderu eksportu przez okno dialogowe menedżera plików."""
-        path = file_dialog(is_folder=True)
-        if path:
-            self.export_path = path
-
-    def exit_clicked(self):
-        """Wyłączenie panelu po naciśnięciu na przycisk X."""
-        dlg.export_panel.hide()
-
-    def layers_export(self):
-        """Eksport danych na dysk lokalny."""
-        with CfgPars() as cfg:
-            PARAMS = cfg.uri()
-        file_types = []
-        if self.case in [1, 3, 5, 7]:
-            file_types.append({'driver' : 'GPKG', 'folder' : 'geopackage', 'extension' : '.gpkg'})
-        if self.case in [2, 3, 6, 7]:
-            file_types.append({'driver' : 'KML', 'folder' : 'kml', 'extension' : '.kml'})
-        if self.case in [4, 5, 6, 7]:
-            file_types.append({'driver' : 'ESRI Shapefile', 'folder' : 'shapefiles', 'extension' : '.shp'})
-        lyrs = [
-            {'lyr_name' : 'midas_zloza', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_zloza', 'tbl_sql' : '"external"."midas_zloza"', 'key' : 'id', 'n_field' : 'id_zloza', 'd_field' : 'nazwa_zloz'},
-            {'lyr_name' : 'midas_wybilansowane', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_wybilansowane', 'tbl_sql' : '"external"."midas_wybilansowane"', 'key' : 'id1', 'n_field' : 'id', 'd_field' : 'nazwa'},
-            {'lyr_name' : 'midas_obszary', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_obszary', 'tbl_sql' : '"external"."midas_obszary"', 'key' : 'id', 'n_field' : 'id_zloz', 'd_field' : 'nazwa'},
-            {'lyr_name' : 'midas_tereny', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_tereny', 'tbl_sql' : '"external"."midas_tereny"', 'key' : 'id1', 'n_field' : 'id_zloz', 'd_field' : 'nazwa'},
-            {'lyr_name' : 'wn_pne', 'spatial_filter': 'id_all', 'tbl_name' : f'team_{dlg.team_i}.wn_pne', 'tbl_sql' : f'"external"."wn_pne"', 'key' : 'id_arkusz', 'n_field' : 'id_arkusz', 'd_field' : 'uwagi'},
-            {'lyr_name' : 'parking', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."parking" (geom) sql=', 'n_field' : 'id', 'd_field' : 'description', 'fields' : [0, 3]},
-            {'lyr_name' : 'marsz', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."marsz" (geom) sql=', 'n_field' : 'id', 'd_field' : 'i_status', 'fields' : [0, 2, 3]},
-            {'lyr_name' : 'wyr_point', 'spatial_filter': None, 'uri' : '{PARAMS} key="row_num" table="(SELECT row_number() OVER (ORDER BY w.wyr_id) AS row_num, w.wyr_id, w.t_teren_id as roboczy_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id)" (point) sql=', 'n_field' : 'wyr_id', 'd_field' : 't_notatki', 'fields': [1, 2, 3, 4, 5, 6]},
-            {'lyr_name' : 'wyr_poly', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."wyr_geom" (geom) sql=', 'n_field' : 'wyr_id', 'd_field' : 'Description', 'fields' : [0]},
-            {'lyr_name' : 'flagi_z_teren', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."flagi" (geom) sql=b_fieldcheck = True', 'n_field' : 'id', 'd_field' : 't_notatki', 'fields' : [0, 3, 4]},
-            {'lyr_name' : 'flagi_bez_teren', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."flagi" (geom) sql=b_fieldcheck = False', 'n_field' : 'id', 'd_field' : 't_notatki', 'fields' : [0, 3, 4]}
-        ]
-        i_max = len(lyrs) * len(file_types) + 1
-        self.p_bar.setVisible(True)
-        i = 1
-        self.p_bar.setValue(i * 100 / i_max)
-        QgsApplication.processEvents()
-        if not self.pow_bbox:
-            self.set_pow_bbox()
-            self.set_pow_all()
-        i += 1
-        self.p_bar.setValue(i * 100 / i_max)
-        QgsApplication.processEvents()
-        for ft in file_types:
-            self.folder_create(ft["folder"])
-        for l_dict in lyrs:
-            if l_dict["spatial_filter"] == "pow_all":
-                ids = self.spatial_filtering(l_dict["tbl_name"], l_dict["key"])
-                f_lyr = self.filtered_layer(l_dict["lyr_name"], l_dict["tbl_sql"], l_dict["key"], ids)
-            elif l_dict["spatial_filter"] == "id_all":
-                ids = self.get_ids_from_table(l_dict["tbl_name"], l_dict["key"])
-                f_lyr = self.filtered_layer(l_dict["lyr_name"], l_dict["tbl_sql"], l_dict["key"], ids)
-            elif not l_dict["spatial_filter"]:
-                raw_uri = l_dict["uri"]
-                uri = eval("f'{}'".format(raw_uri))
-                f_lyr = QgsVectorLayer(uri, l_dict["lyr_name"], "postgres")
-            for ft in file_types:
-                dest_path = f'{self.export_path}/{ft["folder"]}/{l_dict["lyr_name"]}{ft["extension"]}'
-                options = QgsVectorFileWriter.SaveVectorOptions()
-                options.driverName = ft["driver"]
-                options.fileEncoding = 'utf-8'
-                if "fields" in l_dict:
-                    options.attributes = l_dict["fields"]
-                options.datasourceOptions = [f"NameField={l_dict['n_field']}", f"DescriptionField={l_dict['d_field']}"]
-                QgsVectorFileWriter.writeAsVectorFormatV2(layer=f_lyr, fileName=dest_path, transformContext=dlg.proj.transformContext(), options=options)
-                i += 1
-                self.p_bar.setValue(i * 100 / i_max)
-                QgsApplication.processEvents()
-        self.p_bar.setVisible(False)
-
-    def folder_create(self, folder):
-        """Tworzy folder o podanej nazwie, jeśli nie istnieje."""
-        if not os.path.isdir(f"{self.export_path}{os.path.sep}{folder}"):
-            os.makedirs(f"{self.export_path}{os.path.sep}{folder}")
-
-    def get_ids_from_table(self, tbl_name, key):
-        """Zwraca listę id z podanej tabeli."""
-        db = PgConn()
-        sql = f"SELECT {key} FROM {tbl_name} ORDER BY {key};"
-        if db:
-            res = db.query_sel(sql, True)
-            if res:
-                if len(res) > 1:
-                    return list(zip(*res))[0]
-                else:
-                    return list(res[0])
-            else:
-                return []
-
-    def filtered_layer(self, lyr_name, tbl_name, key, ids):
-        """Zwraca warstwę z obiektami na podstawie listy numerów ID."""
-        with CfgPars() as cfg:
-            params = cfg.uri()
-        sql = f"{key} IN ({str(ids)[1:-1]})"
-        uri = f'{params} table={tbl_name} (geom) sql={sql}'
-        lyr = QgsVectorLayer(uri, lyr_name, "postgres")
-        return lyr
-
-    def spatial_filtering(self, tbl_name, key):
-        """Zwraca listę z numerami ID obiektów z podanej tabeli, które występują w obrębie powiatów zespołu."""
-        f_list = []
-        with CfgPars() as cfg:
-            params = cfg.uri()
-        table = f'"(SELECT {key}, geom FROM {tbl_name})"'
-        _key = f'"{key}"'
-        sql = "ST_Intersects(ST_SetSRID(ST_GeomFromText('" + str(self.pow_bbox.asWkt()) + "'), 2180), geom)"
-        uri = f'{params} key={_key} table={table} (geom) sql={sql}'
-        lyr_pow = QgsVectorLayer(uri, "feat_bbox", "postgres")
-        feats = lyr_pow.getFeatures()
-        for feat in feats:
-            if feat.geometry().intersects(self.pow_all):
-                f_list.append(feat.attribute(key))
-        del lyr_pow
-        return f_list
-
-    def set_pow_bbox(self):
-        """Zwraca do zmiennej self.pow_bbox geometrię bbox powiatów zespołu."""
-        with CfgPars() as cfg:
-            params = cfg.uri()
-        table = f'(SELECT row_number() over () AS id, * FROM (select ST_Union(ST_Envelope(geom)) geom from team_{dlg.team_i}.powiaty) AS sq)'
-        key = "id"
-        uri = f'{params} key="{key}" table="{table}" (geom) sql='
-        lyr = QgsVectorLayer(uri, "temp_pow_bbox", "postgres")
-        if not lyr.isValid():
-            print(f"set_pow_bbox: warstwa z geometrią nie jest prawidłowa")
-            return
-        geom = None
-        feats = lyr.getFeatures()
-        for feat in feats:
-            geom = feat.geometry()
-        del lyr
-        self.pow_bbox = geom if geom.isGeosValid() else None
-
-    def set_pow_all(self):
-        """Zwraca do zmiennej self.pow_all złączoną geometrię powiatów zespołu."""
-        with CfgPars() as cfg:
-            params = cfg.uri()
-        table = f'(SELECT row_number() over () AS id, * FROM (select ST_Union(geom) geom from team_{dlg.team_i}.powiaty) AS sq)'
-        key = "id"
-        uri = f'{params} key="{key}" table="{table}" (geom) sql='
-        lyr = QgsVectorLayer(uri, "temp_pow_all", "postgres")
-        if not lyr.isValid():
-            print(f"set_pow_all: warstwa z geometrią nie jest prawidłowa")
-            return
-        geom = None
-        feats = lyr.getFeatures()
-        for feat in feats:
-            geom = feat.geometry()
-        del lyr
-        self.pow_all = geom if geom.isGeosValid() else None
-
-
-class CanvasPanelTitleBar(QFrame):
-    """Belka panelu z box'em."""
-    def __init__(self, *args, width, title="", back=False, font_size=12):
-        super().__init__(*args)
-        self.setObjectName("bar")
-        self.setFixedHeight(34)
-        self.back = back
-        btn = "cp_back" if self.back else "cp_exit"
-        self.exit_btn = MoekButton(self, name=btn, size=34, enabled=True, checkable=False)
-        self.exit_btn.clicked.connect(self.exit_clicked)
-        if len(title) > 0:
-            self.l_title = PanelLabel(self, text=title, size=font_size)
-            self.l_title.setFixedWidth(width - 34)
-        self.setStyleSheet("""
-                    QFrame#bar{background-color: rgba(60, 60, 60, 0.95); border: none}
-                    QFrame#title {color: rgb(255, 255, 255); font-size: """ + str(font_size) + """pt; qproperty-alignment: AlignCenter}
-                    """)
-        hlay = QHBoxLayout()
-        hlay.setContentsMargins(0, 0, 0, 0)
-        hlay.setSpacing(0)
-        if len(title) > 0:
-            hlay.addWidget(self.l_title)
-        hlay.addWidget(self.exit_btn)
-        self.setLayout(hlay)
-
-    def exit_clicked(self):
-        if self.back:
-            dlg.seq_dock.widgets["sqb_seq"].exit_setup()
-        else:
-            self.parent().exit_clicked()
-
-
 class CanvasHSubPanel(QFrame):
     """Belka canvaspanel'u z box'em."""
-    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, color="55, 55, 55", alpha=0.0):
+    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, color="55, 55, 55", disable_color="55, 55, 55", alpha=0.0, disable_void=True):
         super().__init__(*args)
         self.setObjectName("main")
         self.setFixedHeight(height)
@@ -1540,6 +1725,36 @@ class CanvasHSubPanel(QFrame):
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)
         self.setLayout(self.lay)
+        self.alpha = alpha
+        self.color = color
+        self.disable_color = disable_color
+        self.disable_void = disable_void
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        if self.disable_void:
+            return
+        self.setEnabled(_bool)
+        self.children_enabled(_bool)
+        self.set_style()
+
+    def children_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        widgets = (self.lay.itemAt(i).widget() for i in range(self.lay.count()))
+        for widget in widgets:
+            if not widget:
+                continue
+            if isinstance(widget, (MoekButton, QProgressBar)):
+                widget.setEnabled(_bool)
+            else:
+                widget.set_enabled(_bool)
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        color = self.color if self.isEnabled() else self.disable_color
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(""" + color + """, """ + str(self.alpha) + """); border: none}
+                    """)
 
 
 class OdpadySelector(QFrame):
@@ -1627,11 +1842,11 @@ class OdpadySelector(QFrame):
         if attr == "op_bool" and not self.attr_void:
             dlg.wyr_panel.widgets["tb_odpady_opak_1"].setVisible(val)
             if not val and dlg.wyr_panel.widgets["tb_odpady_opak_1"].txtbox.cur_val:
-                dlg.wyr_panel.widgets["tb_odpady_opak_1"].txtbox.cur_val = None
+                dlg.wyr_panel.widgets["tb_odpady_opak_1"].txtbox.value_change(None)
         if attr == "i_bool" and not self.attr_void:
             dlg.wyr_panel.widgets["tb_odpady_inne_1"].setVisible(val)
             if not val and dlg.wyr_panel.widgets["tb_odpady_inne_1"].txtbox.cur_val:
-                dlg.wyr_panel.widgets["tb_odpady_inne_1"].txtbox.cur_val = None
+                dlg.wyr_panel.widgets["tb_odpady_inne_1"].txtbox.value_change(None)
         if attr == "o1_val" and not self.attr_void:
             val_sql = self.sql_parser(val)
             db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_odpady_1", val=val_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
@@ -1679,7 +1894,7 @@ class OdpadySelector(QFrame):
                 exec(f'{odp_vals[i]} = new_val')
 
     def clear_all(self):
-        """Odznaczenie wszystkich przycisków po ustawieniu combobox'a na wartość 'brak'."""
+        """Odznaczenie wszystkich przycisków po ustawieniu combobox'a na wartość 'brak' albo 'Null'."""
         for btn_name in self.itms:
             btn = self.itms[btn_name]
             if btn.isChecked():
@@ -1731,6 +1946,7 @@ class OdpadySelectorItem(QPushButton):
                                 color: rgba(255, 255, 255, 0.2);
                                 font-size: 8pt;
                                 font-weight: normal;
+                            }
                            """)
         self.clicked.connect(lambda: self.parent().btn_clicked(self.id))
 
@@ -1846,91 +2062,9 @@ class PowSelectorItem(QPushButton):
                                 background: rgba(217, 0, 143, 0.7);
                                 color: rgb(255, 255, 255);
                                 font-size: 11pt;
+                            }
                            """)
         self.clicked.connect(lambda: self.parent().btn_clicked(self.id))
-
-
-class ExportSelector(QFrame):
-    """Belka wyboru typów danych do eksportu."""
-    def __init__(self, *args, width):
-        super().__init__(*args)
-        self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedHeight(34)
-        self.setFixedWidth(width)
-        self.setStyleSheet("""
-                    QFrame#main{background-color: transparent; border: none}
-                    """)
-        self.lay = QHBoxLayout()
-        self.lay.setContentsMargins(0, 0, 0, 0)
-        self.lay.setSpacing(4)
-        self.setLayout(self.lay)
-        self.valid_check = False
-        self.itms = {}
-        self.file_types = [
-            {'name' : 'gpkg', 'multiplier' : 1},
-            {'name' : 'kml', 'multiplier' : 2},
-            {'name' : 'shp', 'multiplier' : 4}
-            ]
-        for file_type in self.file_types:
-            _itm = ExportSelectorItem(self, name=file_type["name"])
-            self.lay.addWidget(_itm)
-            itm_name = f'btn_{file_type["name"]}'
-            self.itms[itm_name] = _itm
-
-    def btn_clicked(self):
-        """Zmiana wartości 'case' po naciśnięciu przycisku."""
-        case = 0
-        for i_dict in self.file_types:
-            btn = self.itms[f'btn_{i_dict["name"]}']
-            val = 1 if btn.isChecked() else 0
-            case = case + (val * i_dict["multiplier"])
-        self.parent().parent().parent().case = case
-
-
-class ExportSelectorItem(QPushButton):
-    """Guzik do wyboru aktywnych typów danych do eksportu."""
-    # checked_changed = pyqtSignal(bool)
-
-    def __init__(self, *args, name):
-        super().__init__(*args)
-        self.setCheckable(True)
-        self.setChecked(False)
-        self.name = name
-        self.setText(self.name)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.setStyleSheet("""
-                            QPushButton {
-                                border: 1px solid rgba(255, 255, 255, 0.4);
-                                background: rgba(255, 255, 255, 0.2);
-                                color: rgba(255, 255, 255, 1.0);
-                                font-size: 11pt;
-                            }
-                            QPushButton:hover {
-                                border: 1px solid rgba(255, 255, 255, 0.4);
-                                background: rgba(255, 255, 255, 0.4);
-                                color: rgba(255, 255, 255, 1.0);
-                                font-size: 11pt;
-                            }
-                            QPushButton:checked {
-                                border: 1px solid rgba(255, 255, 255, 0.8);
-                                background: rgba(255, 255, 255, 0.6);
-                                color: rgb(0, 0, 0);
-                                font-size: 11pt;
-                            }
-                            QPushButton:hover:checked {
-                                border: 1px solid rgba(255, 255, 255, 1.0);
-                                background: rgba(255, 255, 255, 1.0);
-                                color: rgb(0, 0, 0);
-                                font-size: 11pt;
-                            }
-                            QPushButton:disabled {
-                                border: 1px solid rgba(255, 255, 255, 1.0);
-                                background: rgba(255, 255, 255, 0.7);
-                                color: rgb(255, 255, 255);
-                                font-size: 11pt;
-                           """)
-        self.clicked.connect(self.parent().btn_clicked)
 
 
 class WyrStatusIndicator(QLabel):
@@ -1956,22 +2090,21 @@ class WyrStatusIndicator(QLabel):
 
     def order_check(self):
         """Ustalenie order_id wyrobisk potwierdzonych we wszystkich powiatach."""
+        self.order_clear_not_green()  # wyczyszczenie order_id w wyrobiskach niepotwierdzonych
         odf = self.order_pd_load()
         odf = odf.sort_values(by=['pow_grp', 'Y_92'], ascending=[True, False])
+        # Pogrupowanie wszystkich wyrobisk na powiaty:
         odf_pows = dict(tuple(odf.groupby('pow_grp')))
         odf_pows_list = [odf_pows[x] for x in odf_pows]
+        # Działania na poszczególnych powiatach:
         for odf_pow in odf_pows_list:
             odf_pow = odf_pow.reset_index(drop=True)
-            # Podział na pasy o szerokości 3 km:
-            odf_pow['row'] = odf_pow['Y_92'].diff(periods=1).abs().cumsum().fillna(0).div(3000).floordiv(1).astype(int)
-            # Sortowanie po współrzędnej X wewnątrz pasów:
-            odf_pow = odf_pow.sort_values(by=['row', 'X_92'], ascending=[True, True]).reset_index(drop=True)
-            # Ponumerowanie wszystkich wyrobisk:
-            odf_pow['order_new'] = odf_pow.index + 1
-            odf_pow['order_new'] = odf_pow['order_new'].map(lambda x: f'{x:0>3}')
+            if odf_pow[odf_pow['order_lock'] == True].any().all():
+                odf_pow = self.complex_numbering(odf_pow)
+            else:
+                odf_pow = self.simple_numbering(odf_pow)
             # Sprawdzenie, czy jest różnica pomiędzy ustaloną numeracją, a nową:
             not_same = np.any( odf_pow['order_id'].values != odf_pow['order_new'].values)
-            pow_id = odf_pow.loc[0, 'pow_grp']
             if not_same:
                 # Konieczność aktualizacji order_id w tym powiecie:
                 udf = odf_pow[['wyr_id', 'pow_grp', 'order_new']]
@@ -1979,16 +2112,52 @@ class WyrStatusIndicator(QLabel):
                 self.order_clear()
                 self.order_update(udf_list)
 
+    def simple_numbering(self, odf_pow):
+        """Proste przenumerowanie wyrobisk w obrębie powiatu, jeśli nie ma zablokowanych numerów order_id."""
+        # Podział na pasy o szerokości 3 km:
+        odf_pow['row'] = odf_pow['Y_92'].diff(periods=1).abs().cumsum().fillna(0).div(3000).floordiv(1).astype(int)
+        # Sortowanie po współrzędnej X wewnątrz pasów:
+        odf_pow = odf_pow.sort_values(by=['row', 'X_92'], ascending=[True, True]).reset_index(drop=True)
+        # Ponumerowanie wszystkich wyrobisk:
+        odf_pow['order_new'] = odf_pow.index + 1
+        odf_pow['order_new'] = odf_pow['order_new'].map(lambda x: f'{x:0>3}')
+        return odf_pow
+
+    def complex_numbering(self, odf_pow):
+        """Zlożone przenumerowanie wyrobisk w obrębie powiatu, jeśli są zablokowane numery order_id"""
+        odf_pow['order_new'] = 0
+        odf_pow_locked = odf_pow[odf_pow['order_lock'] == True]
+        odf_pow_locked['order_new'] = odf_pow_locked['order_id']
+        odf_pow_unlocked = odf_pow[odf_pow['order_lock'] == False]
+        order_locked_ids = sorted(odf_pow_locked['order_id'].astype(int).tolist())
+        # Podział na pasy o szerokości 3 km:
+        odf_pow_unlocked['row'] = odf_pow_unlocked['Y_92'].diff(periods=1).abs().cumsum().fillna(0).div(3000).floordiv(1).astype(int)
+        # Sortowanie po współrzędnej X wewnątrz pasów:
+        odf_pow_unlocked = odf_pow_unlocked.sort_values(by=['row', 'X_92'], ascending=[True, True])
+        i = 0
+        # Przenumerowanie odblokowanych wyrobisk:
+        for index in odf_pow_unlocked.to_records():
+            i += 1
+            while i in order_locked_ids:
+                i += 1
+            odf_pow_unlocked.loc[index[0], 'order_new'] = i
+        odf_pow_unlocked['order_new'] = odf_pow_unlocked['order_new'].map(lambda x: f'{x:0>3}')
+        odf_pow_unlocked.drop(columns=['row'], inplace=True)
+        odf_pow.update(odf_pow_unlocked)
+        odf_pow.update(odf_pow_locked)
+        odf_pow['wyr_id'] = odf_pow['wyr_id'].astype('int')
+        return odf_pow
+
     def order_pd_load(self):
         """Zwraca dataframe z danymi wyrobisk potwierdzonych dla ustalenia order_id."""
         db = PgConn()
-        sql = f"SELECT w.wyr_id, ST_X(w.centroid) as X_92, ST_Y(w.centroid) as Y_92, p.pow_grp, p.order_id FROM team_{dlg.team_i}.wyr_prg AS p INNER JOIN team_{dlg.team_i}.wyrobiska AS w USING(wyr_id) WHERE w.b_confirmed IS TRUE;"
+        sql = f"SELECT w.wyr_id, ST_X(w.centroid) as X_92, ST_Y(w.centroid) as Y_92, p.pow_grp, p.order_id, p.order_lock FROM team_{dlg.team_i}.wyr_prg AS p INNER JOIN team_{dlg.team_i}.wyrobiska AS w USING(wyr_id) WHERE w.b_confirmed IS TRUE;"
         if db:
-            df = db.query_pd(sql, ['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id'])
+            df = db.query_pd(sql, ['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id', 'order_lock'])
             if isinstance(df, pd.DataFrame):
                 return df
             else:
-                return pd.DataFrame(columns=['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id'])
+                return pd.DataFrame(columns=['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id', 'order_lock'])
 
     def order_update(self, list):
         """Aktualizacja order_id w db."""
@@ -2000,7 +2169,14 @@ class WyrStatusIndicator(QLabel):
     def order_clear(self):
         """Wyczyszczenie order_id dla wyrobisk z bieżącego powiatu."""
         db = PgConn()
-        sql = f"UPDATE team_{dlg.team_i}.wyr_prg SET order_id = Null WHERE pow_grp = '{dlg.powiat_i}'"
+        sql = f"UPDATE team_{dlg.team_i}.wyr_prg SET order_id = Null WHERE pow_grp = '{dlg.powiat_i}' AND order_lock IS FALSE"
+        if db:
+            res = db.query_upd(sql)
+
+    def order_clear_not_green(self):
+        """Wyczyszczenie order_id i order_lock dla wyrobisk innych niż potwierdzone."""
+        db = PgConn()
+        sql = f"UPDATE team_{dlg.team_i}.wyr_prg AS a SET order_id = Null, order_lock = false FROM team_{dlg.team_i}.wyrobiska AS b WHERE a.wyr_id = b.wyr_id and b.b_confirmed = false"
         if db:
             res = db.query_upd(sql)
 
@@ -2086,6 +2262,7 @@ class WyrStatusSelector(QFrame):
             self.case_change()
             dlg.wyr_panel.tab_box.setVisible(True) if val == 1 else dlg.wyr_panel.tab_box.setVisible(False)
             dlg.wyr_panel.order_box.setVisible(True) if val == 1 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_box.setVisible(False)
+            dlg.wyr_panel.order_drawer.setVisible(True) if val == 1 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_drawer.setVisible(False)
 
     def set_case(self, after_fchk, confirmed):
         """Ustala 'case' na podstawie atrybutów wyrobiska."""
@@ -2125,10 +2302,9 @@ class WyrStatusSelector(QFrame):
                 result = self.db_update(status["after_fchk"], status["confirmed"])
                 if result:
                     self.vis_check(status["layer"])
-                    dlg.obj.wyr = dlg.obj.wyr
         if self.case == 1 or old_id == 1:
-            dlg.wyr_panel.status_indicator.order_check()
             wyr_layer_update(False)
+        dlg.obj.wyr = dlg.obj.wyr
 
     def vis_check(self, lyr_name):
         """Włącza dany typ wyrobisk, jeśli nie jest włączony."""
@@ -2174,6 +2350,106 @@ class WyrStatusSelectorItem(QToolButton):
             icon.addFile(ICON_PATH + name + "_1_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.On)
             icon.addFile(ICON_PATH + name + "_1.png", size=QSize(wsize, hsize), mode=QIcon.Selected, state=QIcon.On)
         self.setIcon(icon)
+
+
+class OrderDrawer(QFrame):
+    """Wysuwane menu z przyciskami do ręcznego ustalania order_id."""
+
+    def __init__(self, *args, height=28):
+        super().__init__(*args)
+        self.setCursor(Qt.ArrowCursor)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(1, height)
+        self.setObjectName("main")
+        self.v_line = QFrame(self)
+        self.v_line.setFixedSize(1, height - 6)
+        self.v_line.setObjectName("v_line")
+        self.btn_edit = MoekButton(self, name="order_edit", size=16, checkable=True, tooltip="włącz tryb edycji ręcznego przypisania numeru dla tego wyrobiska", tooltip_on="wyłącz tryb edycji ręcznego przypisanie numeru dla tego wyrobiska")
+        self.btn_edit.clicked.connect(self.order_edit_clicked)
+        self.btn_lock = MoekButton(self, name="order_lock", size=16, checkable=True, tooltip="włącz ręczne przypisanie numeru dla tego wyrobiska", tooltip_on="wyłącz ręczne przypisanie numeru dla tego wyrobiska")
+        self.btn_lock.clicked.connect(self.order_lock_clicked)
+        self.v_line.setGeometry(0, 3, self.v_line.width(), self.v_line.height())
+        self.btn_lock.setGeometry(-1, 6, self.btn_lock.width(), self.btn_lock.height())
+        self.btn_edit.setGeometry(-17, 6, self.btn_edit.width(), self.btn_edit.height())
+        self.set_style()
+        self.attr_void = True
+        self.slided = False
+        self.locked = False
+        self.edited = False
+        self.attr_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "slided" and not self.attr_void:
+            self.sliding()
+        elif attr == "locked" and not self.attr_void:
+            dlg.wyr_panel.order_box.locked = val
+            if self.btn_lock.isChecked() != val:
+                self.btn_lock.setChecked(val)
+            self.slided = val
+            if not val and self.edited:
+                self.edited = False
+        elif attr == "edited" and not self.attr_void:
+            dlg.wyr_panel.order_box.edited = val
+            if self.btn_edit.isChecked() != val:
+                self.btn_edit.setChecked(val)
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        alpha = 0.6 if self.isEnabled() else 0.1
+        self.setStyleSheet("""
+                    QFrame#main {background-color: transparent; border: none}
+                    QFrame#v_line {background-color: rgba(255, 255, 255, """ + str(alpha) + """); border: none}
+                    """)
+
+    def sliding(self):
+        self.composer(slide=self.slided)
+
+    def enterEvent(self, event):
+        if self.isEnabled():
+            self.slided = True
+
+    def leaveEvent(self, event):
+        if not self.locked and self.slided:
+            self.slided = False
+
+    def order_edit_clicked(self):
+        """Włączenie/wyłączenie edycji order_id."""
+        self.edited = self.btn_edit.isChecked()
+        if self.edited and not self.locked:
+            self.locked = True
+
+    def order_lock_clicked(self):
+        """Zablokowanie/odblokowanie order_id."""
+        self.locked = self.btn_lock.isChecked()
+        if self.locked and not self.edited:
+            self.edited = True
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_prg', attr='order_lock', val=self.locked, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        if not self.locked:
+            self.slided = False
+            self.attr_void = True
+            wyr_layer_update(False)
+            dlg.obj.wyr = dlg.obj.wyr
+            self.attr_void = False
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        self.setEnabled(_bool)
+        self.set_style()
+
+    def composer(self, slide=False):
+        """Ustalenie rozmieszczenia i widoczności widget'ów."""
+        if slide:
+            self.setFixedWidth(34)
+            self.v_line.setGeometry(33, 3, self.v_line.width(), self.v_line.height())
+            self.btn_lock.setGeometry(17, 6, self.btn_lock.width(), self.btn_lock.height())
+            self.btn_edit.setGeometry(1, 6, self.btn_edit.width(), self.btn_edit.height())
+        else:
+            self.setFixedWidth(1)
+            self.v_line.setGeometry(0, 3, self.v_line.width(), self.v_line.height())
+            self.btn_lock.setGeometry(-1, 6, self.btn_lock.width(), self.btn_lock.height())
+            self.btn_edit.setGeometry(-17, 6, self.btn_edit.width(), self.btn_edit.height())
 
 
 class KopalinaWiekBox(QFrame):
@@ -2522,25 +2798,61 @@ class PneBox(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(34, 26)
+        self.setFixedSize(34, 44)
         self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
-        self.btn = MoekButton(self, name="pne", size=34, hsize=26, checkable=True, tooltip="CZY_PNE = NIE", tooltip_on="CZY_PNE = TAK")
-        self.btn.clicked.connect(self.btn_clicked)
+        self.pne_btn = MoekButton(self, name="pne", size=34, hsize=26, checkable=False, tooltip="CZY_PNE = TAK")
+        self.zl_btn = MoekButton(self, name="zl_nrekul", size=187, hsize=26, checkable=False, tooltip="CZY_PNE = NIE")
+        hlay = QHBoxLayout()
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(0)
+        hlay.addWidget(self.pne_btn)
+        hlay.addWidget(self.zl_btn)
+        self.setLayout(hlay)
+        self.pne_btn.clicked.connect(self.btn_clicked)
+        self.zl_btn.clicked.connect(self.btn_clicked)
         self.val_void = True
         self.btn_val = False
+        self.cur_val = None
         self.val_void = False
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "btn_val" and not self.val_void:
-            if self.btn.isChecked != val:
-                self.btn.setChecked(val)
+            if val != self.cur_val:
+                self.cur_val = val
+                if val:  # Wyrobisko jest związane z PNE
+                    self.pne_btn.setVisible(True)
+                    self.zl_btn.setVisible(False)
+                    self.setFixedWidth(34)
+                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.addWidget(dlg.wyr_panel.widgets["pn_1"], 1, 0, 1, 1)
+                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.addWidget(dlg.wyr_panel.widgets["txt2_okres_eksp_1"], 1, 1, 1, 11)
+                    dlg.wyr_panel.widgets["txt2_okres_eksp_1"].setVisible(True)
+                else:  # Wyrobisko jest związane ze złożem niezrekultywowanym
+                    self.pne_btn.setVisible(False)
+                    self.zl_btn.setVisible(True)
+                    self.setFixedWidth(402)
+                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.removeWidget(dlg.wyr_panel.widgets["txt2_okres_eksp_1"])
+                    dlg.wyr_panel.widgets["txt2_okres_eksp_1"].setVisible(False)
+                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.addWidget(dlg.wyr_panel.widgets["pn_1"], 1, 0, 1, 12)
 
     def btn_clicked(self):
         """Aktualizacja wartości 'b_pne' w tabeli 'wyr_dane'."""
-        self.btn_val = self.btn.isChecked()
+        if not dlg.wyr_panel.has_midas:
+            self.btn_val = True  # Jeżeli wyrobisko nie jest powiązane ze złożem, musi być PNE
+            QMessageBox.warning(None, "MOEK_Editor", f"Jeżeli wyrobisko nie jest powiązane ze złożem, musi być PNE. Wypełnij ID złoża w zakładce MIDAS, jeżeli chcesz ustawić atrybut CZY_PNE na wartość NIE (co będzie oznaczało, że wyrobisko dotyczy złoża niezrekultywowanego).")
+            return
+        self.btn_val = not self.btn_val
         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_pne", val=self.btn_val, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        dlg.wyr_panel.trigger_midas()
+        # Wyczyszczenie PNE_OD i PNE_DO, jeśli są wypełnione oraz CZY_PNE = NIE:
+        if not self.btn_val and dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_1.cur_val:
+            dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_1.value_change(None)
+        if not self.btn_val and dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_2.cur_val:
+            dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_2.value_change(None)
+        # Ustawienie stanu wyrobiska na "zaniechany", jeśli wyrobisko dotyczy złoża niezrekultywowanego:
+        if self.btn_val and dlg.wyr_panel.widgets["cmb_stan_1"].valbox_1.cur_val != "Z":
+            dlg.wyr_panel.widgets["cmb_stan_1"].valbox_1.set_value("Z", signal=True)
 
 
 class TerminBox(QFrame):
@@ -2597,10 +2909,10 @@ class TerminBox(QFrame):
             if self.fchk.isChecked != val:
                 self.fchk.setChecked(val)
             self.enable_fn(val)
-            if not val and self.t_val:
-                self.time_reset()
-            if not val and self.d_val:
-                self.date_reset()
+            # if not val and self.t_val:
+            #     self.time_reset()
+            # if not val and self.d_val:
+            #     self.date_reset()
         if attr == "d_val" and not self.val_void:
             self.drawer.val_copy.setToolTip(f"kopiuj datę: {val}") if val else self.drawer.val_copy.setToolTip(f"brak daty do skopiowania")
             self.drawer.val_copy.setEnabled(True) if val else self.drawer.val_copy.setEnabled(False)
@@ -2619,13 +2931,13 @@ class TerminBox(QFrame):
 
     def enable_fn(self, _bool):
         """Włączenie/wyłączenie poszczególnych elementów box'u i innych parambox'ów, w zależności czy przeprowadzono kontrolę terenową."""
-        inner_widgets = [self.clock, self.calendar, self.th, self.tm, self.dd, self.dm, self.dy, self.drawer]
+        # inner_widgets = [self.clock, self.calendar, self.th, self.tm, self.dd, self.dm, self.dy, self.drawer]
         outer_widgets = [dlg.wyr_panel.widgets["txt2_wys_1"], dlg.wyr_panel.widgets["txt2_nadkl_1"], dlg.wyr_panel.widgets["txt2_miaz_1"]]
-        for widget in inner_widgets:
-            if isinstance(widget, MoekButton):
-                widget.setEnabled(_bool)
-            else:
-                widget.set_enabled(_bool)
+        # for widget in inner_widgets:
+        #     if isinstance(widget, MoekButton):
+        #         widget.setEnabled(_bool)
+        #     else:
+        #         widget.set_enabled(_bool)
         for widget in outer_widgets:
             widget.set_enabled(_bool)
             if not _bool and widget.valbox_1.cur_val:
@@ -3106,7 +3418,7 @@ class TabButton(QPushButton):
 class ParamBox(QFrame):
     """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem).
     item: label, line_edit, ruler."""
-    def __init__(self, *args, margins=False, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, trigger=None, fn=None):
+    def __init__(self, *args, margins=False, list_width = 200, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, min_max=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, trigger=None, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.item = item
@@ -3121,6 +3433,7 @@ class ParamBox(QFrame):
         self.focus_switch = False
         self.setFixedSize(width, all_height)
         self.is_enabled = True
+        self.min_max = min_max
         self.setStyleSheet(" QFrame {background-color: transparent; border: none} ")
         lay = QVBoxLayout()
         lay.setContentsMargins(0, 4, 0, 4) if margins else lay.setContentsMargins(0, 0, 0, 0)
@@ -3147,7 +3460,7 @@ class ParamBox(QFrame):
                 elif self.item == "ruler":
                     self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
                 elif self.item == "combo":
-                    self.valbox_1 = CanvasArrowlessComboBox(self, height=_height, font_size=8, trigger=trigger, fn=fn)
+                    self.valbox_1 = CanvasArrowlessComboBox(self, width=list_width, height=_height, font_size=8, trigger=trigger, fn=fn)
                 elif self.item == "combo_tv":
                     self.valbox_1 = CanvasArrowlessComboBox(self, height=_height, font_size=8, tv=True, val_display=val_display, trigger=trigger, fn=fn)
                 self.box.glay.addWidget(self.valbox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
@@ -3179,6 +3492,8 @@ class ParamBox(QFrame):
         self.is_enabled = _bool
         widgets = (self.box.glay.itemAt(i).widget() for i in range(self.box.glay.count()))
         for widget in widgets:
+            if not widget:
+                continue
             if isinstance(widget, MoekButton):
                 widget.setEnabled(_bool)
             else:
@@ -3245,9 +3560,7 @@ class ParamBox(QFrame):
     def value_change(self, attrib, val):
         """Zmienia wyświetlaną wartość parametru."""
         if attrib == "value":
-            if isinstance(self.valbox_1, CanvasLineEdit):
-                self.valbox_1.set_value(val)
-            elif isinstance(self.valbox_1, CanvasArrowlessComboBox):
+            if isinstance(self.valbox_1, (CanvasLineEdit, CanvasArrowlessComboBox)):
                 self.valbox_1.set_value(val)
             else:
                 self.valbox_1.setText(str(val)) if val else self.valbox_1.setText("")
@@ -3268,10 +3581,24 @@ class ParamBox(QFrame):
             if not dlg.wyr_panel.focus_void:
                 self.valbox_1.setFocus()
 
+    def minmax_check(self):
+        """Sprawdza, czy wartości min i max nie są odwrócone oraz zamienia je, jeśli trzeba."""
+        if not self.min_max:
+            return
+        val_1 = self.valbox_1.cur_val
+        val_2 = self.valbox_2.cur_val
+        if val_1 == None or val_2 == None:
+            return
+        if float(val_1) > float(val_2):
+            dlg.wyr_panel.focus_void = True
+            self.valbox_1.value_change(val_2)
+            self.valbox_2.value_change(val_1)
+            dlg.wyr_panel.focus_void = False
+
 
 class ParamTextBox(QFrame):
-    """Widget do wyświetlania i edycji parametru tekstowego (np. uwagi) wraz z nagłówkiem."""
-    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, fn=None):
+    """Widget do wyświetlania i edycji parametru tekstowego (np. uwagi) wraz z nagłówkiem i opcjonalnym licznikiem użytch znaków."""
+    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, txt_limiter=False, centered=False, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setObjectName("main")
@@ -3287,14 +3614,20 @@ class ParamTextBox(QFrame):
         self.setLayout(lay)
         self.box = MoekVBox(self, margins=[0, 0, 0, 0], spacing=0)
         lay.addWidget(self.box)
-        self.txtbox = TextBox(self, height=_height, width=_width, edit=edit, trigger=trigger, fn=fn)
+        self.txtbox = TextBox(self, height=_height, width=_width, edit=edit, trigger=trigger, txt_limiter=txt_limiter, centered=centered, fn=fn)
         self.box.lay.addWidget(self.txtbox)
         self.line = MoekHLine(self)
         self.box.lay.addWidget(self.line)
+        self.txt_limiter = txt_limiter
         if title:
+            self.title = title
             self.titlebox = TextItemLabel(self, height=down_height, width=_width, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title)
             self.box.lay.addWidget(self.titlebox)
         self.setStyleSheet(" QFrame#main{background-color: transparent; border: none} ")
+
+    def counter_update(self, cnt):
+        """Aktualizacja licznika użytych znaków."""
+        self.titlebox.setText(f"{self.title}  ({cnt} / 255)")
 
     def value_change(self, val):
         """Zmienia wyświetlany tekst."""
@@ -3307,16 +3640,18 @@ class ParamTextBox(QFrame):
             widget.set_enabled(_bool)
 
 
-class TextBox(QPlainTextEdit):
-    """Wyświetla tekst z możliwością edycji."""
-    def __init__(self, *args, width, height, edit, trigger, fn):
+class TextBox(QTextEdit):
+    """Wyświetla tekst z możliwością edycji i opcjonalnym liczeniem użytych znaków."""
+    def __init__(self, *args, width, height, edit, trigger, fn, txt_limiter=False, centered=False):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
-        self.setBackgroundVisible(False)
+        self.setAlignment(Qt.AlignCenter)
+        self.txt_limiter = txt_limiter
         self.fn = fn
         self.edit = edit
         self.trigger = trigger
+        self.centered = centered
         self.setReadOnly(not self.edit)
         if not self.edit:
             self.viewport().setCursor(Qt.ArrowCursor)
@@ -3337,6 +3672,8 @@ class TextBox(QPlainTextEdit):
                 self.set_style()
         if attr == "cur_val" and not self.attr_void:
             self.value_changed()
+            if self.txt_limiter:
+                self.counter_update()
             if self.trigger:
                 exec(f'dlg.wyr_panel.{self.trigger}')
 
@@ -3353,7 +3690,7 @@ class TextBox(QPlainTextEdit):
             self.cur_val = val
 
     def db_update(self, txt_val, tbl, attr, sql_bns):
-        """Aktualizacja wartości 't_notatki' w db."""
+        """Aktualizacja wartości w db."""
         if not txt_val:
             sql_text = "NULL"
         else:
@@ -3364,18 +3701,22 @@ class TextBox(QPlainTextEdit):
     def value_changed(self):
         """Aktualizacja tekstu po zmianie wartości."""
         self.setPlainText(self.cur_val) if self.cur_val else self.clear()
+        self.set_style()
 
     def set_style(self):
         """Modyfikacja stylesheet."""
+        self.setAlignment(Qt.AlignCenter) if self.centered else self.setAlignment(Qt.AlignLeft)
         if self.isEnabled():
             alpha = 0.3 if self.hover or self.focus else 0.2
+            color = "white"
         else:
             alpha = 0.1
+            color = "grey"
         self.setStyleSheet("""
-                            QPlainTextEdit {
+                            QTextEdit {
                             border: none;
                             background-color: rgba(255, 255, 255, """ + str(alpha) + """);
-                            color: white;
+                            color: """ + color + """;
                             font-size: 8pt;
                             }
                             QScrollBar:vertical {
@@ -3422,7 +3763,10 @@ class TextBox(QPlainTextEdit):
         if not self.edit:
             return
         self.focus = False
-        self.set_value(self.toPlainText())
+        self.value_change(self.toPlainText())
+
+    def value_change(self, txt):
+        self.set_value(txt)
         if self.fn:
             self.run_fn()
 
@@ -3431,6 +3775,15 @@ class TextBox(QPlainTextEdit):
             self.clearFocus()
         else:
             super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        super().keyReleaseEvent(event)
+        if self.txt_limiter:
+            self.counter_update()
+
+    def counter_update(self):
+        """Odświeża licznik wykorzystanych znaków."""
+        self.parent().parent().counter_update(len(self.toPlainText()))
 
     def run_fn(self):
         """Odpalenie funkcji po zmianie wartości."""
@@ -3523,12 +3876,22 @@ class IdSpinBox(QFrame):
         self.hlay.addWidget(self.next_btn)
         self.setLayout(self.hlay)
         self.id = None
+        self.attr_void = True
+        self.locked = False
+        self.edited = False
+        self.attr_void = False
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "id":
             self.idbox.set_value(str(val))
+        if attr == "locked" and not self.attr_void:
+            self.idbox.locked = val
+        if attr == "edited" and not self.attr_void:
+            self.idbox.edited = val
+            self.prev_btn.setEnabled(not val)
+            self.next_btn.setEnabled(not val)
 
     def prev_clicked(self):
         """Uruchomienie funkcji po kliknięciu na przycisk prev_btn."""
@@ -3574,6 +3937,10 @@ class CanvasLineEdit(QLineEdit):
         elif self.validator == "years":
             self.setValidator(QRegExpValidator(QRegExp("^1[8-9]$|^2[0-3]$|^201[8-9]$|^202[0-3]$")))
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
+        self.attr_void = True
+        self.locked = False
+        self.edited = False
+        self.attr_void = False
         self.trigger = trigger
         self.fn = fn
         self.placeholder = placeholder
@@ -3606,6 +3973,8 @@ class CanvasLineEdit(QLineEdit):
             if val == None:
                 self.numerical = False
             self.value_changed()
+        if (attr == "edited" or attr == "locked") and not self.attr_void:
+            self.set_style()
 
     def sql_parser(self, val):
         """Zwraca wartość prawidłową dla formuły sql."""
@@ -3669,8 +4038,11 @@ class CanvasLineEdit(QLineEdit):
         self.setText(self.placeholder) if self.placeholder and self.cur_val == None else self.setText(self.cur_val)
         if self.trigger and hasattr(dlg, "wyr_panel"):
             exec(f'dlg.wyr_panel.{self.trigger}')
-        if isinstance(self.parent().parent(), ParamBox) and self.cur_val != None:
-            self.parent().parent().focus_switcher(self.cur_val)
+        if isinstance(self.parent().parent(), ParamBox):
+            if self.cur_val != None:
+                self.parent().parent().focus_switcher(self.cur_val)
+            if not dlg.wyr_panel.focus_void:
+                self.parent().parent().minmax_check()
 
     def set_grey(self):
         """Ustalenie, czy wartość powinna zostać wyszarzona."""
@@ -3699,12 +4071,18 @@ class CanvasLineEdit(QLineEdit):
             font_color = "0, 0, 0, 0.3" if self.grey else self.color
         else:
             font_color = self.color
+        if self.locked and not self.edited:
+            border = "1px solid black"
+        elif self.edited:
+            border = "1px solid red"
+        else:
+            border = "none"
         self.setStyleSheet("""
                     QLineEdit {
                         background-color: rgba(""" + self.color + """, """ + str(alpha) + """);
                         color: rgba(""" + font_color + """);
                         font-size: """ + str(self.font_size) + """pt;
-                        border: none;
+                        border: """ + border + """;
                         padding: 0px 0px 2px 2px;
                         qproperty-alignment: """ + str(self.align) + """;
                         }
@@ -3984,12 +4362,12 @@ class MoekLeftBottomDock(QFrame):
         vlay.addWidget(self.box)
         vlay.setAlignment(self.box, Qt.AlignTop)
         self.setLayout(vlay)
-        self.set_style(0.6)
+        self.set_style(0.37)
 
     def page_change(self, index):
         """Zmiana aktywnej strony stackedbox'a."""
         self.cur_page = index
-        alpha = 0.8 if index > 0 else 0.6
+        alpha = 0.8 if index > 0 else 0.37
         self.set_style(alpha)  # Ustalenie przezroczystości tła seq_dock'a
         self.height_change()  # Aktualizacja wysokości dock'u
 
@@ -4260,13 +4638,13 @@ class MoekSeqBox(QFrame):
         except Exception as err:
             print(f"player: {err}")
         vn_zoom(player=True)  # Przybliżenie widoku mapy do nowego vn'a
-        print(f'seq_ge: {self.sqb_btns["sqb_" + str(self.num)].ge}, is_ge: {dlg.ge.is_ge}')
-        if self.sqb_btns["sqb_" + str(self.num)].ge:  # W sekwencji jest Google Earth Pro
-            print(f"+++++++++++++++++++++++++  1  +++++++++++++++++++++++++++++")
-            dlg.ge.q2ge(player=True, back=True)
-        elif dlg.ge.is_ge:  # Google Earth Pro jest włączony
-            print(f"+++++++++++++++++++++++++  2  +++++++++++++++++++++++++++++")
-            dlg.ge.q2ge(player=True, back=True)
+        # print(f'seq_ge: {self.sqb_btns["sqb_" + str(self.num)].ge}, is_ge: {dlg.ge.is_ge}')
+        # if self.sqb_btns["sqb_" + str(self.num)].ge:  # W sekwencji jest Google Earth Pro
+        #     print(f"+++++++++++++++++++++++++  1  +++++++++++++++++++++++++++++")
+        #     dlg.ge.q2ge(player=True, back=True)
+        # elif dlg.ge.is_ge:  # Google Earth Pro jest włączony
+        #     print(f"+++++++++++++++++++++++++  2  +++++++++++++++++++++++++++++")
+        #     dlg.ge.q2ge(player=True, back=True)
         self.i = 0  # Przejście do pierwszego podkładu mapowego z sekwencji
         delay = self.sqb_btns["sqb_" + str(self.num)].maps[self.i][1]  # Pobranie opóźnienia
         self.set_timer(delay)  # Uruchomienie stopera
@@ -5034,6 +5412,15 @@ class MoekVBox(QFrame):
         self.lay.setSpacing(spacing)
         self.setLayout(self.lay)
 
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        widgets = (self.lay.itemAt(i).widget() for i in range(self.lay.count()))
+        for widget in widgets:
+            if isinstance(widget, (MoekButton, QProgressBar)):
+                widget.setEnabled(_bool)
+            else:
+                widget.set_enabled(_bool)
+
 
 class MoekStackedBox(QStackedWidget):
     """Widget dzielący zawartość panelu na strony."""
@@ -5056,6 +5443,14 @@ class CanvasStackedBox(QStackedWidget):
                             }"""
                             )
 
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        widgets = (self.widget(i) for i in range(self.count()))
+        for widget in widgets:
+            if isinstance(widget, (MoekButton, QProgressBar)):
+                widget.setEnabled(_bool)
+            else:
+                widget.set_enabled(_bool)
 
 class MoekButton(QToolButton):
     """Fabryka guzików."""
@@ -5148,7 +5543,6 @@ class MoekDummy(QFrame):
         self.setObjectName("main")
         self.lay = QVBoxLayout()
         self.setLayout(self.lay)
-        # self.box = MoekHBox(self)
         if not spacer:
             self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             self.setFixedSize(width, height)
@@ -5203,79 +5597,84 @@ class MoekComboBox(QComboBox):
             B_CSS = "border-radius: 6px;"
         else:
             B_CSS = ""
-
+        self.setMaxVisibleItems(20)
+        model = QStandardItemModel()
+        self.setModel(model)
+        de = CmbDelegate(self)
+        self.view().setItemDelegate(de)
+        self.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setStyleSheet("""
-                            QComboBox {
-                                border: """ + str(border) + """px solid rgb(52, 132, 240);
-                                """ + B_CSS + """
-                                padding: 0px 5px 0px 5px;
-                                min-width: 1px;
-                                min-height: """ + str(height) + """px;
-                                color: rgb(52, 132, 240);
-                                font-size: 8pt;
-                            }
-                            QComboBox:disabled {
-                                border: """ + str(border) + """px solid rgb(150, 150, 150);
-                                """ + B_CSS + """
-                                padding: 0px 5px 0px 5px;
-                                min-width: 1px;
-                                min-height: """ + str(height) + """px;
-                                color: rgb(140, 140, 140);
-                                font-size: 8pt;
-                            }
-                            QComboBox::indicator {
-                                background-color:transparent;
-                                selection-background-color:transparent;
-                                color:transparent;
-                                selection-color:transparent;
-                            }
-                            QComboBox::item:selected {
-                                padding-left: 0px;
-                                background-color: rgb(52, 132, 240);
-                                color: white;
-                            }
-                            QComboBox::item:!selected {
-                                background-color: white;
-                                color: rgb(52, 132, 240);
-                            }
-                            QComboBox:on {
-                                padding-top: 3px;
-                                padding-left: 4px;
-                                background-color: rgb(52, 132, 240);
-                                color: white;
-                            }
-                            QComboBox::drop-down {
-                                subcontrol-origin: padding;
-                                subcontrol-position: center right;
-                                width: 12px;
-                                right: 5px;
-                                border: none;
-                                background: transparent;
-                            }
-                            QComboBox::down-arrow {
-                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow.png');
-                            }
-                            QComboBox::down-arrow:disabled {
-                                image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow_dis.png');
-                            }
-                            QComboBox QAbstractItemView {
-                                border: """ + str(border) + """px solid rgb(52, 132, 240);
-                                background-color: white;
-                            }
-                            QComboBox QAbstractItemView::item {
-                                padding-top: 3px;
-                                padding-left: 4px;
-                                border: """ + str(border) + """px solid rgb(52, 132, 240);
-                                background-color: white;
-                            }
-                           """)
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
-        self.setAttribute(Qt.WA_NoSystemBackground | Qt.WA_TranslucentBackground | Qt.WA_PaintOnScreen)
+                    QComboBox {
+                        border: """ + str(border) + """px solid rgb(52, 132, 240);
+                        """ + B_CSS + """
+                        padding: 0px 5px 0px 5px;
+                        min-width: 1px;
+                        min-height: """ + str(height) + """px;
+                        color: rgb(52, 132, 240);
+                        font-size: 8pt;
+                        combobox-popup: 0;
+                    }
+                    QComboBox:disabled {
+                        """ + B_CSS + """
+                        border: """ + str(border) + """px solid rgb(140, 140, 140);
+                        padding: 0px 5px 0px 5px;
+                        min-width: 1px;
+                        min-height: """ + str(height) + """px;
+                        color: rgb(140, 140, 140);
+                        font-size: 8pt;
+                    }
+                    QComboBox::indicator {
+                        background-color:transparent;
+                        selection-background-color:transparent;
+                        color:transparent;
+                        selection-color:transparent;
+                    }
+                    QComboBox::drop-down {
+                        subcontrol-origin: padding;
+                        subcontrol-position: center right;
+                        width: 12px;
+                        right: 5px;
+                        border: none;
+                        background: transparent;
+                    }
+                    QComboBox::down-arrow {
+                        image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow.png');
+                    }
+                    QComboBox::down-arrow:disabled {
+                        image: url('""" + ICON_PATH.replace("\\", "/") + """down_arrow_dis.png');
+                    }
+                    QComboBox QAbstractItemView {
+                        border: """ + str(border) + """px solid rgb(52, 132, 240);
+                        outline: none;
+                        background-color: white;
+                    }
+                    """)
+        self.view().window().setStyleSheet("""
+                        QListView::item{
+                            border: none;
+                            padding-left: 5px;
+                            min-width: 300px;
+                            margin: 0px;
+                            height: 24px;
+                            color: rgb(52, 132, 240);
+                            background-color: white;
+                            show-decoration-selected: 0;
+                            font-size: 8pt;
+                        }
+                        QListView::item:selected {
+                            color: white;
+                            background-color: rgb(52, 132, 240);
+                        }
+                        QListView::item:!selected {
+                            background-color: white;
+                            color: rgb(52, 132, 240);
+                        }
+                    """)
 
 
 class CanvasArrowlessComboBox(QComboBox):
     """Fabryka rozwijanych bez strzałki."""
-    def __init__(self, *args, name="", height=24, border=1, font_size=8, icon_disable=False, b_round="none", tv=False, val_display=False, trigger=None, fn=None):
+    def __init__(self, *args, name="", width=200, height=24, border=1, font_size=8, icon_disable=False, b_round="none", tv=False, val_display=False, trigger=None, fn=None):
         super().__init__(*args)
         if b_round == "right":
             B_CSS = "border-top-right-radius: 3px; border-bottom-right-radius: 3px;"
@@ -5288,16 +5687,16 @@ class CanvasArrowlessComboBox(QComboBox):
         self.val_display = val_display
         self.trigger = trigger
         self.fn = fn
-        if tv:
-            popup = 0
-            self.setMaxVisibleItems(20)
-            model = QStandardItemModel()
-            self.setModel(model)
-            de = CmbDelegate(self)
-            self.view().setItemDelegate(de)
-            self.view().setFixedWidth(200)
-        else:
-            popup = 1
+        # if tv:
+        popup = 0
+        self.setMaxVisibleItems(20)
+        model = QStandardItemModel()
+        self.setModel(model)
+        de = CmbDelegate(self)
+        self.view().setItemDelegate(de)
+        self.view().setFixedWidth(width)
+        # else:
+        #     popup = 1
         self.setStyleSheet("""
                             QComboBox {
                                 """ + B_CSS + """
@@ -5349,7 +5748,7 @@ class CanvasArrowlessComboBox(QComboBox):
                                     margin: 0px;
                                     height: 24px;
                                     color: rgb(200, 200, 200);
-                                    background-color: rgb(30, 30, 30);;
+                                    background-color: rgb(30, 30, 30);
                                 }
                                 QListView::item:hover{
                                     color: black;
@@ -5394,7 +5793,7 @@ class CanvasArrowlessComboBox(QComboBox):
                                     margin: 0px;
                                     height: 24px;
                                     color: rgb(200, 200, 200);
-                                    background-color: rgb(30, 30, 30);;
+                                    background-color: rgb(30, 30, 30);
                                 }
                                 QListView::item:hover{
                                     color: black;
@@ -5619,13 +6018,91 @@ class MoekCheckBox(QCheckBox):
                            """)
 
 
+class CanvasCheckBox(QCheckBox):
+    """Fabryka pstryczków w canvaspanelach."""
+    def __init__(self, *args, name="", checked=False, font=10, fn=None):
+        super().__init__(*args)
+        self.setText(name)
+        self.setChecked(checked)
+        self.fn = fn
+        self.stateChanged.connect(self.run_fn)
+        self.setStyleSheet("""
+                            QCheckBox {
+                                border: none;
+                                background: none;
+                                color: rgb(170, 170, 170);
+                                font-size: """ + str(font) + """pt;
+                                spacing: 3px;
+                            }
+                            QCheckBox:disabled {
+                                border: none;
+                                background: none;
+                                color: rgb(80, 80, 80);
+                                font-size: 10pt;
+                                spacing: 3px;
+                            }
+                            QCheckBox:focus {
+                                border: none;
+                                outline: none;
+                            }
+                            QCheckBox::indicator {
+                                width: 25px;
+                                height: 25px;
+                            }
+                            QCheckBox::indicator:unchecked {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_grey_0.png');
+                            }
+                            QCheckBox::indicator:unchecked:hover {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_grey_0_act.png');
+                            }
+                            QCheckBox::indicator:checked {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_grey_1.png');
+                            }
+                            QCheckBox::indicator:checked:hover {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_grey_1_act.png');
+                            }
+                            QCheckBox::indicator:disabled {
+                                image: url('""" + ICON_PATH.replace("\\", "/") + """checkbox_grey_dis.png');
+                            }
+                           """)
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        self.setEnabled(_bool)
+
+    def run_fn(self):
+        """Odpalenie funkcji po zmianie wartości."""
+        if not self.fn:
+            return
+        for fn in self.fn:
+            try:
+                exec(eval("f'{}'".format(fn)))
+            except Exception as err:
+                print(f"[run_fn] Błąd zmiany wartości: {err}")
+
+
 class PanelLabel(QLabel):
     """Fabryka napisów do canvpaneli."""
-    def __init__(self, *args, text="", color="255, 255, 255", size=10):
+    def __init__(self, *args, text="", color="255, 255, 255", disable_color="80, 80, 80", size=10, bold=False):
         super().__init__(*args)
         self.setWordWrap(False)
-        self.setStyleSheet("QLabel {color: rgb(" + color + "); font-size: " + str(size) + "pt; qproperty-alignment: AlignCenter}")
         self.setText(text)
+        self.color = color
+        self.disable_color = disable_color
+        self.size = size
+        self.bold = bold
+        self.set_style()
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
+        self.setEnabled(_bool)
+        self.set_style()
+
+    def set_style(self):
+        """Modyfikacja stylesheet."""
+        color = self.color if self.isEnabled() else self.disable_color
+        weight = "bold" if self.bold else "normal"
+        self.setStyleSheet("QLabel {color: rgb(" + color + "); font-size: " + str(self.size) + "pt; font-weight: " + weight + "; qproperty-alignment: AlignCenter}")
 
 
 class MoekSpinLabel(QLabel):

@@ -24,7 +24,7 @@
 
 import os
 
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsSettings, QgsApplication
 from qgis.gui import QgsMapToolPan
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QEvent, QTimer
@@ -32,13 +32,14 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QDockWidget, QShortcut, QMessageBox, QSizePolicy
 from qgis.utils import iface
 
-from .classes import PgConn
+from .classes import PgConn, MonitorManager, GESync
 from .layers import dlg_layers, PanelManager, LayerManager
 from .maptools import dlg_maptools, MapToolManager, ObjectManager
 from .main import dlg_main, vn_mode_changed, data_export_init, sequences_load, prev_map, next_map, seq
 from .viewnet import dlg_viewnet, change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel, ExportCanvasPanel
+from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, BasemapCanvasPanel, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel
 from .basemaps import dlg_basemaps, MoekMapPanel, basemaps_load
+from .export import dlg_export, ExportCanvasPanel
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'moek_editor_dockwidget_base.ui'))
@@ -308,6 +309,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             self.seq_dock.add_seqaddbox(widget)
                         elif widget["item"] == "seqcfgbox":
                             self.seq_dock.add_seqcfgbox(widget)
+
+        self.bm_panel = BasemapCanvasPanel(self.canvas, dlg=self)
+        self.bm_panel.hide()
         self.flag_panel = FlagCanvasPanel(self.canvas)
         self.flag_panel.hide()
         self.parking_panel = ParkingCanvasPanel(self.canvas)
@@ -321,11 +325,14 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.export_panel = ExportCanvasPanel(self.canvas)
         self.export_panel.hide()
 
+        self.mon = MonitorManager(dlg=self)
+        self.ge = GESync(dlg=self)  # Integracja z Google Earth Pro
         self.cfg = PanelManager(dlg=self)
         self.mt = MapToolManager(dlg=self, canvas=self.canvas)
         self.obj = ObjectManager(dlg=self, canvas=self.canvas)
         self.lyr = LayerManager(dlg=self)
 
+        self.bm_panel.move(9, 9)
         self.side_dock.move(1,0)
         bottom_y = self.canvas.height() - 52
         self.bottom_dock.move(0, bottom_y)
@@ -367,9 +374,11 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         dlg_maptools(self)  # Przekazanie referencji interfejsu wtyczki do maptools.py
         dlg_viewnet(self)  # Przekazanie referencji interfejsu wtyczki do viewnet.py
         dlg_basemaps(self)  # Przekazanie referencji interfejsu wtyczki do basemaps.py
+        dlg_export(self)  # Przekazanie referencji interfejsu wtyczki do export.py
 
     def freeze_set(self, val, from_resize=False, delay=False):
         """Zarządza blokadą odświeżania dockwidget'u."""
+        return
         if val and self.freeze:
             # Blokada jest już włączona
             return
@@ -427,9 +436,15 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             self.resize_canvas()
         if obj is iface.mainWindow() and event.type() == QEvent.WindowTitleChange:
             # Zmiana tytułu okna QGIS:
-            title = self.app.windowTitle()
-            new_title = title.replace('- QGIS', '| MOEK_Editor')
-            self.app.setWindowTitle(new_title)
+            title = iface.mainWindow().windowTitle()
+            dashes = ['-', '—']  # W różnych wersjach QGIS występują inne dywizory w tytule
+            _dash = ''
+            for dash in dashes:
+                if dash in title:
+                    _dash = dash
+                    break
+            new_title = title.replace(f'{dash} QGIS', '| MOEK_Editor')
+            iface.mainWindow().setWindowTitle(new_title)
         if obj is iface.mainWindow() and event.type() == QEvent.Close:
             # Zamknięcie QGIS'a:
             self.closing = True
@@ -445,6 +460,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.bottom_dock.move(0, self.canvas.height() - 52)
         bottom_y = self.canvas.height() - self.seq_dock.height() - 53
         self.seq_dock.move(53, bottom_y)
+        self.bm_panel.move(9, 9)
         self.flag_panel.move(60, 60)
         self.parking_panel.move(60, 60)
         self.wyr_panel.move(60, 60)
@@ -712,8 +728,6 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         # Deaktywacja skrótów klawiszowych:
         self.hk_vn = False
         self.hk_seq = False
-        # Usunięcie połączenia z Google Earth Pro:
-        self.ge = None
         # Odblokowanie messagebar'u:
         try:
             iface.messageBar().widgetAdded.disconnect(self.msgbar_blocker)
@@ -740,6 +754,14 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             self.seq_dock.deleteLater()
         except:
             pass
+        try:
+            self.canvas.children().remove(self.bm_panel)
+            self.bm_panel.deleteLater()
+        except:
+            pass
+        self.canvas.extentsChanged.disconnect()
+        self.canvas.renderStarting.disconnect()
+        self.canvas.renderComplete.disconnect()
         try:
             self.canvas.children().remove(self.flag_panel)
             self.flag_panel.deleteLater()
@@ -780,6 +802,10 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         except Exception as err:
             print(f"closeEvent/self.mt: {err}")
         try:
+            self.mon = None
+        except Exception as err:
+            print(f"closeEvent/self.mt: {err}")
+        try:
             self.lyr = None
         except Exception as err:
             print(f"closeEvent/self.lyr: {err}")
@@ -787,6 +813,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
             self.cfg = None
         except Exception as err:
             print(f"closeEvent/self.cfg: {err}")
+        # Usunięcie połączenia z Google Earth Pro:
+        self.ge = None
+        QgsSettings().setValue("/qgis/map_update_interval", 250)
         # Przełączenie na QGIS'owy maptool:
         map_tool_pan = QgsMapToolPan(self.canvas)
         self.canvas.setMapTool(map_tool_pan)

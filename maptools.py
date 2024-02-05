@@ -5,7 +5,7 @@ import math
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.gui import QgsMapToolIdentify, QgsMapTool, QgsRubberBand
 from qgis.core import QgsSettings, QgsGeometry, QgsVectorLayer, QgsFeature, QgsWkbTypes, QgsPointXY, QgsExpression, QgsExpressionContextUtils, QgsCoordinateReferenceSystem, QgsFeatureRequest, QgsRectangle, QgsPointLocator, edit
-from qgis.PyQt.QtCore import Qt, pyqtSignal, QTimer
+from qgis.PyQt.QtCore import Qt, pyqtSignal, QTimer, QObject
 from PyQt5.QtGui import QColor, QKeySequence, QCursor
 from qgis.utils import iface
 from itertools import combinations
@@ -47,6 +47,7 @@ class ObjectManager:
         self.wyr = None
         self.wyr_data = []
         self.order_ids = []
+        self.order_data = []
         self.order = None
         self.wn_ids = []
         self.wn = None
@@ -100,12 +101,26 @@ class ObjectManager:
             if dlg.mt.mt_name == "wn_pick" or dlg.wyr_panel.mt_enabled:
                 dlg.mt.init("multi_tool")
             if val:
+                if dlg.wyr_panel.order_drawer.edited and not dlg.wyr_panel.order_drawer.attr_void:
+                    dlg.wyr_panel.order_drawer.edited = False
                 self.wyr_data = self.wyr_update()
+                if dlg.wyr_panel.pow_all:
+                    self.order_data = [None, False]
+                else:
+                    self.order_data = self.wyr_order_update()
+                if self.order_ids_check():
+                    self.order = self.order_data[0]
+                else:
+                    wyr_layer_update(False)
                 self.list_position_check("wyr")
                 self.dlg.wyr_panel.lok.set_tooltip(f'<html><head/><body><p style="text-indent:11px; margin:4px">MIEJSCOWOŚĆ: &nbsp;{self.wyr_data[52]}</p><p style="text-indent: 53px; margin:4px">GMINA: &nbsp;{self.wyr_data[53]}</p><p style="text-indent: 48px; margin:4px">POWIAT: &nbsp;{self.wyr_data[54]}</p><p style="text-indent: 0px; margin:4px">WOJEWÓDZTWO: &nbsp;{self.wyr_data[55]}</p></body></html>')
-                # self.dlg.wyr_panel.lok.set_tooltip(f'<html><head/><body><p>&nbsp;&nbsp;&nbsp;MIEJSCOWOŚĆ &nbsp;{self.wyr_data[52]}<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;GMINA &nbsp;{self.wyr_data[53]}<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;POWIAT &nbsp;{self.wyr_data[54]}<br>WOJEWÓDZTWO &nbsp;{self.wyr_data[55]}</p></body></html>')
                 self.dlg.wyr_panel.hash.set_value(self.wyr_data[51])  # Aktualizacja teren_id
                 self.dlg.wyr_panel.status_selector.set_case(self.wyr_data[1], self.wyr_data[2])  # Aktualizacja statusu wyrobiska
+                # Aktualizacja powierzchni wyrobiska, jeżeli wyrobisko niepotwierdzone:
+                if self.dlg.wyr_panel.status_selector.case != 1:
+                    area_txt = f"{self.wyr_data[4]} m\u00b2 "
+                    dlg.wyr_panel.area_icon.setEnabled(True)
+                    dlg.wyr_panel.area_label.setText(area_txt)
                 self.dlg.wyr_panel.wn_picker.wn_id = self.wyr_data[3]  # Aktualizacja wn_id
                 self.dlg.wyr_panel.wdf_sel_update()  # Aktualizacja zaznaczenia wiersza w tv_wdf
                 dlg.wyr_panel.focus_void = True
@@ -113,8 +128,6 @@ class ObjectManager:
                 dlg.wyr_panel.focus_void = False
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
-            if dlg.wyr_panel.status_selector.case == 1:
-                self.set_order_id()
         elif attr == "wyr_ids":
             # Zmiana listy dostępnych wyrobisk:
             wyr_check = self.list_position_check("wyr")
@@ -140,10 +153,10 @@ class ObjectManager:
             dlg.wn_panel.id_box.id = val if val else None
             dlg.wn_panel.show() if val else dlg.wn_panel.hide()
         elif attr == "order" and val:
-            self.list_position_check("order")
             dlg.wyr_panel.order_box.id = val
-        elif attr == "order_ids" and val:
-            self.set_order_id()
+            dlg.wyr_panel.order_drawer.locked = self.order_data[1]
+            if not dlg.wyr_panel.order_box.edited:
+                self.list_position_check("order")
         elif attr == "wn_ids":
             # Zmiana listy dostępnych punktów WN_PNE:
             wn_check = self.list_position_check("wn")
@@ -369,6 +382,17 @@ class ObjectManager:
             else:
                 return res
 
+    def wyr_order_update(self):
+        """Zwraca dane dotyczące order_id i order_lock wyrobiska."""
+        db = PgConn()
+        sql = f"SELECT order_id, order_lock FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{dlg.powiat_i}' AND wyr_id = {self.wyr};"
+        if db:
+            res = db.query_sel(sql, True)
+            if res:
+                return [res[0][0], res[0][1]]
+            else:
+                return [None, False]
+
     def wn_update(self):
         """Zwraca dane punktu WN_PNE."""
         db = PgConn()
@@ -411,7 +435,7 @@ class ObjectManager:
             id_box = "dlg.wyr_panel.id_box.id"
             is_int = True
         elif _obj == "order":
-            self.set_wyr_id(_id)
+            self.wyr_from_order_change(_id)
             return
         elif _obj == "wn":
             obj = "self.wn"
@@ -428,12 +452,48 @@ class ObjectManager:
         else:
             exec(id_box + ' = ' + obj)
 
-    def set_order_id(self):
-        """Ustawia wartość order_box'a po zmianie wyrobiska."""
+    def order_ids_check(self):
+        """Sprawdza, czy dane dla wyrobiska w self.order_ids są aktualne."""
+        order_from_list = self.extract_order_data_from_list()
+        if order_from_list != self.order_data:
+            return False
+        else:
+            return True
+
+    def extract_order_data_from_list(self):
+        """Zwraca order_data dla wyrobiska z self.order_ids."""
         for ord in self.order_ids:
             if ord[1] == self.wyr:
-                self.order = ord[0]
+                return [ord[0], ord[2]]
+        return [None, False]
+
+    def wyr_from_order_change(self, _order):
+        """Zarządza zmianą order_id w zależności, czy jest właczony tryb edycji."""
+        if dlg.wyr_panel.order_drawer.edited:
+            duplicate = self.locked_order_id_exist(_order)
+            if duplicate:
+                QMessageBox.warning(None, "MOEK_Editor", f"Numer {_order} jest już zarezerwowany dla wyrobiska {duplicate}.")
+                self.order = self.order
                 return
+            # Zmiana order_id dla aktualnego wyrobiska:
+            order_id = f"'{_order}'"
+            db_attr_change(tbl=f'team_{dlg.team_i}.wyr_prg', attr='order_id', val=order_id, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+            dlg.wyr_panel.order_drawer.edited = False
+            wyr_layer_update(False)
+            dlg.obj.wyr = dlg.obj.wyr
+        else:
+            self.set_wyr_id(_order)
+
+    def locked_order_id_exist(self, order_id):
+        """Sprawdza, czy podany zablokowany order_id jest wykorzystany."""
+        db = PgConn()
+        sql = f"SELECT wyr_id FROM team_{dlg.team_i}.wyr_prg WHERE pow_grp = '{dlg.powiat_i}' AND order_id = '{order_id}' AND order_lock = true;"
+        if db:
+            res = db.query_sel(sql, False)
+            if res:
+                return res[0]
+            else:
+                return None
 
     def set_wyr_id(self, _order):
         """Zmienia wyrobisko po zmianie order_id w box'ie"""
@@ -556,9 +616,13 @@ class MapToolManager:
         ]
 
     def maptool_change(self, new_tool, old_tool):
-        if not new_tool and not old_tool:
+        if not new_tool:
             # Jeśli wyłączany jest maptool o klasie QgsMapToolIdentify,
-            # event jest puszczany dwukrotnie (pierwszy raz z wartościami None, None)
+            # event jest puszczany dwukrotnie (pierwszy raz z new_tool: None):
+            return
+        if type(old_tool).__name__ == 'QObject':
+            # Workaround dla QGIS > 3.10:
+            # event jest puszczany dwukrotnie przy włączaniu MOEK maptool'a
             return
         try:
             dlg.marsz_panel.setVisible(False)
@@ -639,8 +703,8 @@ class MapToolManager:
         elif self.params["class"] == PolyDrawMapTool:
             self.maptool = self.params["class"](self.canvas, self.params["button"], self.params["extra"])
             self.maptool.drawn.connect(self.params["fn"])
-        self.canvas.setMapTool(self.maptool)
         self.mt_name = self.params["name"]
+        self.canvas.setMapTool(self.maptool)
 
     def dict_name(self, maptool):
         """Wyszukuje na liście wybrany toolmap na podstawie nazwy i zwraca słownik z jego parametrami."""
@@ -1754,8 +1818,9 @@ class PolyEditMapTool(QgsMapTool):
             geom = self.get_geom_from_part(i)
             poly = geom.asPolygon()[0]
             for j in range(len(poly) - 1):
-                self.area_rbs[i].addPoint(poly[j])
-                self.vertex_rbs[i].addPoint(poly[j])
+                if poly[j].x() != 0:  # Naprawa problemu, kiedy do geometrii dostanie się zły punkt
+                    self.area_rbs[i].addPoint(poly[j])
+                    self.vertex_rbs[i].addPoint(poly[j])
             self.vertex_rbs[i].setVisible(False)
 
     def snap_to_layer(self, event):
@@ -1907,8 +1972,8 @@ class PolyEditMapTool(QgsMapTool):
                     self.node_sel = True  # Zaznaczenie wierzchołka
                 else:
                     self.node_sel = False  # Odzaznaczenie wierzchołka
-            # Przemieszczenie wierzchołka:
             elif self.moving:
+                # Przemieszczenie wierzchołka:
                 map_point = self.toMapCoordinates(event.pos())
                 if self.change_is_valid:
                     self.vertex_rbs[self.node_idx[0]].movePoint(self.node_idx[1], map_point)
@@ -1978,6 +2043,8 @@ class PolyEditMapTool(QgsMapTool):
         if not self.change_is_valid:
             return
         new_poly = self.area_painter.asGeometry()
+        if new_poly.isMultipart():
+            new_poly.convertToSingleType()
         overlaps = self.area_overlap_check(new_poly)
         if self.mode == "add":
             if len(overlaps[0]) == 0:  # Geometria area_painter nie przecina się z żadnym poligonem
@@ -2024,6 +2091,8 @@ class PolyEditMapTool(QgsMapTool):
         for i in range(len(self.area_rbs)):
             if i in overlaps:  # Poligon znajduje się na liście
                 poly = self.area_rbs[i].asGeometry()
+                if poly.isMultipart():
+                    poly.convertToSingleType()
                 try:
                     new_poly = poly.difference(sub_poly)
                 except Exception as err:
@@ -2054,6 +2123,8 @@ class PolyEditMapTool(QgsMapTool):
         for i in range(len(self.area_rbs)):
             if i in overlaps:  # Poligon znajduje się na liście
                 poly = self.area_rbs[i].asGeometry()
+                if poly.isMultipart():
+                    poly.convertToSingleType()
                 # Sprawdzenie, czy geometria jest poprawna:
                 err = poly.validateGeometry()
                 if not err:
@@ -2093,6 +2164,8 @@ class PolyEditMapTool(QgsMapTool):
             rb_geom = self.get_geom_from_vertex_rb(rb)
         else:
             rb_geom = area_rb.asGeometry()
+            if rb_geom.isMultipart():
+                rb_geom.convertToSingleType()
             rb = self.get_nodes_from_area_rb(rb_geom)
         # Sprawdzenie, czy nowa geometria jest poprawna:
         rb_check = self.rubberband_check(rb_geom)
@@ -2133,6 +2206,8 @@ class PolyEditMapTool(QgsMapTool):
                 if i == self.node_idx[0]:  # Wykluczenie aktualnie edytowanego poligonu
                     continue
                 poly = self.area_rbs[i].asGeometry()
+                if poly.isMultipart():
+                    poly.convertToSingleType()
                 overlap_geom = rb_geom.intersection(poly).asGeometryCollection()
                 for geom in overlap_geom:
                     if geom and geom.type() == QgsWkbTypes.PolygonGeometry:
@@ -2151,6 +2226,8 @@ class PolyEditMapTool(QgsMapTool):
         touches = []
         for i in range(len(self.area_rbs)):
             poly = self.area_rbs[i].asGeometry()
+            if poly.isMultipart():
+                poly.convertToSingleType()
             overlap_geom = new_poly.intersection(poly).asGeometryCollection()
             appended = False
             for geom in overlap_geom:
@@ -2169,6 +2246,8 @@ class PolyEditMapTool(QgsMapTool):
         touches = []
         for i in range(len(self.area_rbs)):
             poly = self.area_rbs[i].asGeometry()
+            if poly.isMultipart():
+                poly.convertToSingleType()
             polyline = self.line_from_polygon(poly)
             overlap_geom = new_poly.intersection(polyline).asGeometryCollection()
             appended = False
@@ -3180,7 +3259,13 @@ class PolyDrawMapTool(QgsMapTool):
             self.area_painter.removeLastPoint(0)
             if self.area_painter.numberOfVertices() > 2:
                 self.valid_check()
-                self.drawn.emit(self.area_painter.asGeometry()) if self.change_is_valid else self.drawn.emit(None)
+                if self.change_is_valid:
+                    geom = self.area_painter.asGeometry()
+                    if geom.isMultipart():
+                        geom.convertToSingleType()
+                    self.drawn.emit(geom)
+                else:
+                    self.drawn.emit(None)
                 self.reset()
             else:
                 self.reset()
@@ -3216,6 +3301,8 @@ class PolyDrawMapTool(QgsMapTool):
         self.node_valider.reset(QgsWkbTypes.PointGeometry)
         # Przygotowanie geometrii valid_checker'a:
         rb_geom = self.area_painter.asGeometry()
+        if rb_geom.isMultipart():
+            rb_geom.convertToSingleType()
         nodes = self.get_nodes_from_area_rb(rb_geom)
         # Sprawdzenie, czy nowa geometria jest poprawna:
         rb_check = self.rubberband_check(rb_geom)
@@ -3656,10 +3743,10 @@ def wyr_point_update(wyr_id, geom):
         except Exception as err:
             print(f"maptools/wyr_point_update[2]: {err}")
     db_attr_change(tbl=f"team_{dlg.team_i}.wyr_dane", attr="i_area_m2", val=area, sql_bns=f" WHERE wyr_id = {wyr_id}", user=False)
-    wyr_point_lyrs_repaint()
     if temp_lyr:
         del lyr_point
     dlg.wyr_panel.wn_df = pd.DataFrame(columns=dlg.wyr_panel.wn_df.columns)  # Wyczyszczenie dataframe'a z połączeniami wyrobiska-wn_pne
+    wyr_layer_update(False)
     dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych wyrobiska
 
 def wyr_point_lyrs_repaint():

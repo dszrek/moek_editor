@@ -29,15 +29,11 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from qgis.utils import iface
+from datetime import datetime
 
 from .resources import resources
 
-from .main import db_login, teams_load, teams_cb_changed
-from .classes import GESync
-
-# Import the code for the DockWidget
-from .moek_editor_dockwidget import MoekEditorDockWidget
-
+LIBS_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'libs' + os.path.sep
 
 class MoekEditor:
     """QGIS Plugin Implementation."""
@@ -215,13 +211,19 @@ class MoekEditor:
     def title_change(self, closing=False):
         """Zmiana tytułu okna QGIS."""
         title = iface.mainWindow().windowTitle()
-        new_title = title.replace('| MOEK_Editor', '- QGIS') if closing else title.replace('- QGIS', '| MOEK_Editor')
+        new_title = title.replace('| MOEK_Editor', '— QGIS') if closing else title.replace('— QGIS', '| MOEK_Editor')
         iface.mainWindow().setWindowTitle(new_title)
 
     #--------------------------------------------------------------------------
 
     def run(self):
         """Run method that loads and starts the plugin"""
+        if not external_libs_exists():
+            return
+
+        from .moek_editor_dockwidget import MoekEditorDockWidget
+        from .main import db_login, teams_load, teams_cb_changed
+
         self.start = time.perf_counter()
         if self.plugin_is_active: # Sprawdzenie, czy plugin jest już uruchomiony
             QMessageBox.information(None, "Informacja", "Wtyczka jest już uruchomiona")
@@ -261,7 +263,6 @@ class MoekEditor:
         self.title_change()  # Zmiana tytułu okna QGIS
         self.dockwidget.splash_screen.p_bar.setMaximum(0)
         QgsApplication.processEvents()
-        self.dockwidget.ge = GESync()  # Integracja z Google Earth Pro
         teams_cb_changed()  # Załadowanie powiatów
         # show the dockwidget
         # TODO: fix to allow choice of dock location
@@ -269,9 +270,60 @@ class MoekEditor:
         self.dockwidget.obj.init_void = False  # Odblokowanie ObjectManager'a
         self.dockwidget.button_conn()  # Podłączenie akcji przycisków
         self.dockwidget.mt.init("multi_tool")  # Aktywacja multi_tool'a
+        self.dockwidget.bm_panel.date = datetime.now().date()#f"{datetime.now():%Y}-{datetime.now():%m}-{datetime.now():%d}"
         self.dockwidget.splash_screen.hide()
         self.dockwidget.show()
         self.dockwidget.side_dock.show()
 
         finish = time.perf_counter()
         print(f"Proces ładowania pluginu trwał {round(finish - self.start, 2)} sek.")
+
+def external_libs_exists():
+    """Sprawdzenie, czy są zainstalowane zewnętrzne biblioteki."""
+    missing_libs = detect_missing_libs()
+    if len(missing_libs) > 0:
+        m_text = f'Brak zainstalowanych zewnętrznych bibliotek: {[x[0] for x in missing_libs]}. Są one niezbędne do działania wtyczki MOEK_Editor. Czy chcesz je teraz zainstalować?'
+        reply = QMessageBox.question(None, "WellMatch", m_text, QMessageBox.Yes, QMessageBox.No)
+        if reply == QMessageBox.No:
+            return False
+        else:
+            missing_libs_install(missing_libs)
+            return False
+    else:
+        return True
+
+def detect_missing_libs():
+    """Próba załadowania zewnętrznych bibliotek i zwrócenie listy niezainstalowanych."""
+    missing_libs = []
+    ext_libs = [
+        ['win32ui', 'pywin32-304.0-cp39-cp39-win_amd64.whl'],
+        ['six', 'six-1.16.0-py2.py3-none-any.whl'],
+        ['lxml', 'lxml-4.9.1-cp39-cp39-win_amd64.whl'],
+        ['jinja2', 'Jinja2-3.1.2-py3-none-any.whl'],
+        ['markupsafe', 'MarkupSafe-2.1.1-cp39-cp39-win_amd64.whl'],
+        ['docx', 'python_docx-0.8.11-py3-none-any.whl'],
+        ['docxcompose', 'docxcompose-1.3.5-py3-none-any.whl'],
+        ['docxtpl', 'docxtpl-0.16.0-py2.py3-none-any.whl'],
+        ['xlsxwriter', 'XlsxWriter-3.0.3-py3-none-any.whl']
+        ]
+    for lib_name in ext_libs:
+        try:
+            exec(f"import {lib_name[0]}")
+        except Exception as err:
+            print(err)
+            missing_libs.append(lib_name)
+    return missing_libs
+
+def missing_libs_install(lib_names):
+    """Instaluje brakujące biblioteki zewnętrzne."""
+    import subprocess
+    for lib in lib_names:
+        lib_path = f'{LIBS_PATH}{lib[1]}'
+        lib_path = lib_path.replace("\\\\", "\\")
+        print(lib_path)
+        try:
+            subprocess.check_call(['python', '-m', 'pip', 'install', lib_path, '--no-dependencies'])
+        except Exception as err:
+            QMessageBox.critical(None, "MOEK_Editor", f"Brak możliwości instalacji zewnętrznych bibliotek ({err}). Możesz zgłosić się o pomoc do autora - dszr@pgi.gov.pl")
+            return
+    QMessageBox.information(None, "MOEK_Editor", f"Wszystkie biblioteki zostały zainstalowane. Należy ponownie uruchomić program QGIS.")

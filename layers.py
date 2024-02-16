@@ -29,7 +29,7 @@ class LayerManager:
         self.root = dlg.proj.layerTreeRoot()
         self.groups_tree = [
             {'level': 0, 'layers': ['powiaty', 'arkusze', 'powiaty_mask']},
-            {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_poly']},
+            {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_szare', 'wyr_fioletowe', 'wyr_zielone', 'wyr_poly']},
             {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
             {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone', 'marszruty']},
             {'name': 'wn_kopaliny', 'level': 1, 'layers': ['wn_pne', 'wn_link']},
@@ -42,9 +42,9 @@ class LayerManager:
             {'name': 'temp', 'level': 1, 'layers': ['wyr_point', 'edit_poly', 'backup_poly']}
             ]
         self.lyrs = [
-            {"source": "postgres", "name": "wyr_potwierdzone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
-            {"source": "postgres", "name": "wyr_przed_teren", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
-            {"source": "postgres", "name": "wyr_odrzucone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_fioletowe", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_szare", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_zielone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
             {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
@@ -352,9 +352,9 @@ class PanelManager:
             {'name': 'flagi_bez_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_nfchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},
             {'name': 'wyrobiska', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_wyr.set_state(val)', 'cb_void': False, 'value': None},
             {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
-            {'name': 'wyr_przed_teren', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
-            {'name': 'wyr_potwierdzone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
-            {'name': 'wyr_odrzucone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
+            {'name': 'wyr_szare', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
+            {'name': 'wyr_fioletowe', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_purple_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
+            {'name': 'wyr_zielone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
             {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},
             {'name': 'komunikacja_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'self.komunikacja_layers_update()', 'cb_void': True, 'value': None},
             {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
@@ -471,11 +471,11 @@ class PanelManager:
         """Zwraca liczbę wskazującą, które warstwy punktowe wyrobisk są włączone."""
         wyr_vals = [0, 0, 0, 0]
         for c_dict in self.cfg_dicts:
-            if c_dict["name"] == "wyr_przed_teren" and c_dict["value"] in range(0, 2):
+            if c_dict["name"] == "wyr_szare" and c_dict["value"] in range(0, 2):
                 wyr_vals[0] = c_dict["value"]
-            elif c_dict["name"] == "wyr_potwierdzone" and c_dict["value"] in range(0, 2):
+            elif c_dict["name"] == "wyr_fioletowe" and c_dict["value"] in range(0, 2):
                 wyr_vals[1] = c_dict["value"]
-            elif c_dict["name"] == "wyr_odrzucone" and c_dict["value"] in range(0, 2):
+            elif c_dict["name"] == "wyr_zielone" and c_dict["value"] in range(0, 2):
                 wyr_vals[2] = c_dict["value"]
             elif c_dict["name"] == "wyr_user" and c_dict["value"] in range(0, 2):
                 wyr_vals[3] = c_dict["value"]

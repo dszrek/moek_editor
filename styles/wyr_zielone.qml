@@ -696,11 +696,11 @@ def my_form_open(dialog, layer, feature):
   <featformsuppress>0</featformsuppress>
   <editorlayout>generatedlayout</editorlayout>
   <editable>
-    <field name="b_after_fchk" editable="1"/>
+    <field name="b_new" editable="1"/>
     <field name="b_confirmed" editable="1"/>
     <field name="b_wn" editable="1"/>
     <field name="b_zloze" editable="1"/>
-    <field name="date_fchk" editable="1"/>
+    <field name="date_ctrl" editable="1"/>
     <field name="i_area_m2" editable="1"/>
     <field name="midas_id" editable="1"/>
     <field name="notatki" editable="1"/>
@@ -708,7 +708,7 @@ def my_form_open(dialog, layer, feature):
     <field name="pow_m2" editable="1"/>
     <field name="row_num" editable="1"/>
     <field name="t_notatki" editable="1"/>
-    <field name="t_wn_id" editable="1"/>
+    <field name="wn_id" editable="1"/>
     <field name="t_wyr_do" editable="1"/>
     <field name="t_wyr_od" editable="1"/>
     <field name="teren_id" editable="1"/>
@@ -716,14 +716,13 @@ def my_form_open(dialog, layer, feature):
     <field name="user_id" editable="1"/>
     <field name="wn_id" editable="1"/>
     <field name="wyr_id" editable="1"/>
-    <field name="wyr_sys" editable="1"/>
   </editable>
   <labelOnTop>
-    <field name="b_after_fchk" labelOnTop="0"/>
+    <field name="b_new" labelOnTop="0"/>
     <field name="b_confirmed" labelOnTop="0"/>
     <field name="b_wn" labelOnTop="0"/>
     <field name="b_zloze" labelOnTop="0"/>
-    <field name="date_fchk" labelOnTop="0"/>
+    <field name="date_ctrl" labelOnTop="0"/>
     <field name="i_area_m2" labelOnTop="0"/>
     <field name="midas_id" labelOnTop="0"/>
     <field name="notatki" labelOnTop="0"/>
@@ -731,7 +730,7 @@ def my_form_open(dialog, layer, feature):
     <field name="pow_m2" labelOnTop="0"/>
     <field name="row_num" labelOnTop="0"/>
     <field name="t_notatki" labelOnTop="0"/>
-    <field name="t_wn_id" labelOnTop="0"/>
+    <field name="wn_id" labelOnTop="0"/>
     <field name="t_wyr_do" labelOnTop="0"/>
     <field name="t_wyr_od" labelOnTop="0"/>
     <field name="teren_id" labelOnTop="0"/>
@@ -739,7 +738,6 @@ def my_form_open(dialog, layer, feature):
     <field name="user_id" labelOnTop="0"/>
     <field name="wn_id" labelOnTop="0"/>
     <field name="wyr_id" labelOnTop="0"/>
-    <field name="wyr_sys" labelOnTop="0"/>
   </labelOnTop>
   <widgets/>
   <previewExpression>"wyr_id"</previewExpression>

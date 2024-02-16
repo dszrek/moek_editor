@@ -523,10 +523,11 @@ class WyrCanvasPanel(QFrame):
         self.head.lay.addWidget(self.head_right)
         self.sp_status = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], spacing=1, alpha=0.71)
         self.head_left.lay.addWidget(self.sp_status)
-        self.order_box = IdSpinBox(self, _obj="order", width=90, le_width=46, height=28, max_len=3, validator="order", placeholder="001", theme="green")
+        self.order_box = IdSpinBox(self, _obj="order", width=90, le_width=46, height=28, max_len=3, validator="order", placeholder="001", theme="color")
         self.sp_status.lay.addWidget(self.order_box)
         self.order_drawer = OrderDrawer(self)
         self.sp_status.lay.addWidget(self.order_drawer)
+        self.order_drawer.setVisible(False)  # Tymczasowe wyłączenie z uwagi na metodykę 2024 r.
         self.status_indicator = WyrStatusIndicator(self)
         self.sp_status.lay.addWidget(self.status_indicator)
         self.status_selector = WyrStatusSelector(self)
@@ -539,7 +540,7 @@ class WyrCanvasPanel(QFrame):
         self.sp_main.lay.addWidget(self.hashbox)
         self.hash_icon = MoekButton(self, name="hash", size=30, checkable=False, enabled=False, tooltip="numer roboczy, terenowy")
         self.hashbox.lay.addWidget(self.hash_icon)
-        self.hash = CanvasLineEdit(self, width=56, height=28, font_size=10, max_len=5, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], placeholder="XXXXX")
+        self.hash = CanvasLineEdit(self, width=56, height=28, font_size=10, max_len=5, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], placeholder="XXXXX")
         self.hashbox.lay.addWidget(self.hash)
         self.wn_picker = WyrWnPicker(self)
         self.sp_main.lay.addWidget(self.wn_picker)
@@ -593,7 +594,7 @@ class WyrCanvasPanel(QFrame):
         self.tab_box.cur_idx = 0
         self.dicts = [
 
-                    {"name": "midas_id_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
+                    {"name": "midas_id_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
                     {"name": "stan_midas_0", "page": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
@@ -645,7 +646,7 @@ class WyrCanvasPanel(QFrame):
 
                     {"name": "autor_1", "page": 1, "subpage": 0, "row": 8, "col": 0, "r_span": 1, "c_span": 12, "type": "autor"},
 
-                    {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
+                    {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
                     {"name": "stan_midas_1", "page": 1, "subpage": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
@@ -1467,7 +1468,7 @@ class FlagCanvasPanel(QFrame):
         self.sp_main.lay.addWidget(self.hashbox)
         self.hash_icon = MoekButton(self, name="hash", size=30, checkable=False, enabled=False, tooltip="numer roboczy, terenowy")
         self.hashbox.lay.addWidget(self.hash_icon)
-        self.hash = CanvasLineEdit(self, width=117, height=28, font_size=12, max_len=10, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.flagi", attr="t_teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE id = {dlg.obj.flag}", user=False)'], placeholder="XXXXXXXXXX")
+        self.hash = CanvasLineEdit(self, width=117, height=28, font_size=12, max_len=10, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.flagi", attr="teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE id = {dlg.obj.flag}", user=False)'], placeholder="XXXXXXXXXX")
         self.hashbox.lay.addWidget(self.hash)
         self.toolbox = CanvasHSubPanel(self, height=32, margins=[0, 0, 0, 0], spacing=0, alpha=0.71)
         self.sp_main.lay.addWidget(self.toolbox)
@@ -2069,7 +2070,7 @@ class PowSelectorItem(QPushButton):
 
 class WyrStatusIndicator(QLabel):
     """Wyświetla status aktywnego wyrobiska."""
-    def __init__(self, *args, text="WYROBISKO PRZED KONTROLĄ", color="153, 153, 153"):
+    def __init__(self, *args, text="NOWE WYROBISKO", color="153, 153, 153"):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setAlignment(Qt.AlignCenter)
@@ -2090,7 +2091,7 @@ class WyrStatusIndicator(QLabel):
 
     def order_check(self):
         """Ustalenie order_id wyrobisk potwierdzonych we wszystkich powiatach."""
-        self.order_clear_not_green()  # wyczyszczenie order_id w wyrobiskach niepotwierdzonych
+        # self.order_clear_not_green()  # wyczyszczenie order_id w wyrobiskach niepotwierdzonych
         odf = self.order_pd_load()
         odf = odf.sort_values(by=['pow_grp', 'Y_92'], ascending=[True, False])
         # Pogrupowanie wszystkich wyrobisk na powiaty:
@@ -2213,18 +2214,18 @@ class WyrWnPicker(QFrame):
             self.wn_picker_eraser.setVisible(True) if val else self.wn_picker_eraser.setVisible(False)
 
     def wn_id_update(self, id):
-        """Sprawdza istnienie wn_id na liście wn_ids i aktualizuje t_wn_id w db, jeśli potrzeba."""
+        """Sprawdza istnienie wn_id na liście wn_ids i aktualizuje wn_id w db, jeśli potrzeba."""
         if id in dlg.obj.wn_ids or not id:
             self.db_update(id)  # Aktualizacja wn_id w db
         dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych w wyr_panel
 
     def db_update(self, id):
-        """Aktualizacja atrybutu 't_wn_id' w db."""
+        """Aktualizacja atrybutu 'wn_id' w db."""
         db = PgConn()
         if id:
-            sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET t_wn_id = '{id}' WHERE wyr_id = {dlg.obj.wyr}"
+            sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET wn_id = '{id}' WHERE wyr_id = {dlg.obj.wyr}"
         else:
-            sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET t_wn_id = Null WHERE wyr_id = {dlg.obj.wyr}"
+            sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET wn_id = Null WHERE wyr_id = {dlg.obj.wyr}"
         if db:
             res = db.query_upd(sql)
 
@@ -2235,18 +2236,18 @@ class WyrStatusSelector(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(59, 28)
+        self.setFixedSize(28, 28)
         self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
         self.lay = QHBoxLayout()
-        self.lay.setContentsMargins(1, 0, 0, 0)
+        self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(2)
         self.setLayout(self.lay)
         self.valid_check = False
         self.itms = {}
         self.statuses = [
-            {'id' : 1, 'name' : 'wyr_green_status', 'text' : 'WYROBISKO POTWIERDZONE', 'layer': 'wyr_potwierdzone', 'color' : '40, 170, 40', 'after_fchk' : True, 'confirmed' : True},
-            {'id' : 2, 'name' : 'wyr_red_status', 'text' : 'WYROBISKO ODRZUCONE', 'layer': 'wyr_odrzucone', 'color' : '224, 0, 0', 'after_fchk' : True, 'confirmed' : False},
-            {'id' : 0, 'name' : 'wyr_grey_status', 'text' : 'WYROBISKO PRZED KONTROLĄ', 'layer': 'wyr_przed_teren', 'color' : '153, 153, 153', 'after_fchk' : False, 'confirmed' : False}
+            {'id' : 2, 'name' : 'wyr_green_status', 'text' : 'WYROBISKO PO AKTUALIZACJI', 'layer': 'wyr_zielone', 'color' : '40, 170, 40', 'new' : False, 'confirmed' : True},
+            {'id' : 1, 'name' : 'wyr_purple_status', 'text' : 'AKTUALIZOWANE WYROBISKO', 'layer': 'wyr_fioletowe', 'color' : '180, 40, 180', 'new' : False, 'confirmed' : False},
+            {'id' : 0, 'name' : 'wyr_grey_status', 'text' : 'NOWE WYROBISKO', 'layer': 'wyr_szare', 'color' : '153, 153, 153', 'new' : True, 'confirmed' : False}
             ]
         for status in self.statuses:
             _itm = WyrStatusSelectorItem(self, name=status["name"], size=28, checkable=False, id=status["id"])
@@ -2261,20 +2262,25 @@ class WyrStatusSelector(QFrame):
         if attr == "case" and val != None:
             self.case_change()
             dlg.wyr_panel.tab_box.setVisible(True) if val == 1 else dlg.wyr_panel.tab_box.setVisible(False)
-            dlg.wyr_panel.order_box.setVisible(True) if val == 1 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_box.setVisible(False)
-            dlg.wyr_panel.order_drawer.setVisible(True) if val == 1 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_drawer.setVisible(False)
+            dlg.wyr_panel.order_box.setVisible(True) if val > 0 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_box.setVisible(False)
+            if val == 1:
+                dlg.wyr_panel.order_box.set_theme("purple")
+            elif val == 2:
+                dlg.wyr_panel.order_box.set_theme("green")
+            # Tymczasowe wyłączenie order_drawer z uwagi na metodykę 2024 r.:
+            # dlg.wyr_panel.order_drawer.setVisible(True) if val > 0 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_drawer.setVisible(False)
 
-    def set_case(self, after_fchk, confirmed):
+    def set_case(self, new, confirmed):
         """Ustala 'case' na podstawie atrybutów wyrobiska."""
-        if not after_fchk:
+        if new:
             self.case = 0
         else:
-            self.case = 1 if confirmed else 2
+            self.case = 2 if confirmed else 1
 
-    def db_update(self, after_fchk, confirmed):
+    def db_update(self, new, confirmed):
         """Aktualizacja atrybutów wyrobiska w db po zmianie statusu."""
         db = PgConn()
-        sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET b_after_fchk = {after_fchk}, b_confirmed = {confirmed} WHERE wyr_id = {dlg.obj.wyr}"
+        sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET b_new = {new}, b_confirmed = {confirmed} WHERE wyr_id = {dlg.obj.wyr}"
         if db:
             res = db.query_upd(sql)
             if res:
@@ -2286,8 +2292,15 @@ class WyrStatusSelector(QFrame):
 
     def case_change(self):
         """Dostosowanie widoczności przycisków do aktualnego statusu wyrobiska."""
-        for itm in self.itms.values():
-            itm.setVisible(False) if itm.id == self.case else itm.setVisible(True)
+        if self.case == 0:
+            for itm in self.itms.values():
+                itm.setVisible(False)
+        else:
+            self.itms["btn_wyr_grey_status"].setVisible(False)
+            self.itms["btn_wyr_purple_status"].setVisible(False) if self.case == 1 else self.itms["btn_wyr_purple_status"].setVisible(True)
+            self.itms["btn_wyr_green_status"].setVisible(False) if self.case == 2 else self.itms["btn_wyr_green_status"].setVisible(True)
+        # for itm in self.itms.values():
+        #     itm.setVisible(False) if itm.id == self.case else itm.setVisible(True)
         for status in self.statuses:
             if status["id"] == self.case:
                 dlg.wyr_panel.status_indicator.set_case(status["text"], status["color"])
@@ -2299,7 +2312,7 @@ class WyrStatusSelector(QFrame):
         self.case = id
         for status in self.statuses:
             if status["id"] == self.case:
-                result = self.db_update(status["after_fchk"], status["confirmed"])
+                result = self.db_update(status["new"], status["confirmed"])
                 if result:
                     self.vis_check(status["layer"])
         if self.case == 1 or old_id == 1:
@@ -2387,7 +2400,7 @@ class OrderDrawer(QFrame):
             dlg.wyr_panel.order_box.locked = val
             if self.btn_lock.isChecked() != val:
                 self.btn_lock.setChecked(val)
-            self.slided = val
+            # self.slided = val
             if not val and self.edited:
                 self.edited = False
         elif attr == "edited" and not self.attr_void:
@@ -2411,7 +2424,8 @@ class OrderDrawer(QFrame):
             self.slided = True
 
     def leaveEvent(self, event):
-        if not self.locked and self.slided:
+        # if not self.locked and self.slided:
+        if self.slided:
             self.slided = False
 
     def order_edit_clicked(self):
@@ -2426,8 +2440,8 @@ class OrderDrawer(QFrame):
         if self.locked and not self.edited:
             self.edited = True
         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_prg', attr='order_lock', val=self.locked, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        self.slided = False
         if not self.locked:
-            self.slided = False
             self.attr_void = True
             wyr_layer_update(False)
             dlg.obj.wyr = dlg.obj.wyr
@@ -2996,7 +3010,7 @@ class TerminBox(QFrame):
                         except ValueError:
                             return
                     d_sql = self.sql_parser(self.d_val)
-                    db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_fchk", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+                    db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_ctrl", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
                     self.focus_switcher(part_val[0], part_val[2])
                     return
 
@@ -3045,7 +3059,7 @@ class TerminBox(QFrame):
         self.dm_val = None
         self.dy_val = None
         d_sql = self.sql_parser(self.d_val)
-        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_fchk", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_ctrl", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
 
     def set_values(self, val_list):
         """Ustawienie wartości parambox'ów według danych z db."""
@@ -3087,7 +3101,7 @@ class TerminBox(QFrame):
         self.dm_val = str(self.d_val.month).zfill(2)
         self.dy_val = str(self.d_val.year)
         d_sql = self.sql_parser(self.d_val)
-        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_fchk", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_ctrl", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
 
     def composer(self, slide=False):
         """Ustalenie rozmieszczenia i widoczności widget'ów."""
@@ -3857,7 +3871,8 @@ class IdSpinBox(QFrame):
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
-        if theme == "green":
+        if theme == "color":
+            theme = "light"  # Potrzebne dla prev_btn i next_btn
             self.setStyleSheet(" QFrame#main {background-color: rgba(40, 170, 40, 204); border: none} ")
         else:
             self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
@@ -3892,6 +3907,15 @@ class IdSpinBox(QFrame):
             self.idbox.edited = val
             self.prev_btn.setEnabled(not val)
             self.next_btn.setEnabled(not val)
+
+    def set_theme(self, theme):
+        """Zmiana kolorystyki widgetu."""
+        if theme == "green":
+            self.setStyleSheet(" QFrame#main {background-color: rgba(40, 170, 40, 204); border: none} ")
+        elif theme == "purple":
+            self.setStyleSheet(" QFrame#main {background-color: rgba(180, 40, 180, 204); border: none} ")
+        else:
+            self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
 
     def prev_clicked(self):
         """Uruchomienie funkcji po kliknięciu na przycisk prev_btn."""

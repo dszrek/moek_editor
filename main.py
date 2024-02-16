@@ -15,7 +15,7 @@ from .viewnet import vn_set_gvars, stage_refresh
 
 # Stałe globalne:
 SQL_1 = " WHERE user_id = "
-PLUGIN_VER = "0.5.5"
+PLUGIN_VER = "0.6.0"
 USER = ""
 
 # Zmienne globalne:
@@ -322,14 +322,12 @@ def wyr_layer_update(check=True):
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.obj.wyr_ids:
-        table = f'''"(SELECT row_number() OVER (ORDER BY w.wyr_id::int) AS row_num, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, d.t_wyr_od AS wyr_od, d.t_wyr_do AS wyr_do, d.t_zloze_od AS zloze_od, d.t_zloze_do AS zloze_do, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'''
-        if dlg.wyr_panel.pow_all:
-            table_green = f'''"(SELECT row_number() OVER (ORDER BY w.wyr_id::int) AS row_num, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND w.b_after_fchk = True AND w.b_confirmed = True)"'''
-        else:
-            table_green = f'''"(SELECT row_number() OVER (ORDER BY p.order_id) AS row_num, p.order_id, w.wyr_id, w.t_teren_id as teren_id, w.t_wn_id as wn_id, w.t_midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_prg p ON w.wyr_id = p.wyr_id INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND w.b_after_fchk = True AND w.b_confirmed = True AND p.pow_grp = '{dlg.powiat_i}')"'''
-        uri_a1 = f'''{params} key="row_num" table={table} AND b_after_fchk = False)" (point) sql='''
-        uri_a2 = f'{params} key="row_num" table={table_green} (point) sql='
-        uri_a3 = f'''{params} key="row_num" table={table} AND b_after_fchk = True AND b_confirmed = False)" (point) sql='''
+        table_all = f'(SELECT row_number() OVER (ORDER BY d.wyr_id) AS row_num, d.wyr_id, w.teren_id, w.wn_id, w.midas_id, w.user_id, d.t_wyr_od AS wyr_od, d.t_wyr_do AS wyr_do, d.t_zloze_od AS zloze_od, d.t_zloze_do AS zloze_do, w.t_notatki AS notatki, d.i_area_m2 AS pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d USING(wyr_id) WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'
+        table = f'''(SELECT row_number() OVER (ORDER BY p.order_id) AS row_num, p.order_id, d.wyr_id, w.teren_id as teren_id, w.wn_id as wn_id, w.midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_prg p ON w.wyr_id = p.wyr_id INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND p.pow_grp = '{dlg.powiat_i}' '''
+        table_old = table_all if dlg.wyr_panel.pow_all else table
+        uri_a1 = f'{params} key="row_num" table="{table_all} AND b_new = True)" (point) sql='
+        uri_a2 = f'{params} key="row_num" table="{table_old} AND w.b_new = False AND w.b_confirmed = False)" (point) sql='
+        uri_a3 = f'{params} key="row_num" table="{table_old} AND w.b_new = False AND w.b_confirmed = True)" (point) sql='
         uri_a4 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
         uri_b = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
     else:
@@ -340,9 +338,9 @@ def wyr_layer_update(check=True):
         uri_b = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id = 0'
     # Zmiana zawartości warstw z wyrobiskami:
     l_tuples = [
-        ("wyr_przed_teren", uri_a1),
-        ("wyr_potwierdzone", uri_a2),
-        ("wyr_odrzucone", uri_a3),
+        ("wyr_szare", uri_a1),
+        ("wyr_fioletowe", uri_a2),
+        ("wyr_zielone", uri_a3),
         ("wyr_point", uri_a4),
         ("wyr_poly", uri_b)
         ]
@@ -364,12 +362,12 @@ def wdf_load():
     """Załadowanie danych o wyrobiskach z db do dataframe'u wdf."""
     db = PgConn()
     extras = f" WHERE wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})" if dlg.obj.wyr_ids else f" WHERE wyr_id = 0"
-    sql = "SELECT wyr_id, b_after_fchk, b_confirmed, t_wn_id FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
+    sql = "SELECT wyr_id, b_new, b_confirmed, wn_id FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
     if db:
-        temp_df = db.query_pd(sql, ['wyr_id', 'fchk', 'cnfrm', 'wn_id'])
+        temp_df = db.query_pd(sql, ['wyr_id', 'new', 'cnfrm', 'wn_id'])
         if isinstance(temp_df, pd.DataFrame):
             wn_df = temp_df.copy()
-            wn_df.drop(['fchk', 'cnfrm'], axis=1, inplace=True)
+            wn_df.drop(['new', 'cnfrm'], axis=1, inplace=True)
             wn_check(wn_df)
             wdf = wyr_status_determine(temp_df)
             dlg.wyr_panel.wdf = wdf
@@ -431,13 +429,13 @@ def get_geom_from_id(id, ids):
             return item[1]
 
 def wyr_status_determine(temp_df):
-    """Ustala status wyrobiska na podstawie atrybutów: 'fchk' i 'cnfrm', następnie zwraca gotową wersję wdf."""
-    conditions = [temp_df['fchk'].eq(False),
-                temp_df['fchk'].eq(True) & temp_df['cnfrm'].eq(False),
-                temp_df['fchk'].eq(True) & temp_df['cnfrm'].eq(True)]
+    """Ustala status wyrobiska na podstawie atrybutów: 'new' i 'cnfrm', następnie zwraca gotową wersję wdf."""
+    conditions = [temp_df['new'].eq(True),  # szare
+                temp_df['new'].eq(False) & temp_df['cnfrm'].eq(False),  # fioletowe
+                temp_df['new'].eq(False) & temp_df['cnfrm'].eq(True)]  # zielone
     choices = [0, 1, 2]
     temp_df['status'] = np.select(conditions, choices, default=0)
-    temp_df.drop(['fchk', 'cnfrm'], axis=1, inplace=True)
+    temp_df.drop(['new', 'cnfrm'], axis=1, inplace=True)
     temp_df = temp_df[['status', 'wyr_id']]
     return temp_df
 
@@ -581,19 +579,19 @@ def get_wyr_ids():
         return wyr_ids_from_pows
     # Utworzenie listy z wyr_id wyrobisk, których rodzaje są włączone:
     filter_cases = [
-        {'value': 1, 'sql': " WHERE user_id = {dlg.user_id} AND b_after_fchk = False "},
-        {'value': 2, 'sql': " WHERE user_id = {dlg.user_id} AND b_after_fchk = True AND b_confirmed = True "},
-        {'value': 3, 'sql': " WHERE user_id = {dlg.user_id} AND (b_after_fchk = False OR (b_after_fchk = True AND b_confirmed = True )) "},
-        {'value': 4, 'sql': " WHERE user_id = {dlg.user_id} AND b_after_fchk = True AND b_confirmed = False "},
-        {'value': 5, 'sql': " WHERE user_id = {dlg.user_id} AND (b_after_fchk = False OR (b_after_fchk = True AND b_confirmed = False )) "},
-        {'value': 6, 'sql': " WHERE user_id = {dlg.user_id} AND b_after_fchk = True "},
-        {'value': 7, 'sql': " WHERE user_id = {dlg.user_id} "},
-        {'value': 9, 'sql': " WHERE b_after_fchk = False "},
-        {'value': 10, 'sql': " WHERE b_after_fchk = True AND b_confirmed = True "},
-        {'value': 11, 'sql': " WHERE b_after_fchk = False OR (b_after_fchk = True AND b_confirmed = True ) "},
-        {'value': 12, 'sql': " WHERE b_after_fchk = True AND b_confirmed = False "},
-        {'value': 13, 'sql': " WHERE b_after_fchk = False OR (b_after_fchk = True AND b_confirmed = False ) "},
-        {'value': 14, 'sql': " WHERE b_after_fchk = True "}
+        {'value': 1, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND b_new = True "},  # szary
+        {'value': 2, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND b_new = False AND b_confirmed = False "},  # fioletowy
+        {'value': 3, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND (b_new = True OR (b_new = False AND b_confirmed = False )) "},  # szary i fioletowy
+        {'value': 4, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND b_new = False AND b_confirmed = True "},  # zielony
+        {'value': 5, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND (b_new = True OR (b_new = False AND b_confirmed = True )) "},  # szary i zielony
+        {'value': 6, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND b_new = False "},  # fioletowy i zielony
+        {'value': 7, 'sql': " WHERE user_id = {dlg.user_id} OR user_id IS NULL "},  # szary, fioletowy i zielony
+        {'value': 9, 'sql': " WHERE b_new = True "},  # szary
+        {'value': 10, 'sql': " WHERE b_new = False AND b_confirmed = False "},  # fioletowy
+        {'value': 11, 'sql': " WHERE b_new = True OR (b_new = False AND b_confirmed = False ) "},  # szary i fioletowy
+        {'value': 12, 'sql': " WHERE b_new = False AND b_confirmed = True "},  # zielony
+        {'value': 13, 'sql': " WHERE b_new = True OR (b_new = False AND b_confirmed = True ) "},  # szary i zielony
+        {'value': 14, 'sql': " WHERE b_new = False "}  # fioletowy i zielony
                 ]
     filter = ""
     for e_dict in filter_cases:

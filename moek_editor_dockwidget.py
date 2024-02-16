@@ -206,9 +206,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     ]
         p_wyr_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_grey_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska przed kontrolą terenową"},
-                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_green_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska po kontroli terenowej, które zostały potwierdzone"},
-                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_red_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska po kontroli terenowej, które zostały odrzucone"}
+                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_grey_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj nowe wyrobiska"},
+                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_purple_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska wyznaczone do aktualizacji"},
+                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_green_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska, które zostały zaktualizowane"}
                     ]
         p_komunikacja_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
@@ -672,9 +672,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_flag.widgets["btn_fchk_vis"].clicked.connect(lambda: self.cfg.set_val(name="flagi_z_teren", val=self.p_flag.widgets["btn_fchk_vis"].isChecked()))
         self.p_flag.widgets["btn_nfchk_vis"].clicked.connect(lambda: self.cfg.set_val(name="flagi_bez_teren", val=self.p_flag.widgets["btn_nfchk_vis"].isChecked()))
         self.p_wyr.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="wyr_user", val=self.p_wyr.widgets["btn_user"].isChecked()))
-        self.p_wyr.widgets["btn_wyr_grey_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_przed_teren", val=self.p_wyr.widgets["btn_wyr_grey_vis"].isChecked()))
-        self.p_wyr.widgets["btn_wyr_green_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_potwierdzone", val=self.p_wyr.widgets["btn_wyr_green_vis"].isChecked()))
-        self.p_wyr.widgets["btn_wyr_red_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_odrzucone", val=self.p_wyr.widgets["btn_wyr_red_vis"].isChecked()))
+        self.p_wyr.widgets["btn_wyr_grey_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_szare", val=self.p_wyr.widgets["btn_wyr_grey_vis"].isChecked()))
+        self.p_wyr.widgets["btn_wyr_purple_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_fioletowe", val=self.p_wyr.widgets["btn_wyr_purple_vis"].isChecked()))
+        self.p_wyr.widgets["btn_wyr_green_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_zielone", val=self.p_wyr.widgets["btn_wyr_green_vis"].isChecked()))
         self.p_komunikacja.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="komunikacja_user", val=self.p_komunikacja.widgets["btn_user"].isChecked()))
         self.p_komunikacja.widgets["btn_parking_before_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_planowane", val=self.p_komunikacja.widgets["btn_parking_before_vis"].isChecked()))
         self.p_komunikacja.widgets["btn_parking_after_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_odwiedzone", val=self.p_komunikacja.widgets["btn_parking_after_vis"].isChecked()))

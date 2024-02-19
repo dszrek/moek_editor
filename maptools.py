@@ -49,10 +49,6 @@ class ObjectManager:
         self.order_ids = []
         self.order_data = []
         self.order = None
-        self.wn_ids = []
-        self.wn = None
-        self.wn_data = []
-        self.wn_pow = []
         self.p_vn = False
         self.init_void = False
 
@@ -72,9 +68,6 @@ class ObjectManager:
                 self.dlg.flag_panel.hash.set_value(self.flag_data[2])  # Aktualizacja teren_id
                 txt = self.param_parser(self.flag_data[3])
                 self.dlg.flag_panel.notepad_box.value_change(txt)  # Aktualizacja tekstu notatki
-                if self.wn:
-                    # Wyłączenie panelu wn, jeśli jest włączony:
-                    self.wn = None
                 if self.parking:
                     # Wyłączenie panelu miejsc parkingowych, jeśli jest włączony:
                     self.parking = None
@@ -98,7 +91,7 @@ class ObjectManager:
             wyr_point_lyrs_repaint()
             dlg.proj.mapLayersByName("wyr_poly")[0].triggerRepaint()
             wdf_update()
-            if dlg.mt.mt_name == "wn_pick" or dlg.wyr_panel.mt_enabled:
+            if dlg.wyr_panel.mt_enabled:
                 dlg.mt.init("multi_tool")
             if val:
                 if dlg.wyr_panel.order_drawer.edited and not dlg.wyr_panel.order_drawer.attr_void:
@@ -121,7 +114,7 @@ class ObjectManager:
                     area_txt = f"{self.wyr_data[4]} m\u00b2 "
                     dlg.wyr_panel.area_icon.setEnabled(True)
                     dlg.wyr_panel.area_label.setText(area_txt)
-                self.dlg.wyr_panel.wn_picker.wn_id = self.wyr_data[3]  # Aktualizacja wn_id
+                # self.dlg.wyr_panel.wn_picker.wn_id = self.wyr_data[3]  # Aktualizacja wn_id
                 self.dlg.wyr_panel.wdf_sel_update()  # Aktualizacja zaznaczenia wiersza w tv_wdf
                 dlg.wyr_panel.focus_void = True
                 self.dlg.wyr_panel.values_update(self.wyr_data)  # Aktualizacja atrybutów
@@ -133,35 +126,11 @@ class ObjectManager:
             wyr_check = self.list_position_check("wyr")
             if not wyr_check:
                 self.wyr = None
-        elif attr == "wn":
-            # Zmiana aktualnego punktu WN_PNE:
-            dlg.wn_panel.hide()
-            QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'wn_sel', val)
-            dlg.proj.mapLayersByName("wn_pne")[0].triggerRepaint()
-            if val:
-                self.wn_data = self.wn_update()
-                self.wn_pow = self.wn_pow_update()
-                self.list_position_check("wn")
-                if self.flag:
-                    # Wyłączenie panelu flagi, jeśli jest włączony:
-                    self.flag = None
-                if self.parking:
-                    # Wyłączenie panelu miejsc parkowania, jeśli jest włączony:
-                    self.parking = None
-                dlg.wn_panel.values_update(self.wn_data)
-                dlg.wn_panel.pow_update(self.wn_pow)
-            dlg.wn_panel.id_box.id = val if val else None
-            dlg.wn_panel.show() if val else dlg.wn_panel.hide()
         elif attr == "order" and val:
             dlg.wyr_panel.order_box.id = val
             dlg.wyr_panel.order_drawer.locked = self.order_data[1]
             if not dlg.wyr_panel.order_box.edited:
                 self.list_position_check("order")
-        elif attr == "wn_ids":
-            # Zmiana listy dostępnych punktów WN_PNE:
-            wn_check = self.list_position_check("wn")
-            if not wn_check:
-                self.wn = None
         elif attr == "parking":
             # Zmiana aktualnego parkingu:
             QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'parking_sel', val)
@@ -170,9 +139,6 @@ class ObjectManager:
                 self.parking_data = self.parking_update()
                 self.list_position_check("parking")
                 self.dlg.parking_panel.parking_tools.status = self.parking_data[1]  # Aktualizacja przycisku status
-                if self.wn:
-                    # Wyłączenie panelu wn, jeśli jest włączony:
-                    self.wn = None
                 if self.flag:
                     # Wyłączenie panelu flagi, jeśli jest włączony:
                     self.flag = None
@@ -228,8 +194,6 @@ class ObjectManager:
             if self.marsz != obj_data[1][0]:
                 self.marsz = obj_data[1][0]
             self.marsz_menu_show(loc)
-        elif lyr_name == "wn_pne":
-            self.wn = obj_data[1][0]
 
     def clear_sel(self):
         """Odznaczenie wybranych flag, wyrobisk, parkingów, marszrut i punktów WN_PNE."""
@@ -243,8 +207,6 @@ class ObjectManager:
             self.wyr = None
         if self.order:
             self.order = None
-        if self.wn:
-            self.wn = None
 
     def marsz_menu_show(self, loc):
         """Umiejscawia i wyświetla menu kontekstowe marszrut na linii przy kursorze."""
@@ -303,11 +265,11 @@ class ObjectManager:
             ids = self.flag_ids
             val = self.flag
             is_int = True
-        elif _obj == "parking":
-            obj = "self.parking"
-            ids = self.parking_ids
-            val = self.parking
-            is_int = True
+        # elif _obj == "parking":
+        #     obj = "self.parking"
+        #     ids = self.parking_ids
+        #     val = self.parking
+        #     is_int = True
         elif _obj == "wyr":
             obj = "self.wyr"
             ids = self.wyr_ids
@@ -319,11 +281,6 @@ class ObjectManager:
             val = self.wyr
             is_int = True
             _obj = "wyr"
-        elif _obj == "wn":
-            obj = "self.wn"
-            ids = self.wn_ids
-            val = self.wn
-            is_int = False
         else:
             return
         cur_id_idx = ids.index(val)  # Pozycja na liście aktualnego obiektu
@@ -393,30 +350,6 @@ class ObjectManager:
             else:
                 return [None, False]
 
-    def wn_update(self):
-        """Zwraca dane punktu WN_PNE."""
-        db = PgConn()
-        sql = "SELECT e.id_arkusz, e.kopalina, e.wyrobisko, e.zawodn, e.eksploat, e.wyp_odpady, e.nadkl_min, e.nadkl_max, e.nadkl_sr, e.miazsz_min, e.miazsz_max, e.dlug_max, e.szer_max, e.wys_min, e.wys_max, e.data_kontrol, e.uwagi, (SELECT COUNT(*) FROM external.wn_pne_pow AS p WHERE e.id_arkusz = p.id_arkusz AND p.b_active = true) AS i_pow_cnt, t.t_notatki FROM external.wn_pne AS e INNER JOIN team_" + str(dlg.team_i) + ".wn_pne AS t USING(id_arkusz) WHERE id_arkusz = '" + str(self.wn) + "';"
-        if db:
-            res = db.query_sel(sql, False)
-            if not res:
-                print(f"Nie udało się wczytać danych punktu WN_PNE: {self.wn}")
-                return None
-            else:
-                return res
-
-    def wn_pow_update(self):
-        """Zwraca dane o powiatach punktu WN_PNE."""
-        db = PgConn()
-        sql = "SELECT pow_id, t_pow_name, b_active FROM external.wn_pne_pow WHERE id_arkusz = '" + str(self.wn) + "';"
-        if db:
-            res = db.query_sel(sql, True)
-            if not res:
-                print(f"Nie udało się wczytać danych punktu WN_PNE: {self.wn}")
-                return None
-            else:
-                return res
-
     def set_object_from_input(self, _id, _obj):
         """Próba zmiany aktualnej flagi, wyrobiska, parkingu lub WN_PNE po wpisaniu go w idbox'ie."""
         if _obj == "flag":
@@ -424,11 +357,11 @@ class ObjectManager:
             ids = self.flag_ids
             id_box = "dlg.flag_panel.id_spinbox.id"
             is_int = True
-        elif _obj == "parking":
-            obj = "self.parking"
-            ids = self.parking_ids
-            id_box = "dlg.parking_panel.id_box.id"
-            is_int = True
+        # elif _obj == "parking":
+        #     obj = "self.parking"
+        #     ids = self.parking_ids
+        #     id_box = "dlg.parking_panel.id_box.id"
+        #     is_int = True
         elif _obj == "wyr":
             obj = "self.wyr"
             ids = self.wyr_ids
@@ -437,11 +370,6 @@ class ObjectManager:
         elif _obj == "order":
             self.wyr_from_order_change(_id)
             return
-        elif _obj == "wn":
-            obj = "self.wn"
-            ids = self.wn_ids
-            id_box = "dlg.wn_panel.id_box.id"
-            is_int = False
         else:
             return
         if is_int:
@@ -511,11 +439,11 @@ class ObjectManager:
             val = self.flag
             ids = self.flag_ids
             id_box = dlg.flag_panel.id_spinbox
-        elif _obj == "parking":
-            obj = "self.parking"
-            val = self.parking
-            ids = self.parking_ids
-            id_box = dlg.parking_panel.id_box
+        # elif _obj == "parking":
+        #     obj = "self.parking"
+        #     val = self.parking
+        #     ids = self.parking_ids
+        #     id_box = dlg.parking_panel.id_box
         elif _obj == "wyr":
             obj = "self.wyr"
             val = self.wyr
@@ -526,11 +454,6 @@ class ObjectManager:
             val = self.order
             ids = [i[0] for i in self.order_ids]
             id_box = dlg.wyr_panel.order_box
-        elif _obj == "wn":
-            obj = "self.wn"
-            val = self.wn
-            ids = self.wn_ids
-            id_box = dlg.wn_panel.id_box
         else:
             return False
         if not ids or not val:
@@ -559,18 +482,15 @@ class ObjectManager:
             else:
                 point_lyr = dlg.proj.mapLayersByName("flagi_bez_teren")[0]
             feats = point_lyr.getFeatures(f'"id" = {self.flag}')
-        elif _obj == "parking":
-            if self.parking_data[1]:
-                point_lyr = dlg.proj.mapLayersByName("parking_odwiedzone")[0]
-            else:
-                point_lyr = dlg.proj.mapLayersByName("parking_planowane")[0]
-            feats = point_lyr.getFeatures(f'"id" = {self.parking}')
+        # elif _obj == "parking":
+        #     if self.parking_data[1]:
+        #         point_lyr = dlg.proj.mapLayersByName("parking_odwiedzone")[0]
+        #     else:
+        #         point_lyr = dlg.proj.mapLayersByName("parking_planowane")[0]
+        #     feats = point_lyr.getFeatures(f'"id" = {self.parking}')
         elif _obj == "wyr":
             point_lyr = dlg.proj.mapLayersByName("wyr_point")[0]
             feats = point_lyr.getFeatures(f'"wyr_id" = {self.wyr}')
-        elif _obj == "wn":
-            point_lyr = dlg.proj.mapLayersByName("wn_pne")[0]
-            feats = point_lyr.getFeatures(QgsFeatureRequest(QgsExpression('"id_arkusz"=' + "'" + str(self.wn) + "'")))
         try:
             feat = list(feats)[0]
         except Exception as err:
@@ -593,7 +513,7 @@ class MapToolManager:
         self.canvas.mapToolSet.connect(self.maptool_change)
         self.tool_kinds = (MultiMapTool, IdentMapTool, PointPickerMapTool, PointDrawMapTool, LineDrawMapTool, PolyDrawMapTool, LineEditMapTool, PolyEditMapTool, LineContinueMapTool, RulerMapTool)
         self.maptools = [
-            # {"name" : "edit_poly", "class" : PolyEditMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_pne", "wyrobiska"], "fn" : obj_sel},
+            # {"name" : "edit_poly", "class" : PolyEditMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wyrobiska"], "fn" : obj_sel},
             {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"],"fn" : obj_sel},
             {"name" : "vn_sel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_sel"], "lyr" : ["vn_user"], "fn" : vn_change},
             {"name" : "vn_powsel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_powsel"], "lyr" : ["powiaty"], "fn" : vn_powsel},
@@ -603,12 +523,11 @@ class MapToolManager:
             {"name" : "flag_move", "class" : PointDrawMapTool, "button" : self.dlg.flag_panel.flag_tools.flag_move, "fn" : flag_move, "extra" : []},
             {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly, "extra" : [(0, 255, 0, 128), (0, 255, 0, 80)]},
             {"name" : "wyr_edit", "class" : PolyEditMapTool, "button" : self.dlg.wyr_panel.wyr_edit, "lyr" : ["wyr_poly"], "fn" : wyr_poly_change, "extra" : ["wyr_id"]},
-            {"name" : "wn_pick", "class" : PointPickerMapTool, "button" : self.dlg.wyr_panel.wn_picker.wn_picker_empty, "lyr" : ["wn_pne"], "fn" : wn_pick, "extra" : [["wn_pne"]]},
-            {"name" : "parking_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"], "fn" : parking_add, "extra" : []},
-            {"name" : "parking_move", "class" : PointDrawMapTool, "button" : self.dlg.parking_panel.parking_tools.parking_move, "fn" : parking_move, "extra" : []},
-            {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : [[255, 255, 0, 255],["marszruty", "parking_planowane", "parking_odwiedzone"]]},
-            {"name" : "marsz_edit", "class" : LineEditMapTool, "button" : self.dlg.marsz_panel.marsz_edit, "lyr" : ["marszruty"], "fn" : marsz_line_change, "extra" : ["marsz_id",["marszruty", "parking_planowane", "parking_odwiedzone"]]},
-            {"name" : "marsz_continue", "class" : LineContinueMapTool, "button" : self.dlg.marsz_panel.marsz_continue, "lyr" : ["marszruty"], "fn" : marsz_line_continue, "extra" : ["marsz_id"]},
+            # {"name" : "parking_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"], "fn" : parking_add, "extra" : []},
+            # {"name" : "parking_move", "class" : PointDrawMapTool, "button" : self.dlg.parking_panel.parking_tools.parking_move, "fn" : parking_move, "extra" : []},
+            # {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : [[255, 255, 0, 255],["marszruty", "parking_planowane", "parking_odwiedzone"]]},
+            # {"name" : "marsz_edit", "class" : LineEditMapTool, "button" : self.dlg.marsz_panel.marsz_edit, "lyr" : ["marszruty"], "fn" : marsz_line_change, "extra" : ["marsz_id",["marszruty", "parking_planowane", "parking_odwiedzone"]]},
+            # {"name" : "marsz_continue", "class" : LineContinueMapTool, "button" : self.dlg.marsz_panel.marsz_continue, "lyr" : ["marszruty"], "fn" : marsz_line_continue, "extra" : ["marsz_id"]},
             {"name" : "dlug_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_1"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
             {"name" : "dlug_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_1"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
             {"name" : "szer_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_1"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
@@ -3745,7 +3664,6 @@ def wyr_point_update(wyr_id, geom):
     db_attr_change(tbl=f"team_{dlg.team_i}.wyr_dane", attr="i_area_m2", val=area, sql_bns=f" WHERE wyr_id = {wyr_id}", user=False)
     if temp_lyr:
         del lyr_point
-    dlg.wyr_panel.wn_df = pd.DataFrame(columns=dlg.wyr_panel.wn_df.columns)  # Wyczyszczenie dataframe'a z połączeniami wyrobiska-wn_pne
     wyr_layer_update(False)
     dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych wyrobiska
 
@@ -3923,12 +3841,6 @@ def marsz_line_continue(lyr, geom, marsz_id, init_extent, cancel=False, deactiva
         dlg.mt.init("marsz_add", [marsz_id, geom, init_extent])
     else:
         marsz_line_change(lyr, geom, marsz_id, deactivated)
-
-def wn_pick(layer, feature):
-    dlg.mt.init("multi_tool")
-    if not feature:
-        return
-    dlg.wyr_panel.wn_picker.wn_id_update(feature["id_arkusz"])
 
 def ruler_meas(length, button):
     dlg.mt.init("multi_tool")

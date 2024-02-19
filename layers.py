@@ -31,8 +31,8 @@ class LayerManager:
             {'level': 0, 'layers': ['powiaty', 'arkusze', 'powiaty_mask']},
             {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_szare', 'wyr_fioletowe', 'wyr_zielone', 'wyr_poly']},
             {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
-            {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone', 'marszruty']},
-            {'name': 'wn_kopaliny', 'level': 1, 'layers': ['wn_pne', 'wn_link']},
+            # {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone', 'marszruty']},
+            # {'name': 'wn_kopaliny', 'level': 1, 'layers': ['wn_pne', 'wn_link']},
             {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
             {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wybilansowane', 'midas_obszary', 'midas_tereny']},
             {'name': 'MGSP', 'level': 1, 'layers': ['mgsp_pkt_kop', 'mgsp_zloza_p', 'mgsp_zloza_a', 'mgsp_zloza_wb_p', 'mgsp_zloza_wb_a']},
@@ -48,11 +48,11 @@ class LayerManager:
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
             {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
-            {"source": "postgres", "name": "parking_planowane", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
-            {"source": "postgres", "name": "parking_odwiedzone", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
-            {"source": "postgres", "name": "marszruty", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."marsz" (geom) sql='},
-            {"source": "postgres", "name": "wn_pne", "root": False, "parent": "wn_kopaliny", "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
-            {"source": "memory", "name": "wn_link", "root": False, "parent": "wn_kopaliny", "visible": True, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('wyr_id', QVariant.Int, "int"), QgsField('wn_id', QVariant.String, "string", 0)]},
+            # {"source": "postgres", "name": "parking_planowane", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
+            # {"source": "postgres", "name": "parking_odwiedzone", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
+            # {"source": "postgres", "name": "marszruty", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."marsz" (geom) sql='},
+            # {"source": "postgres", "name": "wn_pne", "root": False, "parent": "wn_kopaliny", "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
+            # {"source": "memory", "name": "wn_link", "root": False, "parent": "wn_kopaliny", "visible": True, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('wyr_id', QVariant.Int, "int"), QgsField('wn_id', QVariant.String, "string", 0)]},
             {"source": "postgres", "name": "powiaty", "root": True, "pos": 4, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
             {"source": "postgres", "name": "arkusze", "root": True, "pos": 5, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
             {"source": "postgres", "name": "vn_sel", "root": False, "parent": "vn", "visible": True, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
@@ -88,7 +88,7 @@ class LayerManager:
             {"source": "memory", "name": "edit_line", "root": False, "parent": "temp", "visible": True, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int, "int")]},
             {"source": "memory", "name": "backup_line", "root": False, "parent": "temp", "visible": False, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int, "int")]}
             ]
-        self.lyr_vis = [["wyr_point", True], ["flagi_z_teren", None], ["flagi_bez_teren", None], ["parking_planowane", None], ["parking_odwiedzone", None], ["marszruty", None], ["wn_pne", None]]
+        self.lyr_vis = [["wyr_point", True], ["flagi_z_teren", None], ["flagi_bez_teren", None]]  #, ["parking_planowane", None], ["parking_odwiedzone", None], ["marszruty", None], ["wn_pne", None]]
         self.lyr_cnt = len(self.lyrs)
         self.lyrs_names = [i for s in [[v for k, v in d.items() if k == "name"] for d in self.lyrs] for i in s]
 
@@ -294,11 +294,11 @@ class LayerManager:
             if not val:
                 dlg.obj.flag = None
             lyr_names = ["flagi_z_teren", "flagi_bez_teren"]
-        elif grp_name == "komunikacja":
-            if not val:
-                dlg.obj.parking = None
-                dlg.obj.marsz = None
-            lyr_names = ["parking_planowane", "parking_odwiedzone", "marszruty"]
+        # elif grp_name == "komunikacja":
+        #     if not val:
+        #         dlg.obj.parking = None
+        #         dlg.obj.marsz = None
+        #     lyr_names = ["parking_planowane", "parking_odwiedzone", "marszruty"]
         elif grp_name == "wyrobiska":
             if not val:
                 dlg.obj.wyr = None
@@ -306,10 +306,6 @@ class LayerManager:
                 if _list[0] == "wyr_point":
                     _list[1] = False if not val else True
                     return
-        elif grp_name == "wn_pne":
-            if not val:
-                dlg.obj.wn = None
-            lyr_names = ["wn_pne"]
         for lyr_name in lyr_names:
             for _list in self.lyr_vis:
                 if _list[0] == lyr_name:
@@ -328,38 +324,38 @@ class PanelManager:
         self.dlg = dlg
         self.cfg = []
         self.cfg_dicts = [
-            {'name': 'team', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_team.set_state(val)', 'cb_void': False, 'value': None},
-            {'name': 'powiaty', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_pow.set_state(val)', 'cb_void': False, 'value': None},
-            {'name': 'powiaty_mask', 'action': 'lyr_vis', 'btn': dlg.p_pow_mask.box.widgets["btn_pow_mask"], 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_vn.set_state(val)', 'cb_void': False, 'value': None},
-            {'name': 'external', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_ext.set_state(val)', 'cb_void': False, 'value': None},
-            {'name': 'wn_pne', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_wn"], 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'MIDAS', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_midas"], 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'midas_zloza', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'midas_wybilansowane', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'midas_obszary', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'midas_tereny', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'MGSP', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_mgsp"], 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'mgsp_pkt_kop', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'mgsp_zloza_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'mgsp_zloza_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'mgsp_zloza_wb_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'mgsp_zloza_wb_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'smgp_wyrobiska', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_smgp"], 'callback': None, 'cb_void': False, 'value': None},
-            {'name': 'flagi', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_flag.set_state(val)', 'cb_void': False, 'value': None},
-            {'name': 'flagi_user', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_user"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},
-            {'name': 'flagi_z_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_fchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},
-            {'name': 'flagi_bez_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_nfchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},
-            {'name': 'wyrobiska', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_wyr.set_state(val)', 'cb_void': False, 'value': None},
-            {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
-            {'name': 'wyr_szare', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
-            {'name': 'wyr_fioletowe', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_purple_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
-            {'name': 'wyr_zielone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},
-            {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},
-            {'name': 'komunikacja_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'self.komunikacja_layers_update()', 'cb_void': True, 'value': None},
-            {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
-            {'name': 'parking_odwiedzone', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_after_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},
-            {'name': 'marszruty', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_marsz_vis"], 'callback': 'marsz_layer_update()', 'cb_void': True, 'value': None}
+            {'name': 'team', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_team.set_state(val)', 'cb_void': False, 'value': None},  # ------------------------------------------------------ 0 -- 0
+            {'name': 'powiaty', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_pow.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------------------- 1 -- 1
+            {'name': 'powiaty_mask', 'action': 'lyr_vis', 'btn': dlg.p_pow_mask.box.widgets["btn_pow_mask"], 'callback': None, 'cb_void': False, 'value': None},  # ----------------------------------- 2 -- 2
+            {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_vn.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------------------------- 3 -- 3
+            {'name': 'external', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_ext.set_state(val)', 'cb_void': False, 'value': None},  # --------------------------------------------------- 4 -- 4
+            # {'name': 'wn_pne', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_wn"], 'callback': None, 'cb_void': False, 'value': None},  # -------------------------------------------------- 5
+            {'name': 'MIDAS', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_midas"], 'callback': None, 'cb_void': False, 'value': None},  # -------------------------------------------------- 6 -- 5
+            {'name': 'midas_zloza', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # -------------------------------------------------------------------------- 7 -- 6
+            {'name': 'midas_wybilansowane', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------ 8 -- 7
+            {'name': 'midas_obszary', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------ 9 -- 8
+            {'name': 'midas_tereny', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 10 - 9
+            {'name': 'MGSP', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_mgsp"], 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------- 11 - 10
+            {'name': 'mgsp_pkt_kop', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 12 - 11
+            {'name': 'mgsp_zloza_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 13 - 12
+            {'name': 'mgsp_zloza_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 14 - 13
+            {'name': 'mgsp_zloza_wb_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 15 - 14
+            {'name': 'mgsp_zloza_wb_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 16 - 15
+            {'name': 'smgp_wyrobiska', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_smgp"], 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------ 17 - 16
+            {'name': 'flagi', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_flag.set_state(val)', 'cb_void': False, 'value': None},  # ----------------------------------------------------- 18 - 17
+            {'name': 'flagi_user', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_user"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # -------------------------------- 19 - 18
+            {'name': 'flagi_z_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_fchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # ------------------------- 20 - 19
+            {'name': 'flagi_bez_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_nfchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # ---------------------- 21 - 20
+            {'name': 'wyrobiska', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_wyr.set_state(val)', 'cb_void': False, 'value': None},  # -------------------------------------------------- 22 - 21
+            {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ------------------------------- 23 - 22
+            {'name': 'wyr_szare', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------------- 24 - 23
+            {'name': 'wyr_fioletowe', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_purple_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------- 25 - 24
+            {'name': 'wyr_zielone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None}  # -------------------- 26 - 25
+            # {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},  # -------------------------------------- 27
+            # {'name': 'komunikacja_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'self.komunikacja_layers_update()', 'cb_void': True, 'value': None},  # ---- 28
+            # {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # 29
+            # {'name': 'parking_odwiedzone', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_after_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # 30
+            # {'name': 'marszruty', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_marsz_vis"], 'callback': 'marsz_layer_update()', 'cb_void': True, 'value': None}  # ------------------- 31
                         ]
         self.cfg_dicts_cnt = len(self.cfg_dicts)
         self.cfg_vals = []
@@ -404,7 +400,8 @@ class PanelManager:
             dlg.proj.layerTreeRoot().findGroup(name).setItemVisibilityCheckedRecursive(val_out)
         if name == "powiaty":
             dlg.wyr_panel.pow_all = not val_out
-        if name == "flagi" or name == "komunikacja" or name == "wyrobiska" or name == "wn_pne":
+        # if name == "flagi" or name == "komunikacja" or name == "wyrobiska" or name == "wn_pne":
+        if name == "flagi" or name == "wyrobiska":
             # Zmiana parametru widoczności wszystkich warstw z określonej grupy dla MultiMapTool:
             dlg.lyr.grp_vis_change(name, val_out)
         if btn:
@@ -518,7 +515,7 @@ class PanelManager:
             if res:
                 self.cfg_vals[:0] = res[0]
             else:
-                self.cfg_vals[:0] = '1012111111111111112111211112111'
+                self.cfg_vals[:0] = '1012111111111111121112111'  # '1012111111111111112111211112111'
         if len(self.old_cfg_vals) > 0:
             self.old_cfg_vals = []
             self.old_cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry
@@ -536,9 +533,11 @@ class PanelManager:
 
     def switch_lyrs_on_setup(self, off=True):
         """Włączenie/wyłączenie warstw przy wychodzeniu/wchodzeniu do trybu ustawień."""
+        print("switch_lyrs_on_setup")
         if off:
             # Wyłączanie warstw:
-            lyrs = [5, 6, 11, 17, 18, 22, 27]
+            # lyrs = [5, 6, 11, 17, 18, 22, 27]
+            lyrs = [6, 10, 16, 17, 21, 26]
             for lyr in lyrs:
                 # Zapamiętanie ustawień warstwy:
                 self.cfg_mem.append([self.cfg_dicts[lyr]["name"], self.cfg_dicts[lyr]["value"]])

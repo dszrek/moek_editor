@@ -10,7 +10,7 @@ from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp, QRect, QTimer
 from qgis.PyQt.QtGui import QPen, QBrush, QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator, QStandardItemModel
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, pg_layer_change, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, sequences_load, db_sequence_update
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, pg_layer_change, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, marsz_layer_update, sequences_load, db_sequence_update
 from .maptools import wyr_point_lyrs_repaint
 from .classes import PgConn, WDfModel, CmbDelegate
 from .viewnet import vn_zoom
@@ -493,7 +493,6 @@ class WyrCanvasPanel(QFrame):
         self.list_box.lay.addWidget(self.tv_wdf)
         tv_wdf_widths = [10, 66]
         tv_wdf_headers = ['status', 'ID']
-        self.wn_df = pd.DataFrame({'wyr_id': [1], 'wn_id': ['A']})  # Dataframe z połaczeniami wyrobisk z WN_PNE
         self.wdf = pd.DataFrame({'status': [1], 'wyr_id': [1]})  # Dataframe z danymi o wyrobiskach
         self.wdf_mdl = WDfModel(df=self.wdf, tv=self.tv_wdf, col_widths=tv_wdf_widths, col_names=tv_wdf_headers)
         self.tv_wdf.selectionModel().selectionChanged.connect(self.wdf_sel_change)
@@ -542,8 +541,6 @@ class WyrCanvasPanel(QFrame):
         self.hashbox.lay.addWidget(self.hash_icon)
         self.hash = CanvasLineEdit(self, width=56, height=28, font_size=10, max_len=5, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], placeholder="XXXXX")
         self.hashbox.lay.addWidget(self.hash)
-        self.wn_picker = WyrWnPicker(self)
-        self.sp_main.lay.addWidget(self.wn_picker)
         self.lokbox = CanvasHSubPanel(self, height=32, margins=[0, 0, 0, 0], alpha=0.71)
         self.sp_main.lay.addWidget(self.lokbox)
         self.lok = MoekButton(self, name="lok", size=30, checkable=False, enabled=True, tooltip = "lokalizacja wyrobiska")
@@ -1676,8 +1673,6 @@ class WnCanvasPanel(QFrame):
         self.sp_pow = CanvasHSubPanel(self, height=34)
         self.sp_pow.setObjectName("sp")
         self.box.lay.addWidget(self.sp_pow)
-        self.pow_selector = WnPowSelector(self)
-        self.sp_pow.lay.addWidget(self.pow_selector)
 
     def values_update(self, _dict):
         """Aktualizuje wartości parametrów."""
@@ -1952,80 +1947,6 @@ class OdpadySelectorItem(QPushButton):
         self.clicked.connect(lambda: self.parent().btn_clicked(self.id))
 
 
-class WnPowSelector(QFrame):
-    """Belka wyboru aktywnych powiatów dla punktu WN_PNE."""
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setFixedHeight(34)
-        self.setStyleSheet("""
-                    QFrame#main{background-color: transparent; border: none}
-                    """)
-        self.lay = QHBoxLayout()
-        self.lay.setContentsMargins(8, 2, 8, 2)
-        self.lay.setSpacing(8)
-        self.setLayout(self.lay)
-        self.all_cnt = int()
-        self.act_cnt = int()
-        self.itms = {}
-        for i in range(4):
-            _itm = PowSelectorItem(self, _id=i)
-            self.lay.addWidget(_itm)
-            itm_name = f'pow_btn_{i}'
-            self.itms[itm_name] = _itm
-
-    def pow_update(self, _list):
-        """Aktualizacja danych dotyczących aktywnych powiatów."""
-        self.all_cnt = len(_list)
-        self.act_cnt = 0
-        for i in range(4):
-            _bool = True if i < self.all_cnt else False
-            widget = self.itms[f"pow_btn_{i}"]
-            if widget:
-                # Odsłania tyle guzików, ile jest powiatów:
-                widget.setVisible(_bool)
-                if _bool:
-                    _act = _list[i][2]  # Czy powiat jest aktywny?
-                    if _act:
-                        # Zliczanie aktywnych powiatów:
-                        self.act_cnt += 1
-                    # Ustawienie guzików:
-                    widget.setText(_list[i][0])
-                    widget.setChecked(_act)
-        # Wyłącza hovering, jeśli tylko jeden powiat dostępny:
-        self.itms[f"pow_btn_0"].setEnabled(False) if self.all_cnt == 1 else self.itms[f"pow_btn_0"].setEnabled(True)
-
-    def btn_clicked(self, _id):
-        """Włączenie/wyłączenie powiatu po naciśnięciu przycisku."""
-        btn = self.itms[f"pow_btn_{_id}"]
-        if btn.isChecked():
-            # Włączono powiat:
-            self.act_cnt += 1
-        else:
-            # Wyłączono powiat:
-            self.act_cnt -= 1
-        # Sprawdzenie, czy wszystkie guziki zostały wyłączone:
-        if self.act_cnt == 0:  # Jeden guzik musi być włączony, cofamy zmianę:
-            self.act_cnt += 1
-            btn.setChecked(True)
-        else:
-            self.db_update(btn)  # Aktualizacja db
-            wn_layer_update()  # Aktualizacja warstwy wn_pne
-
-    def db_update(self, btn):
-        """Aktualizacja atrybutu 'b_active' w db."""
-        id_arkusz = dlg.obj.wn
-        pow_id = btn.text()
-        b_active = 'true' if btn.isChecked() else 'false'
-        db = PgConn()
-        sql = f"UPDATE external.wn_pne_pow SET b_active = {b_active} WHERE id_arkusz = '{id_arkusz}' and pow_id = '{pow_id}';"
-        if db:
-            res = db.query_upd(sql)
-            if not res:
-                print(f"Nie udało się zmienić ustawienia powiatu {pow_id} dla punktu WN_PNE: {id_arkusz}")
-
-
 class PowSelectorItem(QPushButton):
     """Guzik do wyboru aktywnych powiatów dla punktu WN_PNE."""
     def __init__(self, *args, _id):
@@ -2178,54 +2099,6 @@ class WyrStatusIndicator(QLabel):
         """Wyczyszczenie order_id i order_lock dla wyrobisk innych niż potwierdzone."""
         db = PgConn()
         sql = f"UPDATE team_{dlg.team_i}.wyr_prg AS a SET order_id = Null, order_lock = false FROM team_{dlg.team_i}.wyrobiska AS b WHERE a.wyr_id = b.wyr_id and b.b_confirmed = false"
-        if db:
-            res = db.query_upd(sql)
-
-
-class WyrWnPicker(QFrame):
-    """Belka przydziału WN_PNE dla wyrobiska."""
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(102, 32)
-        self.setStyleSheet("QFrame#main{background-color: rgba(55, 55, 55, 0.71); border: none}")
-        self.lay = QHBoxLayout()
-        self.lay.setContentsMargins(2, 0, 2, 0)
-        self.lay.setSpacing(2)
-        self.setLayout(self.lay)
-        self.wn_picker_empty = MoekButton(self, name="wyr_wn_empty", size=28, checkable=True, tooltip="wybierz z mapy punkt WN_PNE, który będzie powiązany z wyrobiskiem")
-        self.lay.addWidget(self.wn_picker_empty)
-        self.wn_picker_empty.clicked.connect(lambda: dlg.mt.init("wn_pick"))
-        self.wn_picker_eraser = MoekButton(self, name="wyr_wn", size=28, checkable=False, tooltip="wyczyść powiązanie wyrobiska z punktem WN_PNE")
-        self.lay.addWidget(self.wn_picker_eraser)
-        self.wn_picker_eraser.clicked.connect(lambda: self.wn_id_update(None))
-        self.idbox = CanvasLineEdit(self, width=68, height=28, font_size=10, max_len=8, validator="id_arkusz", theme="dark", fn=["dlg.wyr_panel.wn_picker.wn_id_update(self.text())"], placeholder="0001_001")
-        self.lay.addWidget(self.idbox)
-        self.lay.setAlignment(self.idbox, Qt.AlignVCenter)
-        self.wn_id = None
-
-    def __setattr__(self, attr, val):
-        """Przechwycenie zmiany atrybutu."""
-        super().__setattr__(attr, val)
-        if attr == "wn_id":
-            self.idbox.set_value(val)
-            self.wn_picker_empty.setVisible(False) if val else self.wn_picker_empty.setVisible(True)
-            self.wn_picker_eraser.setVisible(True) if val else self.wn_picker_eraser.setVisible(False)
-
-    def wn_id_update(self, id):
-        """Sprawdza istnienie wn_id na liście wn_ids i aktualizuje wn_id w db, jeśli potrzeba."""
-        if id in dlg.obj.wn_ids or not id:
-            self.db_update(id)  # Aktualizacja wn_id w db
-        dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych w wyr_panel
-
-    def db_update(self, id):
-        """Aktualizacja atrybutu 'wn_id' w db."""
-        db = PgConn()
-        if id:
-            sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET wn_id = '{id}' WHERE wyr_id = {dlg.obj.wyr}"
-        else:
-            sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET wn_id = Null WHERE wyr_id = {dlg.obj.wyr}"
         if db:
             res = db.query_upd(sql)
 

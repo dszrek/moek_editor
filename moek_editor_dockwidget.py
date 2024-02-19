@@ -153,12 +153,12 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             io_fn="dlg.wyr_visibility()",
                             expand=True,
                             exp_fn="wyrobiska")
-        self.p_komunikacja = MoekBoxPanel(
-                            self,
-                            title="Komunikacja",
-                            io_fn="dlg.komunikacja_visibility()",
-                            expand=True,
-                            exp_fn="komunikacja")
+        # self.p_komunikacja = MoekBoxPanel(
+        #                     self,
+        #                     title="Komunikacja",
+        #                     io_fn="dlg.komunikacja_visibility()",
+        #                     expand=True,
+        #                     exp_fn="komunikacja")
 
         p_team_widgets = [
                     {"item": "combobox", "name": "team_act", "height": 21, "border": 1, "b_round": "none"}
@@ -182,7 +182,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     ]
         p_map_widgets = []
         p_ext_widgets = [
-                    {"item": "button", "name": "wn", "size": 47, "hsize": 25, "checkable": True, "tooltip": u'punkty WN_Kopaliny'},
+                    # {"item": "button", "name": "wn", "size": 47, "hsize": 25, "checkable": True, "tooltip": u'punkty WN_Kopaliny'},
                     {"item": "button", "name": "midas", "size": 47, "hsize": 25, "checkable": True, "tooltip": u'złoża i OTG z bazy MIDAS'},
                     {"item": "button", "name": "mgsp", "size": 47, "hsize": 25, "checkable": True, "tooltip": u'pkt. występowania kopaliny, złoża i OTG z bazy MGSP'},
                     {"item": "button", "name": "smgp", "size": 47, "hsize": 25, "checkable": True, "tooltip": u'wyrobiska z map SMGP'}
@@ -210,15 +210,17 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_purple_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska wyznaczone do aktualizacji"},
                     {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_green_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska, które zostały zaktualizowane"}
                     ]
-        p_komunikacja_widgets = [
-                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "parking_before_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyznaczone do odwiedzenia miejsca parkowania"},
-                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "parking_after_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj odwiedzone miejsca parkowania"},
-                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj marszruty"}
-                    ]
+        # p_komunikacja_widgets = [
+        #             {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
+        #             {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "parking_before_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyznaczone do odwiedzenia miejsca parkowania"},
+        #             {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "parking_after_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj odwiedzone miejsca parkowania"},
+        #             {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj marszruty"}
+        #             ]
 
-        self.panels = [self.p_team, self.p_team_export, self.p_team_grp, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
-        self.p_widgets = [p_team_widgets, p_team_export_widgets, p_team_grp_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_komunikacja_widgets]
+        # self.panels = [self.p_team, self.p_team_export, self.p_team_grp, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
+        # self.p_widgets = [p_team_widgets, p_team_export_widgets, p_team_grp_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_komunikacja_widgets]
+        self.panels = [self.p_team, self.p_team_export, self.p_team_grp, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr]
+        self.p_widgets = [p_team_widgets, p_team_export_widgets, p_team_grp_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets]
 
         # Wczytanie paneli i ich widgetów do dockwidget'u:
         for (panel, widgets) in zip(self.panels, self.p_widgets):
@@ -256,9 +258,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         tb_add_widgets = [
                     {"item": "button", "name": "flag_fchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę do kontroli terenowej"},
                     {"item": "button", "name": "flag_nfchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę bez kontroli terenowej"},
-                    {"item": "button", "name": "wyr_add_poly", "icon" : "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"},
-                    {"item": "button", "name": "parking", "size": 50, "checkable": True, "tooltip": u"dodaj miejsce parkowania"},
-                    {"item": "button", "name": "marsz", "size": 50, "checkable": True, "tooltip": u"dodaj marszrutę"}
+                    {"item": "button", "name": "wyr_add_poly", "icon" : "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"}
+                    # {"item": "button", "name": "parking", "size": 50, "checkable": True, "tooltip": u"dodaj miejsce parkowania"},
+                    # {"item": "button", "name": "marsz", "size": 50, "checkable": True, "tooltip": u"dodaj marszrutę"}
                     ]
         tb_seq_tools_widgets = [
                     {"item": "seqbox", "name": "seq", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1},
@@ -320,8 +322,6 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.marsz_panel.hide()
         self.wyr_panel = WyrCanvasPanel(self.canvas)
         self.wyr_panel.hide()
-        self.wn_panel = WnCanvasPanel(self.canvas)
-        self.wn_panel.hide()
         self.export_panel = ExportCanvasPanel(self.canvas)
         self.export_panel.hide()
 
@@ -340,7 +340,6 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.seq_dock.move(53, bottom_y)
         self.flag_panel.move(60, 60)
         self.parking_panel.move(60, 60)
-        self.wn_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
         export_x = (self.canvas.width() / 2) - (self.export_panel.width() / 2)
@@ -664,7 +663,6 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
         self.p_pow_mask.box.widgets["btn_pow_mask"].clicked.connect(lambda: self.cfg.set_val(name="powiaty_mask", val=self.p_pow_mask.box.widgets["btn_pow_mask"].isChecked()))
         self.p_team_export.box.widgets["btn_data_export"].clicked.connect(data_export_init)
-        self.p_ext.box.widgets["btn_wn"].clicked.connect(lambda: self.cfg.set_val(name="wn_pne", val=self.p_ext.box.widgets["btn_wn"].isChecked()))
         self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))
         self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.cfg.set_val(name="smgp_wyrobiska", val=self.p_ext.box.widgets["btn_smgp"].isChecked()))
@@ -675,21 +673,20 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_wyr.widgets["btn_wyr_grey_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_szare", val=self.p_wyr.widgets["btn_wyr_grey_vis"].isChecked()))
         self.p_wyr.widgets["btn_wyr_purple_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_fioletowe", val=self.p_wyr.widgets["btn_wyr_purple_vis"].isChecked()))
         self.p_wyr.widgets["btn_wyr_green_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_zielone", val=self.p_wyr.widgets["btn_wyr_green_vis"].isChecked()))
-        self.p_komunikacja.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="komunikacja_user", val=self.p_komunikacja.widgets["btn_user"].isChecked()))
-        self.p_komunikacja.widgets["btn_parking_before_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_planowane", val=self.p_komunikacja.widgets["btn_parking_before_vis"].isChecked()))
-        self.p_komunikacja.widgets["btn_parking_after_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_odwiedzone", val=self.p_komunikacja.widgets["btn_parking_after_vis"].isChecked()))
-        self.p_komunikacja.widgets["btn_marsz_vis"].clicked.connect(lambda: self.cfg.set_val(name="marszruty", val=self.p_komunikacja.widgets["btn_marsz_vis"].isChecked()))
+        # self.p_komunikacja.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="komunikacja_user", val=self.p_komunikacja.widgets["btn_user"].isChecked()))
+        # self.p_komunikacja.widgets["btn_parking_before_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_planowane", val=self.p_komunikacja.widgets["btn_parking_before_vis"].isChecked()))
+        # self.p_komunikacja.widgets["btn_parking_after_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_odwiedzone", val=self.p_komunikacja.widgets["btn_parking_after_vis"].isChecked()))
+        # self.p_komunikacja.widgets["btn_marsz_vis"].clicked.connect(lambda: self.cfg.set_val(name="marszruty", val=self.p_komunikacja.widgets["btn_marsz_vis"].isChecked()))
         self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
-        self.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"].clicked.connect(lambda: self.mt.init("parking_add"))
-        self.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"].clicked.connect(lambda: self.mt.init("marsz_add"))
+        # self.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"].clicked.connect(lambda: self.mt.init("parking_add"))
+        # self.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"].clicked.connect(lambda: self.mt.init("marsz_add"))
         self.wyr_panel.widgets["txt2_dlug_1"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("dlug_min"))
         self.wyr_panel.widgets["txt2_dlug_1"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("dlug_max"))
         self.wyr_panel.widgets["txt2_szer_1"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("szer_min"))
         self.wyr_panel.widgets["txt2_szer_1"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("szer_max"))
-
 
     def button_cfg(self, btn, icon_name, size=50, tooltip=""):
         """Konfiguracja przycisków."""
@@ -780,11 +777,6 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         try:
             self.canvas.children().remove(self.wyr_panel)
             self.wyr_panel.deleteLater()
-        except:
-            pass
-        try:
-            self.canvas.children().remove(self.wn_panel)
-            self.wn_panel.deleteLater()
         except:
             pass
         try:

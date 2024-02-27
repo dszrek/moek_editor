@@ -125,11 +125,17 @@ class ObjectManager:
                 else:
                     dlg.wyr_panel.areabox.setVisible(False)
                     dlg.wyr_panel.delbox.setVisible(False)
+                # Data aktualizacji:
+                dlg.wyr_panel.datebox.setVisible(True) if self.dlg.wyr_panel.status_selector.case == 2 else dlg.wyr_panel.datebox.setVisible(False)
+                dlg.wyr_panel.date_label.setText(str(self.wyr_data[41])) if self.wyr_data[41] else dlg.wyr_panel.date_label.setText("")
                 # Dostosowanie wymiaru dummybox:
                 if self.dlg.wyr_panel.status_selector.case == 0:
-                    dlg.wyr_panel.dummybox.setFixedWidth(53)
+                    dlg.wyr_panel.dummybox.setFixedWidth(67)
                 else:
-                    dlg.wyr_panel.dummybox.setFixedWidth(164) if self.wyr_data[3] else dlg.wyr_panel.dummybox.setFixedWidth(287)
+                    wn_width = 123 if self.wyr_data[3] else 0
+                    date_width = 135 if self.wyr_data[41] else 0
+                    dummy_width = 281 - wn_width - date_width
+                    dlg.wyr_panel.dummybox.setFixedWidth(dummy_width)
                 # Aktualizacja zaznaczenia wiersza w tv_wdf
                 self.dlg.wyr_panel.wdf_sel_update()
                 dlg.wyr_panel.focus_void = True
@@ -341,12 +347,14 @@ class ObjectManager:
                 return res
 
     def wyr_update(self):
-        """Zwraca dane wyrobiska."""
+        """Zwraca dane wyrobiska.
+        0 - wyr_id, 1 - b_new, 2 - b_confirmed, 3 - wn_id, 4 - i_area_m2, 5 - t_wyr_od, 6 - wyr_do, 7 - t_notatki, 8 - i_dlug_min, 9 - i_dlug_max, 10 - i_szer_min, 11 - i_szer_max, 12 - n_wys_min, 13 - n_wys_max, 14 - n_nadkl_min, 15 - n_nadkl_max, 16 - n_miazsz_min, 17 - n_miazsz_max, 18 - t_wyrobisko, 19 - t_zawodn, 20 - t_eksploat, 21 - t_wydobycie, 22 - t_wyp_odpady, 23 - t_odpady_1, 24 - t_odpady_2, 25 - t_odpady_3, 26 - t_odpady_4, 27 - t_odpady_opak, 28 - t_odpady_inne, 29 - t_stan_rekul, 30 - t_rekultyw, 31 - t_dojazd, 32 - t_zagrozenia, 33 - t_zgloszenie, 34 - t_powod, 35 - t_stan_pne, 36 - t_kopalina, 37 - t_kopalina_2, 38 - t_wiek, 39 - t_wiek_2, 40 - time_fchk, 41 - date_ctrl, 42 - b_teren, 43 - midas_id, 44 - t_stan_midas, 45 - t_zloze_od, 46 - t_zloze_do, 47 - b_pne_zloze, 48 - b_pne_poza, 49 - i_ile_zalacz, 50 - t_autor, 51 - teren_id, 52 - t_mie_name, 53 - t_gmi_name, 54 - t_pow_name, 55 - t_woj_name, 56 - b_pne, 57 - t_zmiana_wyr, 58 - d.date_map, 59 - d.t_map_source, 60 - d.t_weryf_midas, 61 - d.t_og_id
+        """
         db = PgConn()
         if dlg.wyr_panel.pow_all:
-            sql = "SELECT w.wyr_id, w.b_new, w.b_confirmed, w.wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_ctrl, d.b_teren, w.midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "';"
+            sql = "SELECT w.wyr_id, w.b_new, w.b_confirmed, w.wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_ctrl, d.b_teren, w.midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne, d.t_zmiana_wyr, d.date_map, d.t_map_source, d.t_weryf_midas, d.t_og_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "';"
         else:
-            sql = "SELECT w.wyr_id, w.b_new, w.b_confirmed, w.wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_ctrl, d.b_teren, w.midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne, p.order_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "' AND p.pow_grp = '" + str(dlg.powiat_i) + "';"
+            sql = "SELECT w.wyr_id, w.b_new, w.b_confirmed, w.wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_ctrl, d.b_teren, w.midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne, d.t_zmiana_wyr, d.date_map, d.t_map_source, d.t_weryf_midas, d.t_og_id, p.order_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "' AND p.pow_grp = '" + str(dlg.powiat_i) + "';"
         if db:
             res = db.query_sel(sql, False)
             if not res:
@@ -544,10 +552,10 @@ class MapToolManager:
             # {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : [[255, 255, 0, 255],["marszruty", "parking_planowane", "parking_odwiedzone"]]},
             # {"name" : "marsz_edit", "class" : LineEditMapTool, "button" : self.dlg.marsz_panel.marsz_edit, "lyr" : ["marszruty"], "fn" : marsz_line_change, "extra" : ["marsz_id",["marszruty", "parking_planowane", "parking_odwiedzone"]]},
             # {"name" : "marsz_continue", "class" : LineContinueMapTool, "button" : self.dlg.marsz_panel.marsz_continue, "lyr" : ["marszruty"], "fn" : marsz_line_continue, "extra" : ["marsz_id"]},
-            {"name" : "dlug_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_1"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
-            {"name" : "dlug_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_1"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
-            {"name" : "szer_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_1"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
-            {"name" : "szer_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_1"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas}
+            {"name" : "dlug_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_3"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
+            {"name" : "dlug_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_3"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
+            {"name" : "szer_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_3"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
+            {"name" : "szer_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_3"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas}
         ]
 
     def maptool_change(self, new_tool, old_tool):

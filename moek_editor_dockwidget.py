@@ -683,10 +683,10 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
         # self.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"].clicked.connect(lambda: self.mt.init("parking_add"))
         # self.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"].clicked.connect(lambda: self.mt.init("marsz_add"))
-        self.wyr_panel.widgets["txt2_dlug_1"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("dlug_min"))
-        self.wyr_panel.widgets["txt2_dlug_1"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("dlug_max"))
-        self.wyr_panel.widgets["txt2_szer_1"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("szer_min"))
-        self.wyr_panel.widgets["txt2_szer_1"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("szer_max"))
+        self.wyr_panel.widgets["txt2_dlug_3"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("dlug_min"))
+        self.wyr_panel.widgets["txt2_dlug_3"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("dlug_max"))
+        self.wyr_panel.widgets["txt2_szer_3"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("szer_min"))
+        self.wyr_panel.widgets["txt2_szer_3"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("szer_max"))
 
     def button_cfg(self, btn, icon_name, size=50, tooltip=""):
         """Konfiguracja przycisków."""

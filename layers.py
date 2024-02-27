@@ -42,9 +42,9 @@ class LayerManager:
             {'name': 'temp', 'level': 1, 'layers': ['wyr_point', 'edit_poly', 'backup_poly']}
             ]
         self.lyrs = [
+            {"source": "postgres", "name": "wyr_zielone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_fioletowe", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_szare", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
-            {"source": "postgres", "name": "wyr_zielone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
             {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},

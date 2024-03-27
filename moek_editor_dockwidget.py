@@ -256,7 +256,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"item": "button", "name": "multi_tool", "size": 50, "checkable": True, "tooltip": u"nawigacja i selekcja obiektów"}
                     ]
         tb_add_widgets = [
-                    {"item": "button", "name": "flag_fchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę do kontroli terenowej"},
+                    # {"item": "button", "name": "flag_fchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę do kontroli terenowej"},
                     {"item": "button", "name": "flag_nfchk", "size": 50, "checkable": True, "tooltip": u"dodaj flagę bez kontroli terenowej"},
                     {"item": "button", "name": "wyr_add_poly", "icon" : "wyr_add", "size": 50, "checkable": True, "tooltip": u"dodaj wyrobisko"}
                     # {"item": "button", "name": "parking", "size": 50, "checkable": True, "tooltip": u"dodaj miejsce parkowania"},
@@ -681,7 +681,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         # self.p_komunikacja.widgets["btn_parking_after_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_odwiedzone", val=self.p_komunikacja.widgets["btn_parking_after_vis"].isChecked()))
         # self.p_komunikacja.widgets["btn_marsz_vis"].clicked.connect(lambda: self.cfg.set_val(name="marszruty", val=self.p_komunikacja.widgets["btn_marsz_vis"].isChecked()))
         self.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"].clicked.connect(lambda: self.mt.init("multi_tool"))
-        self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
+        # self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"].clicked.connect(lambda: self.mt.init("flt_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"].clicked.connect(lambda: self.mt.init("flf_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
         # self.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"].clicked.connect(lambda: self.mt.init("parking_add"))

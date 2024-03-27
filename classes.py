@@ -869,11 +869,13 @@ class WDfDelegate(QStyledItemDelegate):
         if index.column() == 0:
             s_data = index.data(ValueRole)
             if s_data == 0:
-                color = QColor(123, 123, 123)
+                color = QColor(123, 123, 123)  # szary
+            # elif s_data == 1:
+            #     color = QColor(224, 0, 0)  # czerwony
             elif s_data == 1:
-                color = QColor(224, 0, 0)
+                color = QColor(180, 40, 180)  # fioletowy
             elif s_data == 2:
-                color = QColor(40, 140, 40)
+                color = QColor(40, 140, 40)  # zielony
             painter.save()
             painter.setRenderHint(QPainter.Antialiasing)
             pen = painter.pen()

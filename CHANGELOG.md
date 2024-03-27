@@ -1,5 +1,17 @@
 # Changelog (dziennik zmian):
 
+
+## [0.6.1] - 2024-03-27
+### Dodano
+- Dodano panel "Wyrobiska MOEK_1" wyświetlający dane wyrobisk zarejestrowanych w poprzedniej edycji MOEK.
+
+### Zmieniono
+- Dostosowano podział wyrobisk do metodyki 2024: 'NOWE WYROBISKO' (kolor szary), 'AKTUALIZOWANE WYROBISKO' (kolor fioletowy), 'WYROBISKO PO AKTUALIZACJI' (kolor zielony).
+- Dostosowano zawartość panelu "Wyrobiska" do metodyki 2024.
+- Usunięto funkcje związane z 'WN_PNE' oraz wyłączono obsługę parkingów i marszrut.
+- Zablokowano dostęp do panelu "Eksport danych".
+- Zablokowano możliwość tworzenia flag z kontrolą terenową (tzw. pomarańczowe samochody).
+
 ## [0.6.0] - 2024-02-05
 ### Dodano
 - Dodano podkład mapowy 'Geoportal Archiwalny' z możliwością przeglądania historycznych fotomap z repozytorium Geoportalu. Umożliwiono bezpośrednie sprawdzenie daty aktualności wyświetlanej fotomapy.

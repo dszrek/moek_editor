@@ -10,7 +10,7 @@ from qgis.PyQt.QtCore import Qt, QSize, pyqtSignal, QRegExp, QRect, QTimer
 from qgis.PyQt.QtGui import QPen, QBrush, QIcon, QColor, QFont, QPainter, QPixmap, QPainterPath, QRegExpValidator, QStandardItemModel
 from qgis.utils import iface
 
-from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, pg_layer_change, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, wn_layer_update, marsz_layer_update, sequences_load, db_sequence_update
+from .main import db_attr_change, vn_cfg, vn_setup_mode, powiaty_mode_changed, vn_mode_changed, pg_layer_change, get_wyr_ids, get_flag_ids, get_parking_ids, get_marsz_ids, wyr_layer_update, marsz_layer_update, sequences_load, db_sequence_update
 from .maptools import wyr_point_lyrs_repaint
 from .classes import PgConn, WDfModel, CmbDelegate
 from .viewnet import vn_zoom
@@ -472,14 +472,14 @@ class WyrCanvasPanel(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(516, 605)
+        self.setFixedSize(516, 649)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
         shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
         self.setGraphicsEffect(shadow_1)
         self.focus_void = True
         self.trigger_void = True
-        self.p_heights = [498, 465, 498]
+        self.p_heights = [541, 541, 541, 509, 541]
         self.mt_enabled = False
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
         self.list_box = MoekVBox(self, spacing=0)
@@ -493,7 +493,6 @@ class WyrCanvasPanel(QFrame):
         self.list_box.lay.addWidget(self.tv_wdf)
         tv_wdf_widths = [10, 66]
         tv_wdf_headers = ['status', 'ID']
-        self.wn_df = pd.DataFrame({'wyr_id': [1], 'wn_id': ['A']})  # Dataframe z połaczeniami wyrobisk z WN_PNE
         self.wdf = pd.DataFrame({'status': [1], 'wyr_id': [1]})  # Dataframe z danymi o wyrobiskach
         self.wdf_mdl = WDfModel(df=self.wdf, tv=self.tv_wdf, col_widths=tv_wdf_widths, col_names=tv_wdf_headers)
         self.tv_wdf.selectionModel().selectionChanged.connect(self.wdf_sel_change)
@@ -519,14 +518,15 @@ class WyrCanvasPanel(QFrame):
         self.box.lay.addWidget(self.head)
         self.head_left = MoekVBox(self)
         self.head.lay.addWidget(self.head_left)
-        self.head_right = MoekVBox(self, spacing=1, alpha=0.71)
-        self.head.lay.addWidget(self.head_right)
+        # self.head_right = MoekVBox(self, spacing=1, alpha=0.71)
+        # self.head.lay.addWidget(self.head_right)
         self.sp_status = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], spacing=1, alpha=0.71)
         self.head_left.lay.addWidget(self.sp_status)
-        self.order_box = IdSpinBox(self, _obj="order", width=90, le_width=46, height=28, max_len=3, validator="order", placeholder="001", theme="green")
+        self.order_box = IdSpinBox(self, _obj="order", width=90, le_width=46, height=28, max_len=3, validator="order", placeholder="001", theme="color")
         self.sp_status.lay.addWidget(self.order_box)
         self.order_drawer = OrderDrawer(self)
         self.sp_status.lay.addWidget(self.order_drawer)
+        self.order_drawer.setVisible(False)  # Tymczasowe wyłączenie z uwagi na metodykę 2024 r.
         self.status_indicator = WyrStatusIndicator(self)
         self.sp_status.lay.addWidget(self.status_indicator)
         self.status_selector = WyrStatusSelector(self)
@@ -535,20 +535,23 @@ class WyrCanvasPanel(QFrame):
         self.head_left.lay.addWidget(self.separator_1)
         self.sp_main = MoekHBox(self, margins=[0, 0, 0, 0], spacing=1)
         self.head_left.lay.addWidget(self.sp_main)
-        self.hashbox = CanvasHSubPanel(self, height=32, margins=[2, 1, 2, 1], spacing=3, alpha=0.71)
+        self.hashbox = CanvasHSubPanel(self, width=92, height=32, margins=[2, 1, 2, 1], spacing=3, alpha=0.71)
         self.sp_main.lay.addWidget(self.hashbox)
         self.hash_icon = MoekButton(self, name="hash", size=30, checkable=False, enabled=False, tooltip="numer roboczy, terenowy")
         self.hashbox.lay.addWidget(self.hash_icon)
-        self.hash = CanvasLineEdit(self, width=56, height=28, font_size=10, max_len=5, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], placeholder="XXXXX")
+        self.hash = CanvasLineEdit(self, width=54, height=28, font_size=10, max_len=5, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], placeholder="XXXXX")
         self.hashbox.lay.addWidget(self.hash)
-        self.wn_picker = WyrWnPicker(self)
-        self.sp_main.lay.addWidget(self.wn_picker)
-        self.lokbox = CanvasHSubPanel(self, height=32, margins=[0, 0, 0, 0], alpha=0.71)
+        self.lokbox = CanvasHSubPanel(self, width=38, height=32, margins=[0, 0, 0, 0], alpha=0.71)
         self.sp_main.lay.addWidget(self.lokbox)
         self.lok = MoekButton(self, name="lok", size=30, checkable=False, enabled=True, tooltip = "lokalizacja wyrobiska")
         self.lokbox.lay.addWidget(self.lok)
-        self.areabox = CanvasHSubPanel(self, height=32, margins=[2, 2, 2, 2], alpha=0.71)
-        self.areabox.setFixedWidth(150)
+        self.wnbox = CanvasHSubPanel(self, width=122, height=32, margins=[2, 0, 2, 2], alpha=0.71)
+        self.wn_icon = MoekButton(self, name="wyr_wn", size=30, checkable=False, enabled=True, tooltip = "ID_ARKUSZ (WN_PNE)")
+        self.wnbox.lay.addWidget(self.wn_icon)
+        self.wn_label = PanelLabel(self, text="", size=12)
+        self.wnbox.lay.addWidget(self.wn_label)
+        self.sp_main.lay.addWidget(self.wnbox)
+        self.areabox = CanvasHSubPanel(self, width=180, height=32, margins=[2, 0, 2, 0], spacing=6, alpha=0.71)
         self.sp_main.lay.addWidget(self.areabox)
         self.area_icon = MoekButton(self, name="wyr_area", size=30, checkable=False, enabled=True, tooltip="powierzchnia wyrobiska")
         self.areabox.lay.addWidget(self.area_icon)
@@ -556,14 +559,24 @@ class WyrCanvasPanel(QFrame):
         self.areabox.lay.addItem(spacer_1)
         self.area_label = PanelLabel(self, text="", size=12)
         self.areabox.lay.addWidget(self.area_label)
-        spacer_2 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
-        self.areabox.lay.addItem(spacer_2)
+        # spacer_2 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        # self.areabox.lay.addItem(spacer_2)
         self.wyr_edit = MoekButton(self, name="wyr_edit", size=32, checkable=False, tooltip="edytuj geometrię wyrobiska")
         self.wyr_edit.clicked.connect(lambda: dlg.mt.init("wyr_edit"))
-        self.head_right.lay.addWidget(self.wyr_edit)
+        self.areabox.lay.addWidget(self.wyr_edit)
+        self.dummybox = CanvasHSubPanel(self, width=54, height=32, margins=[0, 0, 0, 0], alpha=0.71)
+        self.sp_main.lay.addWidget(self.dummybox)
+        self.datebox = CanvasHSubPanel(self, width=134, height=32, margins=[2, 0, 6, 2], alpha=0.71)
+        self.date_icon = MoekButton(self, name="date_actual", size=27, checkable=False, enabled=True, tooltip = "data zaktualizowania stanu wyrobiska")
+        self.datebox.lay.addWidget(self.date_icon)
+        self.date_label = PanelLabel(self, text="", size=12)
+        self.datebox.lay.addWidget(self.date_label)
+        self.sp_main.lay.addWidget(self.datebox)
+        self.delbox = CanvasHSubPanel(self, width=32, height=32, margins=[0, 0, 0, 0], alpha=0.71)
+        self.sp_main.lay.addWidget(self.delbox)
         self.wyr_del = MoekButton(self, name="trash", size=32, checkable=False, tooltip="usuń wyrobisko")
         self.wyr_del.clicked.connect(self.wyr_delete)
-        self.head_right.lay.addWidget(self.wyr_del)
+        self.delbox.lay.addWidget(self.wyr_del)
         self.separator_2 = CanvasHSubPanel(self, height=1, alpha=0.0)
         self.box.lay.addWidget(self.separator_2)
         self.tab_box = TabBox(self)
@@ -577,14 +590,14 @@ class WyrCanvasPanel(QFrame):
         self.pages = {}
         self.subpages = {}
         self.widgets = {}
-        for p in range(3):
+        for p in range(5):
             _page = CanvasGridBox(self, height=self.p_heights[p], margins=[5, 4, 0, 2], spacing=0)
             page_id = f'page_{p}'
             self.pages[page_id] = _page
             self.sb.addWidget(_page)
         self.ssb = CanvasStackedBox(self)
         self.ssb.setFixedWidth(408)
-        self.pages["page_1"].glay.glay.addWidget(self.ssb, 1, 0, 1, 1)
+        self.pages["page_3"].glay.glay.addWidget(self.ssb, 1, 0, 1, 1)
         for s in range(6):
             _subpage = CanvasGridBox(self, height=468, margins=[0, 6, 0, 0], spacing=0)
             subpage_id = f'subpage_{s}'
@@ -592,88 +605,165 @@ class WyrCanvasPanel(QFrame):
             self.ssb.addWidget(_subpage)
         self.tab_box.cur_idx = 0
         self.dicts = [
+                    # NOWE WYROBISKO:
 
-                    {"name": "midas_id_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
+                    {"name": "date_map_0", "page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "do", "fn": ['dlg.wyr_panel.widgets["do_date_map_0"].val_changed()']},
 
-                    {"name": "stan_midas_0", "page": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "map_source_0", "page": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "ŹRÓDŁO FOTOMAPY", "tbl_name": "sl_map_source", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_map_source", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "okres_zloze_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_eksp_0", "page": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "pne_zloze_0", "page": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "decyzje_0", "page": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 266, "width": 402, "val_width": 266, "title_left": "Decyzje:", "title_down": None, "tbl_name": "sl_decyzje", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_decyzje", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "pne_poza_0", "page": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "dzialania_0", "page": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 34, "title": "DZIAŁANIA", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_dzialania", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "okres_eksp_0", "page": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "notepad_0", "page": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 74, "title": "NOTATKI", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "notepad_0", "page": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "NOTATKI", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "midas_id_0", "page": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
-                    {"name": "termin_1", "page": 1, "subpage": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 8, "type": "termin"},
+                    {"name": "stan_midas_0", "page": 0, "row": 5, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "kopalina_wiek_1", "page": 1, "subpage": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "kop_wiek"},
+                    {"name": "okres_zloze_0", "page": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "pne_1", "page": 1, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "type": "pne"},
 
-                    {"name": "okres_eksp_1", "page": 1, "subpage": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 11, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 368, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "pne_zloze_0", "page": 0, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "pne_poza_1", "page": 1, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=False)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "pne_poza_0", "page": 0, "row": 8, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "dlug_1", "page": 1, "subpage": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "weryf_midas_0", "page": 0, "row": 9, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 266, "width": 402, "val_width": 266, "title_left": "Weryfikacja MIDAS:", "title_down": None, "tbl_name": "sl_weryf_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_weryf_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "szer_1", "page": 1, "subpage": 0, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "og_id_0", "page": 0, "row": 10, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 34, "title": "ID OG ZE STWIERDZONYMI NARUSZENIAMI WAR. KONCESJI", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_og_id", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "wys_1", "page": 1, "subpage": 0, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()']]},
+                    # AKTUALIZOWANE WYROBISKO:
+                    {"name": "date_map_1", "page": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "do", "fn": ['dlg.wyr_panel.widgets["do_date_map_1"].val_changed()']},
 
-                    {"name": "nadkl_1", "page": 1, "subpage": 0, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()']]},
+                    {"name": "map_source_1", "page": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "ŹRÓDŁO FOTOMAPY", "tbl_name": "sl_map_source", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_map_source", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "miaz_1", "page": 1, "subpage": 0, "row": 5, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_eksp_1", "page": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "droga_1", "page": 1, "subpage": 0, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "zmiana_wyr_1", "page": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 266, "width": 402, "val_width": 266, "title_left": "Zmiana stanu wyrobiska:", "title_down": None, "tbl_name": "sl_zmiana_wyr", "sl_order": True, "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zmiana_wyr", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "rodz_wyr_1", "page": 1, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "decyzje_1", "page": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 266, "width": 402, "val_width": 266, "title_left": "Decyzje:", "title_down": None, "tbl_name": "sl_decyzje", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_decyzje", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "hydro_1", "page": 1, "subpage": 0, "row": 5, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "dzialania_1", "page": 1, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 34, "title": "DZIAŁANIA", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_dzialania", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "stan_1", "page": 1, "subpage": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "null_val": True, "trigger": "trigger_wyrobisko()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "notepad_1", "page": 1, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 74, "title": "UWAGI", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "eksploatacja_1", "page": 1, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "% POW. OBECNIE EKSPLOAT.", "tbl_name": "sl_eksploatacja", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_eksploat", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "midas_id_1", "page": 1, "row": 6, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas_aktual()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
 
-                    {"name": "wydobycie_1", "page": 1, "subpage": 0, "row": 6, "col": 4, "r_span": 1, "c_span": 5, "type": "combo", "list_width": 164, "width": 164, "val_width": None, "title_left": None, "title_down": "POLE EKSPLOATACYJNE CZYNNE", "tbl_name": "sl_wydobycie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wydobycie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "stan_midas_1", "page": 1, "row": 6, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "fotki_1", "page": 1, "subpage": 0, "row": 6, "col": 9, "r_span": 1, "c_span": 3, "type": "text_2", "item": "line_edit", "max_len": 2, "validator": "000", "placeholder": "0", "zero_allowed": True, "min_max": False, "width": 96, "val_width": 24, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": " ", "title_down_2": None, "title_left": "Ilość zdjęć:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    {"name": "okres_zloze_1", "page": 1, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
 
-                    {"name": "notepad_1", "page": 1, "subpage": 0, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "pne_zloze_1", "page": 1, "row": 8, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "autor_1", "page": 1, "subpage": 0, "row": 8, "col": 0, "r_span": 1, "c_span": 12, "type": "autor"},
+                    {"name": "pne_poza_1", "page": 1, "row": 9, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "midas_id_1", "page": 1, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="t_midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
+                    {"name": "weryf_midas_1", "page": 1, "row": 10, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 266, "width": 402, "val_width": 266, "title_left": "Weryfikacja MIDAS:", "title_down": None, "tbl_name": "sl_weryf_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_weryf_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
 
-                    {"name": "stan_midas_1", "page": 1, "subpage": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "og_id_1", "page": 1, "row": 11, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 34, "title": "ID OG ZE STWIERDZONYMI NARUSZENIAMI WAR. KONCESJI", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_og_id", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
 
-                    {"name": "okres_zloze_1", "page": 1, "subpage": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 132, "val_width_2": 133, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+                    # WYROBISKO PO AKTUALIZACJI:
 
-                    {"name": "pne_zloze_1", "page": 1, "subpage": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "date_map_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "do", "fn": ['dlg.wyr_panel.widgets["do_date_map_2"].val_changed()']},
 
-                    {"name": "pne_poza_m_1", "page": 1, "subpage": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=True)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "map_source_2", "page": 2, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "ŹRÓDŁO FOTOMAPY", "tbl_name": "sl_map_source", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_map_source", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.status_selector.btn_clicked(1)']},
 
-                    {"name": "zagrozenia_1", "page": 1, "subpage": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI", "trigger": "trigger_empty('zagrozenia', 2)", "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_zagrozenia", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "okres_eksp_2", "page": 2, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji PNE:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.status_selector.btn_clicked(1)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.status_selector.btn_clicked(1)']]},
 
-                    {"name": "stan_rekul_1", "page": 1, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Stan rekultywacji:", "title_down": None, "tbl_name": "sl_stan_rekul", "null_val": True, "trigger": "trigger_rekultywacja()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "zmiana_wyr_2", "page": 2, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 266, "width": 402, "val_width": 266, "title_left": "Zmiana stanu wyrobiska:", "title_down": None, "tbl_name": "sl_zmiana_wyr", "sl_order": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zmiana_wyr", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.status_selector.btn_clicked(1)']},
 
-                    {"name": "rekultywacja_1", "page": 1, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_rekultywacja()", "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "decyzje_2", "page": 2, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 266, "width": 402, "val_width": 266, "title_left": "Decyzje:", "title_down": None, "tbl_name": "sl_decyzje", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_decyzje", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.status_selector.btn_clicked(1)']},
 
-                    {"name": "wyp_odpady_1", "page": 1, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": True, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "dzialania_2", "page": 2, "row": 4, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 34, "title": "DZIAŁANIA", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_dzialania", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")', 'dlg.wyr_panel.status_selector.btn_clicked(1)']},
 
-                    {"name": "odpady_1", "page": 1, "subpage": 4, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "odpady"},
+                    {"name": "notepad_2", "page": 2, "row": 5, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 74, "title": "UWAGI", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")', 'dlg.wyr_panel.status_selector.btn_clicked(1)']},
 
-                    {"name": "odpady_opak_1", "page": 1, "subpage": 4, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE ODPADÓW OPAKOWANIOWYCH", "trigger": None, "txt_limiter": False, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_opak", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "midas_id_2", "page": 2, "row": 6, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas_aktual()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()', 'dlg.wyr_panel.status_selector.btn_clicked(1)']]},
 
-                    {"name": "odpady_inne_1", "page": 1, "subpage": 4, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE INNYCH ODPADÓW", "trigger": None, "txt_limiter": False, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_inne", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "stan_midas_2", "page": 2, "row": 6, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.status_selector.btn_clicked(1)']},
 
-                    {"name": "zgloszenie_1", "page": 1, "subpage": 5, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Zgłoszenie do OUG, Starosty lub WIOŚ, inne:", "title_down": None, "tbl_name": "sl_zgloszenie", "null_val": False, "trigger": "trigger_zgloszenie()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zgloszenie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+                    {"name": "okres_zloze_2", "page": 2, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 133, "val_width_2": 132, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.status_selector.btn_clicked(1)']]},
 
-                    {"name": "powod_1", "page": 1, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+                    {"name": "pne_zloze_2", "page": 2, "row": 8, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.status_selector.btn_clicked(1)']},
 
-                    {"name": "notepad_2", "page": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "txt_limiter": True, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
+                    {"name": "pne_poza_2", "page": 2, "row": 9, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.status_selector.btn_clicked(1)']},
+
+                    {"name": "weryf_midas_2", "page": 2, "row": 10, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 266, "width": 402, "val_width": 266, "title_left": "Weryfikacja MIDAS:", "title_down": None, "tbl_name": "sl_weryf_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_weryf_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.status_selector.btn_clicked(1)']},
+
+                    {"name": "og_id_2", "page": 2, "row": 11, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 34, "title": "ID OG ZE STWIERDZONYMI NARUSZENIAMI WAR. KONCESJI", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_og_id", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")', 'dlg.wyr_panel.status_selector.btn_clicked(1)']},
+
+                    # WYROBISKO PO KONTROLI TERENOWEJ:
+
+                    {"name": "termin_3", "page": 3, "subpage": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 8, "type": "termin"},
+
+                    {"name": "kopalina_wiek_3", "page": 3, "subpage": 0, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "kop_wiek"},
+
+                    {"name": "pne_3", "page": 3, "subpage": 0, "row": 1, "col": 0, "r_span": 1, "c_span": 1, "type": "pne"},
+
+                    {"name": "okres_eksp_3", "page": 3, "subpage": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 11, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": False, "min_max": False, "width": 368, "val_width": 134, "val_width_2": 131, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyr_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+
+                    {"name": "pne_poza_3", "page": 3, "subpage": 0, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=False)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "dlug_3", "page": 3, "subpage": 0, "row": 3, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_dlug", "tooltip": "długość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_dlug_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+
+                    {"name": "szer_3", "page": 3, "subpage": 0, "row": 3, "col": 4, "r_span": 1, "c_span": 4, "type": "text_2", "item": "ruler", "max_len": 4, "validator": "000", "placeholder": "000", "zero_allowed": False, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_szer", "tooltip": "szerokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_szer_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+
+                    {"name": "wys_3", "page": 3, "subpage": 0, "row": 3, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_wys", "tooltip": "wysokość wyrobiska", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_wys_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()']]},
+
+                    {"name": "nadkl_3", "page": 3, "subpage": 0, "row": 4, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 3, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_nadkl", "tooltip": "grubość nadkładu", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_nadkl_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)', 'dlg.wyr_panel.miaz_fill()']]},
+
+                    {"name": "miaz_3", "page": 3, "subpage": 0, "row": 5, "col": 8, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 4, "validator": "00.0", "placeholder": "0.0", "zero_allowed": True, "min_max": True, "width": 130, "val_width": 40, "val_width_2": 40, "value_2": " ", "sep_width": 16, "sep_txt": "–", "title_down": "MIN", "title_down_2": "MAX", "title_left": None, "icon": "wyr_miaz", "tooltip": "miąższość kopaliny", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_min", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="n_miazsz_max", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+
+                    {"name": "droga_3", "page": 3, "subpage": 0, "row": 4, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "DOJAZD DO WYROBISKA", "tbl_name": "sl_dojazd", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_dojazd", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "rodz_wyr_3", "page": 3, "subpage": 0, "row": 5, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "RODZAJ WYROBISKA", "tbl_name": "sl_wyrobisko", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyrobisko", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "hydro_3", "page": 3, "subpage": 0, "row": 5, "col": 4, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "ZAWODNIENIE", "tbl_name": "sl_zawodnienie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zawodn", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "stan_3", "page": 3, "subpage": 0, "row": 4, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "STAN WYROBISKA", "tbl_name": "sl_stan_pne", "null_val": True, "trigger": "trigger_wyrobisko()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_pne", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "eksploatacja_3", "page": 3, "subpage": 0, "row": 6, "col": 0, "r_span": 1, "c_span": 4, "type": "combo", "list_width": 130, "width": 130, "val_width": None, "title_left": None, "title_down": "% POW. OBECNIE EKSPLOAT.", "tbl_name": "sl_eksploatacja", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_eksploat", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "wydobycie_3", "page": 3, "subpage": 0, "row": 6, "col": 4, "r_span": 1, "c_span": 5, "type": "combo", "list_width": 164, "width": 164, "val_width": None, "title_left": None, "title_down": "POLE EKSPLOATACYJNE CZYNNE", "tbl_name": "sl_wydobycie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wydobycie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "fotki_3", "page": 3, "subpage": 0, "row": 6, "col": 9, "r_span": 1, "c_span": 3, "type": "text_2", "item": "line_edit", "max_len": 2, "validator": "000", "placeholder": "0", "zero_allowed": True, "min_max": False, "width": 96, "val_width": 24, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": " ", "title_down_2": None, "title_left": "Ilość zdjęć:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="i_ile_zalacz", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+
+                    {"name": "notepad_3", "page": 3, "subpage": 0, "row": 7, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "autor_3", "page": 3, "subpage": 0, "row": 8, "col": 0, "r_span": 1, "c_span": 12, "type": "autor"},
+
+                    {"name": "midas_id_3", "page": 3, "subpage": 1, "row": 0, "col": 0, "r_span": 1, "c_span": 4, "type": "text_2", "item": "line_edit", "max_len": 8, "validator": "id", "placeholder": None, "zero_allowed": True, "min_max": False, "width": 130, "val_width": 130, "val_width_2": None, "value_2": None, "sep_width": None, "sep_txt": None, "title_down": "ID ZŁOŻA (MIDAS)", "title_down_2": None, "title_left": None, "icon": None, "tooltip": "", "trigger": "trigger_midas()", "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="midas_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)','wyr_point_lyrs_repaint()']]},
+
+                    {"name": "stan_midas_3", "page": 3, "subpage": 1, "row": 0, "col": 4, "r_span": 1, "c_span": 8, "type": "combo", "list_width": 266, "width": 266, "val_width": None, "title_left": None, "title_down": "STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS", "tbl_name": "sl_stan_midas", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_midas", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "okres_zloze_3", "page": 3, "subpage": 1, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_2", "item": "line_edit", "max_len": None, "validator": None, "placeholder": None, "zero_allowed": True, "min_max": False, "width": 402, "val_width": 132, "val_width_2": 133, "value_2": " ", "sep_width": 1, "sep_txt": "", "title_down": "OD", "title_down_2": "DO", "title_left": "Okres eksploatacji złoża:", "icon": None, "tooltip": "", "trigger": None, "fn": [['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_od", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zloze_do", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']]},
+
+                    {"name": "pne_zloze_3", "page": 3, "subpage": 1, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) w granicach złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": None, "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_zloze", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "pne_poza_m_3", "page": 3, "subpage": 1, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 66, "width": 402, "val_width": 66, "title_left": "Eksploatacja bez koncesji (PNE) poza granicami złoża / OG:", "title_down": None, "tbl_name": "sl_tak_nie", "null_val": True, "trigger": "trigger_pne_poza(m=True)", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="b_pne_poza", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "zagrozenia_3", "page": 3, "subpage": 2, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI", "trigger": "trigger_empty('zagrozenia', 2)", "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_zagrozenia", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "stan_rekul_3", "page": 3, "subpage": 3, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Stan rekultywacji:", "title_down": None, "tbl_name": "sl_stan_rekul", "null_val": True, "trigger": "trigger_rekultywacja()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_stan_rekul", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "rekultywacja_3", "page": 3, "subpage": 3, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "WYKONANY ZAKRES PRAC REKULTYWACYJNYCH", "trigger": "trigger_rekultywacja()", "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_rekultyw", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "wyp_odpady_3", "page": 3, "subpage": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Stan wypełnienia wyrobiska odpadami:", "title_down": "% POWIERZCHNI", "tbl_name": "sl_wyp_odp", "null_val": True, "trigger": "trigger_odpady()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_wyp_odpady", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "odpady_3", "page": 3, "subpage": 4, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "odpady"},
+
+                    {"name": "odpady_opak_3", "page": 3, "subpage": 4, "row": 2, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE ODPADÓW OPAKOWANIOWYCH", "trigger": None, "txt_limiter": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_opak", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "odpady_inne_3", "page": 3, "subpage": 4, "row": 3, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 22, "title": "RODZAJE INNYCH ODPADÓW", "trigger": None, "txt_limiter": None, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_odpady_inne", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    {"name": "zgloszenie_3", "page": 3, "subpage": 5, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "combo", "list_width": 160, "width": 402, "val_width": 160, "title_left": "Zgłoszenie do OUG, Starosty lub WIOŚ, inne:", "title_down": None, "tbl_name": "sl_zgloszenie", "null_val": False, "trigger": "trigger_zgloszenie()", "fn": ['db_attr_change(tbl="team_{dlg.team_i}.wyr_dane", attr="t_zgloszenie", val="{self.cur_val}", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)']},
+
+                    {"name": "powod_3", "page": 3, "subpage": 5, "row": 1, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 82, "title": "UZASADNIENIE ZGŁOSZENIA", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']},
+
+                    # WYROBISKO ODRZUCONE:
+
+                    {"name": "notepad_4", "page": 4, "row": 0, "col": 0, "r_span": 1, "c_span": 12, "type": "text_box", "height": 84, "title": "UWAGI POKONTROLNE / POWÓD ODRZUCENIA", "trigger": None, "txt_limiter": 255, "fn": ['self.db_update(txt_val=self.cur_val, tbl=f"team_{dlg.team_i}.wyrobiska", attr="t_notatki", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")']}
                     ]
 
         for dict in self.dicts:
@@ -685,7 +775,9 @@ class WyrCanvasPanel(QFrame):
                     exec(f'self.pages["page_{dict["page"]}"].glay.glay.addWidget(_cmb, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 cmb_name = f'cmb_{dict["name"]}'
                 self.widgets[cmb_name] = _cmb
-                self.sl_load(dict["tbl_name"], self.widgets[cmb_name].valbox_1, dict["null_val"])
+                null_val = True if "null_val" in dict and dict["null_val"] else False
+                sl_order = True if "sl_order" in dict and dict["sl_order"] else False
+                self.sl_load(dict["tbl_name"], self.widgets[cmb_name].valbox_1, null_val, sl_order)
             if dict["type"] == "text_2":
                 _txt2 = ParamBox(self, margins=True, item=dict["item"], max_len=dict["max_len"], validator=dict["validator"], placeholder=dict["placeholder"], zero_allowed=dict["zero_allowed"], min_max=dict["min_max"], width=dict["width"], value_2=dict["value_2"], val_width=dict["val_width"], val_width_2=dict["val_width_2"], sep_width=dict["sep_width"], sep_txt=dict["sep_txt"], title_down=dict["title_down"], title_down_2=dict["title_down_2"], title_left=dict["title_left"], icon=dict["icon"], tooltip=dict["tooltip"], trigger=dict["trigger"], fn=dict["fn"])
                 if "subpage" in dict:
@@ -717,6 +809,11 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_gd, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
                 gd_name = 'gd_1'
                 self.widgets[gd_name] = _gd
+            if dict["type"] == "do":
+                _do = MapDateBox(self, fn=dict["fn"])
+                exec(f'self.pages["page_{dict["page"]}"].glay.glay.addWidget(_do, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
+                do_name = f'do_{dict["name"]}'
+                self.widgets[do_name] = _do
             if dict["type"] == "pne":
                 _pn = PneBox(self)
                 exec(f'self.subpages["subpage_{dict["subpage"]}"].glay.glay.addWidget(_pn, dict["row"], dict["col"], dict["r_span"], dict["c_span"])')
@@ -734,52 +831,59 @@ class WyrCanvasPanel(QFrame):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
 
-    def sl_load(self, tbl_name, cmb, null_val=True):
+    def sl_load(self, tbl_name, cmb, null_val=True, order=False):
         """Załadowanie wartości słownikowych z db do combobox'a."""
         db = PgConn()
-        sql = f"SELECT t_val, t_desc FROM public.{tbl_name};"
+        sql = f"SELECT i_order, t_val, t_desc FROM public.{tbl_name} ORDER BY i_order;" if order else f"SELECT t_val, t_desc FROM public.{tbl_name};"
         if db:
             res = db.query_sel(sql, True)
             if res:
                 if null_val:
                     cmb.addItem(f"", None)
                 for r in res:
-                    cmb.addItem(f"  {r[1]}  ", r[0])
+                    cmb.addItem(f"  {r[2]}  ", r[1]) if order else cmb.addItem(f"  {r[1]}  ", r[0])
 
     def values_update(self, _dict):
         """Aktualizuje wartości parametrów."""
         params = [
             {'type': 'text_box', 'name': 'notepad','value': _dict[7], 'pages': [0, 1, 2]},
-            {'type': 'text_box', 'name': 'rekultywacja','value': _dict[30], 'pages': [1]},
-            {'type': 'text_box', 'name': 'zagrozenia','value': _dict[32], 'pages': [1]},
-            {'type': 'text_box', 'name': 'powod','value': _dict[34], 'pages': [1]},
-            {'type': 'text_2', 'name': 'okres_eksp', 'value': _dict[5], 'value_2': _dict[6], 'pages': [0, 1]},
-            {'type': 'text_2', 'name': 'dlug', 'value': _dict[8], 'value_2': _dict[9], 'pages': [1]},
-            {'type': 'text_2', 'name': 'szer', 'value': _dict[10], 'value_2': _dict[11], 'pages': [1]},
-            {'type': 'text_2', 'name': 'wys', 'value': _dict[12], 'value_2': _dict[13], 'pages': [1]},
-            {'type': 'text_2', 'name': 'nadkl', 'value': _dict[14], 'value_2': _dict[15], 'pages': [1]},
-            {'type': 'text_2', 'name': 'miaz', 'value': _dict[16], 'value_2': _dict[17], 'pages': [1]},
-            {'type': 'combo', 'name': 'pne_zloze', 'value': _dict[47], 'pages': [0, 1]},
-            {'type': 'combo', 'name': 'pne_poza', 'value': _dict[48], 'pages': [0, 1]},
-            {'type': 'combo', 'name': 'pne_poza_m', 'value': _dict[48], 'pages': [1]},
-            {'type': 'text_2', 'name': 'fotki', 'value': _dict[49], 'pages': [1]},
-            {'type': 'text_2', 'name': 'okres_zloze', 'value': _dict[45], 'value_2': _dict[46], 'pages': [0, 1]},
-            {'type': 'kw','values': [_dict[36], _dict[37], _dict[38], _dict[39]], 'pages': [1]},
-            {'type': 'gd','values': [_dict[40], _dict[41], _dict[42]], 'pages': [1]},
-            {'type': 'pn','value': _dict[56], 'pages': [1]},
-            {'type': 'ab', 'name': 'autor', 'value': _dict[50], 'pages': [1]},
-            {'type': 'combo', 'name': 'droga', 'value': _dict[31], 'pages': [1]},
-            {'type': 'combo', 'name': 'hydro', 'value': _dict[19], 'pages': [1]},
-            {'type': 'combo', 'name': 'eksploatacja', 'value': _dict[20], 'pages': [1]},
-            {'type': 'combo', 'name': 'wydobycie', 'value': _dict[21], 'pages': [1]},
-            {'type': 'combo', 'name': 'rodz_wyr', 'value': _dict[18], 'pages': [1]},
-            {'type': 'combo', 'name': 'stan_rekul', 'value': _dict[29], 'pages': [1]},
-            {'type': 'combo', 'name': 'wyp_odpady', 'value': _dict[22], 'pages': [1]},
-            {'type': 'combo', 'name': 'zgloszenie', 'value': _dict[33], 'pages': [1]},
-            {'type': 'os','values': [_dict[23], _dict[24], _dict[25], _dict[26], _dict[27], _dict[28]], 'pages': [1]},
-            {'type': 'combo', 'name': 'stan_midas', 'value': _dict[44], 'pages': [0, 1]},
-            {'type': 'text_2', 'name': 'midas_id', 'value': _dict[43], 'pages': [0, 1]},
-            {'type': 'combo', 'name': 'stan', 'value': _dict[35], 'pages': [1]}
+            {'type': 'text_box', 'name': 'rekultywacja','value': _dict[30], 'pages': [3]},
+            {'type': 'text_box', 'name': 'zagrozenia','value': _dict[32], 'pages': [3]},
+            {'type': 'text_box', 'name': 'powod','value': _dict[34], 'pages': [3]},
+            {'type': 'text_2', 'name': 'okres_eksp', 'value': _dict[5], 'value_2': _dict[6], 'pages': [0, 1, 2, 3]},
+            {'type': 'text_2', 'name': 'dlug', 'value': _dict[8], 'value_2': _dict[9], 'pages': [3]},
+            {'type': 'text_2', 'name': 'szer', 'value': _dict[10], 'value_2': _dict[11], 'pages': [3]},
+            {'type': 'text_2', 'name': 'wys', 'value': _dict[12], 'value_2': _dict[13], 'pages': [3]},
+            {'type': 'text_2', 'name': 'nadkl', 'value': _dict[14], 'value_2': _dict[15], 'pages': [3]},
+            {'type': 'text_2', 'name': 'miaz', 'value': _dict[16], 'value_2': _dict[17], 'pages': [3]},
+            {'type': 'combo', 'name': 'pne_zloze', 'value': _dict[47], 'pages': [0, 1, 2, 3]},
+            {'type': 'combo', 'name': 'pne_poza', 'value': _dict[48], 'pages': [0, 1, 2, 3]},
+            {'type': 'combo', 'name': 'pne_poza_m', 'value': _dict[48], 'pages': [3]},
+            {'type': 'text_2', 'name': 'fotki', 'value': _dict[49], 'pages': [3]},
+            {'type': 'text_2', 'name': 'okres_zloze', 'value': _dict[45], 'value_2': _dict[46], 'pages': [0, 1, 2, 3]},
+            {'type': 'kw','values': [_dict[36], _dict[37], _dict[38], _dict[39]], 'pages': [3]},
+            {'type': 'gd','values': [_dict[40], _dict[41], _dict[42]], 'pages': [3]},
+            {'type': 'do', 'name': 'date_map', 'value': _dict[58], 'pages': [0, 1, 2]},
+            {'type': 'pn','value': _dict[56], 'pages': [3]},
+            {'type': 'ab', 'name': 'autor', 'value': _dict[50], 'pages': [3]},
+            {'type': 'combo', 'name': 'droga', 'value': _dict[31], 'pages': [3]},
+            {'type': 'combo', 'name': 'hydro', 'value': _dict[19], 'pages': [3]},
+            {'type': 'combo', 'name': 'eksploatacja', 'value': _dict[20], 'pages': [3]},
+            {'type': 'combo', 'name': 'wydobycie', 'value': _dict[21], 'pages': [3]},
+            {'type': 'combo', 'name': 'rodz_wyr', 'value': _dict[18], 'pages': [3]},
+            {'type': 'combo', 'name': 'stan_rekul', 'value': _dict[29], 'pages': [3]},
+            {'type': 'combo', 'name': 'wyp_odpady', 'value': _dict[22], 'pages': [3]},
+            {'type': 'combo', 'name': 'zgloszenie', 'value': _dict[33], 'pages': [3]},
+            {'type': 'os','values': [_dict[23], _dict[24], _dict[25], _dict[26], _dict[27], _dict[28]], 'pages': [3]},
+            {'type': 'text_2', 'name': 'midas_id', 'value': _dict[43], 'pages': [0, 1, 2, 3]},
+            {'type': 'combo', 'name': 'stan_midas', 'value': _dict[44], 'pages': [0, 1, 2, 3]},
+            {'type': 'combo', 'name': 'weryf_midas', 'value': _dict[60], 'pages': [0, 1, 2]},
+            {'type': 'combo', 'name': 'stan', 'value': _dict[35], 'pages': [3]},
+            {'type': 'combo', 'name': 'zmiana_wyr', 'value': _dict[57], 'pages': [1, 2]},
+            {'type': 'combo', 'name': 'decyzje', 'value': _dict[63], 'pages': [0, 1, 2]},
+            {'type': 'combo', 'name': 'map_source', 'value': _dict[59], 'pages': [0, 1, 2]},
+            {'type': 'text_box', 'name': 'og_id','value': _dict[61], 'pages': [0, 1, 2]},
+            {'type': 'text_box', 'name': 'dzialania','value': _dict[64], 'pages': [0, 1, 2]}
         ]
         for param in params:
             if not self.cur_page in param["pages"]:
@@ -805,6 +909,8 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.widgets["gd_1"].set_values({param["values"]})')
             if param["type"] == "pn":
                 exec(f'self.widgets["pn_1"].btn_val = {param["value"]}')
+            if param["type"] == "do":
+                exec(f'self.widgets["do_{param["name"]}_{self.cur_page}"].set_value("{param["value"]}")')
             if param["type"] == "os":
                 exec(f'self.widgets["os_1"].set_values({param["values"]})')
         if self.trigger_void:
@@ -898,7 +1004,7 @@ class WyrCanvasPanel(QFrame):
         """Wykonywane po zmianie wartości textbox'u 'midas_id'."""
         val = self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val
         self.has_midas = True if val else False
-        if self.cur_page == 1:
+        if self.cur_page == 3:
             # Kontrola podświetlenia tytułu zakładki:
             dlg.wyr_panel.tab_box.widgets["btn_1"].active = self.has_midas
             # Ustawienie widoczności cmb_pne_poza_m:
@@ -907,33 +1013,48 @@ class WyrCanvasPanel(QFrame):
         self.widgets[f"cmb_stan_midas_{self.cur_page}"].setVisible(self.has_midas)
         self.widgets[f"txt2_okres_zloze_{self.cur_page}"].setVisible(self.has_midas)
         self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setVisible(self.has_midas)
-        if not self.has_midas:
-            # Brak podanego midas_id - wyczyszczenie parametrów związanych ze złożami, jeśli są wypełnione:
-            if self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.cur_val != "Null":
-                self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.set_value(None, signal=True)
-            if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.cur_val:
-                self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.value_change(None)
-            if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.cur_val:
-                self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.value_change(None)
-            # Odblokowanie cmb_pne_poza_1, jeśli jest zablokowane:
-            if not self.widgets[f"cmb_pne_poza_{self.cur_page}"].isEnabled() and self.widgets[f"cmb_stan_1"].valbox_1.cur_val != "brak":
-                self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
-            # Sztywne ustawienie atrybutów PNE_ZLOZE i CZY_PNE, jeśli mają nieprawidłowe wartości:
-            if self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.cur_val != "'False'":
-                # PNE_ZLOZE = NIE
-                self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.set_value("False", signal=True)
-            if not self.widgets['pn_1'].btn_val:  # Wyrobisko nie powiązane ze złożem MUSI być PNE
-                # CZY_PNE = TAK
-                self.widgets['pn_1'].btn_val = True
-                db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_pne", val=True, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
-        else:  # Wyrobisko jest powiązane ze złożem
-            if not self.widgets['pn_1'].btn_val:  # Wyrobisko dotyczy ZŁOŻA NIEZREKULTYWOWANEGO (CZY_PNE = NIE)
-                self.set_pne_to_false()
-            else:  # Wyrobisko dotyczy PNE (CZY_PNE = TAK)
-                self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setEnabled(True)
-                self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
-                if self.cur_page == 1:
-                    self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(True)
+        self.widgets[f"cmb_pne_poza_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"cmb_weryf_midas_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"tb_og_id_{self.cur_page}"].setVisible(self.has_midas)
+        # if not self.has_midas:
+        #     # Brak podanego midas_id - wyczyszczenie parametrów związanych ze złożami, jeśli są wypełnione:
+        #     if self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.cur_val != "Null":
+        #         self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.set_value(None, signal=True)
+        #     if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.cur_val:
+        #         self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.value_change(None)
+        #     if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.cur_val:
+        #         self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.value_change(None)
+        #     # Odblokowanie cmb_pne_poza_1, jeśli jest zablokowane:
+        #     if not self.widgets[f"cmb_pne_poza_{self.cur_page}"].isEnabled() and self.widgets[f"cmb_stan_1"].valbox_1.cur_val != "brak":
+        #         self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
+        #     # Sztywne ustawienie atrybutów PNE_ZLOZE i CZY_PNE, jeśli mają nieprawidłowe wartości:
+        #     if self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.cur_val != "'False'":
+        #         # PNE_ZLOZE = NIE
+        #         self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.set_value("False", signal=True)
+        #     if not self.widgets['pn_1'].btn_val:  # Wyrobisko nie powiązane ze złożem MUSI być PNE
+        #         # CZY_PNE = TAK
+        #         self.widgets['pn_1'].btn_val = True
+        #         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_pne", val=True, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        # else:  # Wyrobisko jest powiązane ze złożem
+        #     if not self.widgets['pn_1'].btn_val:  # Wyrobisko dotyczy ZŁOŻA NIEZREKULTYWOWANEGO (CZY_PNE = NIE)
+        #         self.set_pne_to_false()
+        #     else:  # Wyrobisko dotyczy PNE (CZY_PNE = TAK)
+        #         self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setEnabled(True)
+        #         self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
+        #         if self.cur_page == 3:
+        #             self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(True)
+
+    def trigger_midas_aktual(self):
+        """Wykonywane po zmianie wartości textbox'u 'midas_id' w trybie aktualizacji wyrobiska."""
+        val = self.widgets[f"txt2_midas_id_{self.cur_page}"].valbox_1.cur_val
+        self.has_midas = True if val else False
+        # Ustawienie widoczności widgetów:
+        self.widgets[f"cmb_stan_midas_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"txt2_okres_zloze_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"cmb_pne_poza_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"cmb_weryf_midas_{self.cur_page}"].setVisible(self.has_midas)
+        self.widgets[f"tb_og_id_{self.cur_page}"].setVisible(self.has_midas)
 
     def set_pne_to_false(self):
         """Automatyczne ustawienie PNE_ZLOZE i PNE_POZA na wartość NIE."""
@@ -1223,7 +1344,7 @@ class BasemapCanvasPanel(QFrame):
                 self.timer = None
             self.t_void = False
             # self.dlg.ge.blocker = False
-            print("+++++++++++++++[extent_change stop]+++++++++++++++")
+            # print("+++++++++++++++[extent_change stop]+++++++++++++++")
             self.extent = self.canvas.extent()
 
     def dates_from_extent(self, last=False):
@@ -1467,7 +1588,7 @@ class FlagCanvasPanel(QFrame):
         self.sp_main.lay.addWidget(self.hashbox)
         self.hash_icon = MoekButton(self, name="hash", size=30, checkable=False, enabled=False, tooltip="numer roboczy, terenowy")
         self.hashbox.lay.addWidget(self.hash_icon)
-        self.hash = CanvasLineEdit(self, width=117, height=28, font_size=12, max_len=10, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.flagi", attr="t_teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE id = {dlg.obj.flag}", user=False)'], placeholder="XXXXXXXXXX")
+        self.hash = CanvasLineEdit(self, width=117, height=28, font_size=12, max_len=10, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.flagi", attr="teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE id = {dlg.obj.flag}", user=False)'], placeholder="XXXXXXXXXX")
         self.hashbox.lay.addWidget(self.hash)
         self.toolbox = CanvasHSubPanel(self, height=32, margins=[0, 0, 0, 0], spacing=0, alpha=0.71)
         self.sp_main.lay.addWidget(self.toolbox)
@@ -1675,8 +1796,6 @@ class WnCanvasPanel(QFrame):
         self.sp_pow = CanvasHSubPanel(self, height=34)
         self.sp_pow.setObjectName("sp")
         self.box.lay.addWidget(self.sp_pow)
-        self.pow_selector = WnPowSelector(self)
-        self.sp_pow.lay.addWidget(self.pow_selector)
 
     def values_update(self, _dict):
         """Aktualizuje wartości parametrów."""
@@ -1712,11 +1831,319 @@ class WnCanvasPanel(QFrame):
         dlg.obj.wn = None
 
 
-class CanvasHSubPanel(QFrame):
-    """Belka canvaspanel'u z box'em."""
-    def __init__(self, *args, height, margins=[0, 0, 0, 0], spacing=0, color="55, 55, 55", disable_color="55, 55, 55", alpha=0.0, disable_void=True):
+class MoekCanvasPanel(QFrame):
+    """Zagnieżdżony w mapcanvas'ie panel wyświetlający informacje o wyrobiskach z poprzednich edycji MOEK."""
+    def __init__(self, *args):
         super().__init__(*args)
         self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setFixedWidth(394)
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
+        self.setGraphicsEffect(shadow_1)
+        self.bar = CanvasPanelTitleBar(self, title="Wyrobiska MOEK_1", width=self.width())
+        self.box = MoekVBox(self)
+        self.box.setObjectName("box")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.6); border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    QFrame#sp{background-color: rgba(55, 55, 55, 0.71); border: none}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(3, 3, 3, 3)
+        vlay.setSpacing(1)
+        vlay.addWidget(self.bar)
+        vlay.addWidget(self.box)
+        self.setLayout(vlay)
+        self.sp_id = CanvasHSubPanel(self, height=34, spacing=1, alpha=0.0)
+        # self.sp_id.setObjectName("sp")
+        self.box.lay.addWidget(self.sp_id)
+        self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        self.box.lay.addWidget(self.separator_1)
+        self.top_margin = CanvasHSubPanel(self, height=8, alpha=0.71)
+        # self.top_margin.setObjectName("sp")
+        self.box.lay.addWidget(self.top_margin)
+        self.idbox = CanvasHSubPanel(self, width=194, height=34, margins=[20, 0, 0, 0], alpha=0.71)
+        self.id_label = PanelLabel(self, text="   Id:", size=12)
+        self.idbox.lay.addWidget(self.id_label)
+        spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.idbox.lay.addItem(spacer)
+        self.sp_id.lay.addWidget(self.idbox)
+        self.datebox = CanvasHSubPanel(self, width=150, height=34, margins=[4, 0, 4, 2], alpha=0.71)
+        self.date_icon = MoekButton(self, name="date_actual", size=27, checkable=False, enabled=True, tooltip = "data ostatniej kontroli")
+        self.datebox.lay.addWidget(self.date_icon)
+        self.date_label = PanelLabel(self, text="", size=12)
+        self.datebox.lay.addWidget(self.date_label)
+        self.sp_id.lay.addWidget(self.datebox)
+        self.fchkbox = CanvasHSubPanel(self, width=42, height=34, margins=[0, 1, 0, 0], alpha=0.71)
+        self.fchk_icon = MoekButton(self, name="fchk", size=34, hsize=26, checkable=True, enabled=True, hover=False, click_void=True, tooltip = "nie przeprowadzono kontroli terenowej", tooltip_on="przeprowadzono kontrolę terenową")
+        self.fchkbox.lay.addWidget(self.fchk_icon)
+        self.sp_id.lay.addWidget(self.fchkbox)
+
+        self.params_1 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=1, alpha=0.71)
+        self.params_1.setObjectName("sp")
+        self.box.lay.addWidget(self.params_1)
+        self.kopalina = ParamBox(self, width=289, font_size=9, title_down="KOPALINA")
+        self.params_1.lay.addWidget(self.kopalina)
+        self.wiek = ParamBox(self, width=86, font_size=9, title_down="WIEK")
+        self.params_1.lay.addWidget(self.wiek)
+
+        self.params_2 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_2.setObjectName("sp")
+        self.box.lay.addWidget(self.params_2)
+        self.okres_eksp = ParamBox(self, min_max=False, width=376, val_width=124, val_width_2=123, value_2=" ", sep_width=1, sep_txt="", title_down="OD", title_down_2="DO", title_left="Okres eksploatacji:")
+        self.params_2.lay.addWidget(self.okres_eksp)
+
+        self.params_3 = CanvasHSubPanel(self, height=40, margins=[6, 0, 0, 0], spacing=8, alpha=0.71)
+        self.params_3.setObjectName("sp")
+        self.box.lay.addWidget(self.params_3)
+        self.pne_zloze = ParamBox(self,width=166, val_width=38, font_size=8, title_left="PNE w granicach OG:")
+        self.params_3.lay.addWidget(self.pne_zloze)
+        self.pne_poza = ParamBox(self,width=166, val_width=38, font_size=8, title_left="PNE poza granicami OG:")
+        self.params_3.lay.addWidget(self.pne_poza)
+        self.pne_icon = MoekButton(self, name="pne", size=34, hsize=26, checkable=True, enabled=True, hover=False, click_void=True, tooltip = "CZY_PNE = NIE", tooltip_on="CZY_PNE = TAK")
+        self.params_3.lay.addWidget(self.pne_icon)
+
+        self.params_4 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_4.setObjectName("sp")
+        self.box.lay.addWidget(self.params_4)
+        self.midas_id = ParamBox(self, width=120, font_size=9, title_down="ID_ZŁOŻA (MIDAS)")
+        self.params_4.lay.addWidget(self.midas_id)
+        self.stan_midas = ParamBox(self, width=248, font_size=9, title_down="STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS")
+        self.params_4.lay.addWidget(self.stan_midas)
+
+        self.params_5 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_5.setObjectName("sp")
+        self.box.lay.addWidget(self.params_5)
+        self.okres_midas = ParamBox(self, min_max=False, width=376, val_width=124, val_width_2=123, value_2=" ", sep_width=1, sep_txt="", title_down="OD", title_down_2="DO", title_left="Okres eksploatacji złoża:")
+        self.params_5.lay.addWidget(self.okres_midas)
+
+        self.params_6 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_6.setObjectName("sp")
+        self.box.lay.addWidget(self.params_6)
+        self.dlugosc = ParamBox(self, min_max=True, width=120, val_width=35, val_width_2=35, value_2=" ", sep_width=16, sep_txt="-", title_down="MIN", title_down_2="MAX", title_left=None, icon="wyr_dlug", tooltip="długość wyrobiska [m]")
+        self.params_6.lay.addWidget(self.dlugosc)
+        self.szerokosc = ParamBox(self, min_max=True, width=120, val_width=35, val_width_2=35, value_2=" ", sep_width=16, sep_txt="-", title_down="MIN", title_down_2="MAX", title_left=None, icon="wyr_szer", tooltip="szerokość wyrobiska [m]")
+        self.params_6.lay.addWidget(self.szerokosc)
+        self.area = ParamBox(self, width=120, val_width=90, icon="wyr_area", tooltip="powierzchnia wyrobiska")
+        self.params_6.lay.addWidget(self.area)
+
+        self.params_7 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_7.setObjectName("sp")
+        self.box.lay.addWidget(self.params_7)
+        self.stan_pne = ParamBox(self, width=120, font_size=8, title_down="STAN WYROBISKA")
+        self.params_7.lay.addWidget(self.stan_pne)
+        self.dojazd = ParamBox(self, width=120, font_size=8, title_down="DOJAZD DO WYROBISKA")
+        self.params_7.lay.addWidget(self.dojazd)
+        self.wysokosc = ParamBox(self, min_max=True, width=120, val_width=35, val_width_2=35, value_2=" ", sep_width=16, sep_txt="-", title_down="MIN", title_down_2="MAX", title_left=None, icon="wyr_wys", tooltip="wysokość wyrobiska [m]")
+        self.params_7.lay.addWidget(self.wysokosc)
+
+        self.params_8 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_8.setObjectName("sp")
+        self.box.lay.addWidget(self.params_8)
+        self.wyrobisko = ParamBox(self, width=120, font_size=8, title_down="RODZAJ WYROBISKA")
+        self.params_8.lay.addWidget(self.wyrobisko)
+        self.zawodn = ParamBox(self, width=120, font_size=8, title_down="ZAWODNIENIE")
+        self.params_8.lay.addWidget(self.zawodn)
+        self.nadkl = ParamBox(self, min_max=True, width=120, val_width=35, val_width_2=35, value_2=" ", sep_width=16, sep_txt="-", title_down="MIN", title_down_2="MAX", title_left=None, icon="wyr_nadkl", tooltip="grubość nadkladu [m]")
+        self.params_8.lay.addWidget(self.nadkl)
+
+        self.params_9 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_9.setObjectName("sp")
+        self.box.lay.addWidget(self.params_9)
+        self.eksploat = ParamBox(self, width=120, font_size=8, title_down="% POWIERZCHNI EKSPL.")
+        self.params_9.lay.addWidget(self.eksploat)
+        self.wydobycie = ParamBox(self, width=120, font_size=8, title_down="POLE EKSPL. CZYNNE")
+        self.params_9.lay.addWidget(self.wydobycie)
+        self.miazsz = ParamBox(self, min_max=True, width=120, val_width=35, val_width_2=35, value_2=" ", sep_width=16, sep_txt="-", title_down="MIN", title_down_2="MAX", title_left=None, icon="wyr_miaz", tooltip="miąższość kopaliny w odsłonięciu [m]")
+        self.params_9.lay.addWidget(self.miazsz)
+
+        self.params_10 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_10.setObjectName("sp")
+        self.box.lay.addWidget(self.params_10)
+        self.wyp_odp = ParamBox(self, width=120, font_size=8, title_down="WYPEŁNIENIE ODPADAMI")
+        self.params_10.lay.addWidget(self.wyp_odp)
+        self.stan_rekul = ParamBox(self, width=120, font_size=8, title_down="STAN REKULTYWACJI")
+        self.params_10.lay.addWidget(self.stan_rekul)
+        self.zgloszenie = ParamBox(self, width=120, font_size=8, title_down="KATEGORIA ZGŁOSZENIA")
+        self.params_10.lay.addWidget(self.zgloszenie)
+
+        self.params_11 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_11.setObjectName("sp")
+        self.box.lay.addWidget(self.params_11)
+        self.rodz_odp = ParamTextBox(self, width=376, height=34, title="RODZAJE ODPADÓW")
+        self.params_11.lay.addWidget(self.rodz_odp)
+
+        self.params_12 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_12.setObjectName("sp")
+        self.box.lay.addWidget(self.params_12)
+        self.rekultyw = ParamTextBox(self, width=376, height=34, title="WYKONANY ZAKRES PRAC REKULTYWACYJNYCH")
+        self.params_12.lay.addWidget(self.rekultyw)
+
+        self.params_13 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_13.setObjectName("sp")
+        self.box.lay.addWidget(self.params_13)
+        self.powod = ParamTextBox(self, width=376, height=34, title="UZASADNIENIE ZGŁOSZENIA")
+        self.params_13.lay.addWidget(self.powod)
+
+        self.params_14 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_14.setObjectName("sp")
+        self.box.lay.addWidget(self.params_14)
+        self.zagrozenia = ParamTextBox(self, width=376, height=34, title="ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI")
+        self.params_14.lay.addWidget(self.zagrozenia)
+
+        self.params_15 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_15.setObjectName("sp")
+        self.box.lay.addWidget(self.params_15)
+        self.dzialania = ParamTextBox(self, width=376, height=34, title="DZIAŁANIA")
+        self.params_15.lay.addWidget(self.dzialania)
+
+        self.params_16 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_16.setObjectName("sp")
+        self.box.lay.addWidget(self.params_16)
+        self.weryfikacja = ParamTextBox(self, width=376, height=34, title="WERYFIKACJA")
+        self.params_16.lay.addWidget(self.weryfikacja)
+
+        self.params_17 = CanvasHSubPanel(self, height=98, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_17.setObjectName("sp")
+        self.box.lay.addWidget(self.params_17)
+        self.uwagi = ParamTextBox(self, width=376, height=80, title="UWAGI")
+        self.params_17.lay.addWidget(self.uwagi)
+
+        self.params_a = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_a.setObjectName("sp")
+        self.box.lay.addWidget(self.params_a)
+        self.autor = ParamBox(self, width=376, font_size=9, title_down="WYKONAWCY")
+        self.params_a.lay.addWidget(self.autor)
+
+        self.bottom_margin = CanvasHSubPanel(self, height=4)
+        self.bottom_margin.setObjectName("sp")
+        self.box.lay.addWidget(self.bottom_margin)
+        # self.separator_2 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        # self.box.lay.addWidget(self.separator_2)
+        # self.sp_pow = CanvasHSubPanel(self, height=34)
+        # self.sp_pow.setObjectName("sp")
+        # self.box.lay.addWidget(self.sp_pow)
+
+    def values_update(self, _dict):
+        """Aktualizuje wartości parametrów."""
+        params = [
+            [self.id_label, f"ID:  {_dict[0]}"],
+            [self.pne_icon, _dict[36]],
+            [self.date_label, f"{_dict[34]}"],
+            [self.fchk_icon, _dict[35]],
+            [self.kopalina, "value", _dict[30], _dict[31]],
+            [self.wiek, "value", _dict[32], _dict[33]],
+            [self.okres_eksp, "value", _dict[2]],
+            [self.okres_eksp, "value_2", _dict[3]],
+            [self.pne_zloze, "value", _dict[41]],
+            [self.pne_poza, "value", _dict[42]],
+            [self.midas_id, "value", _dict[37]],
+            [self.stan_midas, "value", _dict[38]],
+            [self.okres_midas, "value", _dict[39]],
+            [self.okres_midas, "value_2", _dict[40]],
+            [self.dlugosc, "value", _dict[4]],
+            [self.dlugosc, "value_2", _dict[5]],
+            [self.szerokosc, "value", _dict[6]],
+            [self.szerokosc, "value_2", _dict[7]],
+            [self.wysokosc, "value", _dict[8]],
+            [self.wysokosc, "value_2", _dict[9]],
+            [self.area, "value", f"{_dict[1]} m²"],
+            [self.stan_pne, "value", _dict[29]],
+            [self.dojazd, "value", _dict[25]],
+            [self.nadkl, "value", _dict[10]],
+            [self.nadkl, "value_2", _dict[11]],
+            [self.wyrobisko, "value", _dict[14]],
+            [self.zawodn, "value", _dict[15]],
+            [self.miazsz, "value", _dict[12]],
+            [self.miazsz, "value_2", _dict[13]],
+            [self.eksploat, "value", _dict[16]],
+            [self.wydobycie, "value", _dict[17]],
+            [self.wyp_odp, "value", _dict[18]],
+            [self.rodz_odp, _dict[19], _dict[20], _dict[21], _dict[22]],
+            [self.stan_rekul, "value", _dict[23]],
+            [self.rekultyw, _dict[24]],
+            [self.zgloszenie, "value", _dict[27]],
+            [self.powod, _dict[28]],
+            [self.zagrozenia, _dict[26]],
+            [self.dzialania, _dict[44]],
+            [self.weryfikacja, _dict[45]],
+            [self.autor, "value", _dict[46]],
+            [self.uwagi, _dict[43]]
+        ]
+        dlg.app.setUpdatesEnabled(False)
+        for param in params:
+            if len(param) == 2:
+                param[0].value_change(param[1])
+            elif len(param) == 3:
+                param[0].value_change(param[1], param[2])
+            if param[0] == self.kopalina or param[0] == self.wiek:
+                txt_val = f"{param[2]} / {param[3]}" if param[3] else f"{param[2]}"
+                param[0].value_change(param[1], txt_val)
+            elif param[0] == self.rodz_odp:
+                odp_list = [param[1], param[2], param[3], param[4]]
+                txt_val = ""
+                for odp in odp_list:
+                    if odp:
+                        txt_val = f"{txt_val}; {odp}" if len(txt_val) > 0 else odp
+                if len(txt_val) > 0:
+                    self.params_11.set_visible(True)
+                    self.resize_panel()
+                    param[0].value_change(txt_val)
+                else:
+                    self.params_11.set_visible(False)
+                    self.resize_panel()
+            elif param[0] == self.zgloszenie:
+                param[0].font_change(7) if param[2] == "eksploatacja, odpady i inne" else param[0].font_change(8)
+            elif param[0] == self.rekultyw:
+                self.params_12.set_visible(True) if param[1] else self.params_12.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.powod:
+                self.params_13.set_visible(True) if param[1] else self.params_13.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.zagrozenia:
+                self.params_14.set_visible(True) if param[1] else self.params_14.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.dzialania:
+                self.params_15.set_visible(True) if param[1] else self.params_15.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.weryfikacja:
+                self.params_16.set_visible(True) if param[1] else self.params_16.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.uwagi:
+                self.params_17.set_visible(True) if param[1] else self.params_17.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.pne_zloze or param[0] == self.pne_poza:
+                txt_val = 'TAK' if param[2] else 'NIE'
+                param[0].value_change(param[1], txt_val)
+            elif param[0] == self.midas_id:
+                self.params_4.set_visible(True) if param[2] else self.params_4.set_visible(False)
+                self.params_5.set_visible(True) if param[2] else self.params_5.set_visible(False)
+                self.resize_panel()
+
+        dlg.app.setUpdatesEnabled(True)
+
+    def resize_panel(self):
+        """Aktualizacja wysokości panelu po zmianie widoczności subpanel'u."""
+        base_height = 448
+        subpanels = [self.params_4, self.params_5, self.params_11, self.params_12, self.params_13, self.params_14, self.params_15, self.params_16, self.params_17]
+        for subpanel in subpanels:
+            base_height = base_height + subpanel.height() if subpanel.shown else base_height
+        self.setFixedHeight(base_height)
+
+    def exit_clicked(self):
+        """Chowa panel po kliknięciu przycisku X."""
+        self.hide()
+
+
+class CanvasHSubPanel(QFrame):
+    """Belka canvaspanel'u z box'em."""
+    def __init__(self, *args, width=None, height, margins=[0, 0, 0, 0], spacing=0, color="55, 55, 55", disable_color="55, 55, 55", alpha=0.0, disable_void=True):
+        super().__init__(*args)
+        self.setObjectName("main")
+        if width:
+            self.setFixedWidth(width)
         self.setFixedHeight(height)
         self.setStyleSheet("""
                     QFrame#main{background-color: rgba(""" + color + """, """ + str(alpha) + """); border: none}
@@ -1725,6 +2152,7 @@ class CanvasHSubPanel(QFrame):
         self.lay.setContentsMargins(margins[0], margins[1], margins[2], margins[3])
         self.lay.setSpacing(spacing)
         self.setLayout(self.lay)
+        self.shown = True
         self.alpha = alpha
         self.color = color
         self.disable_color = disable_color
@@ -1737,6 +2165,11 @@ class CanvasHSubPanel(QFrame):
         self.setEnabled(_bool)
         self.children_enabled(_bool)
         self.set_style()
+
+    def set_visible(self, val):
+        """Ustawienie widoczności widgetu."""
+        self.shown = val
+        self.setVisible(val)
 
     def children_enabled(self, _bool):
         """Włączenie/wyłączenie elementów widget'u zewnętrznym poleceniem."""
@@ -1951,80 +2384,6 @@ class OdpadySelectorItem(QPushButton):
         self.clicked.connect(lambda: self.parent().btn_clicked(self.id))
 
 
-class WnPowSelector(QFrame):
-    """Belka wyboru aktywnych powiatów dla punktu WN_PNE."""
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setFixedHeight(34)
-        self.setStyleSheet("""
-                    QFrame#main{background-color: transparent; border: none}
-                    """)
-        self.lay = QHBoxLayout()
-        self.lay.setContentsMargins(8, 2, 8, 2)
-        self.lay.setSpacing(8)
-        self.setLayout(self.lay)
-        self.all_cnt = int()
-        self.act_cnt = int()
-        self.itms = {}
-        for i in range(4):
-            _itm = PowSelectorItem(self, _id=i)
-            self.lay.addWidget(_itm)
-            itm_name = f'pow_btn_{i}'
-            self.itms[itm_name] = _itm
-
-    def pow_update(self, _list):
-        """Aktualizacja danych dotyczących aktywnych powiatów."""
-        self.all_cnt = len(_list)
-        self.act_cnt = 0
-        for i in range(4):
-            _bool = True if i < self.all_cnt else False
-            widget = self.itms[f"pow_btn_{i}"]
-            if widget:
-                # Odsłania tyle guzików, ile jest powiatów:
-                widget.setVisible(_bool)
-                if _bool:
-                    _act = _list[i][2]  # Czy powiat jest aktywny?
-                    if _act:
-                        # Zliczanie aktywnych powiatów:
-                        self.act_cnt += 1
-                    # Ustawienie guzików:
-                    widget.setText(_list[i][0])
-                    widget.setChecked(_act)
-        # Wyłącza hovering, jeśli tylko jeden powiat dostępny:
-        self.itms[f"pow_btn_0"].setEnabled(False) if self.all_cnt == 1 else self.itms[f"pow_btn_0"].setEnabled(True)
-
-    def btn_clicked(self, _id):
-        """Włączenie/wyłączenie powiatu po naciśnięciu przycisku."""
-        btn = self.itms[f"pow_btn_{_id}"]
-        if btn.isChecked():
-            # Włączono powiat:
-            self.act_cnt += 1
-        else:
-            # Wyłączono powiat:
-            self.act_cnt -= 1
-        # Sprawdzenie, czy wszystkie guziki zostały wyłączone:
-        if self.act_cnt == 0:  # Jeden guzik musi być włączony, cofamy zmianę:
-            self.act_cnt += 1
-            btn.setChecked(True)
-        else:
-            self.db_update(btn)  # Aktualizacja db
-            wn_layer_update()  # Aktualizacja warstwy wn_pne
-
-    def db_update(self, btn):
-        """Aktualizacja atrybutu 'b_active' w db."""
-        id_arkusz = dlg.obj.wn
-        pow_id = btn.text()
-        b_active = 'true' if btn.isChecked() else 'false'
-        db = PgConn()
-        sql = f"UPDATE external.wn_pne_pow SET b_active = {b_active} WHERE id_arkusz = '{id_arkusz}' and pow_id = '{pow_id}';"
-        if db:
-            res = db.query_upd(sql)
-            if not res:
-                print(f"Nie udało się zmienić ustawienia powiatu {pow_id} dla punktu WN_PNE: {id_arkusz}")
-
-
 class PowSelectorItem(QPushButton):
     """Guzik do wyboru aktywnych powiatów dla punktu WN_PNE."""
     def __init__(self, *args, _id):
@@ -2069,7 +2428,7 @@ class PowSelectorItem(QPushButton):
 
 class WyrStatusIndicator(QLabel):
     """Wyświetla status aktywnego wyrobiska."""
-    def __init__(self, *args, text="WYROBISKO PRZED KONTROLĄ", color="153, 153, 153"):
+    def __init__(self, *args, text="NOWE WYROBISKO", color="153, 153, 153"):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setAlignment(Qt.AlignCenter)
@@ -2090,7 +2449,7 @@ class WyrStatusIndicator(QLabel):
 
     def order_check(self):
         """Ustalenie order_id wyrobisk potwierdzonych we wszystkich powiatach."""
-        self.order_clear_not_green()  # wyczyszczenie order_id w wyrobiskach niepotwierdzonych
+        # self.order_clear_not_green()  # wyczyszczenie order_id w wyrobiskach niepotwierdzonych
         odf = self.order_pd_load()
         odf = odf.sort_values(by=['pow_grp', 'Y_92'], ascending=[True, False])
         # Pogrupowanie wszystkich wyrobisk na powiaty:
@@ -2181,72 +2540,24 @@ class WyrStatusIndicator(QLabel):
             res = db.query_upd(sql)
 
 
-class WyrWnPicker(QFrame):
-    """Belka przydziału WN_PNE dla wyrobiska."""
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.setObjectName("main")
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(102, 32)
-        self.setStyleSheet("QFrame#main{background-color: rgba(55, 55, 55, 0.71); border: none}")
-        self.lay = QHBoxLayout()
-        self.lay.setContentsMargins(2, 0, 2, 0)
-        self.lay.setSpacing(2)
-        self.setLayout(self.lay)
-        self.wn_picker_empty = MoekButton(self, name="wyr_wn_empty", size=28, checkable=True, tooltip="wybierz z mapy punkt WN_PNE, który będzie powiązany z wyrobiskiem")
-        self.lay.addWidget(self.wn_picker_empty)
-        self.wn_picker_empty.clicked.connect(lambda: dlg.mt.init("wn_pick"))
-        self.wn_picker_eraser = MoekButton(self, name="wyr_wn", size=28, checkable=False, tooltip="wyczyść powiązanie wyrobiska z punktem WN_PNE")
-        self.lay.addWidget(self.wn_picker_eraser)
-        self.wn_picker_eraser.clicked.connect(lambda: self.wn_id_update(None))
-        self.idbox = CanvasLineEdit(self, width=68, height=28, font_size=10, max_len=8, validator="id_arkusz", theme="dark", fn=["dlg.wyr_panel.wn_picker.wn_id_update(self.text())"], placeholder="0001_001")
-        self.lay.addWidget(self.idbox)
-        self.lay.setAlignment(self.idbox, Qt.AlignVCenter)
-        self.wn_id = None
-
-    def __setattr__(self, attr, val):
-        """Przechwycenie zmiany atrybutu."""
-        super().__setattr__(attr, val)
-        if attr == "wn_id":
-            self.idbox.set_value(val)
-            self.wn_picker_empty.setVisible(False) if val else self.wn_picker_empty.setVisible(True)
-            self.wn_picker_eraser.setVisible(True) if val else self.wn_picker_eraser.setVisible(False)
-
-    def wn_id_update(self, id):
-        """Sprawdza istnienie wn_id na liście wn_ids i aktualizuje t_wn_id w db, jeśli potrzeba."""
-        if id in dlg.obj.wn_ids or not id:
-            self.db_update(id)  # Aktualizacja wn_id w db
-        dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych w wyr_panel
-
-    def db_update(self, id):
-        """Aktualizacja atrybutu 't_wn_id' w db."""
-        db = PgConn()
-        if id:
-            sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET t_wn_id = '{id}' WHERE wyr_id = {dlg.obj.wyr}"
-        else:
-            sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET t_wn_id = Null WHERE wyr_id = {dlg.obj.wyr}"
-        if db:
-            res = db.query_upd(sql)
-
-
 class WyrStatusSelector(QFrame):
     """Belka zmiany statusu wyrobiska."""
     def __init__(self, *args):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(59, 28)
+        self.setFixedSize(28, 28)
         self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
         self.lay = QHBoxLayout()
-        self.lay.setContentsMargins(1, 0, 0, 0)
+        self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(2)
         self.setLayout(self.lay)
         self.valid_check = False
         self.itms = {}
         self.statuses = [
-            {'id' : 1, 'name' : 'wyr_green_status', 'text' : 'WYROBISKO POTWIERDZONE', 'layer': 'wyr_potwierdzone', 'color' : '40, 170, 40', 'after_fchk' : True, 'confirmed' : True},
-            {'id' : 2, 'name' : 'wyr_red_status', 'text' : 'WYROBISKO ODRZUCONE', 'layer': 'wyr_odrzucone', 'color' : '224, 0, 0', 'after_fchk' : True, 'confirmed' : False},
-            {'id' : 0, 'name' : 'wyr_grey_status', 'text' : 'WYROBISKO PRZED KONTROLĄ', 'layer': 'wyr_przed_teren', 'color' : '153, 153, 153', 'after_fchk' : False, 'confirmed' : False}
+            {'id' : 2, 'name' : 'wyr_green_status', 'text' : 'WYROBISKO PO AKTUALIZACJI', 'layer': 'wyr_zielone', 'color' : '40, 170, 40', 'new' : False, 'confirmed' : True},
+            {'id' : 1, 'name' : 'wyr_purple_status', 'text' : 'AKTUALIZOWANE WYROBISKO', 'layer': 'wyr_fioletowe', 'color' : '180, 40, 180', 'new' : False, 'confirmed' : False},
+            {'id' : 0, 'name' : 'wyr_grey_status', 'text' : 'NOWE WYROBISKO', 'layer': 'wyr_szare', 'color' : '153, 153, 153', 'new' : True, 'confirmed' : False}
             ]
         for status in self.statuses:
             _itm = WyrStatusSelectorItem(self, name=status["name"], size=28, checkable=False, id=status["id"])
@@ -2260,21 +2571,27 @@ class WyrStatusSelector(QFrame):
         super().__setattr__(attr, val)
         if attr == "case" and val != None:
             self.case_change()
-            dlg.wyr_panel.tab_box.setVisible(True) if val == 1 else dlg.wyr_panel.tab_box.setVisible(False)
-            dlg.wyr_panel.order_box.setVisible(True) if val == 1 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_box.setVisible(False)
-            dlg.wyr_panel.order_drawer.setVisible(True) if val == 1 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_drawer.setVisible(False)
+            dlg.wyr_panel.tab_box.setVisible(True) if val == 3 else dlg.wyr_panel.tab_box.setVisible(False)
+            dlg.wyr_panel.order_box.setVisible(True) if val > 0 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_box.setVisible(False)
+            self.setVisible(True) if val > 0 else self.setVisible(False)
+            if val == 1:
+                dlg.wyr_panel.order_box.set_theme("purple")
+            elif val == 2:
+                dlg.wyr_panel.order_box.set_theme("green")
+            # Tymczasowe wyłączenie order_drawer z uwagi na metodykę 2024 r.:
+            # dlg.wyr_panel.order_drawer.setVisible(True) if val > 0 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_drawer.setVisible(False)
 
-    def set_case(self, after_fchk, confirmed):
+    def set_case(self, new, confirmed):
         """Ustala 'case' na podstawie atrybutów wyrobiska."""
-        if not after_fchk:
+        if new:
             self.case = 0
         else:
-            self.case = 1 if confirmed else 2
+            self.case = 2 if confirmed else 1
 
-    def db_update(self, after_fchk, confirmed):
+    def db_update(self, new, confirmed):
         """Aktualizacja atrybutów wyrobiska w db po zmianie statusu."""
         db = PgConn()
-        sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET b_after_fchk = {after_fchk}, b_confirmed = {confirmed} WHERE wyr_id = {dlg.obj.wyr}"
+        sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET b_new = {new}, b_confirmed = {confirmed} WHERE wyr_id = {dlg.obj.wyr}"
         if db:
             res = db.query_upd(sql)
             if res:
@@ -2286,8 +2603,15 @@ class WyrStatusSelector(QFrame):
 
     def case_change(self):
         """Dostosowanie widoczności przycisków do aktualnego statusu wyrobiska."""
-        for itm in self.itms.values():
-            itm.setVisible(False) if itm.id == self.case else itm.setVisible(True)
+        if self.case == 0:
+            for itm in self.itms.values():
+                itm.setVisible(False)
+        else:
+            self.itms["btn_wyr_grey_status"].setVisible(False)
+            self.itms["btn_wyr_purple_status"].setVisible(False) if self.case == 1 else self.itms["btn_wyr_purple_status"].setVisible(True)
+            self.itms["btn_wyr_green_status"].setVisible(False) if self.case == 2 else self.itms["btn_wyr_green_status"].setVisible(True)
+        # for itm in self.itms.values():
+        #     itm.setVisible(False) if itm.id == self.case else itm.setVisible(True)
         for status in self.statuses:
             if status["id"] == self.case:
                 dlg.wyr_panel.status_indicator.set_case(status["text"], status["color"])
@@ -2295,15 +2619,22 @@ class WyrStatusSelector(QFrame):
 
     def btn_clicked(self, id):
         """Zmiana wartości 'case' i aktualizacja db po naciśnięciu przycisku."""
+        if id == 2:
+            valid = self.confirm_validation()
+            if not valid[0]:
+                QMessageBox.information(None, "Odmowa potwierdzenia aktualizacji wyrobiska", valid[1])
+                return
         old_id = self.case
         self.case = id
         for status in self.statuses:
             if status["id"] == self.case:
-                result = self.db_update(status["after_fchk"], status["confirmed"])
+                result = self.db_update(status["new"], status["confirmed"])
                 if result:
                     self.vis_check(status["layer"])
         if self.case == 1 or old_id == 1:
             wyr_layer_update(False)
+        date_val = f"'{datetime.date.today()}'" if self.case == 2 else 'Null'
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_ctrl", val=date_val, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
         dlg.obj.wyr = dlg.obj.wyr
 
     def vis_check(self, lyr_name):
@@ -2311,6 +2642,23 @@ class WyrStatusSelector(QFrame):
         val = dlg.cfg.get_val(lyr_name)
         if val == 0:
             dlg.cfg.set_val(lyr_name, 1)
+
+    def confirm_validation(self):
+        """Sprawdza, czy wszystkie niezbędne atrybuty wyrobiska są ustalone."""
+        if not dlg.wyr_panel.widgets["do_date_map_1"].d_val:
+            return (False, "Należy uzupełnić datę aktualności najnowszej fotomapy.")
+        if dlg.wyr_panel.widgets["cmb_map_source_1"].valbox_1.cur_val == 'Null':
+            return (False, "Należy podać źródło najnowszej fotomapy.")
+        if dlg.wyr_panel.widgets["cmb_zmiana_wyr_1"].valbox_1.cur_val == 'Null':
+            return (False, "Należy wskazać rodzaj zmiany stanu wyrobiska.")
+        if dlg.wyr_panel.widgets["txt2_midas_id_1"].valbox_1.cur_val != None and os.getlogin().lower() == 'kbro':
+            if dlg.wyr_panel.widgets["cmb_stan_midas_1"].valbox_1.cur_val == 'Null':
+                return (False, "Należy podać stan zagospodarowania złoża wg MIDAS.")
+            if dlg.wyr_panel.widgets["cmb_weryf_midas_1"].valbox_1.cur_val == 'Null':
+                return (False, "Należy uzupełnić pole Weryfikacja MIDAS.")
+        # if not dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_1.cur_val or not dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_2.cur_val:
+        #     return (False, "Należy uzupełnić okres eksploatacji wyrobiska.")
+        return (True, "")
 
 
 class WyrStatusSelectorItem(QToolButton):
@@ -2387,7 +2735,7 @@ class OrderDrawer(QFrame):
             dlg.wyr_panel.order_box.locked = val
             if self.btn_lock.isChecked() != val:
                 self.btn_lock.setChecked(val)
-            self.slided = val
+            # self.slided = val
             if not val and self.edited:
                 self.edited = False
         elif attr == "edited" and not self.attr_void:
@@ -2411,7 +2759,8 @@ class OrderDrawer(QFrame):
             self.slided = True
 
     def leaveEvent(self, event):
-        if not self.locked and self.slided:
+        # if not self.locked and self.slided:
+        if self.slided:
             self.slided = False
 
     def order_edit_clicked(self):
@@ -2426,8 +2775,8 @@ class OrderDrawer(QFrame):
         if self.locked and not self.edited:
             self.edited = True
         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_prg', attr='order_lock', val=self.locked, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        self.slided = False
         if not self.locked:
-            self.slided = False
             self.attr_void = True
             wyr_layer_update(False)
             dlg.obj.wyr = dlg.obj.wyr
@@ -2826,14 +3175,14 @@ class PneBox(QFrame):
                     self.zl_btn.setVisible(False)
                     self.setFixedWidth(34)
                     dlg.wyr_panel.subpages["subpage_0"].glay.glay.addWidget(dlg.wyr_panel.widgets["pn_1"], 1, 0, 1, 1)
-                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.addWidget(dlg.wyr_panel.widgets["txt2_okres_eksp_1"], 1, 1, 1, 11)
-                    dlg.wyr_panel.widgets["txt2_okres_eksp_1"].setVisible(True)
+                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.addWidget(dlg.wyr_panel.widgets["txt2_okres_eksp_3"], 1, 1, 1, 11)
+                    dlg.wyr_panel.widgets["txt2_okres_eksp_3"].setVisible(True)
                 else:  # Wyrobisko jest związane ze złożem niezrekultywowanym
                     self.pne_btn.setVisible(False)
                     self.zl_btn.setVisible(True)
                     self.setFixedWidth(402)
-                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.removeWidget(dlg.wyr_panel.widgets["txt2_okres_eksp_1"])
-                    dlg.wyr_panel.widgets["txt2_okres_eksp_1"].setVisible(False)
+                    dlg.wyr_panel.subpages["subpage_0"].glay.glay.removeWidget(dlg.wyr_panel.widgets["txt2_okres_eksp_3"])
+                    dlg.wyr_panel.widgets["txt2_okres_eksp_3"].setVisible(False)
                     dlg.wyr_panel.subpages["subpage_0"].glay.glay.addWidget(dlg.wyr_panel.widgets["pn_1"], 1, 0, 1, 12)
 
     def btn_clicked(self):
@@ -2846,10 +3195,10 @@ class PneBox(QFrame):
         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_pne", val=self.btn_val, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
         dlg.wyr_panel.trigger_midas()
         # Wyczyszczenie PNE_OD i PNE_DO, jeśli są wypełnione oraz CZY_PNE = NIE:
-        if not self.btn_val and dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_1.cur_val:
-            dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_1.value_change(None)
-        if not self.btn_val and dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_2.cur_val:
-            dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_2.value_change(None)
+        if not self.btn_val and dlg.wyr_panel.widgets["txt2_okres_eksp_3"].valbox_1.cur_val:
+            dlg.wyr_panel.widgets["txt2_okres_eksp_3"].valbox_1.value_change(None)
+        if not self.btn_val and dlg.wyr_panel.widgets["txt2_okres_eksp_3"].valbox_2.cur_val:
+            dlg.wyr_panel.widgets["txt2_okres_eksp_3"].valbox_2.value_change(None)
         # Ustawienie stanu wyrobiska na "zaniechany", jeśli wyrobisko dotyczy złoża niezrekultywowanego:
         if self.btn_val and dlg.wyr_panel.widgets["cmb_stan_1"].valbox_1.cur_val != "Z":
             dlg.wyr_panel.widgets["cmb_stan_1"].valbox_1.set_value("Z", signal=True)
@@ -2996,7 +3345,7 @@ class TerminBox(QFrame):
                         except ValueError:
                             return
                     d_sql = self.sql_parser(self.d_val)
-                    db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_fchk", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+                    db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_ctrl", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
                     self.focus_switcher(part_val[0], part_val[2])
                     return
 
@@ -3045,7 +3394,7 @@ class TerminBox(QFrame):
         self.dm_val = None
         self.dy_val = None
         d_sql = self.sql_parser(self.d_val)
-        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_fchk", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_ctrl", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
 
     def set_values(self, val_list):
         """Ustawienie wartości parambox'ów według danych z db."""
@@ -3087,7 +3436,7 @@ class TerminBox(QFrame):
         self.dm_val = str(self.d_val.month).zfill(2)
         self.dy_val = str(self.d_val.year)
         d_sql = self.sql_parser(self.d_val)
-        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_fchk", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_ctrl", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
 
     def composer(self, slide=False):
         """Ustalenie rozmieszczenia i widoczności widget'ów."""
@@ -3114,6 +3463,184 @@ class TerminBox(QFrame):
             self.drawer.setGeometry(123, 29, self.drawer.width(), self.drawer.height())
 
 
+class MapDateBox(QFrame):
+    """Widget ustalania dla wyrobiska daty aktualności fotomapy."""
+    def __init__(self, *args, fn=None):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(130, 34)
+        self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
+        self.calendar = MoekButton(self, name="date_map", size=27, tooltip="data aktualności najnowszej fotomapy")
+        self.dicts = [
+                    {"name": "self.dd", "width": 28, "title_down": "DD", "max_len": 2, "validator": "days", "zero_allowed": False},
+                    {"name": "self.dm", "width": 28, "title_down": "MM", "max_len": 2, "validator": "months", "zero_allowed": False},
+                    {"name": "self.dy", "width": 36, "title_down": "RRRR", "max_len": 4, "validator": "years", "zero_allowed": False}
+                    ]
+        for dict in self.dicts:
+            _txt2 = ParamBox(self, item="line_edit", max_len=dict["max_len"], validator=dict["validator"], height=22, down_height=12, width=dict["width"], value=" ", val_width=dict["width"], title_down=dict["title_down"], zero_allowed=dict["zero_allowed"], fn=[fn])
+            exec(f'{dict["name"]} = _txt2')
+        self.drawer = CopyPasteDrawer(self, height=24)
+        self.composer()
+        self.val_void = True
+        self.d_val = None
+        self.dd_val = None
+        self.dm_val = None
+        self.dy_val = None
+        self.val_void = False
+        self.d_copy = self.date_load()
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "dd_val" and not self.val_void:
+            self.dd.valbox_1.set_value(val)
+        if attr == "dm_val" and not self.val_void:
+            self.dm.valbox_1.set_value(val)
+        if attr == "dy_val" and not self.val_void:
+            self.dy.valbox_1.set_value(val)
+        if attr == "d_val" and not self.val_void:
+            self.drawer.val_copy.setToolTip(f"kopiuj datę: {val}") if val else self.drawer.val_copy.setToolTip(f"brak daty do skopiowania")
+            self.drawer.val_copy.setEnabled(True) if val else self.drawer.val_copy.setEnabled(False)
+        if attr == "d_copy":
+            self.drawer.val_paste.setToolTip(f"wklej datę: {val}") if val else self.drawer.val_paste.setToolTip(f"brak daty do wklejenia")
+            self.drawer.val_paste.setEnabled(True) if val else self.drawer.val_paste.setEnabled(False)
+
+    def date_load(self):
+        """Załadowanie wartości daty z db."""
+        db = PgConn()
+        sql = f"SELECT date_copy FROM public.team_users WHERE team_id = {dlg.team_i} and user_id = {dlg.user_id};"
+        if db:
+            res = db.query_sel(sql, False)
+            if res:
+                return res[0]
+
+    def val_changed(self):
+        """Zmieniono wartość jednej z części daty."""
+        part_vals = [
+            ["self.dd_val", self.dd.valbox_1.text()],
+            ["self.dm_val", self.dm.valbox_1.text()],
+            ["self.dy_val", self.dy.valbox_1.text()]
+        ]
+        for part_val in part_vals:
+            if len(part_val[1]) == 0:
+                # Konwersja pustej wartości:
+                new_val = None
+            else:
+                new_val = part_val[1]
+            cur_val = eval(part_val[0])
+            if cur_val != new_val:
+                # Aktualizacja zmienionej wartości:
+                exec(f'{part_val[0]} = new_val')
+                # Zmieniono część daty:
+                if self.dy_val and (not self.dm_val and part_val[0] != "self.dm_val"):
+                    # Autouzupełnienie miesiąca:
+                    self.dm_val = "01"
+                if self.dy_val and (not self.dd_val and part_val[0] != "self.dd_val"):
+                    # Autouzupełnienie dnia:
+                    self.dd_val = "01"
+                if (part_val[0] == "self.dy_val" and not self.dy_val) or (part_val[0] == "self.dm_val" and not self.dm_val) or (part_val[0] == "self.dd_val" and not self.dd_val):
+                    # Reset daty po zmianie wartości na "pustą":
+                    self.date_reset()
+                    return
+                if self.dy_val and self.dm_val and self.dd_val:
+                    # Wszystkie części są uzupełnione - ustalenie daty:
+                    try:
+                        self.d_val = datetime.date(int(self.dy_val), int(self.dm_val), int(self.dd_val))
+                    except ValueError:
+                        return
+                d_sql = self.sql_parser(self.d_val)
+                db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_map", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+                if dlg.wyr_panel.status_selector.case == 2:
+                    # Zmiana na wyrobisko niezaktualizowane:
+                    dlg.wyr_panel.status_selector.btn_clicked(1)
+                self.focus_switcher(part_val[0])
+                return
+
+    def sql_parser(self, val):
+        """Zwraca wartość prawidłową dla formuły sql."""
+        return f"'{val}'" if val else 'Null'
+
+    def focus_switcher(self, obj_txt):
+        """Przejście do kolejnego pustego parambox'a."""
+        val_list = ["self.dd_val","self.dm_val", "self.dy_val"]
+        obj_list = ["self.dd.valbox_1", "self.dm.valbox_1", "self.dy.valbox_1"]
+        txt_list = [self.dd.valbox_1.text(), self.dm.valbox_1.text(), self.dy.valbox_1.text()]
+        idx = -1
+        i = -1
+        for val in val_list:
+            i += 1
+            if val == obj_txt:
+                idx = i
+                break
+        if idx == -1:
+            return
+        if idx == 0:
+            if txt_list[1] == "" or txt_list[1] == "01":
+                exec(f"{obj_list[1]}.setFocus()")
+        elif idx == 1:
+            if len(txt_list[2]) == 0:
+                exec(f"{obj_list[2]}.setFocus()")
+            elif len(txt_list[2]) > 0 and (txt_list[0] == "" or txt_list[0] == "01"):
+                exec(f"{obj_list[0]}.setFocus()")
+
+    def date_reset(self):
+        """Kasowanie wartości daty."""
+        self.d_val = None
+        self.dd_val = None
+        self.dm_val = None
+        self.dy_val = None
+        d_sql = self.sql_parser(self.d_val)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_map", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+
+    def set_value(self, val):
+        """Ustawienie wartości parambox'ów według danych z db."""
+        # Ustalenie aktualnych wartości daty:
+        if not val == 'None':
+            self.d_val = datetime.datetime.date(datetime.datetime.strptime(val, "%Y-%m-%d"))
+            self.dy_val = str(self.d_val.year)
+            self.dm_val = str(self.d_val.month).zfill(2)
+            self.dd_val = str(self.d_val.day).zfill(2)
+        else:
+            self.d_val = None
+            self.dy_val = None
+            self.dm_val = None
+            self.dd_val = None
+
+    def val_copy(self):
+        """Aktualizacja wartości 'val_copy' zapisanej w db."""
+        self.d_copy = self.d_val
+        db_attr_change(tbl=f'public.team_users', attr='date_copy', val=f"'{self.d_copy}'", sql_bns=f' WHERE team_id = {dlg.team_i} AND user_id = {dlg.user_id}', user=False)
+
+    def val_paste(self):
+        """Wklejenie wartości 'val_copy' i zapisanie zmian w db."""
+        self.d_val = self.d_copy
+        self.dy_val = str(self.d_val.year)
+        self.dm_val = str(self.d_val.month).zfill(2)
+        self.dd_val = str(self.d_val.day).zfill(2)
+        d_sql = self.sql_parser(self.d_val)
+        db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_map", val=d_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        if dlg.wyr_panel.status_selector.case == 2:
+            # Zmiana na wyrobisko niezaktualizowane:
+            dlg.wyr_panel.status_selector.btn_clicked(1)
+
+    def composer(self, slide=False):
+        """Ustalenie rozmieszczenia i widoczności widget'ów."""
+        if slide:
+            self.calendar.setVisible(False)
+            self.dd.setGeometry(0, 0, self.dd.width(), self.dd.height())
+            self.dm.setGeometry(29, 0, self.dm.width(), self.dm.height())
+            self.dy.setGeometry(58, 0, self.dy.width(), self.dy.height())
+            self.drawer.setGeometry(90, 0, self.drawer.width(), self.drawer.height())
+        else:
+            self.calendar.setVisible(True)
+            self.calendar.setGeometry(0, 0, self.calendar.width(), self.calendar.height())
+            self.dd.setGeometry(30, 0, self.dd.width(), self.dd.height())
+            self.dm.setGeometry(59, 0, self.dm.width(), self.dm.height())
+            self.dy.setGeometry(88, 0, self.dy.width(), self.dy.height())
+            self.drawer.setGeometry(120, 0, self.drawer.width(), self.drawer.height())
+
+
 class CopyPasteDrawer(QFrame):
     """Wysuwane menu z przyciskami do kopiowania i wklejania wartości."""
     def __init__(self, *args, height=18):
@@ -3130,18 +3657,19 @@ class CopyPasteDrawer(QFrame):
         self.val_paste = MoekButton(self, name="val_paste", size=16, checkable=False, tooltip="")
         self.val_paste.clicked.connect(self.val_paste_clicked)
         hlay = QHBoxLayout()
-        hlay.setContentsMargins(6, 0, 0, 0)
+        hlay.setContentsMargins(6, 2, 0, 0)
         hlay.setSpacing(2)
         hlay.addWidget(self.v_line)
-        hlay.setAlignment(self.v_line, Qt.AlignVCenter)
+        hlay.setAlignment(self.v_line, Qt.AlignTop)
         hlay.addWidget(self.val_copy)
-        hlay.setAlignment(self.val_copy, Qt.AlignVCenter)
+        hlay.setAlignment(self.val_copy, Qt.AlignTop)
         hlay.addWidget(self.val_paste)
-        hlay.setAlignment(self.val_paste, Qt.AlignVCenter)
+        hlay.setAlignment(self.val_paste, Qt.AlignTop)
         self.setLayout(hlay)
         self.slide_void = True
         self.slided = False
         self.slide_void = False
+        self.set_style()
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
@@ -3193,7 +3721,7 @@ class FlagTools(QFrame):
                     QFrame#main{background-color: transparent; border: none}
                     """)
         self.flag_move = MoekButton(self, name="move", size=32, checkable=True, tooltip="zmień lokalizację flagi")
-        self.flag_chg = MoekButton(self, name="flag_chg_nfchk", size=32)
+        self.flag_chg = MoekButton(self, name="flag_chg_nfchk", size=32, enabled=False)
         self.flag_del = MoekButton(self, name="trash", size=32, tooltip="usuń flagę")
         hlay = QHBoxLayout()
         hlay.setContentsMargins(0, 0, 0, 0)
@@ -3418,7 +3946,7 @@ class TabButton(QPushButton):
 class ParamBox(QFrame):
     """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem).
     item: label, line_edit, ruler."""
-    def __init__(self, *args, margins=False, list_width = 200, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, min_max=False, title_down=None, title_down_2=None, title_left=None, icon=None, tooltip="", val_display=False, trigger=None, fn=None):
+    def __init__(self, *args, margins=False, list_width = 200, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, min_max=False, title_down=None, title_down_2=None, title_left=None, icon=None, font_size=10, tooltip="", val_display=False, trigger=None, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.item = item
@@ -3441,6 +3969,7 @@ class ParamBox(QFrame):
         self.setLayout(lay)
         self.box = MoekGridBox(self, margins=[0, 0, 0, 0], spacing=0)
         lay.addWidget(self.box)
+        # print(f"value: {value}, value_2: {value_2}, title_left: {title_left}, title_down: {title_down}, icon: {icon}")
         self.widgets = self.composer(value, value_2, title_left, title_down, icon)
         for widget in self.widgets:
             if widget["item"] == "title_left":
@@ -3452,7 +3981,11 @@ class ParamBox(QFrame):
                 self.box.glay.addWidget(self.icon, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "valbox_1":
                 if self.item == "label":
-                    self.valbox_1 = TextItemLabel(self, height=_height, width=self.val_width_1, bgr_alpha=0.15, text=value)
+                    if len(self.widgets) == 2:  # Setup dla areabox
+                        self.setFixedSize(width, 34)
+                        lay.setContentsMargins(0, 0, 0, 4)
+                        _height = 28
+                    self.valbox_1 = TextItemLabel(self, height=_height, width=self.val_width_1, bgr_alpha=0.15, text=value, font_size=font_size)
                 elif self.item == "line_edit":
                     self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, trigger=trigger, fn=fn[0])
                 elif self.item == "line_edit_left":
@@ -3466,7 +3999,7 @@ class ParamBox(QFrame):
                 self.box.glay.addWidget(self.valbox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "valbox_2":
                 if self.item == "label":
-                    self.valbox_2 = TextItemLabel(self, height=_height, width=self.val_width_2, bgr_alpha=0.15, text=value)
+                    self.valbox_2 = TextItemLabel(self, height=_height, width=self.val_width_2, bgr_alpha=0.15, text=value, font_size=font_size)
                 elif self.item == "line_edit":
                     self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=_height, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
                     self.focus_switch = True
@@ -3555,6 +4088,12 @@ class ParamBox(QFrame):
                 {"row": 1, "col": 0, "r_span": 1, "c_span": 2, "item": "line"},
                 {"row": 2, "col": 1, "r_span": 1, "c_span": 1, "item": "titlebox_1"}
             ]
+        elif comp_val == 17:  # 8
+            widgets = [
+                {"row": 0, "col": 0, "r_span": 2, "c_span": 1, "item": "icon"},
+                {"row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "valbox_1"},
+
+            ]
         return widgets
 
     def value_change(self, attrib, val):
@@ -3563,12 +4102,16 @@ class ParamBox(QFrame):
             if isinstance(self.valbox_1, (CanvasLineEdit, CanvasArrowlessComboBox)):
                 self.valbox_1.set_value(val)
             else:
-                self.valbox_1.setText(str(val)) if val else self.valbox_1.setText("")
+                self.valbox_1.setText(str(val)) if val and not val == 'None' else self.valbox_1.setText("")
         elif attrib == "value_2":
             if isinstance(self.valbox_2, CanvasLineEdit):
                 self.valbox_2.set_value(val)
             else:
-                self.valbox_2.setText(str(val)) if val else self.valbox_2.setText("")
+                self.valbox_2.setText(str(val)) if val and not val == 'None' else self.valbox_2.setText("")
+
+    def font_change(self, size):
+        """Zmienia wielkość czcionki widget'u."""
+        self.valbox_1.font_change(size)
 
     def focus_switcher(self, val):
         """Ustawia focus na lineedit z pustą wartością, po zatwierdzeniu wartości w innym lineedit z tego parambox'u."""
@@ -3598,7 +4141,7 @@ class ParamBox(QFrame):
 
 class ParamTextBox(QFrame):
     """Widget do wyświetlania i edycji parametru tekstowego (np. uwagi) wraz z nagłówkiem i opcjonalnym licznikiem użytch znaków."""
-    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, txt_limiter=False, centered=False, fn=None):
+    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, txt_limiter=None, centered=False, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setObjectName("main")
@@ -3627,7 +4170,7 @@ class ParamTextBox(QFrame):
 
     def counter_update(self, cnt):
         """Aktualizacja licznika użytych znaków."""
-        self.titlebox.setText(f"{self.title}  ({cnt} / 255)")
+        self.titlebox.setText(f"{self.title}  ({cnt} / {self.txt_limiter})")
 
     def value_change(self, val):
         """Zmienia wyświetlany tekst."""
@@ -3642,7 +4185,7 @@ class ParamTextBox(QFrame):
 
 class TextBox(QTextEdit):
     """Wyświetla tekst z możliwością edycji i opcjonalnym liczeniem użytych znaków."""
-    def __init__(self, *args, width, height, edit, trigger, fn, txt_limiter=False, centered=False):
+    def __init__(self, *args, width, height, edit, trigger, fn, txt_limiter=None, centered=False):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
@@ -3826,6 +4369,11 @@ class TextItemLabel(QLabel):
         self.setEnabled(_bool)
         self.set_style()
 
+    def font_change(self, size):
+        """Zmiana wielkości czcionki poleceniem zewnętrznym."""
+        self.font_size = size
+        self.set_style()
+
 
 class MoekHLine(QFrame):
     """Linia pozioma."""
@@ -3857,7 +4405,8 @@ class IdSpinBox(QFrame):
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
-        if theme == "green":
+        if theme == "color":
+            theme = "light"  # Potrzebne dla prev_btn i next_btn
             self.setStyleSheet(" QFrame#main {background-color: rgba(40, 170, 40, 204); border: none} ")
         else:
             self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
@@ -3892,6 +4441,15 @@ class IdSpinBox(QFrame):
             self.idbox.edited = val
             self.prev_btn.setEnabled(not val)
             self.next_btn.setEnabled(not val)
+
+    def set_theme(self, theme):
+        """Zmiana kolorystyki widgetu."""
+        if theme == "green":
+            self.setStyleSheet(" QFrame#main {background-color: rgba(40, 170, 40, 204); border: none} ")
+        elif theme == "purple":
+            self.setStyleSheet(" QFrame#main {background-color: rgba(180, 40, 180, 204); border: none} ")
+        else:
+            self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
 
     def prev_clicked(self):
         """Uruchomienie funkcji po kliknięciu na przycisk prev_btn."""
@@ -3935,7 +4493,7 @@ class CanvasLineEdit(QLineEdit):
         elif self.validator == "months":
             self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1][0-2]$")))
         elif self.validator == "years":
-            self.setValidator(QRegExpValidator(QRegExp("^1[8-9]$|^2[0-3]$|^201[8-9]$|^202[0-3]$")))
+            self.setValidator(QRegExpValidator(QRegExp("^1[0-9]$|^2[0-4]$|^201[0-9]$|^202[0-4]$")))
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
         self.attr_void = True
         self.locked = False
@@ -4014,8 +4572,8 @@ class CanvasLineEdit(QLineEdit):
                 # Wartość roku niepełna:
                 self.cur_val = self.cur_val
                 return
-            if int(val) >= 2018 and int(val) <= 2023:
-                # Ograniczenie wartości roku do przedziału 2018-2023:
+            if int(val) >= 2010 and int(val) <= 2024:
+                # Ograniczenie wartości roku do przedziału 2010-2024:
                 self.cur_val = val
             else:
                 self.cur_val = self.cur_val
@@ -5454,7 +6012,7 @@ class CanvasStackedBox(QStackedWidget):
 
 class MoekButton(QToolButton):
     """Fabryka guzików."""
-    def __init__(self, *args, size=25, hsize=0, name="", icon="", visible=True, enabled=True, checkable=False, tooltip="", tooltip_on=None):
+    def __init__(self, *args, size=25, hsize=0, name="", icon="", visible=True, enabled=True, checkable=False, checked=False, hover=True, click_void= False, tooltip="", tooltip_on=None):
         super().__init__(*args)
         name = icon if len(icon) > 0 else name
         self.name = name
@@ -5462,8 +6020,11 @@ class MoekButton(QToolButton):
         self.setVisible(visible)
         self.setEnabled(enabled)
         self.setCheckable(checkable)
+        self.setChecked(checked)
         self.setToolTip(tooltip)
         self.tooltip_on = tooltip_on
+        self.checked = checked
+        self.click_void = click_void
         self.setToolButtonStyle(Qt.ToolButtonIconOnly)
         self.setAutoRaise(True)
         self.setStyleSheet("""
@@ -5477,22 +6038,29 @@ class MoekButton(QToolButton):
                                 color: rgb(200, 200, 200);
                             }
                         """)
-        self.set_icon(name, size, hsize)
+        self.set_icon(name, size, hsize, hover)
         self.setMouseTracking(True)
         self.setCursor(Qt.ArrowCursor)
-        if self.tooltip_on:
-            self.tooltip = tooltip
-            self.toggled.connect(self.toggle)
+        self.tooltip = tooltip
+        self.toggled.connect(self.toggle)
 
     def toggle(self, checked):
-        """Aktualizacja tooltip'u po zmianie stanu przycisku."""
-        self.setToolTip(self.tooltip_on) if checked else self.setToolTip(self.tooltip)
+        """Aktualizacja po kliknięciu na przycisk."""
+        self.setToolTip(self.tooltip_on) if self.tooltip_on and checked else self.setToolTip(self.tooltip)
+        if self.click_void and self.checked != checked:
+            self.setChecked(self.checked)
+
+    def value_change(self, val):
+        """Zmiana wartości poleceniem zewnętrznym."""
+        self.checked = val
+        self.setChecked(self.checked)
+        self.setToolTip(self.tooltip_on) if self.tooltip_on and self.checked else self.setToolTip(self.tooltip)
 
     def set_tooltip(self, txt):
         """Ustawienie tooltip'a."""
         self.setToolTip(txt)
 
-    def set_icon(self, name, size=25, hsize=0):
+    def set_icon(self, name, size=25, hsize=0, hover=True):
         """Ładowanie ikon do guzika."""
         if hsize == 0:
             wsize, hsize = size, size
@@ -5502,12 +6070,14 @@ class MoekButton(QToolButton):
         self.setIconSize(QSize(wsize, hsize))
         icon = QIcon()
         icon.addFile(ICON_PATH + name + "_0.png", size=QSize(wsize, hsize), mode=QIcon.Normal, state=QIcon.Off)
-        icon.addFile(ICON_PATH + name + "_0_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.Off)
+        if hover:
+            icon.addFile(ICON_PATH + name + "_0_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.Off)
         icon.addFile(ICON_PATH + name + "_0.png", size=QSize(wsize, hsize), mode=QIcon.Selected, state=QIcon.Off)
         icon.addFile(ICON_PATH + name + "_dis.png", size=QSize(wsize, hsize), mode=QIcon.Disabled, state=QIcon.Off)
         if self.isCheckable():
             icon.addFile(ICON_PATH + name + "_1.png", size=QSize(wsize, hsize), mode=QIcon.Normal, state=QIcon.On)
-            icon.addFile(ICON_PATH + name + "_1_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.On)
+            if hover:
+                icon.addFile(ICON_PATH + name + "_1_act.png", size=QSize(wsize, hsize), mode=QIcon.Active, state=QIcon.On)
             icon.addFile(ICON_PATH + name + "_1.png", size=QSize(wsize, hsize), mode=QIcon.Selected, state=QIcon.On)
         self.setIcon(icon)
 
@@ -6103,6 +6673,10 @@ class PanelLabel(QLabel):
         color = self.color if self.isEnabled() else self.disable_color
         weight = "bold" if self.bold else "normal"
         self.setStyleSheet("QLabel {color: rgb(" + color + "); font-size: " + str(self.size) + "pt; font-weight: " + weight + "; qproperty-alignment: AlignCenter}")
+
+    def value_change(self, val):
+        """Zmienia wyświetlany tekst."""
+        self.setText(val)
 
 
 class MoekSpinLabel(QLabel):

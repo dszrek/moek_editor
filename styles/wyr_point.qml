@@ -49,13 +49,6 @@
         </config>
       </editWidget>
     </field>
-    <field name="wyr_sys">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
     <field name="order_id">
       <editWidget type="TextEdit">
         <config>
@@ -98,7 +91,7 @@
         </config>
       </editWidget>
     </field>
-    <field name="b_after_fchk">
+    <field name="b_new">
       <editWidget type="TextEdit">
         <config>
           <Option/>
@@ -112,7 +105,7 @@
         </config>
       </editWidget>
     </field>
-    <field name="date_fchk">
+    <field name="date_ctrl">
       <editWidget type="DateTime">
         <config>
           <Option/>
@@ -137,66 +130,62 @@
   <aliases>
     <alias index="0" field="wyr_id" name=""/>
     <alias index="1" field="user_id" name=""/>
-    <alias index="2" field="wyr_sys" name=""/>
-    <alias index="3" field="order_id" name=""/>
-    <alias index="4" field="t_wyr_od" name=""/>
-    <alias index="5" field="t_wyr_do" name=""/>
-    <alias index="6" field="i_area_m2" name=""/>
-    <alias index="7" field="b_wn" name=""/>
-    <alias index="8" field="b_zloze" name=""/>
-    <alias index="9" field="b_after_fchk" name=""/>
-    <alias index="10" field="b_confirmed" name=""/>
-    <alias index="11" field="date_fchk" name=""/>
-    <alias index="12" field="time_fchk" name=""/>
-    <alias index="13" field="t_notatki" name=""/>
+    <alias index="2" field="order_id" name=""/>
+    <alias index="3" field="t_wyr_od" name=""/>
+    <alias index="4" field="t_wyr_do" name=""/>
+    <alias index="5" field="i_area_m2" name=""/>
+    <alias index="6" field="b_wn" name=""/>
+    <alias index="7" field="b_zloze" name=""/>
+    <alias index="8" field="b_new" name=""/>
+    <alias index="9" field="b_confirmed" name=""/>
+    <alias index="10" field="date_ctrl" name=""/>
+    <alias index="11" field="time_fchk" name=""/>
+    <alias index="12" field="t_notatki" name=""/>
   </aliases>
   <excludeAttributesWMS/>
   <excludeAttributesWFS/>
   <defaults>
     <default field="wyr_id" expression="" applyOnUpdate="0"/>
     <default field="user_id" expression="" applyOnUpdate="0"/>
-    <default field="wyr_sys" expression="" applyOnUpdate="0"/>
     <default field="order_id" expression="" applyOnUpdate="0"/>
     <default field="t_wyr_od" expression="" applyOnUpdate="0"/>
     <default field="t_wyr_do" expression="" applyOnUpdate="0"/>
     <default field="i_area_m2" expression="" applyOnUpdate="0"/>
     <default field="b_wn" expression="" applyOnUpdate="0"/>
     <default field="b_zloze" expression="" applyOnUpdate="0"/>
-    <default field="b_after_fchk" expression="" applyOnUpdate="0"/>
+    <default field="b_new" expression="" applyOnUpdate="0"/>
     <default field="b_confirmed" expression="" applyOnUpdate="0"/>
-    <default field="date_fchk" expression="" applyOnUpdate="0"/>
+    <default field="date_ctrl" expression="" applyOnUpdate="0"/>
     <default field="time_fchk" expression="" applyOnUpdate="0"/>
     <default field="t_notatki" expression="" applyOnUpdate="0"/>
   </defaults>
   <constraints>
     <constraint constraints="3" unique_strength="1" notnull_strength="1" field="wyr_id" exp_strength="0"/>
     <constraint constraints="1" unique_strength="0" notnull_strength="1" field="user_id" exp_strength="0"/>
-    <constraint constraints="1" unique_strength="0" notnull_strength="1" field="wyr_sys" exp_strength="0"/>
     <constraint constraints="0" unique_strength="0" notnull_strength="0" field="order_id" exp_strength="0"/>
     <constraint constraints="0" unique_strength="0" notnull_strength="0" field="t_wyr_od" exp_strength="0"/>
     <constraint constraints="0" unique_strength="0" notnull_strength="0" field="t_wyr_do" exp_strength="0"/>
     <constraint constraints="1" unique_strength="0" notnull_strength="1" field="i_area_m2" exp_strength="0"/>
     <constraint constraints="1" unique_strength="0" notnull_strength="1" field="b_wn" exp_strength="0"/>
     <constraint constraints="1" unique_strength="0" notnull_strength="1" field="b_zloze" exp_strength="0"/>
-    <constraint constraints="1" unique_strength="0" notnull_strength="1" field="b_after_fchk" exp_strength="0"/>
+    <constraint constraints="1" unique_strength="0" notnull_strength="1" field="b_new" exp_strength="0"/>
     <constraint constraints="1" unique_strength="0" notnull_strength="1" field="b_confirmed" exp_strength="0"/>
-    <constraint constraints="0" unique_strength="0" notnull_strength="0" field="date_fchk" exp_strength="0"/>
+    <constraint constraints="0" unique_strength="0" notnull_strength="0" field="date_ctrl" exp_strength="0"/>
     <constraint constraints="0" unique_strength="0" notnull_strength="0" field="time_fchk" exp_strength="0"/>
     <constraint constraints="0" unique_strength="0" notnull_strength="0" field="t_notatki" exp_strength="0"/>
   </constraints>
   <constraintExpressions>
     <constraint field="wyr_id" desc="" exp=""/>
     <constraint field="user_id" desc="" exp=""/>
-    <constraint field="wyr_sys" desc="" exp=""/>
     <constraint field="order_id" desc="" exp=""/>
     <constraint field="t_wyr_od" desc="" exp=""/>
     <constraint field="t_wyr_do" desc="" exp=""/>
     <constraint field="i_area_m2" desc="" exp=""/>
     <constraint field="b_wn" desc="" exp=""/>
     <constraint field="b_zloze" desc="" exp=""/>
-    <constraint field="b_after_fchk" desc="" exp=""/>
+    <constraint field="b_new" desc="" exp=""/>
     <constraint field="b_confirmed" desc="" exp=""/>
-    <constraint field="date_fchk" desc="" exp=""/>
+    <constraint field="date_ctrl" desc="" exp=""/>
     <constraint field="time_fchk" desc="" exp=""/>
     <constraint field="t_notatki" desc="" exp=""/>
   </constraintExpressions>
@@ -213,12 +202,11 @@
       <column width="-1" type="field" hidden="0" name="i_area_m2"/>
       <column width="-1" type="field" hidden="0" name="b_wn"/>
       <column width="-1" type="field" hidden="0" name="b_zloze"/>
-      <column width="-1" type="field" hidden="0" name="b_after_fchk"/>
+      <column width="-1" type="field" hidden="0" name="b_new"/>
       <column width="-1" type="field" hidden="0" name="b_confirmed"/>
-      <column width="-1" type="field" hidden="0" name="date_fchk"/>
+      <column width="-1" type="field" hidden="0" name="date_ctrl"/>
       <column width="-1" type="field" hidden="0" name="time_fchk"/>
       <column width="-1" type="actions" hidden="1"/>
-      <column width="-1" type="field" hidden="0" name="wyr_sys"/>
       <column width="-1" type="field" hidden="0" name="order_id"/>
       <column width="-1" type="field" hidden="0" name="t_notatki"/>
     </columns>
@@ -252,11 +240,11 @@ def my_form_open(dialog, layer, feature):
   <featformsuppress>0</featformsuppress>
   <editorlayout>generatedlayout</editorlayout>
   <editable>
-    <field editable="1" name="b_after_fchk"/>
+    <field editable="1" name="b_new"/>
     <field editable="1" name="b_confirmed"/>
     <field editable="1" name="b_wn"/>
     <field editable="1" name="b_zloze"/>
-    <field editable="1" name="date_fchk"/>
+    <field editable="1" name="date_ctrl"/>
     <field editable="1" name="i_area_m2"/>
     <field editable="1" name="order_id"/>
     <field editable="1" name="t_notatki"/>
@@ -265,14 +253,13 @@ def my_form_open(dialog, layer, feature):
     <field editable="1" name="time_fchk"/>
     <field editable="1" name="user_id"/>
     <field editable="1" name="wyr_id"/>
-    <field editable="1" name="wyr_sys"/>
   </editable>
   <labelOnTop>
-    <field labelOnTop="0" name="b_after_fchk"/>
+    <field labelOnTop="0" name="b_new"/>
     <field labelOnTop="0" name="b_confirmed"/>
     <field labelOnTop="0" name="b_wn"/>
     <field labelOnTop="0" name="b_zloze"/>
-    <field labelOnTop="0" name="date_fchk"/>
+    <field labelOnTop="0" name="date_ctrl"/>
     <field labelOnTop="0" name="i_area_m2"/>
     <field labelOnTop="0" name="order_id"/>
     <field labelOnTop="0" name="t_notatki"/>
@@ -281,7 +268,6 @@ def my_form_open(dialog, layer, feature):
     <field labelOnTop="0" name="time_fchk"/>
     <field labelOnTop="0" name="user_id"/>
     <field labelOnTop="0" name="wyr_id"/>
-    <field labelOnTop="0" name="wyr_sys"/>
   </labelOnTop>
   <widgets/>
   <previewExpression>"wyr_id"</previewExpression>

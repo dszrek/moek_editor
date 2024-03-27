@@ -68,6 +68,9 @@ class ObjectManager:
                 self.dlg.flag_panel.hash.set_value(self.flag_data[2])  # Aktualizacja teren_id
                 txt = self.param_parser(self.flag_data[3])
                 self.dlg.flag_panel.notepad_box.value_change(txt)  # Aktualizacja tekstu notatki
+                if self.wyr:
+                    # Wyłączenie panelu wyrobisk, jeśli jest włączony:
+                    self.wyr = None
                 if self.parking:
                     # Wyłączenie panelu miejsc parkingowych, jeśli jest włączony:
                     self.parking = None
@@ -97,6 +100,13 @@ class ObjectManager:
                 if dlg.wyr_panel.order_drawer.edited and not dlg.wyr_panel.order_drawer.attr_void:
                     dlg.wyr_panel.order_drawer.edited = False
                 self.wyr_data = self.wyr_update()
+                self.moek_data = self.moek_update(self.wyr_data[62]) if self.wyr_data[62] else None
+                if self.moek_data:
+                    self.dlg.moek_panel.values_update(self.moek_data)  # Aktualizacja atrybutów
+                    self.dlg.moek_panel.show()
+                else:
+                    self.dlg.moek_panel.hide()
+                # print(self.moek_data)
                 if dlg.wyr_panel.pow_all:
                     self.order_data = [None, False]
                 else:
@@ -141,7 +151,15 @@ class ObjectManager:
                 dlg.wyr_panel.focus_void = True
                 self.dlg.wyr_panel.values_update(self.wyr_data)  # Aktualizacja atrybutów
                 dlg.wyr_panel.focus_void = False
+                if self.flag:
+                    # Wyłączenie panelu flag, jeśli jest włączony:
+                    self.flag = None
+                if self.parking:
+                    # Wyłączenie panelu miejsc parkingowych, jeśli jest włączony:
+                    self.parking = None
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
+            if not val:
+                self.dlg.moek_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
         elif attr == "wyr_ids":
             # Zmiana listy dostępnych wyrobisk:
@@ -161,8 +179,11 @@ class ObjectManager:
                 self.parking_data = self.parking_update()
                 self.list_position_check("parking")
                 self.dlg.parking_panel.parking_tools.status = self.parking_data[1]  # Aktualizacja przycisku status
+                if self.wyr:
+                    # Wyłączenie panelu wyrobisk, jeśli jest włączony:
+                    self.wyr = None
                 if self.flag:
-                    # Wyłączenie panelu flagi, jeśli jest włączony:
+                    # Wyłączenie panelu flag, jeśli jest włączony:
                     self.flag = None
             if self.dlg.mt.mt_name == "parking_move":
                 self.dlg.mt.init("multi_tool")

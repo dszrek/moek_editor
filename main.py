@@ -1240,6 +1240,7 @@ def vn_layer_update():
 
 def data_export_init():
     """Odpalony po naciśnięciu przycisku 'data_export'."""
+    return
     if dlg.export_panel.isVisible():
         return
     dlg.export_panel.path_check(db_attr_check("t_export_path"), True)

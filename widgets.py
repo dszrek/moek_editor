@@ -1803,6 +1803,312 @@ class WnCanvasPanel(QFrame):
         dlg.obj.wn = None
 
 
+class MoekCanvasPanel(QFrame):
+    """Zagnieżdżony w mapcanvas'ie panel wyświetlający informacje o wyrobiskach z poprzednich edycji MOEK."""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setFixedWidth(394)
+        self.setCursor(Qt.ArrowCursor)
+        self.setMouseTracking(True)
+        shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
+        self.setGraphicsEffect(shadow_1)
+        self.bar = CanvasPanelTitleBar(self, title="Wyrobiska MOEK_1", width=self.width())
+        self.box = MoekVBox(self)
+        self.box.setObjectName("box")
+        self.setStyleSheet("""
+                    QFrame#main{background-color: rgba(0, 0, 0, 0.6); border: none}
+                    QFrame#box{background-color: transparent; border: none}
+                    QFrame#sp{background-color: rgba(55, 55, 55, 0.71); border: none}
+                    """)
+        vlay = QVBoxLayout()
+        vlay.setContentsMargins(3, 3, 3, 3)
+        vlay.setSpacing(1)
+        vlay.addWidget(self.bar)
+        vlay.addWidget(self.box)
+        self.setLayout(vlay)
+        self.sp_id = CanvasHSubPanel(self, height=34, spacing=1, alpha=0.0)
+        # self.sp_id.setObjectName("sp")
+        self.box.lay.addWidget(self.sp_id)
+        self.separator_1 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        self.box.lay.addWidget(self.separator_1)
+        self.top_margin = CanvasHSubPanel(self, height=8, alpha=0.71)
+        # self.top_margin.setObjectName("sp")
+        self.box.lay.addWidget(self.top_margin)
+        self.idbox = CanvasHSubPanel(self, width=194, height=34, margins=[20, 0, 0, 0], alpha=0.71)
+        self.id_label = PanelLabel(self, text="   Id:", size=12)
+        self.idbox.lay.addWidget(self.id_label)
+        spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.idbox.lay.addItem(spacer)
+        self.sp_id.lay.addWidget(self.idbox)
+        self.datebox = CanvasHSubPanel(self, width=150, height=34, margins=[4, 0, 4, 2], alpha=0.71)
+        self.date_icon = MoekButton(self, name="date_actual", size=27, checkable=False, enabled=True, tooltip = "data ostatniej kontroli")
+        self.datebox.lay.addWidget(self.date_icon)
+        self.date_label = PanelLabel(self, text="", size=12)
+        self.datebox.lay.addWidget(self.date_label)
+        self.sp_id.lay.addWidget(self.datebox)
+        self.fchkbox = CanvasHSubPanel(self, width=42, height=34, margins=[0, 1, 0, 0], alpha=0.71)
+        self.fchk_icon = MoekButton(self, name="fchk", size=34, hsize=26, checkable=True, enabled=True, hover=False, click_void=True, tooltip = "nie przeprowadzono kontroli terenowej", tooltip_on="przeprowadzono kontrolę terenową")
+        self.fchkbox.lay.addWidget(self.fchk_icon)
+        self.sp_id.lay.addWidget(self.fchkbox)
+
+        self.params_1 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=1, alpha=0.71)
+        self.params_1.setObjectName("sp")
+        self.box.lay.addWidget(self.params_1)
+        self.kopalina = ParamBox(self, width=289, font_size=9, title_down="KOPALINA")
+        self.params_1.lay.addWidget(self.kopalina)
+        self.wiek = ParamBox(self, width=86, font_size=9, title_down="WIEK")
+        self.params_1.lay.addWidget(self.wiek)
+
+        self.params_2 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_2.setObjectName("sp")
+        self.box.lay.addWidget(self.params_2)
+        self.okres_eksp = ParamBox(self, min_max=False, width=376, val_width=124, val_width_2=123, value_2=" ", sep_width=1, sep_txt="", title_down="OD", title_down_2="DO", title_left="Okres eksploatacji:")
+        self.params_2.lay.addWidget(self.okres_eksp)
+
+        self.params_3 = CanvasHSubPanel(self, height=40, margins=[6, 0, 0, 0], spacing=8, alpha=0.71)
+        self.params_3.setObjectName("sp")
+        self.box.lay.addWidget(self.params_3)
+        self.pne_zloze = ParamBox(self,width=166, val_width=38, font_size=8, title_left="PNE w granicach OG:")
+        self.params_3.lay.addWidget(self.pne_zloze)
+        self.pne_poza = ParamBox(self,width=166, val_width=38, font_size=8, title_left="PNE poza granicami OG:")
+        self.params_3.lay.addWidget(self.pne_poza)
+        self.pne_icon = MoekButton(self, name="pne", size=34, hsize=26, checkable=True, enabled=True, hover=False, click_void=True, tooltip = "CZY_PNE = NIE", tooltip_on="CZY_PNE = TAK")
+        self.params_3.lay.addWidget(self.pne_icon)
+
+        self.params_4 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_4.setObjectName("sp")
+        self.box.lay.addWidget(self.params_4)
+        self.midas_id = ParamBox(self, width=120, font_size=9, title_down="ID_ZŁOŻA (MIDAS)")
+        self.params_4.lay.addWidget(self.midas_id)
+        self.stan_midas = ParamBox(self, width=248, font_size=9, title_down="STAN ZAGOSPODAROWANIA ZŁOŻA WG MIDAS")
+        self.params_4.lay.addWidget(self.stan_midas)
+
+        self.params_5 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_5.setObjectName("sp")
+        self.box.lay.addWidget(self.params_5)
+        self.okres_midas = ParamBox(self, min_max=False, width=376, val_width=124, val_width_2=123, value_2=" ", sep_width=1, sep_txt="", title_down="OD", title_down_2="DO", title_left="Okres eksploatacji złoża:")
+        self.params_5.lay.addWidget(self.okres_midas)
+
+        self.params_6 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_6.setObjectName("sp")
+        self.box.lay.addWidget(self.params_6)
+        self.dlugosc = ParamBox(self, min_max=True, width=120, val_width=35, val_width_2=35, value_2=" ", sep_width=16, sep_txt="-", title_down="MIN", title_down_2="MAX", title_left=None, icon="wyr_dlug", tooltip="długość wyrobiska [m]")
+        self.params_6.lay.addWidget(self.dlugosc)
+        self.szerokosc = ParamBox(self, min_max=True, width=120, val_width=35, val_width_2=35, value_2=" ", sep_width=16, sep_txt="-", title_down="MIN", title_down_2="MAX", title_left=None, icon="wyr_szer", tooltip="szerokość wyrobiska [m]")
+        self.params_6.lay.addWidget(self.szerokosc)
+        self.area = ParamBox(self, width=120, val_width=90, icon="wyr_area", tooltip="powierzchnia wyrobiska")
+        self.params_6.lay.addWidget(self.area)
+
+        self.params_7 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_7.setObjectName("sp")
+        self.box.lay.addWidget(self.params_7)
+        self.stan_pne = ParamBox(self, width=120, font_size=8, title_down="STAN WYROBISKA")
+        self.params_7.lay.addWidget(self.stan_pne)
+        self.dojazd = ParamBox(self, width=120, font_size=8, title_down="DOJAZD DO WYROBISKA")
+        self.params_7.lay.addWidget(self.dojazd)
+        self.wysokosc = ParamBox(self, min_max=True, width=120, val_width=35, val_width_2=35, value_2=" ", sep_width=16, sep_txt="-", title_down="MIN", title_down_2="MAX", title_left=None, icon="wyr_wys", tooltip="wysokość wyrobiska [m]")
+        self.params_7.lay.addWidget(self.wysokosc)
+
+        self.params_8 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_8.setObjectName("sp")
+        self.box.lay.addWidget(self.params_8)
+        self.wyrobisko = ParamBox(self, width=120, font_size=8, title_down="RODZAJ WYROBISKA")
+        self.params_8.lay.addWidget(self.wyrobisko)
+        self.zawodn = ParamBox(self, width=120, font_size=8, title_down="ZAWODNIENIE")
+        self.params_8.lay.addWidget(self.zawodn)
+        self.nadkl = ParamBox(self, min_max=True, width=120, val_width=35, val_width_2=35, value_2=" ", sep_width=16, sep_txt="-", title_down="MIN", title_down_2="MAX", title_left=None, icon="wyr_nadkl", tooltip="grubość nadkladu [m]")
+        self.params_8.lay.addWidget(self.nadkl)
+
+        self.params_9 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_9.setObjectName("sp")
+        self.box.lay.addWidget(self.params_9)
+        self.eksploat = ParamBox(self, width=120, font_size=8, title_down="% POWIERZCHNI EKSPL.")
+        self.params_9.lay.addWidget(self.eksploat)
+        self.wydobycie = ParamBox(self, width=120, font_size=8, title_down="POLE EKSPL. CZYNNE")
+        self.params_9.lay.addWidget(self.wydobycie)
+        self.miazsz = ParamBox(self, min_max=True, width=120, val_width=35, val_width_2=35, value_2=" ", sep_width=16, sep_txt="-", title_down="MIN", title_down_2="MAX", title_left=None, icon="wyr_miaz", tooltip="miąższość kopaliny w odsłonięciu [m]")
+        self.params_9.lay.addWidget(self.miazsz)
+
+        self.params_10 = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_10.setObjectName("sp")
+        self.box.lay.addWidget(self.params_10)
+        self.wyp_odp = ParamBox(self, width=120, font_size=8, title_down="WYPEŁNIENIE ODPADAMI")
+        self.params_10.lay.addWidget(self.wyp_odp)
+        self.stan_rekul = ParamBox(self, width=120, font_size=8, title_down="STAN REKULTYWACJI")
+        self.params_10.lay.addWidget(self.stan_rekul)
+        self.zgloszenie = ParamBox(self, width=120, font_size=8, title_down="KATEGORIA ZGŁOSZENIA")
+        self.params_10.lay.addWidget(self.zgloszenie)
+
+        self.params_11 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_11.setObjectName("sp")
+        self.box.lay.addWidget(self.params_11)
+        self.rodz_odp = ParamTextBox(self, width=376, height=34, title="RODZAJE ODPADÓW")
+        self.params_11.lay.addWidget(self.rodz_odp)
+
+        self.params_12 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_12.setObjectName("sp")
+        self.box.lay.addWidget(self.params_12)
+        self.rekultyw = ParamTextBox(self, width=376, height=34, title="WYKONANY ZAKRES PRAC REKULTYWACYJNYCH")
+        self.params_12.lay.addWidget(self.rekultyw)
+
+        self.params_13 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_13.setObjectName("sp")
+        self.box.lay.addWidget(self.params_13)
+        self.powod = ParamTextBox(self, width=376, height=34, title="UZASADNIENIE ZGŁOSZENIA")
+        self.params_13.lay.addWidget(self.powod)
+
+        self.params_14 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_14.setObjectName("sp")
+        self.box.lay.addWidget(self.params_14)
+        self.zagrozenia = ParamTextBox(self, width=376, height=34, title="ZAGROŻENIA DLA ŚRODOWISKA, INFRASTRUKTURY, LUDZI")
+        self.params_14.lay.addWidget(self.zagrozenia)
+
+        self.params_15 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_15.setObjectName("sp")
+        self.box.lay.addWidget(self.params_15)
+        self.dzialania = ParamTextBox(self, width=376, height=34, title="DZIAŁANIA")
+        self.params_15.lay.addWidget(self.dzialania)
+
+        self.params_16 = CanvasHSubPanel(self, height=52, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_16.setObjectName("sp")
+        self.box.lay.addWidget(self.params_16)
+        self.weryfikacja = ParamTextBox(self, width=376, height=34, title="WERYFIKACJA")
+        self.params_16.lay.addWidget(self.weryfikacja)
+
+        self.params_17 = CanvasHSubPanel(self, height=98, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_17.setObjectName("sp")
+        self.box.lay.addWidget(self.params_17)
+        self.uwagi = ParamTextBox(self, width=376, height=80, title="UWAGI")
+        self.params_17.lay.addWidget(self.uwagi)
+
+        self.params_a = CanvasHSubPanel(self, height=40, margins=[6, 0, 6, 0], spacing=8, alpha=0.71)
+        self.params_a.setObjectName("sp")
+        self.box.lay.addWidget(self.params_a)
+        self.autor = ParamBox(self, width=376, font_size=9, title_down="WYKONAWCY")
+        self.params_a.lay.addWidget(self.autor)
+
+        self.bottom_margin = CanvasHSubPanel(self, height=4)
+        self.bottom_margin.setObjectName("sp")
+        self.box.lay.addWidget(self.bottom_margin)
+        # self.separator_2 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        # self.box.lay.addWidget(self.separator_2)
+        # self.sp_pow = CanvasHSubPanel(self, height=34)
+        # self.sp_pow.setObjectName("sp")
+        # self.box.lay.addWidget(self.sp_pow)
+
+    def values_update(self, _dict):
+        """Aktualizuje wartości parametrów."""
+        params = [
+            [self.id_label, f"ID:  {_dict[0]}"],
+            [self.pne_icon, _dict[36]],
+            [self.date_label, f"{_dict[34]}"],
+            [self.fchk_icon, _dict[35]],
+            [self.kopalina, "value", _dict[30], _dict[31]],
+            [self.wiek, "value", _dict[32], _dict[33]],
+            [self.okres_eksp, "value", _dict[2]],
+            [self.okres_eksp, "value_2", _dict[3]],
+            [self.pne_zloze, "value", _dict[41]],
+            [self.pne_poza, "value", _dict[42]],
+            [self.midas_id, "value", _dict[37]],
+            [self.stan_midas, "value", _dict[38]],
+            [self.okres_midas, "value", _dict[39]],
+            [self.okres_midas, "value_2", _dict[40]],
+            [self.dlugosc, "value", _dict[4]],
+            [self.dlugosc, "value_2", _dict[5]],
+            [self.szerokosc, "value", _dict[6]],
+            [self.szerokosc, "value_2", _dict[7]],
+            [self.wysokosc, "value", _dict[8]],
+            [self.wysokosc, "value_2", _dict[9]],
+            [self.area, "value", f"{_dict[1]} m²"],
+            [self.stan_pne, "value", _dict[29]],
+            [self.dojazd, "value", _dict[25]],
+            [self.nadkl, "value", _dict[10]],
+            [self.nadkl, "value_2", _dict[11]],
+            [self.wyrobisko, "value", _dict[14]],
+            [self.zawodn, "value", _dict[15]],
+            [self.miazsz, "value", _dict[12]],
+            [self.miazsz, "value_2", _dict[13]],
+            [self.eksploat, "value", _dict[16]],
+            [self.wydobycie, "value", _dict[17]],
+            [self.wyp_odp, "value", _dict[18]],
+            [self.rodz_odp, _dict[19], _dict[20], _dict[21], _dict[22]],
+            [self.stan_rekul, "value", _dict[23]],
+            [self.rekultyw, _dict[24]],
+            [self.zgloszenie, "value", _dict[27]],
+            [self.powod, _dict[28]],
+            [self.zagrozenia, _dict[26]],
+            [self.dzialania, _dict[44]],
+            [self.weryfikacja, _dict[45]],
+            [self.autor, "value", _dict[46]],
+            [self.uwagi, _dict[43]]
+        ]
+        dlg.app.setUpdatesEnabled(False)
+        for param in params:
+            if len(param) == 2:
+                param[0].value_change(param[1])
+            elif len(param) == 3:
+                param[0].value_change(param[1], param[2])
+            if param[0] == self.kopalina or param[0] == self.wiek:
+                txt_val = f"{param[2]} / {param[3]}" if param[3] else f"{param[2]}"
+                param[0].value_change(param[1], txt_val)
+            elif param[0] == self.rodz_odp:
+                odp_list = [param[1], param[2], param[3], param[4]]
+                txt_val = ""
+                for odp in odp_list:
+                    if odp:
+                        txt_val = f"{txt_val}; {odp}" if len(txt_val) > 0 else odp
+                if len(txt_val) > 0:
+                    self.params_11.set_visible(True)
+                    self.resize_panel()
+                    param[0].value_change(txt_val)
+                else:
+                    self.params_11.set_visible(False)
+                    self.resize_panel()
+            elif param[0] == self.zgloszenie:
+                param[0].font_change(7) if param[2] == "eksploatacja, odpady i inne" else param[0].font_change(8)
+            elif param[0] == self.rekultyw:
+                self.params_12.set_visible(True) if param[1] else self.params_12.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.powod:
+                self.params_13.set_visible(True) if param[1] else self.params_13.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.zagrozenia:
+                self.params_14.set_visible(True) if param[1] else self.params_14.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.dzialania:
+                self.params_15.set_visible(True) if param[1] else self.params_15.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.weryfikacja:
+                self.params_16.set_visible(True) if param[1] else self.params_16.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.uwagi:
+                self.params_17.set_visible(True) if param[1] else self.params_17.set_visible(False)
+                self.resize_panel()
+            elif param[0] == self.pne_zloze or param[0] == self.pne_poza:
+                txt_val = 'TAK' if param[2] else 'NIE'
+                param[0].value_change(param[1], txt_val)
+            elif param[0] == self.midas_id:
+                self.params_4.set_visible(True) if param[2] else self.params_4.set_visible(False)
+                self.params_5.set_visible(True) if param[2] else self.params_5.set_visible(False)
+                self.resize_panel()
+
+        dlg.app.setUpdatesEnabled(True)
+
+    def resize_panel(self):
+        """Aktualizacja wysokości panelu po zmianie widoczności subpanel'u."""
+        base_height = 448
+        subpanels = [self.params_4, self.params_5, self.params_11, self.params_12, self.params_13, self.params_14, self.params_15, self.params_16, self.params_17]
+        for subpanel in subpanels:
+            base_height = base_height + subpanel.height() if subpanel.shown else base_height
+        self.setFixedHeight(base_height)
+
+    def exit_clicked(self):
+        """Chowa panel po kliknięciu przycisku X."""
+        self.hide()
+
+
 class CanvasHSubPanel(QFrame):
     """Belka canvaspanel'u z box'em."""
     def __init__(self, *args, width=None, height, margins=[0, 0, 0, 0], spacing=0, color="55, 55, 55", disable_color="55, 55, 55", alpha=0.0, disable_void=True):

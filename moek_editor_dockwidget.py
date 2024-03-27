@@ -37,7 +37,7 @@ from .layers import dlg_layers, PanelManager, LayerManager
 from .maptools import dlg_maptools, MapToolManager, ObjectManager
 from .main import dlg_main, vn_mode_changed, data_export_init, sequences_load, prev_map, next_map, seq
 from .viewnet import dlg_viewnet, change_done, vn_add, vn_sub, vn_zoom, hk_up_pressed, hk_down_pressed, hk_left_pressed, hk_right_pressed
-from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, BasemapCanvasPanel, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, WnCanvasPanel
+from .widgets import dlg_widgets, MoekBoxPanel, MoekBarPanel, MoekGroupPanel, MoekSideDock, MoekBottomDock, MoekLeftBottomDock, SplashScreen, BasemapCanvasPanel, FlagCanvasPanel, ParkingCanvasPanel, MarszCanvasPanel, WyrCanvasPanel, MoekCanvasPanel
 from .basemaps import dlg_basemaps, MoekMapPanel, basemaps_load
 from .export import dlg_export, ExportCanvasPanel
 
@@ -322,6 +322,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.marsz_panel.hide()
         self.wyr_panel = WyrCanvasPanel(self.canvas)
         self.wyr_panel.hide()
+        self.moek_panel = MoekCanvasPanel(self.canvas)
+        self.moek_panel.hide()
         self.export_panel = ExportCanvasPanel(self.canvas)
         self.export_panel.hide()
 
@@ -340,6 +342,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.seq_dock.move(53, bottom_y)
         self.flag_panel.move(60, 60)
         self.parking_panel.move(60, 60)
+        self.moek_panel.move(60, 60)
         wyr_x = self.canvas.width() - self.wyr_panel.width() - 60
         self.wyr_panel.move(wyr_x, 60)
         export_x = (self.canvas.width() / 2) - (self.export_panel.width() / 2)
@@ -780,8 +783,13 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         except:
             pass
         try:
-            self.canvas.children().remove(self.export_panel)
-            self.export_panel.deleteLater()
+            self.canvas.children().remove(self.wyr_panel)
+            self.wyr_panel.deleteLater()
+        except:
+            pass
+        try:
+            self.canvas.children().remove(self.moek_panel)
+            self.moek_panel.deleteLater()
         except:
             pass
         try:

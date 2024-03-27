@@ -384,6 +384,21 @@ class ObjectManager:
             else:
                 return res
 
+    def moek_update(self, moek_id):
+        """Zwraca dane wyrobiska z poprzedniej edycji MOEK.
+        0 - moek_id, 1 - i_area_m2, 2 - t_wyr_od, 3 - t_wyr_do, 4 - i_dlug_min, 5 - i_dlug_max, 6 - i_szer_min, 7 - i_szer_max, 8 - n_wys_min, 9 - n_wys_max, 10 - n_nadkl_min, 11 - n_nadkl_max, 12 - n_miazsz_min, 13 - n_miazsz_max, 14 - t_wyrobisko, 15 - t_zawodn, 16 - t_eksploat, 17 - t_wydobycie, 18 - t_wyp_odpady, 19 - t_odpady_1, 20 - t_odpady_2, 21 - t_odpady_3, 22 - t_odpady_4, 23 - t_stan_rekul, 24 - t_rekultyw, 25 - t_dojazd, 26 - t_zagrozenia, 27 - t_zgloszenie, 28 - t_powod, 29 - t_stan_pne, 30 - t_kopalina, 31 - t_kopalina_2, 32 - t_wiek, 33 - t_wiek_2, 34 - date_ctrl, 35 - b_teren, 36 - b_pne, 37 - midas_id, 38 - t_stan_midas, 39 - t_zloze_od, 40 - t_zloze_do, 41 - b_pne_zloze, 42 - b_pne_poza, 43 - t_notatki, 44 - t_dzialania, 45 - t_weryfikacja, 46 - t_autor
+        """
+        # moek_id = '101437_018'
+        db = PgConn()
+        sql = f"SELECT moek_id, i_area_m2, t_wyr_od, t_wyr_do, i_dlug_min, i_dlug_max, i_szer_min, i_szer_max, n_wys_min, n_wys_max, n_nadkl_min, n_nadkl_max, n_miazsz_min, n_miazsz_max, (SELECT s.t_desc FROM public.sl_wyrobisko AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_wyrobisko AND d.moek_id = '{moek_id}') AS t_wyrobisko, (SELECT s.t_desc FROM public.sl_zawodnienie AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_zawodn AND d.moek_id = '{moek_id}') AS t_zawodn, (SELECT s.t_desc FROM public.sl_eksploatacja AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_eksploat AND d.moek_id = '{moek_id}') AS t_eksploat, (SELECT s.t_desc FROM public.sl_wydobycie AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_wydobycie AND d.moek_id = '{moek_id}') AS t_wydobycie, (SELECT s.t_desc FROM public.sl_wyp_odp AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_wyp_odpady AND d.moek_id = '{moek_id}') AS t_wyp_odpady, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_odpady_1 AND d.moek_id = '{moek_id}') AS t_odpady_1, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_odpady_2 AND d.moek_id = '{moek_id}') AS t_odpady_2, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_odpady_3 AND d.moek_id = '{moek_id}') AS t_odpady_3, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_odpady_4 AND d.moek_id = '{moek_id}') AS t_odpady_4, (SELECT s.t_desc FROM public.sl_stan_rekul AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_stan_rekul AND d.moek_id = '{moek_id}') AS t_stan_rekul, t_rekultyw, (SELECT s.t_desc FROM public.sl_dojazd AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_dojazd AND d.moek_id = '{moek_id}') AS t_dojazd, t_zagrozenia, (SELECT s.t_desc FROM public.sl_zgloszenie AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_zgloszenie AND d.moek_id = '{moek_id}') AS t_zgloszenie, t_powod, (SELECT s.t_desc FROM public.sl_stan_pne AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_stan_pne AND d.moek_id = '{moek_id}') AS t_stan_pne, (SELECT s.t_desc FROM public.sl_kopalina AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_kopalina AND d.moek_id = '{moek_id}') AS t_kopalina, (SELECT s.t_desc FROM public.sl_kopalina AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_kopalina_2 AND d.moek_id = '{moek_id}') AS t_kopalina_2, t_wiek, t_wiek_2, date_ctrl, b_teren, b_pne, midas_id, (SELECT s.t_desc FROM public.sl_stan_midas AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_stan_midas AND d.moek_id = '{moek_id}') AS t_stan_midas, t_zloze_od, t_zloze_do, b_pne_zloze, b_pne_poza, t_notatki, t_dzialania, t_weryfikacja, t_autor FROM moek_1.wyrobiska WHERE moek_id = '{moek_id}';"
+        if db:
+            res = db.query_sel(sql, False)
+            if not res:
+                print(f"Nie udało się wczytać danych wyrobiska z MOEK_1: {moek_id}")
+                return None
+            else:
+                return res
+
     def wyr_order_update(self):
         """Zwraca dane dotyczące order_id i order_lock wyrobiska."""
         db = PgConn()

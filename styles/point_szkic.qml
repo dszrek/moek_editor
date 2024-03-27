@@ -110,35 +110,28 @@
         </config>
       </editWidget>
     </field>
-    <field name="wyr_sys">
+    <field name="teren_id">
       <editWidget type="TextEdit">
         <config>
           <Option/>
         </config>
       </editWidget>
     </field>
-    <field name="t_teren_id">
+    <field name="wn_id">
       <editWidget type="TextEdit">
         <config>
           <Option/>
         </config>
       </editWidget>
     </field>
-    <field name="t_wn_id">
+    <field name="midas_id">
       <editWidget type="TextEdit">
         <config>
           <Option/>
         </config>
       </editWidget>
     </field>
-    <field name="t_midas_id">
-      <editWidget type="TextEdit">
-        <config>
-          <Option/>
-        </config>
-      </editWidget>
-    </field>
-    <field name="b_after_fchk">
+    <field name="b_new">
       <editWidget type="TextEdit">
         <config>
           <Option/>
@@ -163,46 +156,42 @@
   <aliases>
     <alias index="0" field="wyr_id" name=""/>
     <alias index="1" field="user_id" name=""/>
-    <alias index="2" field="wyr_sys" name=""/>
-    <alias index="3" field="t_teren_id" name=""/>
-    <alias index="4" field="t_wn_id" name=""/>
-    <alias index="5" field="t_midas_id" name=""/>
-    <alias index="6" field="b_after_fchk" name=""/>
-    <alias index="7" field="b_confirmed" name=""/>
-    <alias index="8" field="t_notatki" name=""/>
+    <alias index="2" field="teren_id" name=""/>
+    <alias index="3" field="wn_id" name=""/>
+    <alias index="4" field="midas_id" name=""/>
+    <alias index="5" field="b_new" name=""/>
+    <alias index="6" field="b_confirmed" name=""/>
+    <alias index="7" field="t_notatki" name=""/>
   </aliases>
   <excludeAttributesWMS/>
   <excludeAttributesWFS/>
   <defaults>
     <default applyOnUpdate="0" field="wyr_id" expression=""/>
     <default applyOnUpdate="0" field="user_id" expression=""/>
-    <default applyOnUpdate="0" field="wyr_sys" expression=""/>
-    <default applyOnUpdate="0" field="t_teren_id" expression=""/>
-    <default applyOnUpdate="0" field="t_wn_id" expression=""/>
-    <default applyOnUpdate="0" field="t_midas_id" expression=""/>
-    <default applyOnUpdate="0" field="b_after_fchk" expression=""/>
+    <default applyOnUpdate="0" field="teren_id" expression=""/>
+    <default applyOnUpdate="0" field="wn_id" expression=""/>
+    <default applyOnUpdate="0" field="midas_id" expression=""/>
+    <default applyOnUpdate="0" field="b_new" expression=""/>
     <default applyOnUpdate="0" field="b_confirmed" expression=""/>
     <default applyOnUpdate="0" field="t_notatki" expression=""/>
   </defaults>
   <constraints>
     <constraint exp_strength="0" field="wyr_id" constraints="3" notnull_strength="1" unique_strength="1"/>
     <constraint exp_strength="0" field="user_id" constraints="1" notnull_strength="1" unique_strength="0"/>
-    <constraint exp_strength="0" field="wyr_sys" constraints="1" notnull_strength="1" unique_strength="0"/>
-    <constraint exp_strength="0" field="t_teren_id" constraints="0" notnull_strength="0" unique_strength="0"/>
-    <constraint exp_strength="0" field="t_wn_id" constraints="0" notnull_strength="0" unique_strength="0"/>
-    <constraint exp_strength="0" field="t_midas_id" constraints="0" notnull_strength="0" unique_strength="0"/>
-    <constraint exp_strength="0" field="b_after_fchk" constraints="1" notnull_strength="1" unique_strength="0"/>
+    <constraint exp_strength="0" field="teren_id" constraints="0" notnull_strength="0" unique_strength="0"/>
+    <constraint exp_strength="0" field="wn_id" constraints="0" notnull_strength="0" unique_strength="0"/>
+    <constraint exp_strength="0" field="midas_id" constraints="0" notnull_strength="0" unique_strength="0"/>
+    <constraint exp_strength="0" field="b_new" constraints="1" notnull_strength="1" unique_strength="0"/>
     <constraint exp_strength="0" field="b_confirmed" constraints="1" notnull_strength="1" unique_strength="0"/>
     <constraint exp_strength="0" field="t_notatki" constraints="0" notnull_strength="0" unique_strength="0"/>
   </constraints>
   <constraintExpressions>
     <constraint exp="" field="wyr_id" desc=""/>
     <constraint exp="" field="user_id" desc=""/>
-    <constraint exp="" field="wyr_sys" desc=""/>
-    <constraint exp="" field="t_teren_id" desc=""/>
-    <constraint exp="" field="t_wn_id" desc=""/>
-    <constraint exp="" field="t_midas_id" desc=""/>
-    <constraint exp="" field="b_after_fchk" desc=""/>
+    <constraint exp="" field="teren_id" desc=""/>
+    <constraint exp="" field="wn_id" desc=""/>
+    <constraint exp="" field="midas_id" desc=""/>
+    <constraint exp="" field="b_new" desc=""/>
     <constraint exp="" field="b_confirmed" desc=""/>
     <constraint exp="" field="t_notatki" desc=""/>
   </constraintExpressions>
@@ -214,14 +203,13 @@
     <columns>
       <column type="field" hidden="0" name="wyr_id" width="-1"/>
       <column type="field" hidden="0" name="user_id" width="-1"/>
-      <column type="field" hidden="0" name="b_after_fchk" width="-1"/>
+      <column type="field" hidden="0" name="b_new" width="-1"/>
       <column type="field" hidden="0" name="b_confirmed" width="-1"/>
       <column type="actions" hidden="1" width="-1"/>
-      <column type="field" hidden="0" name="wyr_sys" width="-1"/>
       <column type="field" hidden="0" name="t_notatki" width="-1"/>
-      <column type="field" hidden="0" name="t_teren_id" width="-1"/>
-      <column type="field" hidden="0" name="t_wn_id" width="-1"/>
-      <column type="field" hidden="0" name="t_midas_id" width="-1"/>
+      <column type="field" hidden="0" name="teren_id" width="-1"/>
+      <column type="field" hidden="0" name="wn_id" width="-1"/>
+      <column type="field" hidden="0" name="midas_id" width="-1"/>
     </columns>
   </attributetableconfig>
   <conditionalstyles>
@@ -253,42 +241,40 @@ def my_form_open(dialog, layer, feature):
   <featformsuppress>0</featformsuppress>
   <editorlayout>generatedlayout</editorlayout>
   <editable>
-    <field editable="1" name="b_after_fchk"/>
+    <field editable="1" name="b_new"/>
     <field editable="1" name="b_confirmed"/>
     <field editable="1" name="b_wn"/>
     <field editable="1" name="b_zloze"/>
-    <field editable="1" name="date_fchk"/>
+    <field editable="1" name="date_ctrl"/>
     <field editable="1" name="i_area_m2"/>
     <field editable="1" name="order_id"/>
-    <field editable="1" name="t_midas_id"/>
+    <field editable="1" name="midas_id"/>
     <field editable="1" name="t_notatki"/>
-    <field editable="1" name="t_teren_id"/>
-    <field editable="1" name="t_wn_id"/>
+    <field editable="1" name="teren_id"/>
+    <field editable="1" name="wn_id"/>
     <field editable="1" name="t_wyr_do"/>
     <field editable="1" name="t_wyr_od"/>
     <field editable="1" name="time_fchk"/>
     <field editable="1" name="user_id"/>
     <field editable="1" name="wyr_id"/>
-    <field editable="1" name="wyr_sys"/>
   </editable>
   <labelOnTop>
-    <field name="b_after_fchk" labelOnTop="0"/>
+    <field name="b_new" labelOnTop="0"/>
     <field name="b_confirmed" labelOnTop="0"/>
     <field name="b_wn" labelOnTop="0"/>
     <field name="b_zloze" labelOnTop="0"/>
-    <field name="date_fchk" labelOnTop="0"/>
+    <field name="date_ctrl" labelOnTop="0"/>
     <field name="i_area_m2" labelOnTop="0"/>
     <field name="order_id" labelOnTop="0"/>
-    <field name="t_midas_id" labelOnTop="0"/>
+    <field name="midas_id" labelOnTop="0"/>
     <field name="t_notatki" labelOnTop="0"/>
-    <field name="t_teren_id" labelOnTop="0"/>
-    <field name="t_wn_id" labelOnTop="0"/>
+    <field name="teren_id" labelOnTop="0"/>
+    <field name="wn_id" labelOnTop="0"/>
     <field name="t_wyr_do" labelOnTop="0"/>
     <field name="t_wyr_od" labelOnTop="0"/>
     <field name="time_fchk" labelOnTop="0"/>
     <field name="user_id" labelOnTop="0"/>
     <field name="wyr_id" labelOnTop="0"/>
-    <field name="wyr_sys" labelOnTop="0"/>
   </labelOnTop>
   <widgets/>
   <previewExpression>"wyr_id"</previewExpression>

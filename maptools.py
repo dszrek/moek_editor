@@ -49,10 +49,6 @@ class ObjectManager:
         self.order_ids = []
         self.order_data = []
         self.order = None
-        self.wn_ids = []
-        self.wn = None
-        self.wn_data = []
-        self.wn_pow = []
         self.p_vn = False
         self.init_void = False
 
@@ -72,9 +68,9 @@ class ObjectManager:
                 self.dlg.flag_panel.hash.set_value(self.flag_data[2])  # Aktualizacja teren_id
                 txt = self.param_parser(self.flag_data[3])
                 self.dlg.flag_panel.notepad_box.value_change(txt)  # Aktualizacja tekstu notatki
-                if self.wn:
-                    # Wyłączenie panelu wn, jeśli jest włączony:
-                    self.wn = None
+                if self.wyr:
+                    # Wyłączenie panelu wyrobisk, jeśli jest włączony:
+                    self.wyr = None
                 if self.parking:
                     # Wyłączenie panelu miejsc parkingowych, jeśli jest włączony:
                     self.parking = None
@@ -98,12 +94,19 @@ class ObjectManager:
             wyr_point_lyrs_repaint()
             dlg.proj.mapLayersByName("wyr_poly")[0].triggerRepaint()
             wdf_update()
-            if dlg.mt.mt_name == "wn_pick" or dlg.wyr_panel.mt_enabled:
+            if dlg.wyr_panel.mt_enabled:
                 dlg.mt.init("multi_tool")
             if val:
                 if dlg.wyr_panel.order_drawer.edited and not dlg.wyr_panel.order_drawer.attr_void:
                     dlg.wyr_panel.order_drawer.edited = False
                 self.wyr_data = self.wyr_update()
+                self.moek_data = self.moek_update(self.wyr_data[62]) if self.wyr_data[62] else None
+                if self.moek_data:
+                    self.dlg.moek_panel.values_update(self.moek_data)  # Aktualizacja atrybutów
+                    self.dlg.moek_panel.show()
+                else:
+                    self.dlg.moek_panel.hide()
+                # print(self.moek_data)
                 if dlg.wyr_panel.pow_all:
                     self.order_data = [None, False]
                 else:
@@ -113,55 +116,61 @@ class ObjectManager:
                 else:
                     wyr_layer_update(False)
                 self.list_position_check("wyr")
-                self.dlg.wyr_panel.lok.set_tooltip(f'<html><head/><body><p style="text-indent:11px; margin:4px">MIEJSCOWOŚĆ: &nbsp;{self.wyr_data[52]}</p><p style="text-indent: 53px; margin:4px">GMINA: &nbsp;{self.wyr_data[53]}</p><p style="text-indent: 48px; margin:4px">POWIAT: &nbsp;{self.wyr_data[54]}</p><p style="text-indent: 0px; margin:4px">WOJEWÓDZTWO: &nbsp;{self.wyr_data[55]}</p></body></html>')
-                self.dlg.wyr_panel.hash.set_value(self.wyr_data[51])  # Aktualizacja teren_id
                 self.dlg.wyr_panel.status_selector.set_case(self.wyr_data[1], self.wyr_data[2])  # Aktualizacja statusu wyrobiska
-                # Aktualizacja powierzchni wyrobiska, jeżeli wyrobisko niepotwierdzone:
-                if self.dlg.wyr_panel.status_selector.case != 1:
+                self.dlg.wyr_panel.hash.set_value(self.wyr_data[51])  # Aktualizacja teren_id
+                # Aktualizacja WN_PNE:
+                if self.wyr_data[3]:
+                    self.dlg.wyr_panel.wnbox.setVisible(True)
+                    self.dlg.wyr_panel.wn_label.setText(f'{self.wyr_data[3]}')
+                else:
+                    self.dlg.wyr_panel.wnbox.setVisible(False)
+                # Aktualizacja lokalizacji:
+                self.dlg.wyr_panel.lok.set_tooltip(f'<html><head/><body><p style="text-indent:11px; margin:4px">MIEJSCOWOŚĆ: &nbsp;{self.wyr_data[52]}</p><p style="text-indent: 53px; margin:4px">GMINA: &nbsp;{self.wyr_data[53]}</p><p style="text-indent: 48px; margin:4px">POWIAT: &nbsp;{self.wyr_data[54]}</p><p style="text-indent: 0px; margin:4px">WOJEWÓDZTWO: &nbsp;{self.wyr_data[55]}</p></body></html>')
+                # Powierzchnia wyrobiska i kasowanie:
+                if self.dlg.wyr_panel.status_selector.case == 0:
+                    dlg.wyr_panel.areabox.setVisible(True)
                     area_txt = f"{self.wyr_data[4]} m\u00b2 "
-                    dlg.wyr_panel.area_icon.setEnabled(True)
                     dlg.wyr_panel.area_label.setText(area_txt)
-                self.dlg.wyr_panel.wn_picker.wn_id = self.wyr_data[3]  # Aktualizacja wn_id
-                self.dlg.wyr_panel.wdf_sel_update()  # Aktualizacja zaznaczenia wiersza w tv_wdf
+                    dlg.wyr_panel.delbox.setVisible(True)
+                else:
+                    dlg.wyr_panel.areabox.setVisible(False)
+                    dlg.wyr_panel.delbox.setVisible(False)
+                # Data aktualizacji:
+                dlg.wyr_panel.datebox.setVisible(True) if self.dlg.wyr_panel.status_selector.case == 2 else dlg.wyr_panel.datebox.setVisible(False)
+                dlg.wyr_panel.date_label.setText(str(self.wyr_data[41])) if self.wyr_data[41] else dlg.wyr_panel.date_label.setText("")
+                # Dostosowanie wymiaru dummybox:
+                if self.dlg.wyr_panel.status_selector.case == 0:
+                    dlg.wyr_panel.dummybox.setFixedWidth(67)
+                else:
+                    wn_width = 123 if self.wyr_data[3] else 0
+                    date_width = 135 if self.wyr_data[41] else 0
+                    dummy_width = 281 - wn_width - date_width
+                    dlg.wyr_panel.dummybox.setFixedWidth(dummy_width)
+                # Aktualizacja zaznaczenia wiersza w tv_wdf
+                self.dlg.wyr_panel.wdf_sel_update()
                 dlg.wyr_panel.focus_void = True
                 self.dlg.wyr_panel.values_update(self.wyr_data)  # Aktualizacja atrybutów
                 dlg.wyr_panel.focus_void = False
+                if self.flag:
+                    # Wyłączenie panelu flag, jeśli jest włączony:
+                    self.flag = None
+                if self.parking:
+                    # Wyłączenie panelu miejsc parkingowych, jeśli jest włączony:
+                    self.parking = None
             self.dlg.wyr_panel.show() if val else self.dlg.wyr_panel.hide()
+            if not val:
+                self.dlg.moek_panel.hide()
             self.dlg.wyr_panel.id_box.id = val if val else None
         elif attr == "wyr_ids":
             # Zmiana listy dostępnych wyrobisk:
             wyr_check = self.list_position_check("wyr")
             if not wyr_check:
                 self.wyr = None
-        elif attr == "wn":
-            # Zmiana aktualnego punktu WN_PNE:
-            dlg.wn_panel.hide()
-            QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'wn_sel', val)
-            dlg.proj.mapLayersByName("wn_pne")[0].triggerRepaint()
-            if val:
-                self.wn_data = self.wn_update()
-                self.wn_pow = self.wn_pow_update()
-                self.list_position_check("wn")
-                if self.flag:
-                    # Wyłączenie panelu flagi, jeśli jest włączony:
-                    self.flag = None
-                if self.parking:
-                    # Wyłączenie panelu miejsc parkowania, jeśli jest włączony:
-                    self.parking = None
-                dlg.wn_panel.values_update(self.wn_data)
-                dlg.wn_panel.pow_update(self.wn_pow)
-            dlg.wn_panel.id_box.id = val if val else None
-            dlg.wn_panel.show() if val else dlg.wn_panel.hide()
         elif attr == "order" and val:
             dlg.wyr_panel.order_box.id = val
             dlg.wyr_panel.order_drawer.locked = self.order_data[1]
             if not dlg.wyr_panel.order_box.edited:
                 self.list_position_check("order")
-        elif attr == "wn_ids":
-            # Zmiana listy dostępnych punktów WN_PNE:
-            wn_check = self.list_position_check("wn")
-            if not wn_check:
-                self.wn = None
         elif attr == "parking":
             # Zmiana aktualnego parkingu:
             QgsExpressionContextUtils.setProjectVariable(dlg.proj, 'parking_sel', val)
@@ -170,11 +179,11 @@ class ObjectManager:
                 self.parking_data = self.parking_update()
                 self.list_position_check("parking")
                 self.dlg.parking_panel.parking_tools.status = self.parking_data[1]  # Aktualizacja przycisku status
-                if self.wn:
-                    # Wyłączenie panelu wn, jeśli jest włączony:
-                    self.wn = None
+                if self.wyr:
+                    # Wyłączenie panelu wyrobisk, jeśli jest włączony:
+                    self.wyr = None
                 if self.flag:
-                    # Wyłączenie panelu flagi, jeśli jest włączony:
+                    # Wyłączenie panelu flag, jeśli jest włączony:
                     self.flag = None
             if self.dlg.mt.mt_name == "parking_move":
                 self.dlg.mt.init("multi_tool")
@@ -228,8 +237,6 @@ class ObjectManager:
             if self.marsz != obj_data[1][0]:
                 self.marsz = obj_data[1][0]
             self.marsz_menu_show(loc)
-        elif lyr_name == "wn_pne":
-            self.wn = obj_data[1][0]
 
     def clear_sel(self):
         """Odznaczenie wybranych flag, wyrobisk, parkingów, marszrut i punktów WN_PNE."""
@@ -243,8 +250,6 @@ class ObjectManager:
             self.wyr = None
         if self.order:
             self.order = None
-        if self.wn:
-            self.wn = None
 
     def marsz_menu_show(self, loc):
         """Umiejscawia i wyświetla menu kontekstowe marszrut na linii przy kursorze."""
@@ -303,11 +308,11 @@ class ObjectManager:
             ids = self.flag_ids
             val = self.flag
             is_int = True
-        elif _obj == "parking":
-            obj = "self.parking"
-            ids = self.parking_ids
-            val = self.parking
-            is_int = True
+        # elif _obj == "parking":
+        #     obj = "self.parking"
+        #     ids = self.parking_ids
+        #     val = self.parking
+        #     is_int = True
         elif _obj == "wyr":
             obj = "self.wyr"
             ids = self.wyr_ids
@@ -319,11 +324,6 @@ class ObjectManager:
             val = self.wyr
             is_int = True
             _obj = "wyr"
-        elif _obj == "wn":
-            obj = "self.wn"
-            ids = self.wn_ids
-            val = self.wn
-            is_int = False
         else:
             return
         cur_id_idx = ids.index(val)  # Pozycja na liście aktualnego obiektu
@@ -334,7 +334,7 @@ class ObjectManager:
     def flag_update(self):
         """Zwraca dane flagi."""
         db = PgConn()
-        sql = "SELECT id, b_fieldcheck, t_teren_id, t_notatki FROM team_" + str(dlg.team_i) + ".flagi WHERE id = " + str(self.flag) + ";"
+        sql = "SELECT id, b_fieldcheck, teren_id, t_notatki FROM team_" + str(dlg.team_i) + ".flagi WHERE id = " + str(self.flag) + ";"
         if db:
             res = db.query_sel(sql, False)
             if not res:
@@ -368,16 +368,33 @@ class ObjectManager:
                 return res
 
     def wyr_update(self):
-        """Zwraca dane wyrobiska."""
+        """Zwraca dane wyrobiska.
+        0 - wyr_id, 1 - b_new, 2 - b_confirmed, 3 - wn_id, 4 - i_area_m2, 5 - t_wyr_od, 6 - t_wyr_do, 7 - t_notatki, 8 - i_dlug_min, 9 - i_dlug_max, 10 - i_szer_min, 11 - i_szer_max, 12 - n_wys_min, 13 - n_wys_max, 14 - n_nadkl_min, 15 - n_nadkl_max, 16 - n_miazsz_min, 17 - n_miazsz_max, 18 - t_wyrobisko, 19 - t_zawodn, 20 - t_eksploat, 21 - t_wydobycie, 22 - t_wyp_odpady, 23 - t_odpady_1, 24 - t_odpady_2, 25 - t_odpady_3, 26 - t_odpady_4, 27 - t_odpady_opak, 28 - t_odpady_inne, 29 - t_stan_rekul, 30 - t_rekultyw, 31 - t_dojazd, 32 - t_zagrozenia, 33 - t_zgloszenie, 34 - t_powod, 35 - t_stan_pne, 36 - t_kopalina, 37 - t_kopalina_2, 38 - t_wiek, 39 - t_wiek_2, 40 - time_fchk, 41 - date_ctrl, 42 - b_teren, 43 - midas_id, 44 - t_stan_midas, 45 - t_zloze_od, 46 - t_zloze_do, 47 - b_pne_zloze, 48 - b_pne_poza, 49 - i_ile_zalacz, 50 - t_autor, 51 - teren_id, 52 - t_mie_name, 53 - t_gmi_name, 54 - t_pow_name, 55 - t_woj_name, 56 - b_pne, 57 - t_zmiana_wyr, 58 - date_map, 59 - t_map_source, 60 - t_weryf_midas, 61 - d.t_og_id, 62 - moek_id, 63 - t_decyzje, 64 - t_dzialania
+        """
         db = PgConn()
         if dlg.wyr_panel.pow_all:
-            sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_fchk, d.b_teren, w.t_midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.t_teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "';"
+            sql = "SELECT w.wyr_id, w.b_new, w.b_confirmed, w.wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_ctrl, d.b_teren, w.midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne, d.t_zmiana_wyr, d.date_map, d.t_map_source, d.t_weryf_midas, d.t_og_id, w.moek_id, d.t_decyzje, d.t_dzialania FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "';"
         else:
-            sql = "SELECT w.wyr_id, w.b_after_fchk, w.b_confirmed, w.t_wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_fchk, d.b_teren, w.t_midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.t_teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne, p.order_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "' AND p.pow_grp = '" + str(dlg.powiat_i) + "';"
+            sql = "SELECT w.wyr_id, w.b_new, w.b_confirmed, w.wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_ctrl, d.b_teren, w.midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne, d.t_zmiana_wyr, d.date_map, d.t_map_source, d.t_weryf_midas, d.t_og_id, w.moek_id, d.t_decyzje, d.t_dzialania, p.order_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "' AND p.pow_grp = '" + str(dlg.powiat_i) + "';"
         if db:
             res = db.query_sel(sql, False)
             if not res:
                 print(f"Nie udało się wczytać danych wyrobiska: {self.wyr}")
+                return None
+            else:
+                return res
+
+    def moek_update(self, moek_id):
+        """Zwraca dane wyrobiska z poprzedniej edycji MOEK.
+        0 - moek_id, 1 - i_area_m2, 2 - t_wyr_od, 3 - t_wyr_do, 4 - i_dlug_min, 5 - i_dlug_max, 6 - i_szer_min, 7 - i_szer_max, 8 - n_wys_min, 9 - n_wys_max, 10 - n_nadkl_min, 11 - n_nadkl_max, 12 - n_miazsz_min, 13 - n_miazsz_max, 14 - t_wyrobisko, 15 - t_zawodn, 16 - t_eksploat, 17 - t_wydobycie, 18 - t_wyp_odpady, 19 - t_odpady_1, 20 - t_odpady_2, 21 - t_odpady_3, 22 - t_odpady_4, 23 - t_stan_rekul, 24 - t_rekultyw, 25 - t_dojazd, 26 - t_zagrozenia, 27 - t_zgloszenie, 28 - t_powod, 29 - t_stan_pne, 30 - t_kopalina, 31 - t_kopalina_2, 32 - t_wiek, 33 - t_wiek_2, 34 - date_ctrl, 35 - b_teren, 36 - b_pne, 37 - midas_id, 38 - t_stan_midas, 39 - t_zloze_od, 40 - t_zloze_do, 41 - b_pne_zloze, 42 - b_pne_poza, 43 - t_notatki, 44 - t_dzialania, 45 - t_weryfikacja, 46 - t_autor
+        """
+        # moek_id = '101437_018'
+        db = PgConn()
+        sql = f"SELECT moek_id, i_area_m2, t_wyr_od, t_wyr_do, i_dlug_min, i_dlug_max, i_szer_min, i_szer_max, n_wys_min, n_wys_max, n_nadkl_min, n_nadkl_max, n_miazsz_min, n_miazsz_max, (SELECT s.t_desc FROM public.sl_wyrobisko AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_wyrobisko AND d.moek_id = '{moek_id}') AS t_wyrobisko, (SELECT s.t_desc FROM public.sl_zawodnienie AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_zawodn AND d.moek_id = '{moek_id}') AS t_zawodn, (SELECT s.t_desc FROM public.sl_eksploatacja AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_eksploat AND d.moek_id = '{moek_id}') AS t_eksploat, (SELECT s.t_desc FROM public.sl_wydobycie AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_wydobycie AND d.moek_id = '{moek_id}') AS t_wydobycie, (SELECT s.t_desc FROM public.sl_wyp_odp AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_wyp_odpady AND d.moek_id = '{moek_id}') AS t_wyp_odpady, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_odpady_1 AND d.moek_id = '{moek_id}') AS t_odpady_1, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_odpady_2 AND d.moek_id = '{moek_id}') AS t_odpady_2, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_odpady_3 AND d.moek_id = '{moek_id}') AS t_odpady_3, (SELECT s.t_desc FROM public.sl_rodz_odp AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_odpady_4 AND d.moek_id = '{moek_id}') AS t_odpady_4, (SELECT s.t_desc FROM public.sl_stan_rekul AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_stan_rekul AND d.moek_id = '{moek_id}') AS t_stan_rekul, t_rekultyw, (SELECT s.t_desc FROM public.sl_dojazd AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_dojazd AND d.moek_id = '{moek_id}') AS t_dojazd, t_zagrozenia, (SELECT s.t_desc FROM public.sl_zgloszenie AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_zgloszenie AND d.moek_id = '{moek_id}') AS t_zgloszenie, t_powod, (SELECT s.t_desc FROM public.sl_stan_pne AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_stan_pne AND d.moek_id = '{moek_id}') AS t_stan_pne, (SELECT s.t_desc FROM public.sl_kopalina AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_kopalina AND d.moek_id = '{moek_id}') AS t_kopalina, (SELECT s.t_desc FROM public.sl_kopalina AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_kopalina_2 AND d.moek_id = '{moek_id}') AS t_kopalina_2, t_wiek, t_wiek_2, date_ctrl, b_teren, b_pne, midas_id, (SELECT s.t_desc FROM public.sl_stan_midas AS s, moek_1.wyrobiska AS d WHERE s.t_val = d.t_stan_midas AND d.moek_id = '{moek_id}') AS t_stan_midas, t_zloze_od, t_zloze_do, b_pne_zloze, b_pne_poza, t_notatki, t_dzialania, t_weryfikacja, t_autor FROM moek_1.wyrobiska WHERE moek_id = '{moek_id}';"
+        if db:
+            res = db.query_sel(sql, False)
+            if not res:
+                print(f"Nie udało się wczytać danych wyrobiska z MOEK_1: {moek_id}")
                 return None
             else:
                 return res
@@ -393,30 +410,6 @@ class ObjectManager:
             else:
                 return [None, False]
 
-    def wn_update(self):
-        """Zwraca dane punktu WN_PNE."""
-        db = PgConn()
-        sql = "SELECT e.id_arkusz, e.kopalina, e.wyrobisko, e.zawodn, e.eksploat, e.wyp_odpady, e.nadkl_min, e.nadkl_max, e.nadkl_sr, e.miazsz_min, e.miazsz_max, e.dlug_max, e.szer_max, e.wys_min, e.wys_max, e.data_kontrol, e.uwagi, (SELECT COUNT(*) FROM external.wn_pne_pow AS p WHERE e.id_arkusz = p.id_arkusz AND p.b_active = true) AS i_pow_cnt, t.t_notatki FROM external.wn_pne AS e INNER JOIN team_" + str(dlg.team_i) + ".wn_pne AS t USING(id_arkusz) WHERE id_arkusz = '" + str(self.wn) + "';"
-        if db:
-            res = db.query_sel(sql, False)
-            if not res:
-                print(f"Nie udało się wczytać danych punktu WN_PNE: {self.wn}")
-                return None
-            else:
-                return res
-
-    def wn_pow_update(self):
-        """Zwraca dane o powiatach punktu WN_PNE."""
-        db = PgConn()
-        sql = "SELECT pow_id, t_pow_name, b_active FROM external.wn_pne_pow WHERE id_arkusz = '" + str(self.wn) + "';"
-        if db:
-            res = db.query_sel(sql, True)
-            if not res:
-                print(f"Nie udało się wczytać danych punktu WN_PNE: {self.wn}")
-                return None
-            else:
-                return res
-
     def set_object_from_input(self, _id, _obj):
         """Próba zmiany aktualnej flagi, wyrobiska, parkingu lub WN_PNE po wpisaniu go w idbox'ie."""
         if _obj == "flag":
@@ -424,11 +417,11 @@ class ObjectManager:
             ids = self.flag_ids
             id_box = "dlg.flag_panel.id_spinbox.id"
             is_int = True
-        elif _obj == "parking":
-            obj = "self.parking"
-            ids = self.parking_ids
-            id_box = "dlg.parking_panel.id_box.id"
-            is_int = True
+        # elif _obj == "parking":
+        #     obj = "self.parking"
+        #     ids = self.parking_ids
+        #     id_box = "dlg.parking_panel.id_box.id"
+        #     is_int = True
         elif _obj == "wyr":
             obj = "self.wyr"
             ids = self.wyr_ids
@@ -437,11 +430,6 @@ class ObjectManager:
         elif _obj == "order":
             self.wyr_from_order_change(_id)
             return
-        elif _obj == "wn":
-            obj = "self.wn"
-            ids = self.wn_ids
-            id_box = "dlg.wn_panel.id_box.id"
-            is_int = False
         else:
             return
         if is_int:
@@ -511,11 +499,11 @@ class ObjectManager:
             val = self.flag
             ids = self.flag_ids
             id_box = dlg.flag_panel.id_spinbox
-        elif _obj == "parking":
-            obj = "self.parking"
-            val = self.parking
-            ids = self.parking_ids
-            id_box = dlg.parking_panel.id_box
+        # elif _obj == "parking":
+        #     obj = "self.parking"
+        #     val = self.parking
+        #     ids = self.parking_ids
+        #     id_box = dlg.parking_panel.id_box
         elif _obj == "wyr":
             obj = "self.wyr"
             val = self.wyr
@@ -526,11 +514,6 @@ class ObjectManager:
             val = self.order
             ids = [i[0] for i in self.order_ids]
             id_box = dlg.wyr_panel.order_box
-        elif _obj == "wn":
-            obj = "self.wn"
-            val = self.wn
-            ids = self.wn_ids
-            id_box = dlg.wn_panel.id_box
         else:
             return False
         if not ids or not val:
@@ -559,18 +542,15 @@ class ObjectManager:
             else:
                 point_lyr = dlg.proj.mapLayersByName("flagi_bez_teren")[0]
             feats = point_lyr.getFeatures(f'"id" = {self.flag}')
-        elif _obj == "parking":
-            if self.parking_data[1]:
-                point_lyr = dlg.proj.mapLayersByName("parking_odwiedzone")[0]
-            else:
-                point_lyr = dlg.proj.mapLayersByName("parking_planowane")[0]
-            feats = point_lyr.getFeatures(f'"id" = {self.parking}')
+        # elif _obj == "parking":
+        #     if self.parking_data[1]:
+        #         point_lyr = dlg.proj.mapLayersByName("parking_odwiedzone")[0]
+        #     else:
+        #         point_lyr = dlg.proj.mapLayersByName("parking_planowane")[0]
+        #     feats = point_lyr.getFeatures(f'"id" = {self.parking}')
         elif _obj == "wyr":
             point_lyr = dlg.proj.mapLayersByName("wyr_point")[0]
             feats = point_lyr.getFeatures(f'"wyr_id" = {self.wyr}')
-        elif _obj == "wn":
-            point_lyr = dlg.proj.mapLayersByName("wn_pne")[0]
-            feats = point_lyr.getFeatures(QgsFeatureRequest(QgsExpression('"id_arkusz"=' + "'" + str(self.wn) + "'")))
         try:
             feat = list(feats)[0]
         except Exception as err:
@@ -593,26 +573,25 @@ class MapToolManager:
         self.canvas.mapToolSet.connect(self.maptool_change)
         self.tool_kinds = (MultiMapTool, IdentMapTool, PointPickerMapTool, PointDrawMapTool, LineDrawMapTool, PolyDrawMapTool, LineEditMapTool, PolyEditMapTool, LineContinueMapTool, RulerMapTool)
         self.maptools = [
-            # {"name" : "edit_poly", "class" : PolyEditMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wn_pne", "wyrobiska"], "fn" : obj_sel},
+            # {"name" : "edit_poly", "class" : PolyEditMapTool, "lyr" : ["flagi_z_teren", "flagi_bez_teren", "wyrobiska"], "fn" : obj_sel},
             {"name" : "multi_tool", "class" : MultiMapTool, "button" : self.dlg.side_dock.toolboxes["tb_multi_tool"].widgets["btn_multi_tool"],"fn" : obj_sel},
             {"name" : "vn_sel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_sel"], "lyr" : ["vn_user"], "fn" : vn_change},
             {"name" : "vn_powsel", "class" : IdentMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_powsel"], "lyr" : ["powiaty"], "fn" : vn_powsel},
             {"name" : "vn_polysel", "class" : PolyDrawMapTool, "button" : self.dlg.p_vn.widgets["btn_vn_polysel"], "fn" : vn_polysel, "extra" : [(0, 0, 255, 128), (0, 0, 255, 80)]},
-            {"name" : "flt_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"], "fn" : flag_add, "extra" : ['true']},
+            # {"name" : "flt_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_fchk"], "fn" : flag_add, "extra" : ['true']},
             {"name" : "flf_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_flag_nfchk"], "fn" : flag_add, "extra" : ['false']},
             {"name" : "flag_move", "class" : PointDrawMapTool, "button" : self.dlg.flag_panel.flag_tools.flag_move, "fn" : flag_move, "extra" : []},
             {"name" : "wyr_add_poly", "class" : PolyDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"], "fn" : wyr_add_poly, "extra" : [(0, 255, 0, 128), (0, 255, 0, 80)]},
             {"name" : "wyr_edit", "class" : PolyEditMapTool, "button" : self.dlg.wyr_panel.wyr_edit, "lyr" : ["wyr_poly"], "fn" : wyr_poly_change, "extra" : ["wyr_id"]},
-            {"name" : "wn_pick", "class" : PointPickerMapTool, "button" : self.dlg.wyr_panel.wn_picker.wn_picker_empty, "lyr" : ["wn_pne"], "fn" : wn_pick, "extra" : [["wn_pne"]]},
-            {"name" : "parking_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"], "fn" : parking_add, "extra" : []},
-            {"name" : "parking_move", "class" : PointDrawMapTool, "button" : self.dlg.parking_panel.parking_tools.parking_move, "fn" : parking_move, "extra" : []},
-            {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : [[255, 255, 0, 255],["marszruty", "parking_planowane", "parking_odwiedzone"]]},
-            {"name" : "marsz_edit", "class" : LineEditMapTool, "button" : self.dlg.marsz_panel.marsz_edit, "lyr" : ["marszruty"], "fn" : marsz_line_change, "extra" : ["marsz_id",["marszruty", "parking_planowane", "parking_odwiedzone"]]},
-            {"name" : "marsz_continue", "class" : LineContinueMapTool, "button" : self.dlg.marsz_panel.marsz_continue, "lyr" : ["marszruty"], "fn" : marsz_line_continue, "extra" : ["marsz_id"]},
-            {"name" : "dlug_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_1"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
-            {"name" : "dlug_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_1"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
-            {"name" : "szer_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_1"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
-            {"name" : "szer_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_1"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas}
+            # {"name" : "parking_add", "class" : PointDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"], "fn" : parking_add, "extra" : []},
+            # {"name" : "parking_move", "class" : PointDrawMapTool, "button" : self.dlg.parking_panel.parking_tools.parking_move, "fn" : parking_move, "extra" : []},
+            # {"name" : "marsz_add", "class" : LineDrawMapTool, "button" : self.dlg.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"], "fn" : marsz_add, "extra" : [[255, 255, 0, 255],["marszruty", "parking_planowane", "parking_odwiedzone"]]},
+            # {"name" : "marsz_edit", "class" : LineEditMapTool, "button" : self.dlg.marsz_panel.marsz_edit, "lyr" : ["marszruty"], "fn" : marsz_line_change, "extra" : ["marsz_id",["marszruty", "parking_planowane", "parking_odwiedzone"]]},
+            # {"name" : "marsz_continue", "class" : LineContinueMapTool, "button" : self.dlg.marsz_panel.marsz_continue, "lyr" : ["marszruty"], "fn" : marsz_line_continue, "extra" : ["marsz_id"]},
+            {"name" : "dlug_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_3"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
+            {"name" : "dlug_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_dlug_3"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
+            {"name" : "szer_min", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_3"].valbox_1.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas},
+            {"name" : "szer_max", "class" : RulerMapTool, "button" : self.dlg.wyr_panel.widgets["txt2_szer_3"].valbox_2.r_widget, "lyr" : ["wyr_poly"], "fn" : ruler_meas}
         ]
 
     def maptool_change(self, new_tool, old_tool):
@@ -3656,17 +3635,17 @@ def wyr_point_add(point):
     if isinstance(point, QgsGeometry):
         point = point.asPoint()
     db = PgConn()
-    sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyrobiska(wyr_id, user_id, wyr_sys, centroid) SELECT nextval, " + str(dlg.user_id) + ", concat('" + str(dlg.team_i) + "_', nextval), ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180) FROM (SELECT nextval(pg_get_serial_sequence('team_" + str(dlg.team_i) + ".wyrobiska', 'wyr_id')) nextval) q RETURNING wyr_id"
+    sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyrobiska(wyr_id, user_id, centroid) SELECT nextval, " + str(dlg.user_id) + ", ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180) FROM (SELECT nextval(pg_get_serial_sequence('team_" + str(dlg.team_i) + ".wyrobiska', 'wyr_id')) nextval) q RETURNING wyr_id"
     if db:
         res = db.query_upd_ret(sql)
         if not res:
             print(f"Nie udało się stworzyć centroidu wyrobiska.")
             return None
         else:
-            # Włączenie wyrobisk przed kontrolą terenową, jeśli są wyłączone:
-            val = dlg.cfg.get_val("wyr_przed_teren")
+            # Włączenie wyrobisk szarych, jeśli są wyłączone:
+            val = dlg.cfg.get_val("wyr_szare")
             if val == 0:
-                dlg.cfg.set_val("wyr_przed_teren", 1)
+                dlg.cfg.set_val("wyr_szare", 1)
             return res
 
 def wyr_add_poly(geom, wyr_id=None):
@@ -3745,13 +3724,12 @@ def wyr_point_update(wyr_id, geom):
     db_attr_change(tbl=f"team_{dlg.team_i}.wyr_dane", attr="i_area_m2", val=area, sql_bns=f" WHERE wyr_id = {wyr_id}", user=False)
     if temp_lyr:
         del lyr_point
-    dlg.wyr_panel.wn_df = pd.DataFrame(columns=dlg.wyr_panel.wn_df.columns)  # Wyczyszczenie dataframe'a z połączeniami wyrobiska-wn_pne
     wyr_layer_update(False)
     dlg.obj.wyr = dlg.obj.wyr  # Aktualizacja danych wyrobiska
 
 def wyr_point_lyrs_repaint():
     """Odświeża widok punktowych warstw wyrobisk."""
-    lyrs_names = ['wyr_przed_teren', 'wyr_potwierdzone', 'wyr_odrzucone', 'wyr_point']
+    lyrs_names = ['wyr_szare', 'wyr_fioletowe', 'wyr_zielone', 'wyr_point']
     for lyr_name in lyrs_names:
         dlg.proj.mapLayersByName(lyr_name)[0].triggerRepaint()
 
@@ -3923,12 +3901,6 @@ def marsz_line_continue(lyr, geom, marsz_id, init_extent, cancel=False, deactiva
         dlg.mt.init("marsz_add", [marsz_id, geom, init_extent])
     else:
         marsz_line_change(lyr, geom, marsz_id, deactivated)
-
-def wn_pick(layer, feature):
-    dlg.mt.init("multi_tool")
-    if not feature:
-        return
-    dlg.wyr_panel.wn_picker.wn_id_update(feature["id_arkusz"])
 
 def ruler_meas(length, button):
     dlg.mt.init("multi_tool")

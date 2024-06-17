@@ -1,5 +1,8 @@
 # Changelog (dziennik zmian):
 
+## [0.6.2] HOTFIX - 2024-06-17
+### Zmieniono
+- Zaktualizowano nazwę warstwy WMTS - Numeryczny Model Terenu (ISOK). Według zmian na serwerze GUGIK, nazwa warstwy "ISOK_Cien" zotała zmieniona na "Cieniowanie".
 
 ## [0.6.1] - 2024-03-27
 ### Dodano

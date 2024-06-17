@@ -6,7 +6,7 @@
 name=MOEK Editor
 qgisMinimumVersion=3.0
 description=Wtyczka do obsługi systemu MOEK (PIG-PIB).
-version=0.6.1
+version=0.6.2
 author=Dominik Szrek / PIG-PIB
 email=dszr@pgi.gov.pl
 
@@ -20,7 +20,12 @@ repository=https://github.com/dszrek/moek_editor
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-changelog=[0.6.1] - 2024-03-27
+changelog=[0.6.2] HOTFIX - 2024-06-17
+
+  * Zmieniono:
+ - Zaktualizowano nazwę warstwy WMTS: Numeryczny Model Terenu (ISOK). Według zmian na serwerze GUGIK, nazwa warstwy "ISOK_Cien" zotała zmieniona na "Cieniowanie".
+
+  [0.6.1] - 2024-03-27
 
   * Dodano:
  - Dodano panel "Wyrobiska MOEK_1" wyświetlający dane wyrobisk zarejestrowanych w poprzedniej edycji MOEK.

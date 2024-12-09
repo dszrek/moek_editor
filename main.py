@@ -15,7 +15,7 @@ from .viewnet import vn_set_gvars, stage_refresh
 
 # Stałe globalne:
 SQL_1 = " WHERE user_id = "
-PLUGIN_VER = "0.6.1"
+PLUGIN_VER = "0.6.2"
 USER = ""
 
 # Zmienne globalne:

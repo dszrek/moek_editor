@@ -25,7 +25,7 @@ import numpy as np
 from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsPointXY, QgsSettings, QgsRasterDataProvider, QgsRasterBlock, QgsRasterFileWriter, QgsRasterPipe, QgsRasterInterface
 from qgis.PyQt.QtCore import Qt, pyqtSlot, pyqtProperty, QTimer, QAbstractTableModel, QVariant, QModelIndex, QRect, QObject, pyqtSignal, QFileSystemWatcher
 from qgis.PyQt.QtWidgets import QMessageBox, QHeaderView, QStyledItemDelegate, QStyle
-from qgis.PyQt.QtGui import QColor, QFont, QLinearGradient, QBrush, QPen, QPainter
+from qgis.PyQt.QtGui import QColor, QFont, QLinearGradient, QBrush, QPen, QPainter, QIcon
 from qgis.utils import iface
 from threading import Thread
 from PIL import Image
@@ -36,6 +36,7 @@ from win32con import MONITOR_DEFAULTTONEAREST
 
 DB_SOURCE = "MOEK"
 TEMP_PATH = tempfile.gettempdir()
+ICON_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'ui' + os.path.sep
 ValueRole = Qt.UserRole + 1
 
 
@@ -812,12 +813,11 @@ class WDfModel(DataFrameModel):
     def col_format(self, col_widths):
         """Formatowanie szerokości kolumn tableview'u."""
         cols = list(enumerate(col_widths, 0))
-        for col in cols:
-            self.tv.setColumnWidth(col[0], col[1])
         h_header = self.tv.horizontalHeader()
         h_header.setMinimumSectionSize(1)
         h_header.setSectionResizeMode(QHeaderView.Fixed)
-        h_header.resizeSection(0, 10)
+        for col in cols:
+            h_header.resizeSection(col[0], col[1])
         v_header = self.tv.verticalHeader()
         v_header.setDefaultSectionSize(24)
 
@@ -830,7 +830,7 @@ class WDfModel(DataFrameModel):
         dt = self._dataframe[col].dtype
         val = self._dataframe.iloc[row][col]
         if role == Qt.DisplayRole:
-            if index.column() == 0:
+            if index.column() == 0 or index.column() == 2:
                 return QVariant()
             else:
                 return str(val)
@@ -845,13 +845,21 @@ class WDfModel(DataFrameModel):
                 return QColor(Qt.black)
         elif role == Qt.BackgroundRole:
             if index.row() == self.tv.currentIndex().row():
-                gradient = QLinearGradient(0, 0, 66, 0)
-                gradient.setColorAt(0, QColor(0, 0, 0, 128))
-                gradient.setColorAt(1, QColor(0, 0, 0, 0))
+                gradient_1 = QLinearGradient(0, 0, 36, 0)
+                gradient_1.setColorAt(0, QColor(0, 0, 0, 128))
+                gradient_1.setColorAt(1, QColor(0, 0, 0, 60))
+                gradient_2 = QLinearGradient(0, 0, 30, 0)
+                gradient_2.setColorAt(0, QColor(0, 0, 0, 60))
+                gradient_2.setColorAt(1, QColor(0, 0, 0, 0))
                 if index.column() == 0:
                     return QColor(0, 0, 0, 128)
-                else:
-                    return QBrush(gradient)
+                elif index.column() == 1:
+                    return QBrush(gradient_1)
+                elif index.column() == 2:
+                    return QBrush(gradient_2)
+        elif role == Qt.DecorationRole:
+            if index.column() == 2 and str(self._dataframe.iloc[index.row()][2]) != "None":
+                return QIcon(f"{ICON_PATH}midas_small.png")
         if role == ValueRole:
             return val
         if role == DataFrameModel.DtypeRole:

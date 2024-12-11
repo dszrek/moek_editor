@@ -491,9 +491,9 @@ class WyrCanvasPanel(QFrame):
         self.tv_wdf = WyrIdTableView(self)
         self.tv_wdf.setFixedWidth(96)
         self.list_box.lay.addWidget(self.tv_wdf)
-        tv_wdf_widths = [10, 66]
-        tv_wdf_headers = ['status', 'ID']
-        self.wdf = pd.DataFrame({'status': [1], 'wyr_id': [1]})  # Dataframe z danymi o wyrobiskach
+        tv_wdf_widths = [10, 36, 30]
+        tv_wdf_headers = ['status', 'ID', 'midas']
+        self.wdf = pd.DataFrame({'status': [1], 'wyr_id': [1], 'midas_id': [None]})  # Dataframe z danymi o wyrobiskach
         self.wdf_mdl = WDfModel(df=self.wdf, tv=self.tv_wdf, col_widths=tv_wdf_widths, col_names=tv_wdf_headers)
         self.tv_wdf.selectionModel().selectionChanged.connect(self.wdf_sel_change)
         self.box = MoekVBox(self)

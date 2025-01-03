@@ -54,7 +54,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
     hk_vn_changed = pyqtSignal(bool)
     hk_seq_changed = pyqtSignal(bool)
 
-    def __init__(self, user_id, user_name, team_i, parent=None):
+    def __init__(self, plg, user_id, user_name, team_i, parent=None):
         super(MoekEditorDockWidget, self).__init__(parent)
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
@@ -64,6 +64,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
         self.iface = iface
         self.setupUi(self)
+        self.plg = plg
         self.user_id = user_id
         self.user_name = user_name
         self.t_user_id = int()
@@ -666,7 +667,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_vn.widgets["btn_vn_sub"].pressed.connect(vn_sub)
         self.p_pow_mask.box.widgets["btn_pow_mask"].clicked.connect(lambda: self.cfg.set_val(name="powiaty_mask", val=self.p_pow_mask.box.widgets["btn_pow_mask"].isChecked()))
         self.p_team_export.box.widgets["btn_data_export"].clicked.connect(data_export_init)
-        self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
+        # self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
+        self.p_ext.box.widgets["btn_midas"].pressed.connect(self.show_zl_dlg)
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))
         self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.cfg.set_val(name="smgp_wyrobiska", val=self.p_ext.box.widgets["btn_smgp"].isChecked()))
         self.p_flag.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="flagi_user", val=self.p_flag.widgets["btn_user"].isChecked()))
@@ -723,6 +725,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking_planowane")[0].id()).setItemVisibilityChecked(value)
         self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("parking_odwiedzone")[0].id()).setItemVisibilityChecked(value)
         self.proj.layerTreeRoot().findLayer(self.proj.mapLayersByName("marszruty")[0].id()).setItemVisibilityChecked(value)
+
+    def show_zl_dlg(self):
+        self.plg.zl_dlg.show()
 
     def closeEvent(self, event):
         # Deaktywacja skrótów klawiszowych:

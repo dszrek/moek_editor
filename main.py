@@ -231,6 +231,7 @@ def pow_layer_update():
     ark_layer_update()  # Aktualizacja warstwy z arkuszami
     flag_layer_update()  # Aktualizacja warstw z flagami
     wyr_layer_update()  # Aktualizacja warstw z wyrobiskami
+    dlg.plg.zl_dlg.df_zloza_update()  # Aktualizacja złóż
     # parking_layer_update()  # Aktualizacja warstwy z parkingami
     # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
     # zloza_layer_update()  # Aktualizacja warstwy ze złożami

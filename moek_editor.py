@@ -24,7 +24,7 @@
 import os.path
 import time
 
-from qgis.core import QgsApplication
+from qgis.core import QgsApplication, QgsProject
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
@@ -32,6 +32,7 @@ from qgis.utils import iface
 from datetime import datetime
 
 from .resources import resources
+from .zloza_dialog import ZlozaDialog
 
 LIBS_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'libs' + os.path.sep
 
@@ -74,7 +75,11 @@ class MoekEditor:
         #print "** INITIALIZING MoekEditor"
 
         self.plugin_is_active = False
+
+        self.proj = QgsProject.instance()
+        self.canvas = self.iface.mapCanvas()
         self.dockwidget = None
+        self.zl_dlg = None
 
 
     # noinspection PyMethodMayBeStatic
@@ -191,6 +196,7 @@ class MoekEditor:
         # Commented next statement since it causes QGIS crashes
         # when closing the docked window:
         self.dockwidget = None
+        self.zl_dlg = None
         self.plugin_is_active = False
         # Przywrócenie domyślnego tytułu okna QGIS:
         self.title_change(closing=True)
@@ -244,7 +250,8 @@ class MoekEditor:
             #    removed on close (see self.onClosePlugin method)
             if self.dockwidget == None:
                 # Create the dockwidget (after translation) and keep reference
-                self.dockwidget = MoekEditorDockWidget(user_id, user_name, team_i)
+                self.dockwidget = MoekEditorDockWidget(self, user_id, user_name, team_i)
+                self.zl_dlg = ZlozaDialog(self)
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)

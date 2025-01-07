@@ -918,6 +918,73 @@ class WDfDelegate(QStyledItemDelegate):
             option.state = option.state & ~QStyle.State_HasFocus
 
 
+class KopalinyDFM(DataFrameModel):
+    """DataFrameModel for the 'tv_kopaliny' tableview."""
+
+    def __init__(self, df=pd.DataFrame(), tv=None, parent=None):
+        super().__init__(df, tv)
+        self.tv = tv
+        de = KopalinyDelegate()
+        self.tv.setItemDelegate(de)
+        self.col_format()
+
+    def col_format(self):
+        """Formating columns of the tableview."""
+        h_header = self.tv.horizontalHeader()
+        h_header.setMinimumSectionSize(1)
+        h_header.setFixedHeight(30)
+        h_header.setDefaultSectionSize(310)
+        h_header.setSectionResizeMode(QHeaderView.Fixed)
+        self.tv.setColumnHidden(0, True)
+        self.tv.setColumnHidden(1, True)
+        h_header.resizeSection(2, 32)
+        h_header.resizeSection(3, 400)
+        h_header.resizeSection(4, 110)
+        h_header.resizeSection(5, 310)
+        v_header = self.tv.verticalHeader()
+        v_header.setSectionResizeMode(QHeaderView.Fixed)
+        v_header.setDefaultSectionSize(26)
+
+    def set_row_height(self, row_cnt):
+        """Adjusting the height of the rows based on their number."""
+        if hasattr(self, 'tv') and row_cnt > 0:
+            self.tv.verticalHeader().setDefaultSectionSize(int((80 / row_cnt) + (1 - (row_cnt * 0.22))))
+
+    def __setattr__(self, attr, val):
+        """Intercepting attribute changes."""
+        super().__setattr__(attr, val)
+        if attr == "_dataframe":
+            self.set_row_height(len(val))
+
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < self.rowCount() \
+            and 0 <= index.column() < self.columnCount()):
+            return QVariant()
+        row = self._dataframe.index[index.row()]
+        col = self._dataframe.columns[index.column()]
+        dt = self._dataframe[col].dtype
+        val = self._dataframe.iloc[row][col]
+        if role == Qt.DisplayRole:
+            return str(val)
+        elif role == Qt.TextAlignmentRole:
+            return Qt.AlignHCenter + Qt.AlignVCenter
+        elif role == DataFrameModel.ValueRole:
+            return val
+        if role == DataFrameModel.DtypeRole:
+            return dt
+        return QVariant()
+
+class KopalinyDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None, *args):
+        QStyledItemDelegate.__init__(self, parent, *args)
+
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        selected = option.state & QStyle.State_Selected
+        if selected:
+            option.state = option.state & ~QStyle.State_Selected
+
+
 class CmbDelegate(QStyledItemDelegate):
     def __init__(self, parent=None, *args):
         QStyledItemDelegate.__init__(self, parent, *args)
@@ -955,10 +1022,12 @@ class ZlozaDFM(DataFrameModel):
         h_header.setSectionResizeMode(QHeaderView.Fixed)
         h_header.resizeSection(0, 10)  # b_chk color
         h_header.resizeSection(1, 64)  # midas_id
-        h_header.resizeSection(2, 90)  # kopal.
-        h_header.resizeSection(3, 150)  # stan zag.
-        h_header.resizeSection(4, 50)  # geom
-        self.tv.setColumnHidden(5, True)  # wył.
+        h_header.resizeSection(2, 80)  # kopal.
+        self.tv.setColumnHidden(3, True)  # kopal. tooltip
+        h_header.resizeSection(4, 120)  # stan zag.
+        self.tv.setColumnHidden(5, True)  # stan zag. tooltip
+        h_header.resizeSection(6, 90)  # źródło geom.
+        self.tv.setColumnHidden(7, True)  # wył.
         v_header = self.tv.verticalHeader()
         v_header.setSectionResizeMode(QHeaderView.Fixed)
         v_header.setDefaultSectionSize(27)
@@ -992,9 +1061,7 @@ class ZlozaDFM(DataFrameModel):
         if role == Qt.DisplayRole:
             if index.column() == 0:
                 return QVariant()
-            elif index.column() == 4:
-                return 'TAK' if val else 'NIE'
-            elif (index.column() == 2 or index.column() == 3) and not val:
+            elif (index.column() == 2 or index.column() == 4) and not val:
                 return '?'
             return str(val)
         elif role == Qt.TextAlignmentRole:
@@ -1005,17 +1072,19 @@ class ZlozaDFM(DataFrameModel):
             if index.column() == 0:
                 return QColor('#00aa00') if val else QColor('#eeeeee')
             else:
-                if self._dataframe.iloc[index.row()][5]:
+                if self._dataframe.iloc[index.row()][7]:
                     return QColor('#eeeeee')
         elif role == Qt.ForegroundRole:
-            if self._dataframe.iloc[index.row()][5]:  # Wyłączony
+            if self._dataframe.iloc[index.row()][7]:  # Wyłączony
                 return QColor('#999999')
             else:
-                if index.column() == 4:
-                    return QColor('#00aa00') if val else QColor('#ff0000')
+                if index.column() == 6:
+                    return QColor('#ff0000') if val == 'BRAK' else QColor('#000000')
         elif role == Qt.ToolTipRole:
-            if index.column() == 8:
-                return str(self._dataframe.iloc[index.row()][8])
+            if index.column() == 2:
+                return str(self._dataframe.iloc[index.row()][3])
+            elif index.column() == 4:
+                return str(self._dataframe.iloc[index.row()][5])
             return QVariant()
         if role == DataFrameModel.DtypeRole:
             return dt

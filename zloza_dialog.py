@@ -7,7 +7,7 @@ from qgis.PyQt.QtCore import Qt, QModelIndex
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt import uic
 
-from .classes import ZlozaDFM, PgConn, CfgPars
+from .classes import ZlozaDFM, KopalinyDFM, PgConn, CfgPars
 from .main import active_pow_listed, pg_layer_change
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -28,13 +28,17 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.frm_details.setVisible(False)
         self.frm_dok.setVisible(False)
         self.frm_update.setVisible(False)
+        self.frm_filter.setVisible(False)
         self.frm_exclusion.setVisible(False)
-        self.frm_kop.setVisible(False)
+        self.frm_kop.setVisible(True)
+        self.btn_kop.setVisible(False)
         self.sep_line_1.setVisible(True)
         self.sep_line_2.setVisible(False)
         self.btn_refresh.clicked.connect(self.df_zloza_update)
-        self.df_zloza = pd.DataFrame(columns=['check', 'midas_id', 'kopalina', 'stan zag.', 'geom', 'wył.'])
+        self.df_zloza = pd.DataFrame(columns=['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan_tooltip', 'źr. geometrii', 'wył.'])
+        self.df_kopaliny = pd.DataFrame(columns=['kop_typ_id', '', 'typ kopaliny', 'ranga kopaliny', 'stan zagospodarowania'])
         self.init_tv_zloza()
+        self.init_tv_kopaliny()
         self.init_void = False
 
     def __setattr__(self, attr, val):
@@ -45,9 +49,20 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             QgsApplication.setOverrideCursor(Qt.WaitCursor)
             self.mdl_zloza.setDataFrame(val)
             QgsApplication.restoreOverrideCursor()
-        if attr == "zl_id" and not self.init_void:
+        elif attr == "df_kopaliny" and not self.init_void:
+            # Aktualizacja zawartości 'tv_kopaliny' po zmianie w 'df_kopaliny':
+            QgsApplication.setOverrideCursor(Qt.WaitCursor)
+            self.mdl_kopaliny.setDataFrame(val)
+            QgsApplication.restoreOverrideCursor()
+        elif attr == "zl_id" and not self.init_void:
             # Przekazanie id wybranego złoża do modelu tableview'u:
             self.mdl_zloza.sel_id = val
+            # Aktualizacja 'tv_kopaliny':
+            sql = f"SELECT DISTINCT ON (k.sys_typ_id) k.sys_typ_id, k.kop_typ_id, s.t_kop_typ_symbol, s.t_kop_typ_nazwa, k.t_kop_ranga, k.t_stan_zag FROM zloza.zl_kopaliny AS k INNER JOIN zloza.sl_kop_typ AS s ON s.kop_typ_id = k.kop_typ_id WHERE k.midas_id = {val} ORDER BY k.sys_typ_id"
+            cols = ['sys_typ_id', 'kop_typ_id', '', 'typ kopaliny', 'ranga kopaliny', 'stan zagospodarowania']
+            df = self.df_from_db(sql, cols) if val else pd.DataFrame(columns=['kop_typ_id', '', 'typ kopaliny', 'ranga kopaliny', 'stan zagospodarowania'])
+            df = df.sort_values(by=['ranga kopaliny']).reset_index(drop=True)
+            self.df_kopaliny = df
             # Aktualizacja zawartości 'frm_head':
             l_zl = self.get_zloze_name(val) if val else None
             self.l_zl.setText(f"[{l_zl[0]}] {l_zl[1]}" if val else "")
@@ -59,6 +74,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             lyr.triggerRepaint()
             if not val:
                 self.tv_zloza.setCurrentIndex(QModelIndex())
+                self.frm_details.setVisible(False)
                 return
             iter = lyr.getFeatures(f'"midas_id" = {val}')
             try:
@@ -87,6 +103,11 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.mdl_zloza = ZlozaDFM(df=self.df_zloza, tv=self.tv_zloza)
         self.tv_zloza.selectionModel().selectionChanged.connect(self.tv_zloza_change)
 
+    def init_tv_kopaliny(self):
+        """Utworzenie tableview'a 'tv_kopaliny'."""
+        self.mdl_kopaliny = KopalinyDFM(df=self.df_kopaliny, tv=self.tv_kopaliny)
+        # self.tv_kopaliny.selectionModel().selectionChanged.connect(self.tv_kopaliny_change)
+
     def tv_zloza_change(self):
         """Zmiana selekcji wiersza w 'tv_zloza'."""
         sel_tv = self.tv_zloza.selectionModel()
@@ -96,7 +117,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             zl_id = int(index.sibling(index.row(), 1).data())
             if zl_id != self.zl_id:
                 self.zl_id = zl_id
-            self.zl_exclusion = index.sibling(index.row(), 5).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
+            self.zl_exclusion = index.sibling(index.row(), 7).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
         else:
             self.zl_id = None
             self.zl_exlusion = None
@@ -121,10 +142,13 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         """Ładowanie danych do 'df_zloza'."""
         zl_ids = self.get_zl_ids()
         # Załadowanie danych do 'tv_zloza':
-        sql = f"SELECT b_checked, midas_id, t_kop_typ_symbol, t_stan_zag, b_geom, b_exclusion FROM zloza.main WHERE midas_id IN {zl_ids} ORDER BY midas_id;"
-        cols = ['check', 'midas_id', 'kopalina','stan zag.', 'geom', 'wył.']
+        sql = f"SELECT m.b_checked, m.midas_id, m.t_kop_typ_symbol, k.t_kop_typ_nazwa, s.t_stan_symbol, m.t_stan_zag, COALESCE(m.t_geom, 'BRAK'), m.b_exclusion FROM zloza.main m INNER JOIN zloza.sl_zloza_stan s ON m.t_stan_zag = s.t_zloze_stan INNER JOIN zloza.sl_kop_typ k ON m.kop_typ_id = k.kop_typ_id WHERE midas_id IN {zl_ids} ORDER BY midas_id;"
+        cols = ['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan_tooltip', 'źr. geometrii', 'wył.']
         df_zloza = self.df_from_db(sql, cols)
         self.df_zloza = df_zloza
+        # Odznaczenie 'midas_id', jeśli nie ma go na zaktualizowanej liście:
+        if self.zl_id and self.zl_id not in zl_ids:
+            self.zl_id = None
         # Zmiana zawartości warstw ze złożami:
         with CfgPars() as cfg:
             params = cfg.uri()

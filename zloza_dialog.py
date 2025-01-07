@@ -25,6 +25,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.init_void = True
         self.zl_id = None
         self.zl_exclusion = None
+        self.zl_stanzag = None
         self.frm_details.setVisible(False)
         self.frm_dok.setVisible(False)
         self.frm_update.setVisible(False)
@@ -35,6 +36,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.sep_line_1.setVisible(True)
         self.sep_line_2.setVisible(False)
         self.btn_refresh.clicked.connect(self.df_zloza_update)
+        self.cmb_stanzag.currentIndexChanged.connect(self.stanzag_changed)
         self.df_zloza = pd.DataFrame(columns=['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan_tooltip', 'źr. geometrii', 'wył.'])
         self.df_kopaliny = pd.DataFrame(columns=['kop_typ_id', '', 'typ kopaliny', 'ranga kopaliny', 'stan zagospodarowania'])
         self.init_tv_zloza()
@@ -97,6 +99,17 @@ class ZlozaDialog(QDialog, FORM_CLASS):
                 self.canvas.setExtent(ext)
             except Exception as err:
                 print(f"Nie udało się przybliżyć widoku mapy do złoża {val}")
+        elif attr == "zl_stanzag" and not self.init_void:
+
+            # Aktualizacja stanu 'cmb_stanzag':
+            self.cmb_void = True
+            if not val:
+                self.cmb_stanzag.setCurrentText("stan zagosp. zgodny z MIDAS")
+                self.cmb_stanzag.setStyleSheet("QComboBox{padding-left:18; background-color: rgb(225, 225, 225); selection-background-color: rgb(0, 120, 215)}")
+            else:
+                self.cmb_stanzag.setCurrentText(val)
+                self.cmb_stanzag.setStyleSheet("QComboBox{padding-left:18; background-color: rgb(60, 170, 255); selection-background-color: rgb(0, 120, 215)}")
+            self.cmb_void = False
 
     def init_tv_zloza(self):
         """Utworzenie tableview'a 'tv_zloza'."""
@@ -108,6 +121,24 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.mdl_kopaliny = KopalinyDFM(df=self.df_kopaliny, tv=self.tv_kopaliny)
         # self.tv_kopaliny.selectionModel().selectionChanged.connect(self.tv_kopaliny_change)
 
+    def init_stanzag(self):
+        """Wczytanie wartości 't_stan_zag' z tabeli 'zloza.main' i ustawienie wg niej combobox'a."""
+        if not self.zl_id:
+            return
+        sql = f"SELECT t_stan_zag FROM zloza.main WHERE midas_id = {self.zl_id}"
+        self.zl_stanzag = self.db_select(sql)[0]
+
+    def stanzag_changed(self):
+        """Zmiana wartości 't_stan_zag' w bazie danych."""
+        if self.cmb_void:
+            return
+        self.zl_stanzag = None if self.cmb_stanzag.currentText() == "stan zagosp. zgodny z MIDAS" else self.cmb_stanzag.currentText()
+        sql_val = "NULL" if self.zl_stanzag == None else f"'{self.zl_stanzag}'"
+        sql = f"UPDATE zloza.main SET t_stan_zag = {sql_val} WHERE midas_id = {self.zl_id}"
+        result = self.db_update(sql)
+        if not result:
+            print(f"Błąd zmiany wartości 't_stan_zag' dla złoża {self.zl_id} w tabeli 'zloza.main'.")
+
     def tv_zloza_change(self):
         """Zmiana selekcji wiersza w 'tv_zloza'."""
         sel_tv = self.tv_zloza.selectionModel()
@@ -118,6 +149,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             if zl_id != self.zl_id:
                 self.zl_id = zl_id
             self.zl_exclusion = index.sibling(index.row(), 7).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
+            self.init_stanzag()
         else:
             self.zl_id = None
             self.zl_exlusion = None
@@ -142,7 +174,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         """Ładowanie danych do 'df_zloza'."""
         zl_ids = self.get_zl_ids()
         # Załadowanie danych do 'tv_zloza':
-        sql = f"SELECT m.b_checked, m.midas_id, m.t_kop_typ_symbol, k.t_kop_typ_nazwa, s.t_stan_symbol, m.t_stan_zag, COALESCE(m.t_geom, 'BRAK'), m.b_exclusion FROM zloza.main m INNER JOIN zloza.sl_zloza_stan s ON m.t_stan_zag = s.t_zloze_stan INNER JOIN zloza.sl_kop_typ k ON m.kop_typ_id = k.kop_typ_id WHERE midas_id IN {zl_ids} ORDER BY midas_id;"
+        sql = f"SELECT m.b_checked, m.midas_id, m.t_kop_typ_symbol, k.t_kop_typ_nazwa, s.t_stan_symbol, m.t_stan_zag_midas, COALESCE(m.t_geom, 'BRAK'), m.b_exclusion FROM zloza.main m INNER JOIN zloza.sl_zloza_stan s ON m.t_stan_zag_midas = s.t_zloze_stan INNER JOIN zloza.sl_kop_typ k ON m.kop_typ_id = k.kop_typ_id WHERE midas_id IN {zl_ids} ORDER BY midas_id;"
         cols = ['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan_tooltip', 'źr. geometrii', 'wył.']
         df_zloza = self.df_from_db(sql, cols)
         self.df_zloza = df_zloza
@@ -168,6 +200,13 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         if db:
             res = db.query_sel(sql, all)
             return res if res else None
+
+    def db_update(self, sql):
+        """Wykonuje kwerendę UPDATE."""
+        db = PgConn()
+        if db:
+            res = db.query_upd(sql)
+            return True if res else False
 
     def df_from_db(self, sql, cols=[]):
         """Zwraca dataframe ze wskazanymi kolumnami i danymi uzyskanymi z kwerendy sql."""

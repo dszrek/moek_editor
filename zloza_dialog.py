@@ -7,8 +7,9 @@ from qgis.PyQt.QtCore import Qt, QModelIndex
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt import uic
 
-from .classes import ZlozaDFM, KopalinyDFM, PgConn, CfgPars
+from .classes import ZlozaDFM, KopalinyDFM, DokDFM, PgConn, CfgPars
 from .main import active_pow_listed, pg_layer_change
+
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'zloza_dialog.ui'))
@@ -39,24 +40,16 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.cmb_stanzag.currentIndexChanged.connect(self.stanzag_changed)
         self.df_zloza = pd.DataFrame(columns=['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan_tooltip', 'źr. geometrii', 'wył.'])
         self.df_kopaliny = pd.DataFrame(columns=['kop_typ_id', '', 'typ kopaliny', 'ranga kopaliny', 'stan zagospodarowania'])
+        self.df_dok = pd.DataFrame(columns=['cbdg_id', 'tytuł', 'rok', 'nr inw.', 'nr kat.', 'rep_inw', 'rep_kat'])
         self.init_tv_zloza()
         self.init_tv_kopaliny()
+        self.init_tv_dok()
         self.init_void = False
 
     def __setattr__(self, attr, val):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
-        if attr == "df_zloza" and not self.init_void:
-            # Aktualizacja zawartości 'tv_zloza' po zmianie w 'df_zloza':
-            QgsApplication.setOverrideCursor(Qt.WaitCursor)
-            self.mdl_zloza.setDataFrame(val)
-            QgsApplication.restoreOverrideCursor()
-        elif attr == "df_kopaliny" and not self.init_void:
-            # Aktualizacja zawartości 'tv_kopaliny' po zmianie w 'df_kopaliny':
-            QgsApplication.setOverrideCursor(Qt.WaitCursor)
-            self.mdl_kopaliny.setDataFrame(val)
-            QgsApplication.restoreOverrideCursor()
-        elif attr == "zl_id" and not self.init_void:
+        if attr == "zl_id" and not self.init_void:
             # Przekazanie id wybranego złoża do modelu tableview'u:
             self.mdl_zloza.sel_id = val
             # Aktualizacja 'tv_kopaliny':
@@ -65,6 +58,8 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             df = self.df_from_db(sql, cols) if val else pd.DataFrame(columns=['kop_typ_id', '', 'typ kopaliny', 'ranga kopaliny', 'stan zagospodarowania'])
             df = df.sort_values(by=['ranga kopaliny']).reset_index(drop=True)
             self.df_kopaliny = df
+            # Ukrycie 'frm_dok':
+            self.frm_dok.setVisible(False)
             # Aktualizacja zawartości 'frm_head':
             l_zl = self.get_zloze_name(val) if val else None
             self.l_zl.setText(f"[{l_zl[0]}] {l_zl[1]}" if val else "")
@@ -99,8 +94,20 @@ class ZlozaDialog(QDialog, FORM_CLASS):
                 self.canvas.setExtent(ext)
             except Exception as err:
                 print(f"Nie udało się przybliżyć widoku mapy do złoża {val}")
+        elif attr == "df_zloza" and not self.init_void:
+            # Aktualizacja zawartości 'tv_zloza' po zmianie w 'df_zloza':
+            QgsApplication.setOverrideCursor(Qt.WaitCursor)
+            self.mdl_zloza.setDataFrame(val)
+            QgsApplication.restoreOverrideCursor()
+        elif attr == "df_kopaliny" and not self.init_void:
+            # Aktualizacja zawartości 'tv_kopaliny' po zmianie w 'df_kopaliny':
+            QgsApplication.setOverrideCursor(Qt.WaitCursor)
+            self.mdl_kopaliny.setDataFrame(val)
+            QgsApplication.restoreOverrideCursor()
+        elif attr == "df_dok" and not self.init_void:
+            # Aktualizacja zawartości 'tv_dok' po zmianie 'df_zloza':
+            self.mdl_dok.setDataFrame(val)
         elif attr == "zl_stanzag" and not self.init_void:
-
             # Aktualizacja stanu 'cmb_stanzag':
             self.cmb_void = True
             if not val:
@@ -121,6 +128,11 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.mdl_kopaliny = KopalinyDFM(df=self.df_kopaliny, tv=self.tv_kopaliny)
         # self.tv_kopaliny.selectionModel().selectionChanged.connect(self.tv_kopaliny_change)
 
+    def init_tv_dok(self):
+        """Utworzenie tableview'a 'tv_dok'."""
+        self.mdl_dok = DokDFM(df=self.df_dok, tv=self.tv_dok)
+        self.tv_dok.clicked.connect(self.open_dok_folder)
+
     def init_stanzag(self):
         """Wczytanie wartości 't_stan_zag' z tabeli 'zloza.main' i ustawienie wg niej combobox'a."""
         if not self.zl_id:
@@ -138,6 +150,14 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         result = self.db_update(sql)
         if not result:
             print(f"Błąd zmiany wartości 't_stan_zag' dla złoża {self.zl_id} w tabeli 'zloza.main'.")
+
+    def open_dok_folder(self):
+        """Otworzenie ekploratora plików ze ścieżką do dokumentacji, jeśli jest dostępna."""
+        sel_tv = self.tv_dok.selectionModel()
+        index = sel_tv.currentIndex()
+        dok_num = self.mdl_dok.data(index, "ClickRole")
+        if dok_num:
+            self.plg.scraper.open_dok_folder(dok_num)
 
     def tv_zloza_change(self):
         """Zmiana selekcji wiersza w 'tv_zloza'."""

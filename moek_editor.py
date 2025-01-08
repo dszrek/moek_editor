@@ -33,6 +33,7 @@ from datetime import datetime
 
 from .resources import resources
 from .zloza_dialog import ZlozaDialog
+from .webscraper import WebScraper
 
 LIBS_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'libs' + os.path.sep
 
@@ -80,6 +81,7 @@ class MoekEditor:
         self.canvas = self.iface.mapCanvas()
         self.dockwidget = None
         self.zl_dlg = None
+        self.scraper = None
 
 
     # noinspection PyMethodMayBeStatic
@@ -197,6 +199,8 @@ class MoekEditor:
         # when closing the docked window:
         self.dockwidget = None
         self.zl_dlg = None
+        self.scraper.close()
+        self.scraper = None
         self.plugin_is_active = False
         # Przywrócenie domyślnego tytułu okna QGIS:
         self.title_change(closing=True)
@@ -252,6 +256,7 @@ class MoekEditor:
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = MoekEditorDockWidget(self, user_id, user_name, team_i)
                 self.zl_dlg = ZlozaDialog(self)
+                self.scraper = WebScraper(self)
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)

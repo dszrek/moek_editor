@@ -1004,7 +1004,6 @@ class CmbDelegate(QStyledItemDelegate):
 
 class ZlozaDFM(DataFrameModel):
     """Subklasa dataframemodel dla 'tv_zloza'."""
-
     def __init__(self, df=pd.DataFrame(), tv=None, parent=None):
         super().__init__(df, tv)
         self.tv = tv
@@ -1133,6 +1132,108 @@ class ZlozaDelegate(QStyledItemDelegate):
             painter.drawLine(rect.bottomLeft(), rect.bottomRight())
             painter.setBrush(QBrush(Qt.yellow))
 
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        selected = option.state & QStyle.State_Selected
+        if selected:
+            option.state = option.state & ~QStyle.State_Selected
+
+
+class DokDFM(DataFrameModel):
+    """Subklasa dataframemodel dla 'tv_dok'."""
+    def __init__(self, df=pd.DataFrame(), tv=None, parent=None):
+        super().__init__(df, tv)
+        self.tv = tv
+        de = DokDelegate()
+        self.tv.setItemDelegate(de)
+        self.col_format()
+
+    def col_format(self):
+        """Formatowanie szerokości kolumn tableview'u."""
+        self.tv.setCornerButtonEnabled(True)
+        h_header = self.tv.horizontalHeader()
+        h_header.setMinimumSectionSize(1)
+        h_header.setFixedHeight(30)
+        h_header.setDefaultSectionSize(30)
+        h_header.setSectionResizeMode(QHeaderView.Fixed)
+        h_header.resizeSection(0, 80)  # cbdg_id
+        h_header.resizeSection(1, 440)  # tytuł
+        h_header.resizeSection(2, 60)  # rok
+        h_header.resizeSection(3, 130)  # nr inw.
+        h_header.resizeSection(4, 130)  # nr kat.
+        self.tv.setColumnHidden(5, True)  # rep_inw
+        self.tv.setColumnHidden(6, True)  # rep_kat
+        v_header = self.tv.verticalHeader()
+        v_header.setDefaultAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        v_header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        v_header.setMouseTracking(True)
+
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < self.rowCount() \
+            and 0 <= index.column() < self.columnCount()):
+            return QVariant()
+        row = self._dataframe.index[index.row()]
+        col = self._dataframe.columns[index.column()]
+        dt = self._dataframe[col].dtype
+        val = self._dataframe.loc[row][col]
+        if role == Qt.DisplayRole:
+            if val is None:
+                return str()
+            if pd.isna(val):
+                return str()
+            return str(val)
+        elif role == Qt.TextAlignmentRole:
+            if index.column() == 1:
+                return Qt.AlignLeft + Qt.AlignTop
+            else:
+                return Qt.AlignHCenter + Qt.AlignTop
+        elif role == Qt.ForegroundRole:
+            if index.column() == 3:
+                return QColor('#0000FF') if self._dataframe.iloc[index.row()][5] else QColor('#AAAAAA')
+            if index.column() == 4:
+                return QColor('#0000FF') if self._dataframe.iloc[index.row()][6] else QColor('#AAAAAA')
+            else:
+                return QColor('#000000')
+        elif role == Qt.FontRole:
+            font = QFont()
+            if index.column() == 3:
+                font.setBold(True) if self._dataframe.iloc[index.row()][5] else font.setBold(False)
+                font.setUnderline(True) if self._dataframe.iloc[index.row()][5] else font.setUnderline(False)
+            elif index.column() == 4:
+                font.setBold(True) if self._dataframe.iloc[index.row()][6] else font.setBold(False)
+                font.setUnderline(True) if self._dataframe.iloc[index.row()][6] else font.setUnderline(False)
+            else:
+                font.setBold(False)
+                font.setUnderline(False)
+            return font
+        elif role == "ClickRole":
+            if index.column() == 3 and self._dataframe.iloc[index.row()][5]:
+                return self._dataframe.iloc[index.row()][3]
+            elif index.column() == 4 and self._dataframe.iloc[index.row()][6]:
+                return self._dataframe.iloc[index.row()][4]
+            return QVariant()
+        elif role == DataFrameModel.ValueRole:
+            return val
+        if role == DataFrameModel.DtypeRole:
+            return dt
+        return QVariant()
+
+
+class DokDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None, *args):
+        QStyledItemDelegate.__init__(self, parent, *args)
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        selected = option.state & QStyle.State_Selected
+        rect = QRect(option.rect)
+        if not selected:
+            painter.setPen(QPen(QColor(0, 0, 0), 0.5))
+            painter.drawLine(rect.bottomLeft(), rect.bottomRight())
+        if selected and index.row() > -1:
+            painter.setPen(QPen(QColor(0, 0, 0), 2.0))
+            painter.drawLine(rect.topLeft(), rect.topRight())
+            painter.drawLine(rect.bottomLeft(), rect.bottomRight())
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
         selected = option.state & QStyle.State_Selected

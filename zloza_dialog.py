@@ -4,11 +4,12 @@ import pandas as pd
 
 from qgis.core import QgsApplication, QgsRectangle, QgsFeature, QgsExpressionContextUtils
 from qgis.PyQt.QtCore import Qt, QModelIndex
-from qgis.PyQt.QtWidgets import QDialog
+from qgis.PyQt.QtGui import QTextCursor
+from qgis.PyQt.QtWidgets import QDialog, QTextEdit, QSizePolicy, QSpacerItem
 from qgis.PyQt import uic
 
 from .classes import ZlozaDFM, KopalinyDFM, DokDFM, PgConn, CfgPars
-from .main import active_pow_listed, pg_layer_change
+from .main import active_pow_listed, pg_layer_change, stage_refresh
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -26,6 +27,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.init_void = True
         self.zl_id = None
         self.zl_exclusion = None
+        self.is_excluded_show = False
         self.zl_stanzag = None
         self.frm_details.setVisible(False)
         self.frm_dok.setVisible(False)
@@ -37,6 +39,8 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.sep_line_1.setVisible(True)
         self.sep_line_2.setVisible(False)
         self.btn_refresh.clicked.connect(self.df_zloza_update)
+        self.btn_exclude.clicked.connect(self.zl_exclude_change)
+        self.btn_exclusion_add.clicked.connect(self.exclusion_add)
         self.cmb_stanzag.currentIndexChanged.connect(self.stanzag_changed)
         self.df_zloza = pd.DataFrame(columns=['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan_tooltip', 'źr. geometrii', 'wył.'])
         self.df_kopaliny = pd.DataFrame(columns=['kop_typ_id', '', 'typ kopaliny', 'ranga kopaliny', 'stan zagospodarowania'])
@@ -44,6 +48,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.init_tv_zloza()
         self.init_tv_kopaliny()
         self.init_tv_dok()
+        self.init_exclusion()
         self.init_void = False
 
     def __setattr__(self, attr, val):
@@ -65,35 +70,6 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             self.l_zl.setText(f"[{l_zl[0]}] {l_zl[1]}" if val else "")
             # Ustawienie widoczności'frm_details':
             self.frm_details.setVisible(False) if val == None else self.frm_details.setVisible(True)
-            # Ustawienie zmiennej projektu do podświetlania geometrii wybranego złoża za pomocą stylu warstwy:
-            QgsExpressionContextUtils.setProjectVariable(self.proj, 'zl_sel', val)
-            lyr = self.proj.mapLayersByName("midas_zloza")[0]
-            lyr.triggerRepaint()
-            if not val:
-                self.tv_zloza.setCurrentIndex(QModelIndex())
-                self.frm_details.setVisible(False)
-                return
-            iter = lyr.getFeatures(f'"midas_id" = {val}')
-            try:
-                # Przybliżenie zakresu wyświetlania mapy do obszaru złoża z marginesem:
-                feat = QgsFeature()
-                iter.nextFeature(feat)
-                box = feat.geometry().boundingBox()
-                while iter.nextFeature(feat):
-                    box.combineExtentWith(feat.geometry().boundingBox())
-                if not box.width() and not box.height():
-                    print(f"Złoże {val} nie ma geometrii")
-                    return
-                w_off = box.width() * 0.2
-                h_off = box.height() * 0.2
-                ext = QgsRectangle(box.xMinimum() - w_off,
-                                    box.yMinimum() - h_off,
-                                    box.xMaximum() + w_off,
-                                    box.yMaximum() + h_off
-                                    )
-                self.canvas.setExtent(ext)
-            except Exception as err:
-                print(f"Nie udało się przybliżyć widoku mapy do złoża {val}")
         elif attr == "df_zloza" and not self.init_void:
             # Aktualizacja zawartości 'tv_zloza' po zmianie w 'df_zloza':
             QgsApplication.setOverrideCursor(Qt.WaitCursor)
@@ -107,6 +83,9 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         elif attr == "df_dok" and not self.init_void:
             # Aktualizacja zawartości 'tv_dok' po zmianie 'df_zloza':
             self.mdl_dok.setDataFrame(val)
+        elif attr == "zl_exclusion" and not self.init_void:
+            # Aktualizacja stanu widget'ów z 'frm_exclusion':
+            self.set_exclude_state(val)
         elif attr == "zl_stanzag" and not self.init_void:
             # Aktualizacja stanu 'cmb_stanzag':
             self.cmb_void = True
@@ -133,6 +112,21 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.mdl_dok = DokDFM(df=self.df_dok, tv=self.tv_dok)
         self.tv_dok.clicked.connect(self.open_dok_folder)
 
+    def init_exclusion(self):
+        """Utworzenie widget'ów z 'frm_exclusion'."""
+        # Ustawienie combobox'a:
+        causes = [
+            "Eksploatacja podziemna.",
+            "Brak możliwości zlokalizowania złoża."
+        ]
+        self.cmb_exclusion.addItems(causes)
+        # Ustawienie textedit:
+        fn = ['self.db_update(txt_val=self.cur_val, tbl="zloza.main", attr="t_exclusion", sql_bns=f" WHERE midas_id = {self.zl_id}")']
+        self.txt_exclusion = ZlozaTextBox(zl_dlg=self, editable=True, fn=fn)
+        self.frm_exclusion.layout().addWidget(self.txt_exclusion)
+        spacer = QSpacerItem(1, 2000, QSizePolicy.Maximum, QSizePolicy.Expanding)
+        self.frm_exclusion.layout().addItem(spacer)
+
     def init_stanzag(self):
         """Wczytanie wartości 't_stan_zag' z tabeli 'zloza.main' i ustawienie wg niej combobox'a."""
         if not self.zl_id:
@@ -152,7 +146,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             print(f"Błąd zmiany wartości 't_stan_zag' dla złoża {self.zl_id} w tabeli 'zloza.main'.")
 
     def open_dok_folder(self):
-        """Otworzenie ekploratora plików ze ścieżką do dokumentacji, jeśli jest dostępna."""
+        """Otworzenie eksploratora plików ze ścieżką do dokumentacji, jeśli jest dostępna."""
         sel_tv = self.tv_dok.selectionModel()
         index = sel_tv.currentIndex()
         dok_num = self.mdl_dok.data(index, "ClickRole")
@@ -170,9 +164,10 @@ class ZlozaDialog(QDialog, FORM_CLASS):
                 self.zl_id = zl_id
             self.zl_exclusion = index.sibling(index.row(), 7).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
             self.init_stanzag()
+            self.zl_lyr_update()
         else:
             self.zl_id = None
-            self.zl_exlusion = None
+            self.zl_exclusion = None
 
     def get_zl_ids(self):
         """Zwraca listę złóż z obszaru podanych powiatów."""
@@ -190,6 +185,94 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             else:
                 return None
 
+    def zl_exclude_change(self):
+        """Zmiana wartości 'b_exclusion' aktualnego złoża w tabeli 'zloza.main'."""
+        if self.zl_id == None:
+            return
+        val = 'true' if self.zl_exclusion == 'False' else 'false'
+        sql = f"UPDATE zloza.main SET b_exclusion = {val} WHERE midas_id = {self.zl_id}"
+        result = self.db_update(sql)
+        if not result:
+            print(f"Error changing 'b_exclusion' for {self.zl_id} in 'zloza_main' table.")
+        self.df_zloza_update()
+
+    def set_exclude_state(self, state):
+        """Ustawienie UI w zależności od 'zl_exclusion'."""
+        self.btn_exclude.setVisible(False) if not state else self.btn_exclude.setVisible(True)
+        if state == 'True':  # Złoże jest wyłączone
+            # Ustalenie stylu 'btn_exclude':
+            self.btn_exclude.setStyleSheet("QPushButton {background-color: rgb(160, 255, 100)}")
+            self.btn_exclude.setText("Włącz złoże")
+            # Resetowanie combobox'a:
+            self.cmb_exclusion.setCurrentIndex(-1)
+            # Załadowanie tekstu do 'txt_exclusion':
+            sql = f"SELECT t_exclusion FROM zloza.main WHERE midas_id = {self.zl_id}"
+            exclusion_text = self.db_select(sql)[0]
+            self.txt_exclusion.set_value(exclusion_text) if exclusion_text else self.txt_exclusion.set_value(None)
+            # Ustawienie widoczności frame'ów:
+            self.frm_exclusion.setVisible(True)
+            self.frm_kop.setVisible(False)
+            # self.sep_line_2.setVisible(False)
+        else:  # Złoże nie jest wyłączone
+            # Ustalenie stylu 'btn_exclude':
+            self.btn_exclude.setStyleSheet("QPushButton {background-color: rgb(255, 130, 100)}")
+            self.btn_exclude.setText("Wyłącz złoże")
+            # Ustawienie widoczności frame'ów:
+            self.frm_exclusion.setVisible(False)
+            self.frm_kop.setVisible(True)
+
+    def exclusion_add(self):
+        """Przeniesienie tekstu powodu wyłączenia złoża z combobox'a do textedit'a."""
+        if self.cmb_exclusion.currentIndex() == -1:
+            return
+        self.txt_exclusion.add_value(self.cmb_exclusion.currentText())
+        self.cmb_exclusion.setCurrentIndex(-1)
+
+    def zl_excluded_layer_update(self):
+        """Aktualizacja zawartości warstwy 'midas_wylaczone', jeśli jest konieczna."""
+        if not self.is_excluded_show and self.zl_exclusion == 'False':
+            return
+        excluded_layer = self.dlg.proj.mapLayersByName("midas_wylaczone")[0]
+        self.is_excluded_show = False if self.is_excluded_show and self.zl_exclusion == 'False' else True
+        with CfgPars() as cfg:
+            params = cfg.uri()
+        uri = f'''{params} key="fid" table="(SELECT row_number() OVER (ORDER BY v.midas_id) AS fid, v.midas_id AS midas_id, v.ver_id, g.t_pole AS pole, g.geom AS geom FROM zloza.geom_ver AS v INNER JOIN (SELECT midas_id, ver_id, t_pole, geom FROM zloza.geom) AS g ON v.midas_id = g.midas_id AND v.ver_id = g.ver_id INNER JOIN zloza.main AS m ON m.midas_id = v.midas_id WHERE v.midas_id = {self.zl_id} and m.b_exclusion IS true)" (geom) sql='''
+        pg_layer_change(uri, excluded_layer)
+        stage_refresh()
+
+    def zl_lyr_update(self):
+        """Aktualizacja widoku mapy po wybraniu złoża."""
+        # Ustawienie zmiennej projektu do podświetlania geometrii wybranego złoża za pomocą stylu warstwy:
+        QgsExpressionContextUtils.setProjectVariable(self.proj, 'zl_sel', self.zl_id)
+        self.zl_excluded_layer_update()
+        lyr = self.proj.mapLayersByName("midas_wylaczone")[0] if self.is_excluded_show else self.proj.mapLayersByName("midas_zloza")[0]
+        lyr.triggerRepaint()
+        if not self.zl_id:
+            self.tv_zloza.setCurrentIndex(QModelIndex())
+            self.frm_details.setVisible(False)
+            return
+        iter = lyr.getFeatures(f'"midas_id" = {self.zl_id}')
+        try:
+            # Przybliżenie zakresu wyświetlania mapy do obszaru złoża z marginesem:
+            feat = QgsFeature()
+            iter.nextFeature(feat)
+            box = feat.geometry().boundingBox()
+            while iter.nextFeature(feat):
+                box.combineExtentWith(feat.geometry().boundingBox())
+            if not box.width() and not box.height():
+                print(f"Złoże {self.zl_id} nie ma geometrii")
+                return
+            w_off = box.width() * 0.2
+            h_off = box.height() * 0.2
+            ext = QgsRectangle(box.xMinimum() - w_off,
+                                box.yMinimum() - h_off,
+                                box.xMaximum() + w_off,
+                                box.yMaximum() + h_off
+                                )
+            self.canvas.setExtent(ext)
+        except Exception as err:
+            print(f"Nie udało się przybliżyć widoku mapy do złoża {self.zl_id}")
+
     def df_zloza_update(self):
         """Ładowanie danych do 'df_zloza'."""
         zl_ids = self.get_zl_ids()
@@ -204,9 +287,10 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         # Zmiana zawartości warstw ze złożami:
         with CfgPars() as cfg:
             params = cfg.uri()
-        uri = f'''{params} key="fid" table="(SELECT row_number() OVER (ORDER BY v.midas_id) AS fid, v.midas_id AS midas_id, v.ver_id, g.t_pole AS pole, g.geom AS geom FROM zloza.geom_ver AS v INNER JOIN (SELECT midas_id, ver_id, t_pole, geom FROM zloza.geom) AS g ON v.midas_id = g.midas_id AND v.ver_id = g.ver_id WHERE v.midas_id IN {zl_ids})" (geom) sql='''
+        uri = f'''{params} key="fid" table="(SELECT row_number() OVER (ORDER BY v.midas_id) AS fid, v.midas_id AS midas_id, v.ver_id, g.t_pole AS pole, g.geom AS geom FROM zloza.geom_ver AS v INNER JOIN (SELECT midas_id, ver_id, t_pole, geom FROM zloza.geom) AS g ON v.midas_id = g.midas_id AND v.ver_id = g.ver_id INNER JOIN zloza.main AS m ON m.midas_id = v.midas_id WHERE v.midas_id IN {zl_ids} and m.b_exclusion IS false)" (geom) sql='''
         lyr = self.dlg.proj.mapLayersByName("midas_zloza")[0]
         pg_layer_change(uri, lyr)
+        stage_refresh()
 
     def get_zloze_name(self, id):
         """Zwraca nazwę złoża na podstawie 'midas_id'."""
@@ -244,3 +328,105 @@ class ZlozaDialog(QDialog, FORM_CLASS):
     def closeEvent(self, event):
         """Zamknięcie okna dialogowego."""
         self.zl_id = None
+
+
+class ZlozaTextBox(QTextEdit):
+    """Wyświetla tekst z możliwością edycji i zapisu zmian w bazie danych."""
+    def __init__(self, *args, zl_dlg, editable, fn=None):
+        super().__init__(*args)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setFixedHeight(100)
+        self.zl_dlg = zl_dlg
+        self.fn = fn
+        self.setReadOnly(not editable)
+        if not editable:
+            self.viewport().setCursor(Qt.ArrowCursor)
+        self.setStyleSheet("QTextEdit{background-color: white; padding-left:10; padding-top:10; padding-bottom:10; padding-right:10; font-size:10pt;}")
+        self.edit = False
+        self.zl_id = None
+        self.attr_void = True
+        self.cur_val = None
+        self.attr_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "cur_val" and not self.attr_void:
+            self.value_changed()
+
+    def set_value(self, val):
+        """Próba zmiany wartości."""
+        if not val or len(str(val)) == 0:  # Empty value
+            self.cur_val = None
+        else:
+            self.cur_val = val
+
+    def add_value(self, val):
+        """Próba dodania wartości do tekstu."""
+        self.cur_val = f"{self.cur_val} {val}" if self.cur_val else val
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self.setTextCursor(cursor)
+        self.setFocus(True)
+
+    def db_update(self, txt_val, tbl, attr, sql_bns):
+        """Aktualizacja tekstu w bazie danych."""
+        if not txt_val:
+            sql_text = "NULL"
+        else:
+            txt = txt_val.replace("'", "''")
+            sql_text = f"'{txt}'"
+        self.db_attr_change(tbl=tbl, attr=attr, val=sql_text, sql_bns=sql_bns)
+
+    def value_change(self, txt):
+        """Zmiana tekstu w bazie danych i z 'cur_val'."""
+        self.set_value(txt)
+        if self.fn:
+            self.run_fn()
+
+    def value_changed(self):
+        """Aktualizacja tekstu po zmianie wartości."""
+        self.setPlainText(self.cur_val) if self.cur_val else self.clear()
+
+    def db_attr_change(self, tbl, attr, val, sql_bns):
+        """Zmiana wartości atrybutu w bazie danych."""
+        # print("[db_attr_change(", tbl, ",", attr, "):", val, "]")
+        db = PgConn()
+        if len(str(val)) == 0:
+            val = 'Null'
+        sql = f"UPDATE {tbl} SET {attr} = {val}{sql_bns};"
+        if db:
+            res = db.query_upd(sql)
+            if res:
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def run_fn(self):
+        """Wywołanie funkcji po zmianie tekstu."""
+        for fn in self.fn:
+            try:
+                exec(eval("f'{}'".format(fn)))
+            except Exception as err:
+                print(f"[run_fn] Błąd przy wprowadzaniu zmiany w bazie danych: {err}")
+
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        self.edit = True
+        # Zapamiętanie wartości zmiennych - mogą już być zmienione podczas focusOutEvent:
+        self.zl_id = self.zl_dlg.zl_id
+
+    def focusOutEvent(self, event):
+        super().focusOutEvent(event)
+        if not self.edit:
+            return
+        self.value_change(self.toPlainText())
+        self.edit = False
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
+            self.clearFocus()
+        else:
+            super().keyPressEvent(event)

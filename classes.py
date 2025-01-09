@@ -731,21 +731,14 @@ class DataFrameModel(QAbstractTableModel):
         self.tv.selectionModel().selectionChanged.connect(lambda: self.layoutChanged.emit())
         self.tv.horizontalHeader().setSortIndicatorShown(False)
         self.tv.horizontalHeader().setSortIndicator(-1, 0)
-        self.sort_col = -1
-        self.sort_ord = 0
 
     def col_names(self, df, col_names):
         """Nadanie nazw kolumn tableview'u."""
         df.columns = col_names
         return df
 
-    def sort_reset(self):
-        """Wyłącza sortowanie po kolumnie."""
-        self.tv.horizontalHeader().setSortIndicator(-1, 0)
-        self.sort_col = -1
-        self.sort_ord = 0
-
     def setDataFrame(self, dataframe):
+        """Załadowanie dataframe'u do tableview'u."""
         self.beginResetModel()
         self._dataframe = dataframe.copy()
         self.endResetModel()
@@ -1099,11 +1092,11 @@ class ZlozaDFM(DataFrameModel):
             self.sort_col = col
             self.sort_ord = orders[order_idx + increment]
             if self.sort_col == 0:
-                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[0], self._dataframe.columns[1]], ascending=[self.sort_ord, 1]).reset_index(drop=True)
-            elif self.sort_col == 1:
-                self._dataframe = self._dataframe.sort_values(by=self._dataframe.columns[self.sort_col], ascending=self.sort_ord).reset_index(drop=True)
+                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[7], self._dataframe.columns[0], self._dataframe.columns[1]], ascending=[1, self.sort_ord, 1]).reset_index(drop=True)
+            elif self.sort_col == -1 or self.sort_col == 1:
+                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[7], self._dataframe.columns[self.sort_col]], ascending=[1, self.sort_ord]).reset_index(drop=True)
             elif self.sort_col > 1:
-                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[self.sort_col], self._dataframe.columns[1]], ascending=[self.sort_ord, 1]).reset_index(drop=True)
+                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[7], self._dataframe.columns[self.sort_col], self._dataframe.columns[1]], ascending=[1, self.sort_ord, 1]).reset_index(drop=True)
             self.layoutChanged.emit()
             if not hasattr(self, "sel_id"):
                 return

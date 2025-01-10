@@ -26,12 +26,12 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.setupUi(self)
         self.init_void = True
         self.zl_id = None
+        self.zl_checked = None
         self.zl_exclusion = None
         self.is_excluded_show = False
         self.zl_stanzag = None
         self.frm_details.setVisible(False)
         self.frm_dok.setVisible(False)
-        self.frm_update.setVisible(False)
         self.frm_filter.setVisible(False)
         self.frm_exclusion.setVisible(False)
         self.frm_kop.setVisible(True)
@@ -40,6 +40,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.sep_line_2.setVisible(False)
         self.btn_refresh.clicked.connect(self.df_zloza_update)
         self.btn_exclude.clicked.connect(self.zl_exclude_change)
+        self.btn_checked.clicked.connect(self.zl_checked_change)
         self.btn_exclusion_add.clicked.connect(self.exclusion_add)
         self.cmb_stanzag.currentIndexChanged.connect(self.stanzag_changed)
         self.df_zloza = pd.DataFrame(columns=['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan_tooltip', 'źr. geometrii', 'wył.'])
@@ -86,6 +87,9 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         elif attr == "df_dok" and not self.init_void:
             # Aktualizacja zawartości 'tv_dok' po zmianie 'df_zloza':
             self.mdl_dok.setDataFrame(val)
+        elif attr == "zl_checked" and not self.init_void:
+            # Aktualizacja stanu zatwierdzenia analizy złoża:
+            self.set_checked_state(val)
         elif attr == "zl_exclusion" and not self.init_void:
             # Aktualizacja stanu widget'ów z 'frm_exclusion':
             self.set_exclude_state(val)
@@ -171,6 +175,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             zl_id = int(index.sibling(index.row(), 1).data())
             if zl_id != self.zl_id:
                 self.zl_id = zl_id
+            self.zl_checked = index.sibling(index.row(), 0).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
             self.zl_exclusion = index.sibling(index.row(), 7).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
             self.init_stanzag()
             self.zl_lyr_update()
@@ -202,8 +207,35 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         sql = f"UPDATE zloza.main SET b_exclusion = {val} WHERE midas_id = {self.zl_id}"
         result = self.db_update(sql)
         if not result:
-            print(f"Error changing 'b_exclusion' for {self.zl_id} in 'zloza_main' table.")
+            print(f"Błąd przy próbie zmiany 'b_exclusion' dla złoża {self.zl_id} w tabeli 'zloza_main'.")
+        # Reset 'b_checked', jeśli złoże zostało wyłączone:
+        if self.zl_exclusion == 'False':
+            sql = f"UPDATE zloza.main SET b_checked = false WHERE midas_id = {self.zl_id}"
+            result = self.db_update(sql)
+            if not result:
+                print(f"Błąd przy próbie zmiany 'b_checked' dla złoża {self.zl_id} w tabeli 'zloza_main'.")
         self.df_zloza_update()
+
+    def zl_checked_change(self):
+        """Zmiana wartości 'b_checked' aktualnego złoża w tabeli 'zloza.main'."""
+        if self.zl_id == None:
+            return
+        val = 'true' if self.zl_checked == '0' else 'false'
+        sql = f"UPDATE zloza.main SET b_checked = {val} WHERE midas_id = {self.zl_id}"
+        result = self.db_update(sql)
+        if not result:
+            print(f"Błąd przy próbie zmiany 'b_checked' dla złoża {self.zl_id} w tabeli 'zloza_main'")
+        self.df_zloza_update()
+
+    def set_checked_state(self, state):
+        """Ustawienie UI w zależności od 'zl_checked'."""
+        # Ustalenie stylu 'btn_checked':
+        if state == '1':  # Analiza jest zakończona
+            self.btn_checked.setStyleSheet("QPushButton {background-color: rgb(160, 255, 100)}")
+            self.btn_checked.setText("Analiza zakończona")
+        else:
+            self.btn_checked.setStyleSheet("QPushButton {}")
+            self.btn_checked.setText("Zakończ analizę")
 
     def set_exclude_state(self, state):
         """Ustawienie UI w zależności od 'zl_exclusion'."""
@@ -218,19 +250,21 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             sql = f"SELECT t_exclusion FROM zloza.main WHERE midas_id = {self.zl_id}"
             exclusion_text = self.db_select(sql)[0]
             self.txt_exclusion.set_value(exclusion_text) if exclusion_text else self.txt_exclusion.set_value(None)
-            # Ustawienie widoczności frame'ów:
+            # Ustawienie widoczności widget'ów:
             self.frm_exclusion.setVisible(True)
             self.frm_kop.setVisible(False)
             self.frm_notes.setVisible(False)
+            self.btn_checked.setVisible(False)
             # self.sep_line_2.setVisible(False)
         else:  # Złoże nie jest wyłączone
             # Ustalenie stylu 'btn_exclude':
             self.btn_exclude.setStyleSheet("QPushButton {background-color: rgb(255, 130, 100)}")
             self.btn_exclude.setText("Wyłącz złoże")
-            # Ustawienie widoczności frame'ów:
+            # Ustawienie widoczności widget'ów:
             self.frm_exclusion.setVisible(False)
             self.frm_kop.setVisible(True)
             self.frm_notes.setVisible(True)
+            self.btn_checked.setVisible(True)
 
     def exclusion_add(self):
         """Przeniesienie tekstu powodu wyłączenia złoża z combobox'a do textedit'a."""
@@ -292,6 +326,8 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             self.txt_notes.edit = False
             self.txt_notes.clearFocus()
         # Wczytanie tekstu notatki aktualnie wybranego złoża do 'txt_notes':
+        if not self.zl_id:
+            return
         sql = f"SELECT t_notatki FROM zloza.main WHERE midas_id = {self.zl_id}"
         notes_text = self.db_select(sql)[0]
         self.txt_notes.set_value(notes_text) if notes_text and len(notes_text) > 0 else self.txt_notes.set_value(None)
@@ -358,7 +394,7 @@ class ZlozaTextBox(QTextEdit):
     def __init__(self, *args, zl_dlg, editable, fn=None):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setFixedHeight(100)
+        self.setFixedHeight(150)
         self.zl_dlg = zl_dlg
         self.fn = fn
         self.setReadOnly(not editable)

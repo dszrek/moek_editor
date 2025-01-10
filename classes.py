@@ -1052,7 +1052,7 @@ class ZlozaDFM(DataFrameModel):
         val = self._dataframe.iloc[row][col]
         if role == Qt.DisplayRole:
             if index.column() == 0:
-                return QVariant()
+                return '1' if val else '0'
             elif (index.column() == 2 or index.column() == 4) and not val:
                 return '?'
             return str(val)
@@ -1067,6 +1067,8 @@ class ZlozaDFM(DataFrameModel):
                 if self._dataframe.iloc[index.row()][7]:
                     return QColor('#eeeeee')
         elif role == Qt.ForegroundRole:
+            if index.column() == 0:
+                return QColor('#00aa00') if val else QColor('#eeeeee')
             if self._dataframe.iloc[index.row()][7]:  # Wyłączony
                 return QColor('#999999')
             else:

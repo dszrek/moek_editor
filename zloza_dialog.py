@@ -49,6 +49,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.init_tv_kopaliny()
         self.init_tv_dok()
         self.init_exclusion()
+        self.init_notes()
         self.init_void = False
 
     def __setattr__(self, attr, val):
@@ -68,6 +69,8 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             # Aktualizacja zawartości 'frm_head':
             l_zl = self.get_zloze_name(val) if val else None
             self.l_zl.setText(f"[{l_zl[0]}] {l_zl[1]}" if val else "")
+            # Aktualizacja 'txt_notes':
+            self.zl_notes_update()
             # Ustawienie widoczności'frm_details':
             self.frm_details.setVisible(False) if val == None else self.frm_details.setVisible(True)
         elif attr == "df_zloza" and not self.init_void:
@@ -126,6 +129,12 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.frm_exclusion.layout().addWidget(self.txt_exclusion)
         spacer = QSpacerItem(1, 2000, QSizePolicy.Maximum, QSizePolicy.Expanding)
         self.frm_exclusion.layout().addItem(spacer)
+
+    def init_notes(self):
+        """Utworzenie widget'ów z 'frm_notes'."""
+        fn = ['self.db_update(txt_val=self.cur_val, tbl="zloza.main", attr="t_notatki", sql_bns=f" WHERE midas_id = {self.zl_id}")']
+        self.txt_notes = ZlozaTextBox(zl_dlg=self, editable=True, fn=fn)
+        self.frm_notes.layout().addWidget(self.txt_notes)
 
     def init_stanzag(self):
         """Wczytanie wartości 't_stan_zag' z tabeli 'zloza.main' i ustawienie wg niej combobox'a."""
@@ -212,6 +221,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             # Ustawienie widoczności frame'ów:
             self.frm_exclusion.setVisible(True)
             self.frm_kop.setVisible(False)
+            self.frm_notes.setVisible(False)
             # self.sep_line_2.setVisible(False)
         else:  # Złoże nie jest wyłączone
             # Ustalenie stylu 'btn_exclude':
@@ -220,6 +230,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             # Ustawienie widoczności frame'ów:
             self.frm_exclusion.setVisible(False)
             self.frm_kop.setVisible(True)
+            self.frm_notes.setVisible(True)
 
     def exclusion_add(self):
         """Przeniesienie tekstu powodu wyłączenia złoża z combobox'a do textedit'a."""
@@ -272,6 +283,18 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             self.canvas.setExtent(ext)
         except Exception as err:
             print(f"Nie udało się przybliżyć widoku mapy do złoża {self.zl_id}")
+
+    def zl_notes_update(self):
+        """Aktualizacja 'txt_notes' po wybraniu złoża."""
+        # Zapisanie w bazie danych aktualnego tekstu, jeśli widget jest w trybie edycji (dla poprzednio wybranego złoża):
+        if self.txt_notes.edit:
+            self.txt_notes.value_change(self.txt_notes.toPlainText())
+            self.txt_notes.edit = False
+            self.txt_notes.clearFocus()
+        # Wczytanie tekstu notatki aktualnie wybranego złoża do 'txt_notes':
+        sql = f"SELECT t_notatki FROM zloza.main WHERE midas_id = {self.zl_id}"
+        notes_text = self.db_select(sql)[0]
+        self.txt_notes.set_value(notes_text) if notes_text and len(notes_text) > 0 else self.txt_notes.set_value(None)
 
     def df_zloza_update(self):
         """Ładowanie danych do 'df_zloza'."""

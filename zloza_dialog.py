@@ -43,7 +43,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.btn_checked.clicked.connect(self.zl_checked_change)
         self.btn_exclusion_add.clicked.connect(self.exclusion_add)
         self.cmb_stanzag.currentIndexChanged.connect(self.stanzag_changed)
-        self.df_zloza = pd.DataFrame(columns=['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan_tooltip', 'źr. geometrii', 'wył.'])
+        self.df_zloza = pd.DataFrame(columns=['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan zag.', 'stan_tooltip', 'źr. geometrii', 'wył.'])
         self.df_kopaliny = pd.DataFrame(columns=['kop_typ_id', '', 'typ kopaliny', 'ranga kopaliny', 'stan zagospodarowania'])
         self.df_dok = pd.DataFrame(columns=['cbdg_id', 'tytuł', 'rok', 'nr inw.', 'nr kat.', 'rep_inw', 'rep_kat'])
         self.init_tv_zloza()
@@ -157,6 +157,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         result = self.db_update(sql)
         if not result:
             print(f"Błąd zmiany wartości 't_stan_zag' dla złoża {self.zl_id} w tabeli 'zloza.main'.")
+        self.df_zloza_update()
 
     def open_dok_folder(self):
         """Otworzenie eksploratora plików ze ścieżką do dokumentacji, jeśli jest dostępna."""
@@ -176,7 +177,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             if zl_id != self.zl_id:
                 self.zl_id = zl_id
             self.zl_checked = index.sibling(index.row(), 0).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
-            self.zl_exclusion = index.sibling(index.row(), 7).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
+            self.zl_exclusion = index.sibling(index.row(), 8).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
             self.init_stanzag()
             self.zl_lyr_update()
         else:
@@ -336,9 +337,10 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         """Ładowanie danych do 'df_zloza'."""
         zl_ids = self.get_zl_ids()
         # Załadowanie danych do 'tv_zloza':
-        sql = f"SELECT m.b_checked, m.midas_id, m.t_kop_typ_symbol, k.t_kop_typ_nazwa, s.t_stan_symbol, m.t_stan_zag_midas, COALESCE(m.t_geom, 'BRAK'), m.b_exclusion FROM zloza.main m INNER JOIN zloza.sl_zloza_stan s ON m.t_stan_zag_midas = s.t_zloze_stan INNER JOIN zloza.sl_kop_typ k ON m.kop_typ_id = k.kop_typ_id WHERE midas_id IN {zl_ids} ORDER BY midas_id;"
-        cols = ['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan_tooltip', 'źr. geometrii', 'wył.']
+        sql = f"SELECT m.b_checked, m.midas_id, m.t_kop_typ_symbol, k.t_kop_typ_nazwa, s.t_stan_symbol, m.t_stan_zag, m.t_stan_zag_midas, COALESCE(m.t_geom, 'BRAK'), m.b_exclusion FROM zloza.main m INNER JOIN zloza.sl_zloza_stan s ON m.t_stan_zag_midas = s.t_zloze_stan INNER JOIN zloza.sl_kop_typ k ON m.kop_typ_id = k.kop_typ_id WHERE midas_id IN {zl_ids} ORDER BY midas_id;"
+        cols = ['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan zag.', 'stan_tooltip', 'źr. geometrii', 'wył.']
         df_zloza = self.df_from_db(sql, cols)
+        print(df_zloza[df_zloza['midas_id'] == 1768])
         self.df_zloza = df_zloza
         # Odznaczenie 'midas_id', jeśli nie ma go na zaktualizowanej liście:
         if self.zl_id and self.zl_id not in zl_ids:

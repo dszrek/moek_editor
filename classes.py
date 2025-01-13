@@ -1016,10 +1016,11 @@ class ZlozaDFM(DataFrameModel):
         h_header.resizeSection(1, 64)  # midas_id
         h_header.resizeSection(2, 80)  # kopal.
         self.tv.setColumnHidden(3, True)  # kopal. tooltip
-        h_header.resizeSection(4, 120)  # stan zag.
-        self.tv.setColumnHidden(5, True)  # stan zag. tooltip
-        h_header.resizeSection(6, 90)  # źródło geom.
-        self.tv.setColumnHidden(7, True)  # wył.
+        h_header.resizeSection(4, 120)  # stan zag. wg MIDAS
+        self.tv.setColumnHidden(5, True)  # stan zag
+        self.tv.setColumnHidden(6, True)  # stan zag. tooltip
+        h_header.resizeSection(7, 90)  # źródło geom.
+        self.tv.setColumnHidden(8, True)  # wył.
         v_header = self.tv.verticalHeader()
         v_header.setSectionResizeMode(QHeaderView.Fixed)
         v_header.setDefaultSectionSize(27)
@@ -1064,21 +1065,24 @@ class ZlozaDFM(DataFrameModel):
             if index.column() == 0:
                 return QColor('#00aa00') if val else QColor('#eeeeee')
             else:
-                if self._dataframe.iloc[index.row()][7]:
+                if self._dataframe.iloc[index.row()][8]:
                     return QColor('#eeeeee')
         elif role == Qt.ForegroundRole:
             if index.column() == 0:
                 return QColor('#00aa00') if val else QColor('#eeeeee')
-            if self._dataframe.iloc[index.row()][7]:  # Wyłączony
+            if self._dataframe.iloc[index.row()][8]:  # Wyłączony
                 return QColor('#999999')
             else:
-                if index.column() == 6:
+                if index.column() == 7:
                     return QColor('#ff0000') if val == 'BRAK' else QColor('#000000')
+        elif role == Qt.DecorationRole:
+            if index.column() == 4 and str(self._dataframe.iloc[index.row()][5]) != "None":
+                return QIcon(f"{ICON_PATH}warning_red_0.png")
         elif role == Qt.ToolTipRole:
             if index.column() == 2:
                 return str(self._dataframe.iloc[index.row()][3])
             elif index.column() == 4:
-                return str(self._dataframe.iloc[index.row()][5])
+                return str(self._dataframe.iloc[index.row()][6])
             return QVariant()
         if role == DataFrameModel.DtypeRole:
             return dt
@@ -1094,11 +1098,11 @@ class ZlozaDFM(DataFrameModel):
             self.sort_col = col
             self.sort_ord = orders[order_idx + increment]
             if self.sort_col == 0:
-                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[7], self._dataframe.columns[0], self._dataframe.columns[1]], ascending=[1, self.sort_ord, 1]).reset_index(drop=True)
+                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[8], self._dataframe.columns[0], self._dataframe.columns[1]], ascending=[1, self.sort_ord, 1]).reset_index(drop=True)
             elif self.sort_col == -1 or self.sort_col == 1:
-                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[7], self._dataframe.columns[self.sort_col]], ascending=[1, self.sort_ord]).reset_index(drop=True)
+                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[8], self._dataframe.columns[self.sort_col]], ascending=[1, self.sort_ord]).reset_index(drop=True)
             elif self.sort_col > 1:
-                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[7], self._dataframe.columns[self.sort_col], self._dataframe.columns[1]], ascending=[1, self.sort_ord, 1]).reset_index(drop=True)
+                self._dataframe = self._dataframe.sort_values(by=[self._dataframe.columns[8], self._dataframe.columns[self.sort_col], self._dataframe.columns[1]], ascending=[1, self.sort_ord, 1]).reset_index(drop=True)
             self.layoutChanged.emit()
             if not hasattr(self, "sel_id"):
                 return

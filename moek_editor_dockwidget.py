@@ -130,11 +130,24 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                             round=[0, 0, 6, 16])
         self.p_pow_grp = MoekGroupPanel(self)
         self.p_map = MoekMapPanel(self)
+        self.p_ext_zloza = MoekBarPanel(
+                            self,
+                            switch=None,
+                            spacing=8,
+                            wmargin=0,
+                            custom_width=35,
+                            grouped=True,
+                            bmargin=[0, 0, 2, 0],
+                            round=[6, 6, 6, 6])
         self.p_ext = MoekBarPanel(
                             self,
                             switch=None,
                             spacing=8,
-                            wmargin=0)
+                            grouped=True,
+                            custom_width=106,
+                            wmargin=0,
+                            round=[6, 6, 6, 6])
+        self.p_ext_grp = MoekGroupPanel(self)
         self.p_vn = MoekBoxPanel(
                             self,
                             title="Siatka widoków",
@@ -184,9 +197,16 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         p_map_widgets = []
         p_ext_widgets = [
                     # {"item": "button", "name": "wn", "size": 47, "hsize": 25, "checkable": True, "tooltip": u'punkty WN_Kopaliny'},
-                    {"item": "button", "name": "midas", "size": 47, "hsize": 25, "checkable": True, "tooltip": u'złoża i OTG z bazy MIDAS'},
+                    # {"item": "button", "name": "midas", "size": 47, "hsize": 25, "checkable": True, "tooltip": u'złoża i OTG z bazy MIDAS'},
                     {"item": "button", "name": "mgsp", "size": 47, "hsize": 25, "checkable": True, "tooltip": u'pkt. występowania kopaliny, złoża i OTG z bazy MGSP'},
                     {"item": "button", "name": "smgp", "size": 47, "hsize": 25, "checkable": True, "tooltip": u'wyrobiska z map SMGP'}
+                    ]
+        p_ext_zloza_widgets = [
+                    {"item": "button", "name": "zloza", "size": 33,"checkable": False, "tooltip": u'złoża'}
+                    ]
+        p_ext_grp_widgets = [
+                    {"item": "panel", "object": self.p_ext_zloza},
+                    {"item": "panel", "object": self.p_ext}
                     ]
         p_vn_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "vn_sel", "size": 50, "checkable": True, "tooltip": u"wybierz pole"},
@@ -220,8 +240,8 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
 
         # self.panels = [self.p_team, self.p_team_export, self.p_team_grp, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
         # self.p_widgets = [p_team_widgets, p_team_export_widgets, p_team_grp_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_komunikacja_widgets]
-        self.panels = [self.p_team, self.p_team_export, self.p_team_grp, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr]
-        self.p_widgets = [p_team_widgets, p_team_export_widgets, p_team_grp_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets]
+        self.panels = [self.p_team, self.p_team_export, self.p_team_grp, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext_zloza, self.p_ext, self.p_ext_grp, self.p_vn, self.p_flag, self.p_wyr]
+        self.p_widgets = [p_team_widgets, p_team_export_widgets, p_team_grp_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_zloza_widgets, p_ext_widgets, p_ext_grp_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets]
 
         # Wczytanie paneli i ich widgetów do dockwidget'u:
         for (panel, widgets) in zip(self.panels, self.p_widgets):
@@ -668,7 +688,7 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_pow_mask.box.widgets["btn_pow_mask"].clicked.connect(lambda: self.cfg.set_val(name="powiaty_mask", val=self.p_pow_mask.box.widgets["btn_pow_mask"].isChecked()))
         self.p_team_export.box.widgets["btn_data_export"].clicked.connect(data_export_init)
         # self.p_ext.box.widgets["btn_midas"].clicked.connect(lambda: self.cfg.set_val(name="MIDAS", val=self.p_ext.box.widgets["btn_midas"].isChecked()))
-        self.p_ext.box.widgets["btn_midas"].pressed.connect(self.show_zl_dlg)
+        self.p_ext_zloza.box.widgets["btn_zloza"].clicked.connect(self.show_zl_dlg)
         self.p_ext.box.widgets["btn_mgsp"].clicked.connect(lambda: self.cfg.set_val(name="MGSP", val=self.p_ext.box.widgets["btn_mgsp"].isChecked()))
         self.p_ext.box.widgets["btn_smgp"].clicked.connect(lambda: self.cfg.set_val(name="smgp_wyrobiska", val=self.p_ext.box.widgets["btn_smgp"].isChecked()))
         self.p_flag.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="flagi_user", val=self.p_flag.widgets["btn_user"].isChecked()))

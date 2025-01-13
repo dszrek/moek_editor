@@ -418,7 +418,7 @@ class GESync:
 
     def update_timer_reset(self):
         """Kasowanie stopera odświeżenia podkładu GEP."""
-        print("[update_timer_reset]")
+        # print("[update_timer_reset]")
         if self.update_timer:
             # self.loaded = False
             self.update_timer.stop()

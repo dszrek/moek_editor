@@ -340,7 +340,6 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         sql = f"SELECT m.b_checked, m.midas_id, m.t_kop_typ_symbol, k.t_kop_typ_nazwa, s.t_stan_symbol, m.t_stan_zag, m.t_stan_zag_midas, COALESCE(m.t_geom, 'BRAK'), m.b_exclusion FROM zloza.main m INNER JOIN zloza.sl_zloza_stan s ON m.t_stan_zag_midas = s.t_zloze_stan INNER JOIN zloza.sl_kop_typ k ON m.kop_typ_id = k.kop_typ_id WHERE midas_id IN {zl_ids} ORDER BY midas_id;"
         cols = ['check', 'midas_id', 'kopalina gł.', 'kop_tooltip', 'stan zag. wg MIDAS', 'stan zag.', 'stan_tooltip', 'źr. geometrii', 'wył.']
         df_zloza = self.df_from_db(sql, cols)
-        print(df_zloza[df_zloza['midas_id'] == 1768])
         self.df_zloza = df_zloza
         # Odznaczenie 'midas_id', jeśli nie ma go na zaktualizowanej liście:
         if self.zl_id and self.zl_id not in zl_ids:

@@ -3953,7 +3953,7 @@ class TabButton(QPushButton):
 class ParamBox(QFrame):
     """Widget do wyświetlania wartości lub zakresu parametru wraz z opisem (nagłówkiem).
     item: label, line_edit, ruler."""
-    def __init__(self, *args, margins=False, list_width = 200, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, min_max=False, title_down=None, title_down_2=None, title_left=None, icon=None, font_size=10, tooltip="", val_display=False, trigger=None, fn=None):
+    def __init__(self, *args, margins=False, list_width = 200, width=160, height=22, down_height=12, item="label", val_width=40, val_width_2=40, value=" ", value_2=None, sep_width=17, sep_txt="–", max_len=None, validator=None, placeholder=None, zero_allowed=False, min_max=False, title_down=None, title_down_2=None, title_left=None, icon=None, font_size=10, tooltip="", val_display=False, trigger=None, fn=None, theme="dark"):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.item = item
@@ -3981,7 +3981,7 @@ class ParamBox(QFrame):
         for widget in self.widgets:
             if widget["item"] == "title_left":
                 _width = _width - self.val_width
-                self.title_left = TextItemLabel(self, height=_height, width=_width, font_size=8, text=title_left)
+                self.title_left = TextItemLabel(self, height=_height, width=_width, font_size=8, text=title_left, theme=theme)
                 self.box.glay.addWidget(self.title_left, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "icon":
                 self.icon = MoekButton(self, name=icon, size=34, checkable=False, enabled=True, tooltip=tooltip)
@@ -3992,13 +3992,13 @@ class ParamBox(QFrame):
                         self.setFixedSize(width, 34)
                         lay.setContentsMargins(0, 0, 0, 4)
                         _height = 28
-                    self.valbox_1 = TextItemLabel(self, height=_height, width=self.val_width_1, bgr_alpha=0.15, text=value, font_size=font_size)
+                    self.valbox_1 = TextItemLabel(self, height=_height, width=self.val_width_1, bgr_alpha=0.15, text=value, font_size=font_size, theme=theme)
                 elif self.item == "line_edit":
-                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, trigger=trigger, fn=fn[0])
+                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, trigger=trigger, fn=fn[0], theme=theme)
                 elif self.item == "line_edit_left":
-                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, align="AlignLeft", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, trigger=trigger, fn=fn[0])
+                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, align="AlignLeft", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, trigger=trigger, fn=fn[0], theme=theme)
                 elif self.item == "ruler":
-                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0])
+                    self.valbox_1 = CanvasLineEdit(self, width=self.val_width_1, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[0], theme=theme)
                 elif self.item == "combo":
                     self.valbox_1 = CanvasArrowlessComboBox(self, width=list_width, height=_height, font_size=8, trigger=trigger, fn=fn)
                 elif self.item == "combo_tv":
@@ -4006,25 +4006,25 @@ class ParamBox(QFrame):
                 self.box.glay.addWidget(self.valbox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "valbox_2":
                 if self.item == "label":
-                    self.valbox_2 = TextItemLabel(self, height=_height, width=self.val_width_2, bgr_alpha=0.15, text=value, font_size=font_size)
+                    self.valbox_2 = TextItemLabel(self, height=_height, width=self.val_width_2, bgr_alpha=0.15, text=value, font_size=font_size, theme=theme)
                 elif self.item == "line_edit":
-                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=_height, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
+                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=_height, font_size=8, max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1], theme=theme)
                     self.focus_switch = True
                 elif self.item == "ruler":
-                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1])
+                    self.valbox_2 = CanvasLineEdit(self, width=self.val_width_2, height=_height, font_size=8, r_widget="ruler", max_len=max_len, validator=validator, placeholder=placeholder, zero_allowed=zero_allowed, fn=fn[1], theme=theme)
                     self.focus_switch = True
                 self.box.glay.addWidget(self.valbox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "separator":
-                self.separator = TextItemLabel(self, height=_height, width=sep_width, text=sep_txt)
+                self.separator = TextItemLabel(self, height=_height, width=sep_width, text=sep_txt, theme=theme)
                 self.box.glay.addWidget(self.separator, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "line":
-                self.line = MoekHLine(self)
+                self.line = MoekHLine(self, theme=theme)
                 self.box.glay.addWidget(self.line, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "titlebox_1":
-                self.titlebox_1 = TextItemLabel(self, height=down_height, width=self.val_width_1, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title_down)
+                self.titlebox_1 = TextItemLabel(self, height=down_height, width=self.val_width_1, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title_down, theme=theme)
                 self.box.glay.addWidget(self.titlebox_1, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
             elif widget["item"] == "titlebox_2":
-                self.titlebox_2 = TextItemLabel(self, height=down_height, align="left", width=val_width_2, font_size=6, font_weight="bold", font_alpha=0.6, text=title_down_2)
+                self.titlebox_2 = TextItemLabel(self, height=down_height, align="left", width=val_width_2, font_size=6, font_weight="bold", font_alpha=0.6, text=title_down_2, theme=theme)
                 self.box.glay.addWidget(self.titlebox_2, widget["row"], widget["col"], widget["r_span"], widget["c_span"])
 
     def set_enabled(self, _bool):
@@ -4148,7 +4148,7 @@ class ParamBox(QFrame):
 
 class ParamTextBox(QFrame):
     """Widget do wyświetlania i edycji parametru tekstowego (np. uwagi) wraz z nagłówkiem i opcjonalnym licznikiem użytch znaków."""
-    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, txt_limiter=None, centered=False, fn=None):
+    def __init__(self, *args, margins=False, width=328, height=80, down_height=12, title=None, edit=False, trigger=None, txt_limiter=None, centered=False, fn=None, theme="dark"):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setObjectName("main")
@@ -4171,7 +4171,7 @@ class ParamTextBox(QFrame):
         self.txt_limiter = txt_limiter
         if title:
             self.title = title
-            self.titlebox = TextItemLabel(self, height=down_height, width=_width, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title)
+            self.titlebox = TextItemLabel(self, height=down_height, width=_width, align="left", font_size=6, font_weight="bold", font_alpha=0.6, text=title, theme=theme)
             self.box.lay.addWidget(self.titlebox)
         self.setStyleSheet(" QFrame#main{background-color: transparent; border: none} ")
 
@@ -4346,7 +4346,7 @@ class TextBox(QTextEdit):
 
 class TextItemLabel(QLabel):
     """Widget do wyświetlania nagłówka parametru obiektu."""
-    def __init__(self, *args, width=118, height=24, text="", align="center", font_size=10, font_weight="normal", font_alpha=1.0, bgr_alpha=0.0):
+    def __init__(self, *args, width=118, height=24, text="", align="center", font_size=10, font_weight="normal", font_alpha=1.0, bgr_alpha=0.0, theme="dark"):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(width, height)
@@ -4356,16 +4356,19 @@ class TextItemLabel(QLabel):
         self.font_weight = font_weight
         self.font_alpha = font_alpha
         self.bgr_alpha = bgr_alpha
+        self.theme = theme
         self.set_style()
 
     def set_style(self):
         """Modyfikacja stylesheet."""
         font_alpha = self.font_alpha if self.isEnabled() else 0.1
         padding = "0px 0px 0px 0px" if self.align == "center" else "0px 6px 0px 0px"
+        color = "255, 255, 255" if self.theme == "dark" else "0, 0, 0"
+        back_color ="255, 255, 255" if self.theme == "dark" else "0, 0, 0"
         self.setAlignment(Qt.AlignCenter) if self.align == "center" else self.setAlignment(Qt.AlignLeft| Qt.AlignVCenter)
         self.setStyleSheet(f"""
-                            background-color: rgba(255, 255, 255, {self.bgr_alpha});
-                            color: rgba(255, 255, 255, {font_alpha});
+                            background-color: rgba({back_color}, {self.bgr_alpha});
+                            color: rgba({color}, {font_alpha});
                             font-size: {self.font_size}pt;
                             font-weight: {self.font_weight};
                             padding: {padding};
@@ -4384,16 +4387,18 @@ class TextItemLabel(QLabel):
 
 class MoekHLine(QFrame):
     """Linia pozioma."""
-    def __init__(self, *args, px=1):
+    def __init__(self, *args, px=1, theme="dark"):
         super().__init__(*args)
         self.setFixedHeight(px)
+        self.theme = theme
         self.set_style()
 
     def set_style(self):
         """Modyfikacja stylesheet."""
         alpha = 0.6 if self.isEnabled() else 0.1
+        color = "255, 255, 255" if self.theme == "dark" else "0, 0, 0"
         self.setStyleSheet(f"""
-                            background-color: rgba(255, 255, 255, {alpha});
+                            background-color: rgba({color}, {alpha});
                             """)
 
     def set_enabled(self, _bool):
@@ -4500,8 +4505,10 @@ class CanvasLineEdit(QLineEdit):
         elif self.validator == "months":
             self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1][0-2]$")))
         elif self.validator == "years":
-            self.setValidator(QRegExpValidator(QRegExp("^1[0-9]$|^2[0-4]$|^201[0-9]$|^202[0-4]$")))
+            # self.setValidator(QRegExpValidator(QRegExp("^1[0-9]$|^2[0-4]$|^201[0-9]$|^202[0-4]$"))) - zakres 2010-2024
+            self.setValidator(QRegExpValidator(QRegExp("^19[0-9]{2}$|^200[0-9]$|^201[0-9]$|^202[0-5]$|^[0-1]?[0-9]$|^2[0-5]$")))  # zakres 1900-2025
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
+        self.back_color = "255, 255, 255" if theme == "dark" else "180, 180, 180"
         self.attr_void = True
         self.locked = False
         self.edited = False
@@ -4572,15 +4579,18 @@ class CanvasLineEdit(QLineEdit):
                 self.cur_val = self.cur_val
                 return
         if self.validator == "years":
-            if len(val) == 2:
+            if len(val) == 1:
+                # Uzupełnienie wartości roku do formatu 4-cyfrowego:
+                val = '200' + val
+            elif len(val) == 2:
                 # Uzupełnienie wartości roku do formatu 4-cyfrowego:
                 val = '20' + val
-            elif len(val) == 1 or len(val) == 3:
+            elif len(val) == 3:
                 # Wartość roku niepełna:
                 self.cur_val = self.cur_val
                 return
-            if int(val) >= 2010 and int(val) <= 2024:
-                # Ograniczenie wartości roku do przedziału 2010-2024:
+            if len(val) == 4:
+                # Ograniczenie wartości roku do przedziału 1900-2025:
                 self.cur_val = val
             else:
                 self.cur_val = self.cur_val
@@ -4644,7 +4654,7 @@ class CanvasLineEdit(QLineEdit):
             border = "none"
         self.setStyleSheet("""
                     QLineEdit {
-                        background-color: rgba(""" + self.color + """, """ + str(alpha) + """);
+                        background-color: rgba(""" + self.back_color + """, """ + str(alpha) + """);
                         color: rgba(""" + font_color + """);
                         font-size: """ + str(self.font_size) + """pt;
                         border: """ + border + """;

@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 import os
+import datetime
 import pandas as pd
 
 from qgis.core import QgsApplication, QgsRectangle, QgsFeature, QgsExpressionContextUtils
 from qgis.PyQt.QtCore import Qt, QModelIndex
 from qgis.PyQt.QtGui import QTextCursor
-from qgis.PyQt.QtWidgets import QDialog, QTextEdit, QSizePolicy, QSpacerItem
+from qgis.PyQt.QtWidgets import QDialog, QTextEdit, QSizePolicy, QSpacerItem, QFrame, QLabel
 from qgis.PyQt import uic
 
 from .classes import ZlozaDFM, KopalinyDFM, DokDFM, PgConn, CfgPars
-from .main import active_pow_listed, pg_layer_change, stage_refresh
+from .main import active_pow_listed, pg_layer_change, stage_refresh, db_attr_change
+from .widgets import ParamBox
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -51,6 +53,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.init_tv_dok()
         self.init_exclusion()
         self.init_notes()
+        self.init_history()
         self.init_void = False
 
     def __setattr__(self, attr, val):
@@ -59,6 +62,8 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         if attr == "zl_id" and not self.init_void:
             # Przekazanie id wybranego złoża do modelu tableview'u:
             self.mdl_zloza.sel_id = val
+            if not val:
+                return
             # Aktualizacja 'tv_kopaliny':
             sql = f"SELECT DISTINCT ON (k.sys_typ_id) k.sys_typ_id, k.kop_typ_id, s.t_kop_typ_symbol, s.t_kop_typ_nazwa, k.t_kop_ranga, k.t_stan_zag FROM zloza.zl_kopaliny AS k INNER JOIN zloza.sl_kop_typ AS s ON s.kop_typ_id = k.kop_typ_id WHERE k.midas_id = {val} ORDER BY k.sys_typ_id"
             cols = ['sys_typ_id', 'kop_typ_id', '', 'typ kopaliny', 'ranga kopaliny', 'stan zagospodarowania']
@@ -70,6 +75,8 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             # Aktualizacja zawartości 'frm_head':
             l_zl = self.get_zloze_name(val) if val else None
             self.l_zl.setText(f"[{l_zl[0]}] {l_zl[1]}" if val else "")
+            # Aktualizacja 'frm_history':
+            self.zl_history_update()
             # Aktualizacja 'txt_notes':
             self.zl_notes_update()
             # Ustawienie widoczności'frm_details':
@@ -140,6 +147,28 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         self.txt_notes = ZlozaTextBox(zl_dlg=self, editable=True, fn=fn)
         self.frm_notes.layout().addWidget(self.txt_notes)
 
+    def init_history(self):
+        """Utworzenie widget'ów z 'frm_history'."""
+        date_info = [
+            ("date_dok_s", "data udokumentowania złoża", 0),
+            ("date_kon_s", "data ustanowienia koncesji", 1),
+            ("date_kon_exp", "termin ważności koncesji", 2),
+            ("date_kon_e", "data wygaśnięcia koncesji", 3),
+            ("date_dok_e", "data wybilansowania złoża", 4),
+        ]
+        for date_key, label_text, column in date_info:
+            date_widget = ZlozaDateBox(self.plg, date_key)
+            self.frm_dates.layout().addWidget(date_widget, 1, column)
+            self.frm_dates.layout().setAlignment(date_widget, Qt.AlignCenter)
+            label = QLabel()
+            label.setText(label_text)
+            label.setAlignment(Qt.AlignCenter)
+            self.frm_dates.layout().addWidget(label, 0, column)
+            self.frm_dates.layout().setAlignment(label, Qt.AlignCenter)
+            # Utworzenie dynamicznych atrybutów z dostępem w obrębie klasy:
+            setattr(self, f"l_{date_key}", label)
+            setattr(self, date_key, date_widget)
+
     def init_stanzag(self):
         """Wczytanie wartości 't_stan_zag' z tabeli 'zloza.main' i ustawienie wg niej combobox'a."""
         if not self.zl_id:
@@ -179,10 +208,10 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             self.zl_checked = index.sibling(index.row(), 0).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
             self.zl_exclusion = index.sibling(index.row(), 8).data()  # WARNING: Należy zaktualizować numer kolumny, jeśli struktura 'tv_zloza' ulegnie zmianie
             self.init_stanzag()
-            self.zl_lyr_update()
         else:
             self.zl_id = None
             self.zl_exclusion = None
+        self.zl_lyr_update()
 
     def get_zl_ids(self):
         """Zwraca listę złóż z obszaru podanych powiatów."""
@@ -254,6 +283,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             # Ustawienie widoczności widget'ów:
             self.frm_exclusion.setVisible(True)
             self.frm_kop.setVisible(False)
+            self.frm_history.setVisible(False)
             self.frm_notes.setVisible(False)
             self.btn_checked.setVisible(False)
             # self.sep_line_2.setVisible(False)
@@ -264,6 +294,7 @@ class ZlozaDialog(QDialog, FORM_CLASS):
             # Ustawienie widoczności widget'ów:
             self.frm_exclusion.setVisible(False)
             self.frm_kop.setVisible(True)
+            self.frm_history.setVisible(True)
             self.frm_notes.setVisible(True)
             self.btn_checked.setVisible(True)
 
@@ -333,6 +364,23 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         notes_text = self.db_select(sql)[0]
         self.txt_notes.set_value(notes_text) if notes_text and len(notes_text) > 0 else self.txt_notes.set_value(None)
 
+    def zl_history_update(self):
+        """Aktualizacja widget'ów 'frm_history' po wybraniu złoża."""
+        if not self.zl_id:
+            return
+        # Stworzenie rekordu dla złoża w bazie danych, jeśli jeszcze nie istnieje:
+        if not self.db_record_exists('zloza.zl_dates'):
+            self.db_create_record('zloza.zl_dates')
+        # Pobranie dat z bazy danych:
+        sql = f"SELECT date_dok_s, date_dok_e, date_kon_s, date_kon_e, date_kon_exp FROM zloza.zl_dates WHERE midas_id = {self.zl_id}"
+        cols = ['date_dok_s', 'date_dok_e', 'date_kon_s', 'date_kon_e', 'date_kon_exp']
+        df_dates = self.df_from_db(sql, cols)
+        self.date_dok_s.set_value(str(df_dates.loc[0, 'date_dok_s']))
+        self.date_dok_e.set_value(str(df_dates.loc[0, 'date_dok_e']))
+        self.date_kon_s.set_value(str(df_dates.loc[0, 'date_kon_s']))
+        self.date_kon_e.set_value(str(df_dates.loc[0, 'date_kon_e']))
+        self.date_kon_exp.set_value(str(df_dates.loc[0, 'date_kon_exp']))
+
     def df_zloza_update(self):
         """Ładowanie danych do 'df_zloza'."""
         zl_ids = self.get_zl_ids()
@@ -385,9 +433,22 @@ class ZlozaDialog(QDialog, FORM_CLASS):
         else:
             return empty_df
 
+    def db_record_exists(self, tbl):
+        """Sprawdza, czy w podanej tabeli istnieje rekord dotyczący aktualnego złoża."""
+        sql = f"SELECT midas_id FROM {tbl} WHERE midas_id = {self.zl_id}"
+        res = self.db_select(sql, False)
+        return True if res else False
+
+    def db_create_record(self, tbl):
+        """Utworzenie rekordu dla aktualnego złoża w podanej tabeli z bazy danych."""
+        sql = f"INSERT INTO {tbl} (midas_id) VALUES ({self.zl_id})"
+        res = self.db_update(sql)
+        if not res:
+            print(f"Error in db_create_record(): {res}")
+
     def closeEvent(self, event):
         """Zamknięcie okna dialogowego."""
-        self.zl_id = None
+        self.tv_zloza.setCurrentIndex(QModelIndex())
 
 
 class ZlozaTextBox(QTextEdit):
@@ -490,3 +551,132 @@ class ZlozaTextBox(QTextEdit):
             self.clearFocus()
         else:
             super().keyPressEvent(event)
+
+
+class ZlozaDateBox(QFrame):
+    """Widget ustalania dla wyrobiska daty aktualności fotomapy."""
+    def __init__(self, plg, attr, *args, fn=None):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(110, 38)
+        self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
+        self.dicts = [
+                    {"name": "self.dd", "width": 32, "title_down": "DD", "max_len": 2, "validator": "days", "zero_allowed": False},
+                    {"name": "self.dm", "width": 32, "title_down": "MM", "max_len": 2, "validator": "months", "zero_allowed": False},
+                    {"name": "self.dy", "width": 40, "title_down": "RRRR", "max_len": 4, "validator": "years", "zero_allowed": False}
+                    ]
+        for dict in self.dicts:
+            fn = ['self.parent().parent().parent().val_changed()']
+            _txt2 = ParamBox(self, item="line_edit", max_len=dict["max_len"], validator=dict["validator"], height=26, down_height=12, font_size=10, width=dict["width"], value=" ", val_width=dict["width"], title_down=dict["title_down"], zero_allowed=dict["zero_allowed"], fn=[fn], theme="light")
+            exec(f'{dict["name"]} = _txt2')
+        self.dd.setGeometry(0, 0, self.dd.width(), self.dd.height())
+        self.dm.setGeometry(35, 0, self.dm.width(), self.dm.height())
+        self.dy.setGeometry(70, 0, self.dy.width(), self.dy.height())
+        self.plg = plg
+        self.attr = attr
+        self.val_void = True
+        self.d_val = None
+        self.dd_val = None
+        self.dm_val = None
+        self.dy_val = None
+        self.val_void = False
+
+    def __setattr__(self, attr, val):
+        """Przechwycenie zmiany atrybutu."""
+        super().__setattr__(attr, val)
+        if attr == "dd_val" and not self.val_void:
+            self.dd.valbox_1.set_value(val)
+        if attr == "dm_val" and not self.val_void:
+            self.dm.valbox_1.set_value(val)
+        if attr == "dy_val" and not self.val_void:
+            self.dy.valbox_1.set_value(val)
+
+    def val_changed(self):
+        """Zmieniono wartość jednej z części daty."""
+        part_vals = [
+            ["self.dd_val", self.dd.valbox_1.text()],
+            ["self.dm_val", self.dm.valbox_1.text()],
+            ["self.dy_val", self.dy.valbox_1.text()]
+        ]
+        for part_val in part_vals:
+            if len(part_val[1]) == 0:
+                # Konwersja pustej wartości:
+                new_val = None
+            else:
+                new_val = part_val[1]
+            cur_val = eval(part_val[0])
+            if cur_val != new_val:
+                # Aktualizacja zmienionej wartości:
+                exec(f'{part_val[0]} = new_val')
+                # Zmieniono część daty:
+                if self.dy_val and (not self.dm_val and part_val[0] != "self.dm_val"):
+                    # Autouzupełnienie miesiąca:
+                    self.dm_val = "01"
+                if self.dy_val and (not self.dd_val and part_val[0] != "self.dd_val"):
+                    # Autouzupełnienie dnia:
+                    self.dd_val = "01"
+                if (part_val[0] == "self.dy_val" and not self.dy_val) or (part_val[0] == "self.dm_val" and not self.dm_val) or (part_val[0] == "self.dd_val" and not self.dd_val):
+                    # Reset daty po zmianie wartości na "pustą":
+                    self.date_reset()
+                    return
+                if self.dy_val and self.dm_val and self.dd_val:
+                    # Wszystkie części są uzupełnione - ustalenie daty:
+                    try:
+                        self.d_val = datetime.date(int(self.dy_val), int(self.dm_val), int(self.dd_val))
+                    except ValueError:
+                        return
+                d_sql = self.sql_parser(self.d_val)
+                db_attr_change(tbl=f'zloza.zl_dates', attr=self.attr, val=d_sql, sql_bns=f' WHERE midas_id = {self.plg.zl_dlg.zl_id}', user=False)
+                self.focus_switcher(part_val[0])
+                return
+
+    def sql_parser(self, val):
+        """Zwraca wartość prawidłową dla formuły sql."""
+        return f"'{val}'" if val else 'Null'
+
+    def focus_switcher(self, obj_txt):
+        """Przejście do kolejnego pustego parambox'a."""
+        val_list = ["self.dd_val","self.dm_val", "self.dy_val"]
+        obj_list = ["self.dd.valbox_1", "self.dm.valbox_1", "self.dy.valbox_1"]
+        txt_list = [self.dd.valbox_1.text(), self.dm.valbox_1.text(), self.dy.valbox_1.text()]
+        idx = -1
+        i = -1
+        for val in val_list:
+            i += 1
+            if val == obj_txt:
+                idx = i
+                break
+        if idx == -1:
+            return
+        if idx == 0:
+            if txt_list[1] == "" or txt_list[1] == "01":
+                exec(f"{obj_list[1]}.setFocus()")
+        elif idx == 1:
+            if len(txt_list[2]) == 0:
+                exec(f"{obj_list[2]}.setFocus()")
+            elif len(txt_list[2]) > 0 and (txt_list[0] == "" or txt_list[0] == "01"):
+                exec(f"{obj_list[0]}.setFocus()")
+
+    def date_reset(self):
+        """Kasowanie wartości daty."""
+        self.d_val = None
+        self.dd_val = None
+        self.dm_val = None
+        self.dy_val = None
+        d_sql = self.sql_parser(self.d_val)
+        db_attr_change(tbl=f'zloza.zl_dates', attr={self.attr}, val=d_sql, sql_bns=f' WHERE midas_id = {self.plg.zl_dlg.zl_id}', user=False)
+
+    def set_value(self, val):
+        """Ustawienie wartości parambox'ów według danych z db."""
+        # Ustalenie aktualnych wartości daty:
+        if not val == 'None':
+            self.d_val = datetime.datetime.date(datetime.datetime.strptime(val, "%Y-%m-%d"))
+            self.dy_val = str(self.d_val.year)
+            self.dm_val = str(self.d_val.month).zfill(2)
+            self.dd_val = str(self.d_val.day).zfill(2)
+        else:
+            self.d_val = None
+            self.dy_val = None
+            self.dm_val = None
+            self.dd_val = None

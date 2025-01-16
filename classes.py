@@ -1064,6 +1064,8 @@ class ZlozaDFM(DataFrameModel):
         elif role == Qt.BackgroundRole:
             if index.column() == 0:
                 return QColor('#00aa00') if val else QColor('#eeeeee')
+            elif index.column() == 4 and str(self._dataframe.iloc[index.row()][5]) != "None":
+                return QColor('#ffaaaa')
             else:
                 if self._dataframe.iloc[index.row()][8]:
                     return QColor('#eeeeee')
@@ -1075,9 +1077,9 @@ class ZlozaDFM(DataFrameModel):
             else:
                 if index.column() == 7:
                     return QColor('#ff0000') if val == 'BRAK' else QColor('#000000')
-        elif role == Qt.DecorationRole:
-            if index.column() == 4 and str(self._dataframe.iloc[index.row()][5]) != "None":
-                return QIcon(f"{ICON_PATH}warning_red_0.png")
+        # elif role == Qt.DecorationRole:
+        #     if index.column() == 4 and str(self._dataframe.iloc[index.row()][5]) != "None":
+        #         return QIcon(f"{ICON_PATH}warning_red_0.png")
         elif role == Qt.ToolTipRole:
             if index.column() == 2:
                 return str(self._dataframe.iloc[index.row()][3])

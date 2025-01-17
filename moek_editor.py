@@ -33,7 +33,6 @@ from datetime import datetime
 
 from .resources import resources
 from .zloza_dialog import ZlozaDialog
-from .webscraper import WebScraper
 
 LIBS_PATH = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'libs' + os.path.sep
 
@@ -233,6 +232,7 @@ class MoekEditor:
 
         from .moek_editor_dockwidget import MoekEditorDockWidget
         from .main import db_login, teams_load, teams_cb_changed
+        from .webscraper import WebScraper
 
         self.start = time.perf_counter()
         if self.plugin_is_active: # Sprawdzenie, czy plugin jest już uruchomiony
@@ -316,7 +316,8 @@ def detect_missing_libs():
         ['docx', 'python_docx-0.8.11-py3-none-any.whl'],
         ['docxcompose', 'docxcompose-1.3.5-py3-none-any.whl'],
         ['docxtpl', 'docxtpl-0.16.0-py2.py3-none-any.whl'],
-        ['xlsxwriter', 'XlsxWriter-3.0.3-py3-none-any.whl']
+        ['xlsxwriter', 'XlsxWriter-3.0.3-py3-none-any.whl'],
+        ['selenium', 'selenium-4.16.0-py3-none-any.whl', 'all']
         ]
     for lib_name in ext_libs:
         try:

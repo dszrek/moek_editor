@@ -31,7 +31,7 @@ class LayerManager:
             {'level': 0, 'layers': ['powiaty', 'arkusze', 'powiaty_mask']},
             {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_szare', 'wyr_fioletowe', 'wyr_zielone', 'wyr_poly']},
             {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
-            # {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone', 'marszruty']},
+            {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone', 'marszruty']},
             # {'name': 'wn_kopaliny', 'level': 1, 'layers': ['wn_pne', 'wn_link']},
             {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
             {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wylaczone', 'midas_obszary', 'midas_tereny']},
@@ -48,9 +48,9 @@ class LayerManager:
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
             {"source": "postgres", "name": "flagi_z_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
             {"source": "postgres", "name": "flagi_bez_teren", "root": False, "parent": "flagi", "visible": True, "uri": '{PARAMS} table="team_0"."flagi" (geom) sql='},
-            # {"source": "postgres", "name": "parking_planowane", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
-            # {"source": "postgres", "name": "parking_odwiedzone", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
-            # {"source": "postgres", "name": "marszruty", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."marsz" (geom) sql='},
+            {"source": "postgres", "name": "parking_planowane", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
+            {"source": "postgres", "name": "parking_odwiedzone", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
+            {"source": "postgres", "name": "marszruty", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."marsz" (geom) sql='},
             # {"source": "postgres", "name": "wn_pne", "root": False, "parent": "wn_kopaliny", "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
             # {"source": "memory", "name": "wn_link", "root": False, "parent": "wn_kopaliny", "visible": True, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('wyr_id', QVariant.Int, "int"), QgsField('wn_id', QVariant.String, "string", 0)]},
             {"source": "postgres", "name": "powiaty", "root": True, "pos": 2, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
@@ -88,7 +88,7 @@ class LayerManager:
             {"source": "memory", "name": "edit_line", "root": False, "parent": "temp", "visible": True, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int, "int")]},
             {"source": "memory", "name": "backup_line", "root": False, "parent": "temp", "visible": False, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('part', QVariant.Int, "int")]}
             ]
-        self.lyr_vis = [["wyr_point", True], ["flagi_z_teren", None], ["flagi_bez_teren", None]]  #, ["parking_planowane", None], ["parking_odwiedzone", None], ["marszruty", None], ["wn_pne", None]]
+        self.lyr_vis = [["wyr_point", True], ["flagi_z_teren", None], ["flagi_bez_teren", None], ["parking_planowane", None], ["parking_odwiedzone", None], ["marszruty", None]]
         self.lyr_cnt = len(self.lyrs)
         self.lyrs_names = [i for s in [[v for k, v in d.items() if k == "name"] for d in self.lyrs] for i in s]
 
@@ -350,12 +350,12 @@ class PanelManager:
             {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ------------------------------- 23 - 22 - 17
             {'name': 'wyr_szare', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------------- 24 - 23 - 18
             {'name': 'wyr_fioletowe', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_purple_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------- 25 - 24 - 19
-            {'name': 'wyr_zielone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None}  # -------------------- 26 - 25 - 20
-            # {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},  # -------------------------------------- 27
-            # {'name': 'komunikacja_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'self.komunikacja_layers_update()', 'cb_void': True, 'value': None},  # ---- 28
-            # {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # 29
-            # {'name': 'parking_odwiedzone', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_after_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # 30
-            # {'name': 'marszruty', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_marsz_vis"], 'callback': 'marsz_layer_update()', 'cb_void': True, 'value': None}  # ------------------- 31
+            {'name': 'wyr_zielone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # -------------------- 26 - 25 - 20
+            {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------- 27 -    - 21
+            {'name': 'komunikacja_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'self.komunikacja_layers_update()', 'cb_void': True, 'value': None},  # ------ 28 -    - 22
+            {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # - 29 -    - 23
+            {'name': 'parking_odwiedzone', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_after_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # - 30 -    - 24
+            {'name': 'marszruty', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_marsz_vis"], 'callback': 'marsz_layer_update()', 'cb_void': True, 'value': None}  # --------------------- 31 -    - 25
                         ]
         self.cfg_dicts_cnt = len(self.cfg_dicts)
         self.cfg_vals = []
@@ -515,7 +515,7 @@ class PanelManager:
             if res:
                 self.cfg_vals[:0] = res[0]
             else:
-                self.cfg_vals[:0] = '1012111111111111121112111'  # '1012111111111111112111211112111'
+                self.cfg_vals[:0] = '10121111111121112111121111'  # '1012111111111111112111211112111'
         if len(self.old_cfg_vals) > 0:
             self.old_cfg_vals = []
             self.old_cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry

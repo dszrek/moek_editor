@@ -3728,7 +3728,7 @@ class FlagTools(QFrame):
                     QFrame#main{background-color: transparent; border: none}
                     """)
         self.flag_move = MoekButton(self, name="move", size=32, checkable=True, tooltip="zmień lokalizację flagi")
-        self.flag_chg = MoekButton(self, name="flag_chg_nfchk", size=32, enabled=False)
+        self.flag_chg = MoekButton(self, name="flag_chg_nfchk", size=32, enabled=True)
         self.flag_del = MoekButton(self, name="trash", size=32, tooltip="usuń flagę")
         hlay = QHBoxLayout()
         hlay.setContentsMargins(0, 0, 0, 0)

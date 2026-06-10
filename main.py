@@ -232,8 +232,8 @@ def pow_layer_update():
     flag_layer_update()  # Aktualizacja warstw z flagami
     wyr_layer_update()  # Aktualizacja warstw z wyrobiskami
     dlg.plg.zl_dlg.df_zloza_update()  # Aktualizacja złóż
-    # parking_layer_update()  # Aktualizacja warstwy z parkingami
-    # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
+    parking_layer_update()  # Aktualizacja warstwy z parkingami
+    marsz_layer_update()  # Aktualizacja warstwy z marszrutami
     # zloza_layer_update()  # Aktualizacja warstwy ze złożami
     layer_zoom(layer)  # Przybliżenie widoku mapy do wybranego powiatu/powiatów
     stage_refresh()  # Odświeżenie sceny

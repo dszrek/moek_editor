@@ -15,7 +15,7 @@ from .viewnet import vn_set_gvars, stage_refresh
 
 # Stałe globalne:
 SQL_1 = " WHERE user_id = "
-PLUGIN_VER = "0.6.1"
+PLUGIN_VER = "0.6.2"
 USER = ""
 
 # Zmienne globalne:
@@ -231,6 +231,7 @@ def pow_layer_update():
     ark_layer_update()  # Aktualizacja warstwy z arkuszami
     flag_layer_update()  # Aktualizacja warstw z flagami
     wyr_layer_update()  # Aktualizacja warstw z wyrobiskami
+    dlg.plg.zl_dlg.df_zloza_update()  # Aktualizacja złóż
     # parking_layer_update()  # Aktualizacja warstwy z parkingami
     # marsz_layer_update()  # Aktualizacja warstwy z marszrutami
     # zloza_layer_update()  # Aktualizacja warstwy ze złożami
@@ -361,16 +362,16 @@ def wdf_load():
     """Załadowanie danych o wyrobiskach z db do dataframe'u wdf."""
     db = PgConn()
     extras = f" WHERE wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})" if dlg.obj.wyr_ids else f" WHERE wyr_id = 0"
-    sql = "SELECT wyr_id, b_new, b_confirmed, wn_id FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
+    sql = "SELECT wyr_id, b_new, b_confirmed, wn_id, midas_id FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
     if db:
-        temp_df = db.query_pd(sql, ['wyr_id', 'new', 'cnfrm', 'wn_id'])
+        temp_df = db.query_pd(sql, ['wyr_id', 'new', 'cnfrm', 'wn_id', 'midas_id'])
         if isinstance(temp_df, pd.DataFrame):
             wn_df = temp_df.copy()
             wn_df.drop(['new', 'cnfrm'], axis=1, inplace=True)
             wdf = wyr_status_determine(temp_df)
             dlg.wyr_panel.wdf = wdf
         else:
-            dlg.wyr_panel.wdf = pd.DataFrame({'status': [1], 'wyr_id': [1]})
+            dlg.wyr_panel.wdf = pd.DataFrame({'status': [1], 'wyr_id': [1], 'midas_id': [None]})
             return None
 
 def get_geom_from_id(id, ids):
@@ -387,7 +388,7 @@ def wyr_status_determine(temp_df):
     choices = [0, 1, 2]
     temp_df['status'] = np.select(conditions, choices, default=0)
     temp_df.drop(['new', 'cnfrm'], axis=1, inplace=True)
-    temp_df = temp_df[['status', 'wyr_id']]
+    temp_df = temp_df[['status', 'wyr_id', 'midas_id']]
     return temp_df
 
 def wyr_powiaty_check():

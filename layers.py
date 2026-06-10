@@ -34,7 +34,7 @@ class LayerManager:
             # {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone', 'marszruty']},
             # {'name': 'wn_kopaliny', 'level': 1, 'layers': ['wn_pne', 'wn_link']},
             {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
-            {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wybilansowane', 'midas_obszary', 'midas_tereny']},
+            {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wylaczone', 'midas_obszary', 'midas_tereny']},
             {'name': 'MGSP', 'level': 1, 'layers': ['mgsp_pkt_kop', 'mgsp_zloza_p', 'mgsp_zloza_a', 'mgsp_zloza_wb_p', 'mgsp_zloza_wb_a']},
             {'name': 'basemaps', 'level': 1, 'layers': ['ISOK'], 'subgroups': ['sat', 'topo']},
             {'name': 'sat', 'level': 2, 'parent': 'basemaps', 'layers': ['Google Satellite', 'Google Hybrid', 'Geoportal', 'Geoportal Archiwalny', 'Google Earth Pro']},
@@ -61,8 +61,8 @@ class LayerManager:
             {"source": "postgres", "name": "vn_null", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
             {"source": "postgres", "name": "vn_all", "root": False, "parent": "vn", "visible": False, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
             {"source": "virtual", "name": "powiaty_mask", "root": True, "pos": 5, "visible": True, "uri": '?query=Select%20st_union(geometry)%20from%20powiaty'},
-            {"source": "postgres", "name": "midas_zloza", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} key="id" table="(SELECT m.* FROM external.midas_zloza m LEFT JOIN external.midas_blacklist b USING(id_zloza) WHERE b.id_zloza IS NULL)" (geom) sql='},
-            {"source": "postgres", "name": "midas_wybilansowane", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} key="id1" table="(SELECT m.* FROM external.midas_wybilansowane m LEFT JOIN external.midas_blacklist b USING(id_zloza) WHERE b.id_zloza IS NULL)" (geom) sql='},
+            {"source": "postgres", "name": "midas_zloza", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} key="id" table="zloza"."loader" (geom) sql='},
+            {"source": "postgres", "name": "midas_wylaczone", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} key="id" table="zloza"."loader" (geom) sql='},
             {"source": "postgres", "name": "midas_obszary", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} key="id1" table="(SELECT m.* FROM external.midas_obszary m LEFT JOIN external.midas_blacklist b ON m.id_zloz = b.id_zloza WHERE b.id_zloza IS NULL)" (geom) sql='},
             {"source": "postgres", "name": "midas_tereny", "root": False, "parent": "MIDAS", "visible": True, "uri": '{PARAMS} key="id1" table="(SELECT m.* FROM external.midas_tereny m LEFT JOIN external.midas_blacklist b ON m.id_zloz = b.id_zloza WHERE b.id_zloza IS NULL)" (geom) sql='},
             {"source": "postgres", "name": "mgsp_pkt_kop", "root": False, "parent": "MGSP", "visible": True, "uri": '{PARAMS} table="external"."mgsp_pkt_kop" (geom) sql='},
@@ -324,33 +324,33 @@ class PanelManager:
         self.dlg = dlg
         self.cfg = []
         self.cfg_dicts = [
-            {'name': 'team', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_team.set_state(val)', 'cb_void': False, 'value': None},  # ------------------------------------------------------ 0 -- 0
-            {'name': 'powiaty', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_pow.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------------------- 1 -- 1
-            {'name': 'powiaty_mask', 'action': 'lyr_vis', 'btn': dlg.p_pow_mask.box.widgets["btn_pow_mask"], 'callback': None, 'cb_void': False, 'value': None},  # ----------------------------------- 2 -- 2
-            {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_vn.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------------------------- 3 -- 3
-            {'name': 'external', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_ext.set_state(val)', 'cb_void': False, 'value': None},  # --------------------------------------------------- 4 -- 4
+            {'name': 'team', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_team.set_state(val)', 'cb_void': False, 'value': None},  # ------------------------------------------------------ 0 -- 0 -- 0
+            {'name': 'powiaty', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_pow.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------------------- 1 -- 1 -- 1
+            {'name': 'powiaty_mask', 'action': 'lyr_vis', 'btn': dlg.p_pow_mask.box.widgets["btn_pow_mask"], 'callback': None, 'cb_void': False, 'value': None},  # ----------------------------------- 2 -- 2 -- 2
+            {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_vn.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------------------------- 3 -- 3 -- 3
+            {'name': 'external', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_ext.set_state(val)', 'cb_void': False, 'value': None},  # --------------------------------------------------- 4 -- 4 -- 4
             # {'name': 'wn_pne', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_wn"], 'callback': None, 'cb_void': False, 'value': None},  # -------------------------------------------------- 5
-            {'name': 'MIDAS', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_midas"], 'callback': None, 'cb_void': False, 'value': None},  # -------------------------------------------------- 6 -- 5
-            {'name': 'midas_zloza', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # -------------------------------------------------------------------------- 7 -- 6
-            {'name': 'midas_wybilansowane', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------ 8 -- 7
-            {'name': 'midas_obszary', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------ 9 -- 8
-            {'name': 'midas_tereny', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 10 - 9
-            {'name': 'MGSP', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_mgsp"], 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------- 11 - 10
-            {'name': 'mgsp_pkt_kop', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 12 - 11
-            {'name': 'mgsp_zloza_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 13 - 12
-            {'name': 'mgsp_zloza_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 14 - 13
-            {'name': 'mgsp_zloza_wb_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 15 - 14
-            {'name': 'mgsp_zloza_wb_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 16 - 15
-            {'name': 'smgp_wyrobiska', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_smgp"], 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------ 17 - 16
-            {'name': 'flagi', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_flag.set_state(val)', 'cb_void': False, 'value': None},  # ----------------------------------------------------- 18 - 17
-            {'name': 'flagi_user', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_user"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # -------------------------------- 19 - 18
-            {'name': 'flagi_z_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_fchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # ------------------------- 20 - 19
-            {'name': 'flagi_bez_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_nfchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # ---------------------- 21 - 20
-            {'name': 'wyrobiska', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_wyr.set_state(val)', 'cb_void': False, 'value': None},  # -------------------------------------------------- 22 - 21
-            {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ------------------------------- 23 - 22
-            {'name': 'wyr_szare', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------------- 24 - 23
-            {'name': 'wyr_fioletowe', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_purple_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------- 25 - 24
-            {'name': 'wyr_zielone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None}  # -------------------- 26 - 25
+            # {'name': 'MIDAS', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_midas"], 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------ 6 -- 5
+            # {'name': 'midas_zloza', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------ 7 -- 6
+            # {'name': 'midas_wylaczone', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # -------------------------------------------------------------------- 8 -- 7
+            # {'name': 'midas_obszary', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 9 -- 8
+            # {'name': 'midas_tereny', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ----------------------------------------------------------------------- 10 - 9
+            {'name': 'MGSP', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_mgsp"], 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------- 11 - 10 - 5
+            {'name': 'mgsp_pkt_kop', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 12 - 11 - 6
+            {'name': 'mgsp_zloza_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 13 - 12 - 7
+            {'name': 'mgsp_zloza_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 14 - 13 - 8
+            {'name': 'mgsp_zloza_wb_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 15 - 14 - 9
+            {'name': 'mgsp_zloza_wb_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 16 - 15 - 10
+            {'name': 'smgp_wyrobiska', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_smgp"], 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------ 17 - 16 - 11
+            {'name': 'flagi', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_flag.set_state(val)', 'cb_void': False, 'value': None},  # ----------------------------------------------------- 18 - 17 - 12
+            {'name': 'flagi_user', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_user"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # -------------------------------- 19 - 18 - 13
+            {'name': 'flagi_z_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_fchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # ------------------------- 20 - 19 - 14
+            {'name': 'flagi_bez_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_nfchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # ---------------------- 21 - 20 - 15
+            {'name': 'wyrobiska', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_wyr.set_state(val)', 'cb_void': False, 'value': None},  # -------------------------------------------------- 22 - 21 - 16
+            {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ------------------------------- 23 - 22 - 17
+            {'name': 'wyr_szare', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------------- 24 - 23 - 18
+            {'name': 'wyr_fioletowe', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_purple_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------- 25 - 24 - 19
+            {'name': 'wyr_zielone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None}  # -------------------- 26 - 25 - 20
             # {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},  # -------------------------------------- 27
             # {'name': 'komunikacja_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'self.komunikacja_layers_update()', 'cb_void': True, 'value': None},  # ---- 28
             # {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # 29

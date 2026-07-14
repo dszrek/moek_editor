@@ -226,10 +226,13 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "nfchk_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj flagi bez kontroli terenowej"}
                     ]
         p_wyr_widgets = [
-                    {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
-                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_grey_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj nowe wyrobiska"},
-                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_purple_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska wyznaczone do aktualizacji"},
-                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_green_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska, które zostały zaktualizowane"}
+                    {"page": 0, "row": 0, "col": 0, "r_span": 2, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
+                    {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_grey_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska potencjalne (szare)"},
+                    {"page": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_purple_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska archiwalne (fioletowe)"},
+                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_orange_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska wyznaczone do kontroli terenowej (pomarańczowe)"},
+                    {"page": 0, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_blue_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska zawieszone (niebieskie)"},
+                    {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_green_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska zatwierdzone (zielone)"},
+                    {"page": 0, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_red_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska wykluczone (czerwone)"}
                     ]
         p_komunikacja_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
@@ -238,8 +241,6 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "marsz_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj marszruty"}
                     ]
 
-        # self.panels = [self.p_team, self.p_team_export, self.p_team_grp, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
-        # self.p_widgets = [p_team_widgets, p_team_export_widgets, p_team_grp_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_komunikacja_widgets]
         self.panels = [self.p_team, self.p_team_export, self.p_team_grp, self.p_pow, self.p_pow_mask, self.p_pow_grp, self.p_map, self.p_ext_zloza, self.p_ext, self.p_ext_grp, self.p_vn, self.p_flag, self.p_wyr, self.p_komunikacja]
         self.p_widgets = [p_team_widgets, p_team_export_widgets, p_team_grp_widgets, p_pow_widgets, p_pow_mask_widgets, p_pow_grp_widgets, p_map_widgets, p_ext_zloza_widgets, p_ext_widgets, p_ext_grp_widgets, p_vn_widgets, p_flag_widgets, p_wyr_widgets, p_komunikacja_widgets]
 
@@ -698,6 +699,9 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.p_wyr.widgets["btn_wyr_grey_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_szare", val=self.p_wyr.widgets["btn_wyr_grey_vis"].isChecked()))
         self.p_wyr.widgets["btn_wyr_purple_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_fioletowe", val=self.p_wyr.widgets["btn_wyr_purple_vis"].isChecked()))
         self.p_wyr.widgets["btn_wyr_green_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_zielone", val=self.p_wyr.widgets["btn_wyr_green_vis"].isChecked()))
+        self.p_wyr.widgets["btn_wyr_orange_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_pomaranczowe", val=self.p_wyr.widgets["btn_wyr_orange_vis"].isChecked()))
+        self.p_wyr.widgets["btn_wyr_blue_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_niebieskie", val=self.p_wyr.widgets["btn_wyr_blue_vis"].isChecked()))
+        self.p_wyr.widgets["btn_wyr_red_vis"].clicked.connect(lambda: self.cfg.set_val(name="wyr_czerwone", val=self.p_wyr.widgets["btn_wyr_red_vis"].isChecked()))
         self.p_komunikacja.widgets["btn_user"].clicked.connect(lambda: self.cfg.set_val(name="komunikacja_user", val=self.p_komunikacja.widgets["btn_user"].isChecked()))
         self.p_komunikacja.widgets["btn_parking_before_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_planowane", val=self.p_komunikacja.widgets["btn_parking_before_vis"].isChecked()))
         self.p_komunikacja.widgets["btn_parking_after_vis"].clicked.connect(lambda: self.cfg.set_val(name="parking_odwiedzone", val=self.p_komunikacja.widgets["btn_parking_after_vis"].isChecked()))

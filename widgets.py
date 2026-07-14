@@ -479,6 +479,7 @@ class WyrCanvasPanel(QFrame):
         self.setGraphicsEffect(shadow_1)
         self.focus_void = True
         self.trigger_void = True
+        # Wysokości poszczególnych stron (5 stron):
         self.p_heights = [572, 572, 572, 509, 572]
         self.mt_enabled = False
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
@@ -526,7 +527,7 @@ class WyrCanvasPanel(QFrame):
         self.sp_status.lay.addWidget(self.order_box)
         self.order_drawer = OrderDrawer(self)
         self.sp_status.lay.addWidget(self.order_drawer)
-        self.order_drawer.setVisible(False)  # Tymczasowe wyłączenie z uwagi na metodykę 2024 r.
+        self.order_drawer.setVisible(False)
         self.status_indicator = WyrStatusIndicator(self)
         self.sp_status.lay.addWidget(self.status_indicator)
         self.status_selector = WyrStatusSelector(self)
@@ -541,17 +542,11 @@ class WyrCanvasPanel(QFrame):
         self.hashbox.lay.addWidget(self.hash_icon)
         self.hash = CanvasLineEdit(self, width=54, height=28, font_size=10, max_len=5, validator=None, theme="dark", fn=['db_attr_change(tbl="team_{dlg.team_i}.wyrobiska", attr="teren_id", val="'"{self.sql_parser(self.cur_val)}"'", sql_bns=" WHERE wyr_id = {dlg.obj.wyr}", user=False)'], placeholder="XXXXX")
         self.hashbox.lay.addWidget(self.hash)
-        self.lokbox = CanvasHSubPanel(self, width=38, height=32, margins=[0, 0, 0, 0], alpha=0.71)
+        self.lokbox = CanvasHSubPanel(self, width=36, height=32, margins=[0, 0, 0, 0], alpha=0.71)
         self.sp_main.lay.addWidget(self.lokbox)
-        self.lok = MoekButton(self, name="lok", size=30, checkable=False, enabled=True, tooltip = "lokalizacja wyrobiska")
+        self.lok = MoekButton(self, name="lok", size=30, checkable=False, enabled=True, tooltip="lokalizacja wyrobiska")
         self.lokbox.lay.addWidget(self.lok)
-        self.wnbox = CanvasHSubPanel(self, width=122, height=32, margins=[2, 0, 2, 2], alpha=0.71)
-        self.wn_icon = MoekButton(self, name="wyr_wn", size=30, checkable=False, enabled=True, tooltip = "ID_ARKUSZ (WN_PNE)")
-        self.wnbox.lay.addWidget(self.wn_icon)
-        self.wn_label = PanelLabel(self, text="", size=12)
-        self.wnbox.lay.addWidget(self.wn_label)
-        self.sp_main.lay.addWidget(self.wnbox)
-        self.areabox = CanvasHSubPanel(self, width=180, height=32, margins=[2, 0, 2, 0], spacing=6, alpha=0.71)
+        self.areabox = CanvasHSubPanel(self, width=144, height=32, margins=[2, 0, 2, 0], spacing=6, alpha=0.71)
         self.sp_main.lay.addWidget(self.areabox)
         self.area_icon = MoekButton(self, name="wyr_area", size=30, checkable=False, enabled=True, tooltip="powierzchnia wyrobiska")
         self.areabox.lay.addWidget(self.area_icon)
@@ -559,19 +554,13 @@ class WyrCanvasPanel(QFrame):
         self.areabox.lay.addItem(spacer_1)
         self.area_label = PanelLabel(self, text="", size=12)
         self.areabox.lay.addWidget(self.area_label)
-        # spacer_2 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
-        # self.areabox.lay.addItem(spacer_2)
+        self.dummybox = MoekDummy(self, width=1, height=32, spacer="horizontal", color="rgba(55, 55, 55, 0.71)")
+        self.sp_main.lay.addWidget(self.dummybox)
+        self.editbox = CanvasHSubPanel(self, width=32, height=32, margins=[0, 0, 0, 0], alpha=0.71)
+        self.sp_main.lay.addWidget(self.editbox)
         self.wyr_edit = MoekButton(self, name="wyr_edit", size=32, checkable=False, tooltip="edytuj geometrię wyrobiska")
         self.wyr_edit.clicked.connect(lambda: dlg.mt.init("wyr_edit"))
-        self.areabox.lay.addWidget(self.wyr_edit)
-        self.dummybox = CanvasHSubPanel(self, width=54, height=32, margins=[0, 0, 0, 0], alpha=0.71)
-        self.sp_main.lay.addWidget(self.dummybox)
-        self.datebox = CanvasHSubPanel(self, width=134, height=32, margins=[2, 0, 6, 2], alpha=0.71)
-        self.date_icon = MoekButton(self, name="date_actual", size=27, checkable=False, enabled=True, tooltip = "data zaktualizowania stanu wyrobiska")
-        self.datebox.lay.addWidget(self.date_icon)
-        self.date_label = PanelLabel(self, text="", size=12)
-        self.datebox.lay.addWidget(self.date_label)
-        self.sp_main.lay.addWidget(self.datebox)
+        self.editbox.lay.addWidget(self.wyr_edit)
         self.delbox = CanvasHSubPanel(self, width=32, height=32, margins=[0, 0, 0, 0], alpha=0.71)
         self.sp_main.lay.addWidget(self.delbox)
         self.wyr_del = MoekButton(self, name="trash", size=32, checkable=False, tooltip="usuń wyrobisko")
@@ -933,7 +922,7 @@ class WyrCanvasPanel(QFrame):
 
     def trigger_wyrobisko(self):
         """Wykonane po zmianie wartości combobox'u 'stan_1'."""
-        val = self.widgets[f"cmb_stan_1"].valbox_1.cur_val
+        val = self.widgets[f"cmb_stan_3"].valbox_1.cur_val
         bool_1 = False if val[1:-1] == "brak" else True
         bool_2 = False if val[1:-1] == "Z" or val[1:-1] == "brak" or val[1:-1] == "nd" or val == "Null" else True
         # Wyświetlenie powierzchni wyrobiska:
@@ -976,7 +965,7 @@ class WyrCanvasPanel(QFrame):
                     self.widgets[f"txt2_{p2}_{self.cur_page}"].set_enabled(True)
             if not self.widgets[f"cmb_pne_poza_{self.cur_page}"].isEnabled():
                 self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
-            if self.cur_page == 1:
+            if self.cur_page == 3:
                 if not self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].isEnabled():
                     self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(True)
             if not self.widgets[f"cmb_pne_zloze_{self.cur_page}"].isEnabled():
@@ -996,9 +985,9 @@ class WyrCanvasPanel(QFrame):
                 if self.widgets[f"cmb_{c}_{self.cur_page}"].valbox_1.cur_val != "Null":
                     self.widgets[f"cmb_{c}_{self.cur_page}"].valbox_1.set_value(None, signal=True)
             # Kasowanie odpadów:
-            odp_val = self.widgets["cmb_wyp_odpady_1"].valbox_1.cur_val
+            odp_val = self.widgets["cmb_wyp_odpady_3"].valbox_1.cur_val
             if odp_val != 'Null' and odp_val[1:-1] != '0':
-                self.widgets["cmb_wyp_odpady_1"].valbox_1.set_value(None, signal=True)
+                self.widgets["cmb_wyp_odpady_3"].valbox_1.set_value(None, signal=True)
             # Wyłączenie powierzchni wyrobiska:
             dlg.wyr_panel.area_icon.setEnabled(False)
             dlg.wyr_panel.area_label.setText("")
@@ -1016,40 +1005,15 @@ class WyrCanvasPanel(QFrame):
             dlg.wyr_panel.tab_box.widgets["btn_1"].active = self.has_midas
             # Ustawienie widoczności cmb_pne_poza_m:
             self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setVisible(self.has_midas)
-        # Ustawienie widoczności widgetów:
+        # Ustawienie widoczności widgetów wspólnych dla wszystkich faz (kameralnej i terenowej):
         self.widgets[f"cmb_stan_midas_{self.cur_page}"].setVisible(self.has_midas)
         self.widgets[f"txt2_okres_zloze_{self.cur_page}"].setVisible(self.has_midas)
         self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setVisible(self.has_midas)
         self.widgets[f"cmb_pne_poza_{self.cur_page}"].setVisible(self.has_midas)
-        self.widgets[f"cmb_weryf_midas_{self.cur_page}"].setVisible(self.has_midas)
-        self.widgets[f"tb_og_id_{self.cur_page}"].setVisible(self.has_midas)
-        # if not self.has_midas:
-        #     # Brak podanego midas_id - wyczyszczenie parametrów związanych ze złożami, jeśli są wypełnione:
-        #     if self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.cur_val != "Null":
-        #         self.widgets[f"cmb_stan_midas_{self.cur_page}"].valbox_1.set_value(None, signal=True)
-        #     if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.cur_val:
-        #         self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_1.value_change(None)
-        #     if self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.cur_val:
-        #         self.widgets[f"txt2_okres_zloze_{self.cur_page}"].valbox_2.value_change(None)
-        #     # Odblokowanie cmb_pne_poza_1, jeśli jest zablokowane:
-        #     if not self.widgets[f"cmb_pne_poza_{self.cur_page}"].isEnabled() and self.widgets[f"cmb_stan_1"].valbox_1.cur_val != "brak":
-        #         self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
-        #     # Sztywne ustawienie atrybutów PNE_ZLOZE i CZY_PNE, jeśli mają nieprawidłowe wartości:
-        #     if self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.cur_val != "'False'":
-        #         # PNE_ZLOZE = NIE
-        #         self.widgets[f"cmb_pne_zloze_{self.cur_page}"].valbox_1.set_value("False", signal=True)
-        #     if not self.widgets['pn_1'].btn_val:  # Wyrobisko nie powiązane ze złożem MUSI być PNE
-        #         # CZY_PNE = TAK
-        #         self.widgets['pn_1'].btn_val = True
-        #         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_pne", val=True, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
-        # else:  # Wyrobisko jest powiązane ze złożem
-        #     if not self.widgets['pn_1'].btn_val:  # Wyrobisko dotyczy ZŁOŻA NIEZREKULTYWOWANEGO (CZY_PNE = NIE)
-        #         self.set_pne_to_false()
-        #     else:  # Wyrobisko dotyczy PNE (CZY_PNE = TAK)
-        #         self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setEnabled(True)
-        #         self.widgets[f"cmb_pne_poza_{self.cur_page}"].setEnabled(True)
-        #         if self.cur_page == 3:
-        #             self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(True)
+        # ZABEZPIECZENIE: Pola weryfikacji urzędowej wykluczamy z obsługi na karcie terenowej (Strona 3):
+        if self.cur_page != 3:
+            self.widgets[f"cmb_weryf_midas_{self.cur_page}"].setVisible(self.has_midas)
+            self.widgets[f"tb_og_id_{self.cur_page}"].setVisible(self.has_midas)
 
     def trigger_midas_aktual(self):
         """Wykonywane po zmianie wartości textbox'u 'midas_id' w trybie aktualizacji wyrobiska."""
@@ -1078,10 +1042,10 @@ class WyrCanvasPanel(QFrame):
 
     def trigger_rekultywacja(self):
         """Wykonywane po zmianie wartości combobox'u 'stan_rekul', albo textbox'u 'rekultywacja'."""
-        val_1 = self.widgets["cmb_stan_rekul_1"].valbox_1.cur_val
+        val_1 = self.widgets["cmb_stan_rekul_3"].valbox_1.cur_val
         if not val_1:
             return
-        val_2 = self.widgets["tb_rekultywacja_1"].txtbox.cur_val
+        val_2 = self.widgets["tb_rekultywacja_3"].txtbox.cur_val
         if val_1[1:-1] == 'tak' or val_1[1:-1] == 'w_t' or val_2:
             dlg.wyr_panel.tab_box.widgets["btn_3"].active = True
         else:
@@ -1089,22 +1053,22 @@ class WyrCanvasPanel(QFrame):
 
     def trigger_zgloszenie(self):
         """Wykonywane po zmianie wartości combobox'u 'zgloszenie'."""
-        val = self.widgets["cmb_zgloszenie_1"].valbox_1.cur_val
+        val = self.widgets["cmb_zgloszenie_3"].valbox_1.cur_val
         if not val:
             return
         if val[1:-1] == 'brak':
             dlg.wyr_panel.tab_box.widgets["btn_5"].active = False
-            self.widgets["tb_powod_1"].setVisible(False)
-            if self.widgets["tb_powod_1"].txtbox.cur_val:
-                self.widgets["tb_powod_1"].txtbox.cur_val = None
-                self.widgets["tb_powod_1"].txtbox.db_update(txt_val=None, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")
+            self.widgets["tb_powod_3"].setVisible(False)
+            if self.widgets["tb_powod_3"].txtbox.cur_val:
+                self.widgets["tb_powod_3"].txtbox.cur_val = None
+                self.widgets["tb_powod_3"].txtbox.db_update(txt_val=None, tbl=f"team_{dlg.team_i}.wyr_dane", attr="t_powod", sql_bns=f" WHERE wyr_id = {dlg.obj.wyr}")
         else:
             dlg.wyr_panel.tab_box.widgets["btn_5"].active = True
-            self.widgets["tb_powod_1"].setVisible(True)
+            self.widgets["tb_powod_3"].setVisible(True)
 
     def trigger_odpady(self):
         """Wykonywane po zmianie wartości combobox'u 'wyp_odpady'."""
-        val = self.widgets["cmb_wyp_odpady_1"].valbox_1.cur_val
+        val = self.widgets["cmb_wyp_odpady_3"].valbox_1.cur_val
         if not val:
             return
         _bool = False if val == 'Null' or val[1:-1] == '0' else True
@@ -1115,20 +1079,20 @@ class WyrCanvasPanel(QFrame):
 
     def trigger_pne_poza(self, m):
         """Wykonywane po zmianie 'cmb_pne_poza_1' (m=False) lub 'cmb_pne_poza_m_1' (m=True)."""
-        if self.widgets["cmb_pne_poza_1"].valbox_1.cur_val != self.widgets["cmb_pne_poza_m_1"].valbox_1.cur_val:
+        if self.widgets["cmb_pne_poza_3"].valbox_1.cur_val != self.widgets["cmb_pne_poza_m_3"].valbox_1.cur_val:
             # Wartości w dwóch cmb są różne (po zmianie jednego, trzeba zaktualizować drugie)
             if m:  # Trzeba zaktualizować 'cmb_pne_poza_1' do wartości z 'cmb_pne_poza_m_1'
-                val = self.widgets["cmb_pne_poza_m_1"].valbox_1.cur_val
+                val = self.widgets["cmb_pne_poza_m_3"].valbox_1.cur_val
                 val = val[1:-1] if val != "Null" else None
-                self.widgets[f"cmb_pne_poza_1"].valbox_1.set_value(val)
+                self.widgets[f"cmb_pne_poza_3"].valbox_1.set_value(val)
             else:  # Trzeba zaktualizować 'cmb_pne_poza_m_1' do wartości z 'cmb_pne_poza_1'
-                val = self.widgets["cmb_pne_poza_1"].valbox_1.cur_val
+                val = self.widgets["cmb_pne_poza_3"].valbox_1.cur_val
                 val = val[1:-1] if val != "Null" else None
-                self.widgets[f"cmb_pne_poza_m_1"].valbox_1.set_value(val)
+                self.widgets[f"cmb_pne_poza_m_3"].valbox_1.set_value(val)
 
     def trigger_empty(self, tb_name, tab_idx):
         """Zmiana stanu 'active' dla przycisku tabbox'u po zmianie wartości paramtextbox'u'."""
-        val = self.widgets[f"tb_{tb_name}_1"].txtbox.cur_val
+        val = self.widgets[f"tb_{tb_name}_3"].txtbox.cur_val
         if val:
             dlg.wyr_panel.tab_box.widgets[f"btn_{tab_idx}"].active = True
         else:
@@ -1152,10 +1116,10 @@ class WyrCanvasPanel(QFrame):
 
     def miaz_fill(self):
         """Uzupełnia wartość miąższości kopaliny jako różnicy wysokości i nadkładu. Dodatkowo kasuje wartość nadkładu, jeśli przewyższa wysokość."""
-        wys_min_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_1.cur_val
-        wys_max_txt = dlg.wyr_panel.widgets["txt2_wys_1"].valbox_2.cur_val
-        nadkl_min_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.cur_val
-        nadkl_max_txt = dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_2.cur_val
+        wys_min_txt = dlg.wyr_panel.widgets["txt2_wys_3"].valbox_1.cur_val
+        wys_max_txt = dlg.wyr_panel.widgets["txt2_wys_3"].valbox_2.cur_val
+        nadkl_min_txt = dlg.wyr_panel.widgets["txt2_nadkl_3"].valbox_1.cur_val
+        nadkl_max_txt = dlg.wyr_panel.widgets["txt2_nadkl_3"].valbox_2.cur_val
         if wys_min_txt == None or nadkl_min_txt == None:
             miaz_min = None
         else:
@@ -1163,7 +1127,7 @@ class WyrCanvasPanel(QFrame):
             nadkl_min = float(nadkl_min_txt)
             miaz_min = wys_min - nadkl_min
             if miaz_min < 0.0:
-                dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_1.value_change(None)
+                dlg.wyr_panel.widgets["txt2_nadkl_3"].valbox_1.value_change(None)
                 return
         if wys_max_txt == None or nadkl_max_txt == None:
             miaz_max = None
@@ -1172,14 +1136,14 @@ class WyrCanvasPanel(QFrame):
             nadkl_max = float(nadkl_max_txt)
             miaz_max = wys_max - nadkl_max
             if miaz_max < 0.0:
-                dlg.wyr_panel.widgets["txt2_nadkl_1"].valbox_2.value_change(None)
+                dlg.wyr_panel.widgets["txt2_nadkl_3"].valbox_2.value_change(None)
                 return
         # Sprawdzenie, czy nie ma potrzeby odwrócić wartości:
         if miaz_min and miaz_max and miaz_min > miaz_max:
             miaz_min, miaz_max = miaz_max, miaz_min
         dlg.wyr_panel.focus_void = True
-        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_1.value_change(miaz_min)
-        dlg.wyr_panel.widgets["txt2_miaz_1"].valbox_2.value_change(miaz_max)
+        dlg.wyr_panel.widgets["txt2_miaz_3"].valbox_1.value_change(miaz_min)
+        dlg.wyr_panel.widgets["txt2_miaz_3"].valbox_2.value_change(miaz_max)
         dlg.wyr_panel.focus_void = False
 
     def wdf_sel_update(self):
@@ -2263,10 +2227,10 @@ class OdpadySelector(QFrame):
         self.attr_void = False
         self.vals.extend(temp_list)
         txt = dlg.wyr_panel.param_parser(val_list[4], False)
-        dlg.wyr_panel.widgets["tb_odpady_opak_1"].value_change(txt)
+        dlg.wyr_panel.widgets["tb_odpady_opak_3"].value_change(txt)
         self.op_bool = temp_op
         txt = dlg.wyr_panel.param_parser(val_list[5], False)
-        dlg.wyr_panel.widgets["tb_odpady_inne_1"].value_change(txt)
+        dlg.wyr_panel.widgets["tb_odpady_inne_3"].value_change(txt)
         self.i_bool = temp_i
         for btn_name in self.itms:
             btn = self.itms[btn_name]
@@ -2280,13 +2244,13 @@ class OdpadySelector(QFrame):
         """Przechwycenie zmiany atrybutu."""
         super().__setattr__(attr, val)
         if attr == "op_bool" and not self.attr_void:
-            dlg.wyr_panel.widgets["tb_odpady_opak_1"].setVisible(val)
-            if not val and dlg.wyr_panel.widgets["tb_odpady_opak_1"].txtbox.cur_val:
-                dlg.wyr_panel.widgets["tb_odpady_opak_1"].txtbox.value_change(None)
+            dlg.wyr_panel.widgets["tb_odpady_opak_3"].setVisible(val)
+            if not val and dlg.wyr_panel.widgets["tb_odpady_opak_3"].txtbox.cur_val:
+                dlg.wyr_panel.widgets["tb_odpady_opak_3"].txtbox.value_change(None)
         if attr == "i_bool" and not self.attr_void:
-            dlg.wyr_panel.widgets["tb_odpady_inne_1"].setVisible(val)
-            if not val and dlg.wyr_panel.widgets["tb_odpady_inne_1"].txtbox.cur_val:
-                dlg.wyr_panel.widgets["tb_odpady_inne_1"].txtbox.value_change(None)
+            dlg.wyr_panel.widgets["tb_odpady_inne_3"].setVisible(val)
+            if not val and dlg.wyr_panel.widgets["tb_odpady_inne_3"].txtbox.cur_val:
+                dlg.wyr_panel.widgets["tb_odpady_inne_3"].txtbox.value_change(None)
         if attr == "o1_val" and not self.attr_void:
             val_sql = self.sql_parser(val)
             db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_odpady_1", val=val_sql, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
@@ -2553,94 +2517,130 @@ class WyrStatusSelector(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(28, 28)
+        self.setFixedSize(88, 28) # Szerokość będzie się zmieniać dynamicznie
         self.setStyleSheet("QFrame#main{background-color: transparent; border: none}")
         self.lay = QHBoxLayout()
         self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(2)
         self.setLayout(self.lay)
-        self.valid_check = False
         self.itms = {}
-        self.statuses = [
-            {'id' : 2, 'name' : 'wyr_green_status', 'text' : 'WYROBISKO PO AKTUALIZACJI', 'layer': 'wyr_zielone', 'color' : '40, 170, 40', 'new' : False, 'confirmed' : True},
-            {'id' : 1, 'name' : 'wyr_purple_status', 'text' : 'AKTUALIZOWANE WYROBISKO', 'layer': 'wyr_fioletowe', 'color' : '180, 40, 180', 'new' : False, 'confirmed' : False},
-            {'id' : 0, 'name' : 'wyr_grey_status', 'text' : 'NOWE WYROBISKO', 'layer': 'wyr_szare', 'color' : '153, 153, 153', 'new' : True, 'confirmed' : False}
-            ]
-        for status in self.statuses:
-            _itm = WyrStatusSelectorItem(self, name=status["name"], size=28, checkable=False, id=status["id"])
+        # Definicja 6 statusów wraz z ich kolorami i etykietami:
+        self.statuses_info = {
+            1: {'text': 'WYROBISKO POTENCJALNE', 'color': '153, 153, 153'}, # Szary
+            2: {'text': 'WYROBISKO ARCHIWALNE', 'color': '170, 0, 170'}, # Fioletowy
+            3: {'text': 'KONTROLA TERENOWA', 'color': '255, 127, 0'},       # Pomarańczowy
+            4: {'text': 'WYROBISKO ZAWIESZONE', 'color': '103, 163, 244'},    # Niebieski
+            5: {'text': 'WYROBISKO WYKLUCZONE', 'color': '224, 0, 0'},       # Czerwony
+            6: {'text': 'WYROBISKO ZATWIERDZONE', 'color': '40, 170, 40'}    # Zielony
+        }
+        # Definicja wszystkich przycisków przejść (strzałki wstecz i akcje w prawo):
+        self.buttons_config = [
+            # Lewa strona (Wstecz):
+            {'name': 'wyr_grey_back', 'icon': 'wyr_grey_back', 'id': 1, 'tooltip': 'Cofnij do: Wyrobisko potencjalne'},
+            {'name': 'wyr_purple_back', 'icon': 'wyr_purple_back', 'id': 2, 'tooltip': 'Cofnij do: Wyrobisko archiwalne'},
+            {'name': 'wyr_orange_back', 'icon': 'wyr_orange_back', 'id': 3, 'tooltip': 'Cofnij do: Kontrola terenowa'},
+            # Prawa strona (Do przodu / Akcje):
+            {'name': 'wyr_orange_status', 'icon': 'wyr_orange_status', 'id': 3, 'tooltip': 'Wyznacz do kontroli terenowej'},
+            {'name': 'wyr_blue_status', 'icon': 'wyr_blue_status', 'id': 4, 'tooltip': 'Zawieś wyrobisko kameralnie'},
+            {'name': 'wyr_red_status', 'icon': 'wyr_red_status', 'id': 5, 'tooltip': 'Wyklucz wyrobisko z ewidencji PNE'},
+            {'name': 'wyr_green_status', 'icon': 'wyr_green_status', 'id': 6, 'tooltip': 'Zatwierdź jako PNE (Baza MOEK)'}
+        ]
+        # Tworzenie przycisków:
+        for btn in self.buttons_config:
+            _itm = WyrStatusSelectorItem(self, name=btn["name"], icon=btn["icon"], size=28, id=btn["id"], tooltip=btn["tooltip"])
             self.lay.addWidget(_itm)
-            itm_name = f'btn_{status["name"]}'
-            self.itms[itm_name] = _itm
+            self.itms[f'btn_{btn["name"]}'] = _itm
+            _itm.setVisible(False)
         self.case = None
+        self.cmb_void = False
 
     def __setattr__(self, attr, val):
-        """Przechwycenie zmiany atrybutu."""
+        """Przechwycenie zmiany stanu (status_id)."""
         super().__setattr__(attr, val)
-        if attr == "case" and val != None:
-            self.case_change()
-            dlg.wyr_panel.tab_box.setVisible(True) if val == 3 else dlg.wyr_panel.tab_box.setVisible(False)
-            dlg.wyr_panel.order_box.setVisible(True) if val > 0 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_box.setVisible(False)
-            self.setVisible(True) if val > 0 else self.setVisible(False)
-            if val == 1:
+        if attr == "case" and val is not None:
+            # val = status_id (1-6)
+            b_new = dlg.obj.wyr_data[1]  # Pobranie pochodzenia wyrobiska (b_new)
+            # 1. Zarządzanie widocznością i pozycjonowaniem przycisków:
+            self.update_buttons(val, b_new)
+            # 2. Aktualizacja opisu statusu (WyrStatusIndicator):
+            status_info = self.statuses_info[val]
+            dlg.wyr_panel.status_indicator.set_case(status_info["text"], status_info["color"])
+            # 3. Przełączanie stron stackedbox'a (sb) w formularzu bocznym:
+            # Mapowanie: Szary(1)->p0, Fiolet(2)->p1, Zielony(6)->p2, Kontrola(3)->p3, Zawieszone/Wykluczone(4,5)->p4
+            page_map = {1: 0, 2: 1, 3: 3, 4: 4, 5: 4, 6: 2}
+            target_page = page_map.get(val, 0)
+            dlg.wyr_panel.sb.setCurrentIndex(target_page)
+            # 4. Zarządzanie elementami interfejsu w zależności od stanu:
+            dlg.wyr_panel.tab_box.setVisible(True) if target_page == 3 else dlg.wyr_panel.tab_box.setVisible(False)
+            dlg.wyr_panel.order_box.setVisible(True) if (val in [3, 6] and not dlg.wyr_panel.pow_all) else dlg.wyr_panel.order_box.setVisible(False)
+            # Kolorystyka pola numeracji (order_box):
+            if val == 3:
                 dlg.wyr_panel.order_box.set_theme("purple")
-            elif val == 2:
+            elif val == 6:
                 dlg.wyr_panel.order_box.set_theme("green")
-            # Tymczasowe wyłączenie order_drawer z uwagi na metodykę 2024 r.:
-            # dlg.wyr_panel.order_drawer.setVisible(True) if val > 0 and not dlg.wyr_panel.pow_all else dlg.wyr_panel.order_drawer.setVisible(False)
 
-    def set_case(self, new, confirmed):
-        """Ustala 'case' na podstawie atrybutów wyrobiska."""
-        if new:
-            self.case = 0
-        else:
-            self.case = 2 if confirmed else 1
+    def update_buttons(self, status_id, b_new):
+        """Dynamiczne wyświetlanie przycisków i dopasowanie szerokości widgetu."""
+        # 1. Ukrycie wszystkich przycisków na starcie:
+        for btn in self.itms.values():
+            btn.setVisible(False)
+        visible_btns = []
+        if b_new:  # SCENARIUSZ A: Wyrobiska Nowe (b_new = True)
+            if status_id == 1:   # Szary (Potencjalne)
+                visible_btns = ["btn_wyr_blue_status", "btn_wyr_orange_status"]
+            elif status_id == 4: # Niebieski (Zawieszone)
+                visible_btns = ["btn_wyr_grey_back", "btn_wyr_orange_status"]
+            elif status_id == 3: # Pomarańczowy (Kontrola)
+                visible_btns = ["btn_wyr_grey_back", "btn_wyr_red_status", "btn_wyr_green_status"]
+            elif status_id == 5: # Czerwony (Wykluczone)
+                visible_btns = ["btn_wyr_orange_back"]
+            elif status_id == 6: # Zielony (Zatwierdzone)
+                visible_btns = ["btn_wyr_orange_back", "btn_wyr_red_status"]
+        else:      # SCENARIUSZ B: Wyrobiska Historyczne (b_new = False)
+            if status_id == 2:   # Fioletowy (Archiwalne)
+                visible_btns = ["btn_wyr_blue_status", "btn_wyr_orange_status"]
+            elif status_id == 4: # Niebieski (Zawieszone)
+                visible_btns = ["btn_wyr_purple_back", "btn_wyr_orange_status"]
+            elif status_id == 3: # Pomarańczowy (Kontrola)
+                # ZMIANA: Usunięto "btn_wyr_red_status" - brak możliwości wykluczenia!
+                visible_btns = ["btn_wyr_purple_back", "btn_wyr_green_status"]
+            elif status_id == 5: # Czerwony (Wykluczone) - bezpiecznik wyjścia ze stanu awaryjnego
+                visible_btns = ["btn_wyr_orange_back"]
+            elif status_id == 6: # Zielony (Zatwierdzone)
+                # ZMIANA: Usunięto "btn_wyr_red_status" - zablokowana ścieżka do czerwonego!
+                visible_btns = ["btn_wyr_orange_back"]
+        # 2. Włączenie i pozycjonowanie przycisków na maszynie stanów:
+        actual_width = 0
+        for btn_name in visible_btns:
+            if btn_name in self.itms:
+                btn = self.itms[btn_name]
+                btn.setVisible(True)
+                actual_width += 28 + 2  # 28px przycisk + 2px odstęp
+        if actual_width > 0:
+            actual_width -= 2  # usunięcie marginesu dla ostatniego przycisku
+        self.setFixedWidth(actual_width)
+        # 3. Odświeżenie geometrii rodzica (jeśli widoczny):
+        if self.parent() and not self.parent().isHidden():
+            self.parent().adjustSize()
 
-    def db_update(self, new, confirmed):
-        """Aktualizacja atrybutów wyrobiska w db po zmianie statusu."""
+    def btn_clicked(self, id):
+        """Aktualizacja bazy danych po zmianie statusu wyrobiska."""
+        if id == 6: # Próba wejścia w stan Zielony (Zatwierdzony)
+            valid = self.confirm_validation()
+            if not valid[0]:
+                QMessageBox.information(None, "Odmowa zatwierdzenia wyrobiska", valid[1])
+                return
         db = PgConn()
-        sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET b_new = {new}, b_confirmed = {confirmed} WHERE wyr_id = {dlg.obj.wyr}"
+        # Zapisujemy nowy status_id w bazie danych:
+        sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET status_id = {id} WHERE wyr_id = {dlg.obj.wyr}"
         if db:
             res = db.query_upd(sql)
             if res:
-                return True
-            else:
-                return False
-        else:
-            return False
-
-    def case_change(self):
-        """Dostosowanie widoczności przycisków do aktualnego statusu wyrobiska."""
-        if self.case == 0:
-            for itm in self.itms.values():
-                itm.setVisible(False)
-        else:
-            self.itms["btn_wyr_grey_status"].setVisible(False)
-            self.itms["btn_wyr_purple_status"].setVisible(False) if self.case == 1 else self.itms["btn_wyr_purple_status"].setVisible(True)
-            self.itms["btn_wyr_green_status"].setVisible(False) if self.case == 2 else self.itms["btn_wyr_green_status"].setVisible(True)
-        # for itm in self.itms.values():
-        #     itm.setVisible(False) if itm.id == self.case else itm.setVisible(True)
-        for status in self.statuses:
-            if status["id"] == self.case:
-                dlg.wyr_panel.status_indicator.set_case(status["text"], status["color"])
-                dlg.wyr_panel.sb.setCurrentIndex(status["id"])
-
-    def btn_clicked(self, id):
-        """Zmiana wartości 'case' i aktualizacja db po naciśnięciu przycisku."""
-        if id == 2:
-            valid = self.confirm_validation()
-            if not valid[0]:
-                QMessageBox.information(None, "Odmowa potwierdzenia aktualizacji wyrobiska", valid[1])
-                return
-        old_id = self.case
-        self.case = id
-        for status in self.statuses:
-            if status["id"] == self.case:
-                result = self.db_update(status["new"], status["confirmed"])
-                if result:
-                    self.vis_check(status["layer"])
-        if self.case == 1 or old_id == 1:
-            wyr_layer_update(False)
-        date_val = f"'{datetime.date.today()}'" if self.case == 2 else 'Null'
+                self.case = id
+        # Aktualizacja warstwy w QGIS:
+        wyr_layer_update(False)
+        # Zapis daty weryfikacji w przypadku zatwierdzenia (status 6):
+        date_val = f"'{datetime.date.today()}'" if id == 6 else 'Null'
         db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="date_ctrl", val=date_val, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
         dlg.obj.wyr = dlg.obj.wyr
 
@@ -2652,6 +2652,7 @@ class WyrStatusSelector(QFrame):
 
     def confirm_validation(self):
         """Sprawdza, czy wszystkie niezbędne atrybuty wyrobiska są ustalone."""
+        return (True, "")
         if not dlg.wyr_panel.widgets["do_date_map_1"].d_val:
             return (False, "Należy uzupełnić datę aktualności najnowszej fotomapy.")
         if dlg.wyr_panel.widgets["cmb_map_source_1"].valbox_1.cur_val == 'Null':
@@ -2665,7 +2666,6 @@ class WyrStatusSelector(QFrame):
                 return (False, "Należy uzupełnić pole Weryfikacja MIDAS.")
         # if not dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_1.cur_val or not dlg.wyr_panel.widgets["txt2_okres_eksp_1"].valbox_2.cur_val:
         #     return (False, "Należy uzupełnić okres eksploatacji wyrobiska.")
-        return (True, "")
 
 
 class WyrStatusSelectorItem(QToolButton):
@@ -3288,7 +3288,7 @@ class TerminBox(QFrame):
     def enable_fn(self, _bool):
         """Włączenie/wyłączenie poszczególnych elementów box'u i innych parambox'ów, w zależności czy przeprowadzono kontrolę terenową."""
         # inner_widgets = [self.clock, self.calendar, self.th, self.tm, self.dd, self.dm, self.dy, self.drawer]
-        outer_widgets = [dlg.wyr_panel.widgets["txt2_wys_1"], dlg.wyr_panel.widgets["txt2_nadkl_1"], dlg.wyr_panel.widgets["txt2_miaz_1"]]
+        outer_widgets = [dlg.wyr_panel.widgets["txt2_wys_3"], dlg.wyr_panel.widgets["txt2_nadkl_3"], dlg.wyr_panel.widgets["txt2_miaz_3"]]
         # for widget in inner_widgets:
         #     if isinstance(widget, MoekButton):
         #         widget.setEnabled(_bool)

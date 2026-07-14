@@ -29,10 +29,9 @@ class LayerManager:
         self.root = dlg.proj.layerTreeRoot()
         self.groups_tree = [
             {'level': 0, 'layers': ['powiaty', 'arkusze', 'powiaty_mask']},
-            {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_szare', 'wyr_fioletowe', 'wyr_zielone', 'wyr_poly']},
+            {'name': 'wyrobiska', 'level': 1, 'layers': ['wyr_szare', 'wyr_fioletowe', 'wyr_pomaranczowe', 'wyr_niebieskie', 'wyr_czerwone', 'wyr_zielone', 'wyr_poly']},
             {'name': 'flagi', 'level': 1, 'layers': ['flagi_z_teren', 'flagi_bez_teren']},
             {'name': 'komunikacja', 'level': 1, 'layers': ['parking_planowane', 'parking_odwiedzone', 'marszruty']},
-            # {'name': 'wn_kopaliny', 'level': 1, 'layers': ['wn_pne', 'wn_link']},
             {'name': 'vn', 'level': 1, 'layers': ['vn_sel', 'vn_user', 'vn_other', 'vn_null', 'vn_all']},
             {'name': 'MIDAS', 'level': 1, 'layers': ['midas_zloza', 'midas_wylaczone', 'midas_obszary', 'midas_tereny']},
             {'name': 'MGSP', 'level': 1, 'layers': ['mgsp_pkt_kop', 'mgsp_zloza_p', 'mgsp_zloza_a', 'mgsp_zloza_wb_p', 'mgsp_zloza_wb_a']},
@@ -43,6 +42,9 @@ class LayerManager:
             ]
         self.lyrs = [
             {"source": "postgres", "name": "wyr_zielone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_czerwone", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_niebieskie", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
+            {"source": "postgres", "name": "wyr_pomaranczowe", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_fioletowe", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_szare", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyrobiska" (centroid) sql='},
             {"source": "postgres", "name": "wyr_poly", "root": False, "parent": "wyrobiska", "visible": True, "uri": '{PARAMS} table="team_0"."wyr_geom" (geom) sql='},
@@ -51,8 +53,6 @@ class LayerManager:
             {"source": "postgres", "name": "parking_planowane", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
             {"source": "postgres", "name": "parking_odwiedzone", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."parking" (geom) sql='},
             {"source": "postgres", "name": "marszruty", "root": False, "parent": "komunikacja", "visible": True, "uri": '{PARAMS} table="team_0"."marsz" (geom) sql='},
-            # {"source": "postgres", "name": "wn_pne", "root": False, "parent": "wn_kopaliny", "visible": True, "uri": '{PARAMS} table="external"."wn_pne" (geom) sql='},
-            # {"source": "memory", "name": "wn_link", "root": False, "parent": "wn_kopaliny", "visible": True, "uri": "LineString?crs=epsg:2180&field=id:integer", "attrib": [QgsField('wyr_id', QVariant.Int, "int"), QgsField('wn_id', QVariant.String, "string", 0)]},
             {"source": "postgres", "name": "powiaty", "root": True, "pos": 2, "visible": True, "uri": '{PARAMS} table="team_0"."powiaty" (geom) sql='},
             {"source": "postgres", "name": "arkusze", "root": True, "pos": 3, "visible": True, "uri": '{PARAMS} table="team_0"."arkusze" (geom) sql='},
             {"source": "postgres", "name": "vn_sel", "root": False, "parent": "vn", "visible": True, "uri": '{PARAMS} table="team_0"."team_viewnet" (geom) sql='},
@@ -324,38 +324,41 @@ class PanelManager:
         self.dlg = dlg
         self.cfg = []
         self.cfg_dicts = [
-            {'name': 'team', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_team.set_state(val)', 'cb_void': False, 'value': None},  # ------------------------------------------------------ 0 -- 0 -- 0
-            {'name': 'powiaty', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_pow.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------------------- 1 -- 1 -- 1
-            {'name': 'powiaty_mask', 'action': 'lyr_vis', 'btn': dlg.p_pow_mask.box.widgets["btn_pow_mask"], 'callback': None, 'cb_void': False, 'value': None},  # ----------------------------------- 2 -- 2 -- 2
-            {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_vn.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------------------------- 3 -- 3 -- 3
-            {'name': 'external', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_ext.set_state(val)', 'cb_void': False, 'value': None},  # --------------------------------------------------- 4 -- 4 -- 4
+            {'name': 'team', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_team.set_state(val)', 'cb_void': False, 'value': None},  # ------------------------------------------------------ 0 -- 0 -- 0 -- 0
+            {'name': 'powiaty', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_pow.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------------------- 1 -- 1 -- 1 -- 1
+            {'name': 'powiaty_mask', 'action': 'lyr_vis', 'btn': dlg.p_pow_mask.box.widgets["btn_pow_mask"], 'callback': None, 'cb_void': False, 'value': None},  # ----------------------------------- 2 -- 2 -- 2 -- 2
+            {'name': 'vn', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_vn.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------------------------- 3 -- 3 -- 3 -- 3
+            {'name': 'external', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_ext.set_state(val)', 'cb_void': False, 'value': None},  # --------------------------------------------------- 4 -- 4 -- 4 -- 4
             # {'name': 'wn_pne', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_wn"], 'callback': None, 'cb_void': False, 'value': None},  # -------------------------------------------------- 5
             # {'name': 'MIDAS', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_midas"], 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------ 6 -- 5
             # {'name': 'midas_zloza', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------ 7 -- 6
             # {'name': 'midas_wylaczone', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # -------------------------------------------------------------------- 8 -- 7
             # {'name': 'midas_obszary', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 9 -- 8
             # {'name': 'midas_tereny', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ----------------------------------------------------------------------- 10 - 9
-            {'name': 'MGSP', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_mgsp"], 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------- 11 - 10 - 5
-            {'name': 'mgsp_pkt_kop', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 12 - 11 - 6
-            {'name': 'mgsp_zloza_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 13 - 12 - 7
-            {'name': 'mgsp_zloza_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 14 - 13 - 8
-            {'name': 'mgsp_zloza_wb_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 15 - 14 - 9
-            {'name': 'mgsp_zloza_wb_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 16 - 15 - 10
-            {'name': 'smgp_wyrobiska', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_smgp"], 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------ 17 - 16 - 11
-            {'name': 'flagi', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_flag.set_state(val)', 'cb_void': False, 'value': None},  # ----------------------------------------------------- 18 - 17 - 12
-            {'name': 'flagi_user', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_user"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # -------------------------------- 19 - 18 - 13
-            {'name': 'flagi_z_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_fchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # ------------------------- 20 - 19 - 14
-            {'name': 'flagi_bez_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_nfchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # ---------------------- 21 - 20 - 15
-            {'name': 'wyrobiska', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_wyr.set_state(val)', 'cb_void': False, 'value': None},  # -------------------------------------------------- 22 - 21 - 16
-            {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ------------------------------- 23 - 22 - 17
-            {'name': 'wyr_szare', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------------- 24 - 23 - 18
-            {'name': 'wyr_fioletowe', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_purple_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------- 25 - 24 - 19
-            {'name': 'wyr_zielone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # -------------------- 26 - 25 - 20
-            {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------- 27 -    - 21
-            {'name': 'komunikacja_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'self.komunikacja_layers_update()', 'cb_void': True, 'value': None},  # ------ 28 -    - 22
-            {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # - 29 -    - 23
-            {'name': 'parking_odwiedzone', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_after_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # - 30 -    - 24
-            {'name': 'marszruty', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_marsz_vis"], 'callback': 'marsz_layer_update()', 'cb_void': True, 'value': None}  # --------------------- 31 -    - 25
+            {'name': 'MGSP', 'action': 'grp_vis', 'btn': dlg.p_ext.box.widgets["btn_mgsp"], 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------- 11 - 10 - 5 -- 5
+            {'name': 'mgsp_pkt_kop', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 12 - 11 - 6 -- 6
+            {'name': 'mgsp_zloza_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 13 - 12 - 7 -- 7
+            {'name': 'mgsp_zloza_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------------------------------------- 14 - 13 - 8 -- 8
+            {'name': 'mgsp_zloza_wb_p', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 15 - 14 - 9 -- 9
+            {'name': 'mgsp_zloza_wb_a', 'action': 'lyr_vis', 'btn': None, 'callback': None, 'cb_void': False, 'value': None},  # ---------------------------------------------------------------------- 16 - 15 - 10 - 10
+            {'name': 'smgp_wyrobiska', 'action': 'lyr_vis', 'btn': dlg.p_ext.box.widgets["btn_smgp"], 'callback': None, 'cb_void': False, 'value': None},  # ------------------------------------------ 17 - 16 - 11 - 11
+            {'name': 'flagi', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_flag.set_state(val)', 'cb_void': False, 'value': None},  # ----------------------------------------------------- 18 - 17 - 12 - 12
+            {'name': 'flagi_user', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_user"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # -------------------------------- 19 - 18 - 13 - 13
+            {'name': 'flagi_z_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_fchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # ------------------------- 20 - 19 - 14 - 14
+            {'name': 'flagi_bez_teren', 'action': 'postgres', 'btn': dlg.p_flag.widgets["btn_nfchk_vis"], 'callback': 'flag_layer_update()', 'cb_void': True, 'value': None},  # ---------------------- 21 - 20 - 15 - 15
+            {'name': 'wyrobiska', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_wyr.set_state(val)', 'cb_void': False, 'value': None},  # -------------------------------------------------- 22 - 21 - 16 - 16
+            {'name': 'wyr_user', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_user"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ------------------------------- 23 - 22 - 17 - 17
+            {'name': 'wyr_szare', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_grey_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------------- 24 - 23 - 18 - 18
+            {'name': 'wyr_fioletowe', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_purple_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ---------------- 25 - 24 - 19 - 19
+            {'name': 'wyr_pomaranczowe', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_orange_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # -------------                20
+            {'name': 'wyr_niebieskie', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_blue_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # -----------------                21
+            {'name': 'wyr_czerwone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_red_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # --------------------                22
+            {'name': 'wyr_zielone', 'action': 'postgres', 'btn': dlg.p_wyr.widgets["btn_wyr_green_vis"], 'callback': 'wyr_layer_update(False)', 'cb_void': True, 'value': None},  # ------------------- 26 - 25 - 20 - 23
+            {'name': 'komunikacja', 'action': 'panel_state', 'btn': None, 'callback': 'dlg.p_komunikacja.set_state(val)', 'cb_void': False, 'value': None},  # ---------------------------------------- 27 -    - 21 - 24
+            {'name': 'komunikacja_user', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_user"], 'callback': 'self.komunikacja_layers_update()', 'cb_void': True, 'value': None},  # ------ 28 -    - 22 - 25
+            {'name': 'parking_planowane', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_before_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # - 29 -    - 23 - 26
+            {'name': 'parking_odwiedzone', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_parking_after_vis"], 'callback': 'parking_layer_update()', 'cb_void': True, 'value': None},  # - 30 -    - 24 - 27
+            {'name': 'marszruty', 'action': 'postgres', 'btn': dlg.p_komunikacja.widgets["btn_marsz_vis"], 'callback': 'marsz_layer_update()', 'cb_void': True, 'value': None}  # --------------------- 31 -    - 25 - 28
                         ]
         self.cfg_dicts_cnt = len(self.cfg_dicts)
         self.cfg_vals = []
@@ -376,17 +379,23 @@ class PanelManager:
                 return
             if vals_cnt != self.cfg_dicts_cnt:
                 return
-            if len(self.old_cfg_vals) != self.cfg_dicts_cnt:
-                self.old_cfg_vals = self.cfg_vals.copy()
+            # Porównujemy bezpośrednio stan słownika z nową wartością wejściową:
             for i in range(self.cfg_dicts_cnt):
-                if self.cfg_dicts[i]["value"] != self.old_cfg_vals[i]:
+                if self.cfg_dicts[i]["value"] != self.cfg_vals[i]:
                     dlg.freeze_set(True)  # Zablokowanie odświeżania dockwidget'u
                     self.cfg_dicts[i]["value"] = self.cfg_vals[i]
-                    self.update_action(self.cfg_dicts[i]["action"], self.cfg_dicts[i]["name"], self.cfg_dicts[i]["btn"], self.cfg_dicts[i]["value"], self.cfg_dicts[i]["callback"], self.cfg_dicts[i]["cb_void"])
+                    # Wykonanie akcji powiązanej z przyciskiem (np. ukrycie/pokazanie warstwy):
+                    self.update_action(
+                        self.cfg_dicts[i]["action"],
+                        self.cfg_dicts[i]["name"],
+                        self.cfg_dicts[i]["btn"],
+                        self.cfg_dicts[i]["value"],
+                        self.cfg_dicts[i]["callback"],
+                        self.cfg_dicts[i]["cb_void"]
+                    )
                     if any(l[0] == self.cfg_dicts[i]["name"] for l in dlg.lyr.lyr_vis):
                         # Aktualizacja wartości na liście lyr_vis dla multitool'a:
                         dlg.lyr.lyr_vis_change(self.cfg_dicts[i]["name"], bool(self.cfg_dicts[i]["value"]))
-            self.old_cfg_vals = self.cfg_vals.copy()
             if self.callback_void:
                 self.callback_void = False
             dlg.freeze_set(False)  # Odblokowanie odświeżania dockwidget'u
@@ -410,31 +419,23 @@ class PanelManager:
             exec(cb)
 
     def set_val(self, name, val, db=True):
-        """Zamienia aktualną wartość (int albo bool) z cfg_dict o podanej nazwie i aktualizuje cfg_vals w bazie danych."""
-        # Ustalenie prawidłowej wartości:
-        if type(val) == bool:
-            # Konwersja danych int na bool:
-            val = 1 if val else 0
-        else:
-            # Zapewnienie, że val ma wartość 0, 1 lub 2:
-            val = 0 if not val in range(0, 3) else val
-        # Wyszukanie odpowiedniego słownika i podmiana wartości:
-        # Aktualizacja self.cfg_vals:
+        """Zamienia wartość z cfg_dict o podanej nazwie i aktualizuje bazę danych."""
+        # Obliczamy nowe stany przycisków bez bezpośredniej modyfikacji słownika:
         new_vals = []
         for c_dict in self.cfg_dicts:
-            if c_dict["name"] == name:
-                # Aktualizacja wartości w zmienianym słowniku:
-                c_dict["value"] = val
-                if any(l[0] == c_dict["name"] for l in dlg.lyr.lyr_vis):
-                    # Aktualizacja wartości na liście lyr_vis dla multitool'a:
-                    dlg.lyr.lyr_vis_change(c_dict["name"], bool(val))
-            if c_dict["value"] in range(0, 3):
-                new_vals.append(c_dict["value"])
+            dict_val = val if c_dict["name"] == name else c_dict["value"]
+            # Konwersja i normalizacja typu danych:
+            if type(dict_val) == bool:
+                dict_val = 1 if dict_val else 0
+            elif dict_val is None:
+                dict_val = 1
             else:
-                print(f'layers/set_val: Słownik {c_dict["name"]} ma nieprawidłową wartość {c_dict["value"]}')
-                return
+                dict_val = 0 if not dict_val in range(0, 3) else dict_val
+            new_vals.append(dict_val)
+        # Przypisanie wyzwoli __setattr__, który wykryje różnicę,
+        # zaktualizuje słownik i wywoła odświeżenie warstw/list (wyr_layer_update):
         self.cfg_vals = new_vals
-        # Aktualizacja bazy danych:
+        # Zapis do bazy danych:
         if db:
             self.cfg_vals_write()
 
@@ -512,16 +513,19 @@ class PanelManager:
         sql = "SELECT t_settings FROM team_users WHERE team_id = " + str(self.dlg.team_i) + " AND user_id = " + str(self.dlg.user_id) + ";"
         if db:
             res = db.query_sel(sql, False)
-            if res:
+            if res and res[0]:
                 self.cfg_vals[:0] = res[0]
             else:
-                self.cfg_vals[:0] = '10121111111121112111121111'  # '1012111111111111112111211112111'
+                # Wartość domyślna o długości 29 znaków na wypadek braku rekordu:
+                self.cfg_vals[:0] = '10111111111121112111111121111'
+        # Konwersja znaków tekstowych na cyfry na potrzeby wtyczki:
+        self.cfg_vals = list(map(int, self.cfg_vals))
+        # Synchronizacja zmiennych do śledzenia zmian:
         if len(self.old_cfg_vals) > 0:
             self.old_cfg_vals = []
-            self.old_cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry
-            self.cfg_vals = self.old_cfg_vals
+            self.old_cfg_vals = self.cfg_vals.copy()
         else:
-            self.cfg_vals = list(map(int, self.cfg_vals))  # Zamiana tekstu na cyfry
+            self.old_cfg_vals = self.cfg_vals.copy()
 
     def cfg_vals_write(self):
         """Zapisanie ustawień paneli z self.cfg_vals do bazy danych."""

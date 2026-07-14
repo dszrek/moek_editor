@@ -303,52 +303,64 @@ def flag_layer_update():
     QgsApplication.restoreOverrideCursor()
 
 def wyr_layer_update(check=True):
-    """Aktualizacja warstw z wyrobiskami."""
+    """Aktualizacja warstw z wyrobiskami w QGIS na podstawie wartości status_id."""
     QgsApplication.setOverrideCursor(Qt.WaitCursor)
     if check:
-        # Sprawdzenie, czy wszystkie wyrobiska mają przypisane powiaty i dane
-        # oraz dokonanie aktualizacji, jeśli występują braki:
         wyr_powiaty_check()
         wyr_dane_check()
-    # Stworzenie listy wyrobisk z aktywnych powiatów:
     dlg.obj.wyr_ids = get_wyr_ids()
     if dlg.wyr_panel.pow_all:
         dlg.obj.order_ids = []
     else:
         dlg.wyr_panel.status_indicator.order_check()
         dlg.obj.order_ids = get_order_ids()
-    # Aktualizacja wdf:
     wdf_update()
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.obj.wyr_ids:
-        table_all = f'(SELECT row_number() OVER (ORDER BY d.wyr_id) AS row_num, d.wyr_id, w.teren_id, w.wn_id, w.midas_id, w.user_id, d.t_wyr_od AS wyr_od, d.t_wyr_do AS wyr_do, d.t_zloze_od AS zloze_od, d.t_zloze_do AS zloze_do, w.t_notatki AS notatki, d.i_area_m2 AS pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d USING(wyr_id) WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'
-        table = f'''(SELECT row_number() OVER (ORDER BY p.order_id) AS row_num, p.order_id, d.wyr_id, w.teren_id as teren_id, w.wn_id as wn_id, w.midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_prg p ON w.wyr_id = p.wyr_id INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND p.pow_grp = '{dlg.powiat_i}' '''
-        table_old = table_all if dlg.wyr_panel.pow_all else table
-        uri_a1 = f'{params} key="row_num" table="{table_all} AND b_new = True)" (point) sql='
-        uri_a2 = f'{params} key="row_num" table="{table_old} AND w.b_new = False AND w.b_confirmed = False)" (point) sql='
-        uri_a3 = f'{params} key="row_num" table="{table_old} AND w.b_new = False AND w.b_confirmed = True)" (point) sql='
+        # Bazowe zapytania SELECT wybierające niezbędne pola statusowe:
+        table_all = f'(SELECT row_number() OVER (ORDER BY d.wyr_id) AS row_num, d.wyr_id, w.status_id, w.b_new, w.b_ctrl, w.teren_id, w.wn_id, w.midas_id, w.user_id, d.t_wyr_od AS wyr_od, d.t_wyr_do AS wyr_do, d.t_zloze_od AS zloze_od, d.t_zloze_do AS zloze_do, w.t_notatki AS notatki, d.i_area_m2 AS pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d USING(wyr_id) WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'
+        table = f'''(SELECT row_number() OVER (ORDER BY p.order_id) AS row_num, p.order_id, d.wyr_id, w.status_id, w.b_new, w.b_ctrl, w.teren_id as teren_id, w.wn_id as wn_id, w.midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_prg p ON w.wyr_id = p.wyr_id INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND p.pow_grp = '{dlg.powiat_i}' '''
+        table_status = table_all if dlg.wyr_panel.pow_all else table
+        # Podział zapytań na 6 fizycznych warstw punktowych w QGIS:
+        uri_a1 = f'{params} key="row_num" table="{table_all} AND w.status_id = 1)" (point) sql=' # Szare
+        uri_a2 = f'{params} key="row_num" table="{table_status} AND w.status_id = 2)" (point) sql=' # Fioletowe
+        uri_a_pomaranczowe = f'{params} key="row_num" table="{table_status} AND w.status_id = 3)" (point) sql=' # Pomarańczowe (Kontrola)
+        uri_a_niebieskie = f'{params} key="row_num" table="{table_status} AND w.status_id = 4)" (point) sql=' # Niebieskie (Zawieszone)
+        uri_a_czerwone = f'{params} key="row_num" table="{table_status} AND w.status_id = 5)" (point) sql=' # Czerwone (Wykluczone)
+        uri_a3 = f'{params} key="row_num" table="{table_status} AND w.status_id = 6)" (point) sql=' # Zielone
         uri_a4 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
         uri_b = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
     else:
-        uri_a1 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
-        uri_a2 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
-        uri_a3 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
-        uri_a4 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
+        empty_sql = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id = 0'
+        uri_a1 = empty_sql
+        uri_a2 = empty_sql
+        uri_a3 = empty_sql
+        uri_a_pomaranczowe = empty_sql
+        uri_a_niebieskie = empty_sql
+        uri_a_czerwone = empty_sql
+        uri_a4 = empty_sql
         uri_b = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id = 0'
-    # Zmiana zawartości warstw z wyrobiskami:
     l_tuples = [
         ("wyr_szare", uri_a1),
         ("wyr_fioletowe", uri_a2),
+        ("wyr_pomaranczowe", uri_a_pomaranczowe),
+        ("wyr_niebieskie", uri_a_niebieskie),
+        ("wyr_czerwone", uri_a_czerwone),
         ("wyr_zielone", uri_a3),
         ("wyr_point", uri_a4),
         ("wyr_poly", uri_b)
-        ]
+    ]
     for l_tuple in l_tuples:
-        lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
-        pg_layer_change(l_tuple[1], lyr)
-        lyr.triggerRepaint()
-    dlg.wyr_visibility()  # Aktualizacja widoczności warstw
+        try:
+            lyr = dlg.proj.mapLayersByName(l_tuple[0])[0]
+            pg_layer_change(l_tuple[1], lyr)
+            lyr.triggerRepaint()
+        except IndexError:
+            # Bezpiecznik na wypadek, gdyby warstwy robocze nie były jeszcze zdefiniowane w legendzie QGIS
+            print(f"Brak warstwy w projekcie QGIS: {l_tuple[0]}")
+
+    dlg.wyr_visibility()
     QgsApplication.restoreOverrideCursor()
 
 def wdf_update():
@@ -362,12 +374,11 @@ def wdf_load():
     """Załadowanie danych o wyrobiskach z db do dataframe'u wdf."""
     db = PgConn()
     extras = f" WHERE wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})" if dlg.obj.wyr_ids else f" WHERE wyr_id = 0"
-    sql = "SELECT wyr_id, b_new, b_confirmed, wn_id, midas_id FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
+    # Pobieramy status_id:
+    sql = "SELECT wyr_id, status_id, b_new, wn_id, midas_id FROM team_" + str(dlg.team_i) + ".wyrobiska" + extras + " ORDER BY wyr_id;"
     if db:
-        temp_df = db.query_pd(sql, ['wyr_id', 'new', 'cnfrm', 'wn_id', 'midas_id'])
+        temp_df = db.query_pd(sql, ['wyr_id', 'status_id', 'new', 'wn_id', 'midas_id'])
         if isinstance(temp_df, pd.DataFrame):
-            wn_df = temp_df.copy()
-            wn_df.drop(['new', 'cnfrm'], axis=1, inplace=True)
             wdf = wyr_status_determine(temp_df)
             dlg.wyr_panel.wdf = wdf
         else:
@@ -381,13 +392,10 @@ def get_geom_from_id(id, ids):
             return item[1]
 
 def wyr_status_determine(temp_df):
-    """Ustala status wyrobiska na podstawie atrybutów: 'new' i 'cnfrm', następnie zwraca gotową wersję wdf."""
-    conditions = [temp_df['new'].eq(True),  # szare
-                temp_df['new'].eq(False) & temp_df['cnfrm'].eq(False),  # fioletowe
-                temp_df['new'].eq(False) & temp_df['cnfrm'].eq(True)]  # zielone
-    choices = [0, 1, 2]
-    temp_df['status'] = np.select(conditions, choices, default=0)
-    temp_df.drop(['new', 'cnfrm'], axis=1, inplace=True)
+    """Mapuje status_id (1-6) na indeksy (0-5) na potrzeby rysowania kropek w TableView."""
+    # Szary (1->0), Fioletowy (2->1), Pomarańczowy (3->2), Niebieski (4->3), Czerwony (5->4), Zielony (6->5)
+    temp_df['status'] = temp_df['status_id'] - 1
+    temp_df.drop(['status_id', 'new'], axis=1, inplace=True)
     temp_df = temp_df[['status', 'wyr_id', 'midas_id']]
     return temp_df
 
@@ -514,48 +522,31 @@ def get_wyr_ids_with_filter(filter):
             return []
 
 def get_wyr_ids():
-    """Zwraca listę unkalnych wyr_id zgodnych z aktualnie zastosowanymi filtrami."""
-    # Określenie, które rodzaje wyrobisk są włączone:
-    case = dlg.cfg.wyr_case()
-    if case == 0 or case == 8:
-        # Wszystkie rodzaje wyrobisk są wyłączone - brak wyrobisk do wyświetlenia
+    """Zwraca listę unikalnych wyr_id zgodnych z aktualnie zastosowanymi filtrami status_id."""
+    # Odpytujemy PanelManager (dlg.cfg) o stany widoczności poszczególnych warstw:
+    active_statuses = []
+    if dlg.cfg.get_val("wyr_szare"): active_statuses.append(1)
+    if dlg.cfg.get_val("wyr_fioletowe"): active_statuses.append(2)
+    if dlg.cfg.get_val("wyr_pomaranczowe"): active_statuses.append(3)
+    if dlg.cfg.get_val("wyr_niebieskie"): active_statuses.append(4)
+    if dlg.cfg.get_val("wyr_czerwone"): active_statuses.append(5)
+    if dlg.cfg.get_val("wyr_zielone"): active_statuses.append(6)
+    # Jeśli żaden przycisk widoczności nie jest włączony, nie wyświetlamy niczego:
+    if not active_statuses:
         return []
-    # Utworzenie listy z wyr_id wyrobisk, które należą do aktywnych powiatów:
+    # Pobieramy powiaty przypisane do zespołu:
     pows = active_pow_listed()
     wyr_ids_from_pows = get_wyr_ids_with_pows("wyr_prg", pows)
     if not wyr_ids_from_pows:
-        # Brak wyrobisk w aktywnych powiatach
         return []
-    if case == 15:
-        # Wszystkie rodzaje wyrobisk są włączone - brak filtrowania
-        return wyr_ids_from_pows
-    # Utworzenie listy z wyr_id wyrobisk, których rodzaje są włączone:
-    filter_cases = [
-        {'value': 1, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND b_new = True "},  # szary
-        {'value': 2, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND b_new = False AND b_confirmed = False "},  # fioletowy
-        {'value': 3, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND (b_new = True OR (b_new = False AND b_confirmed = False )) "},  # szary i fioletowy
-        {'value': 4, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND b_new = False AND b_confirmed = True "},  # zielony
-        {'value': 5, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND (b_new = True OR (b_new = False AND b_confirmed = True )) "},  # szary i zielony
-        {'value': 6, 'sql': " WHERE (user_id = {dlg.user_id} OR user_id IS NULL) AND b_new = False "},  # fioletowy i zielony
-        {'value': 7, 'sql': " WHERE user_id = {dlg.user_id} OR user_id IS NULL "},  # szary, fioletowy i zielony
-        {'value': 9, 'sql': " WHERE b_new = True "},  # szary
-        {'value': 10, 'sql': " WHERE b_new = False AND b_confirmed = False "},  # fioletowy
-        {'value': 11, 'sql': " WHERE b_new = True OR (b_new = False AND b_confirmed = False ) "},  # szary i fioletowy
-        {'value': 12, 'sql': " WHERE b_new = False AND b_confirmed = True "},  # zielony
-        {'value': 13, 'sql': " WHERE b_new = True OR (b_new = False AND b_confirmed = True ) "},  # szary i zielony
-        {'value': 14, 'sql': " WHERE b_new = False "}  # fioletowy i zielony
-                ]
-    filter = ""
-    for e_dict in filter_cases:
-        if e_dict["value"] == case:
-            raw_sql = e_dict["sql"]
-            filter = eval("f'{}'".format(raw_sql))
-            break
-    wyr_ids_from_filter = get_wyr_ids_with_filter(filter)
+    # Tworzymy czytelny warunek filtrujący dla PostgreSQL:
+    status_sql = f"status_id IN ({','.join(map(str, active_statuses))})"
+    user_sql = f" AND (user_id = {dlg.user_id} OR user_id IS NULL)" if dlg.cfg.get_val("wyr_user") else ""
+    filter_str = f" WHERE {status_sql}{user_sql}"
+    wyr_ids_from_filter = get_wyr_ids_with_filter(filter_str)
     if not wyr_ids_from_filter:
-        # Wszystkie wyrobiska zostały wyfiltrowane
         return []
-    # Zwrócenie listy wyr_id wyrobisk, które znajdują się w obu listach:
+    # Zwrócenie części wspólnej:
     result = sorted(set(wyr_ids_from_pows).intersection(wyr_ids_from_filter))
     return result
 

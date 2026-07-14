@@ -100,13 +100,14 @@ class ObjectManager:
                 if dlg.wyr_panel.order_drawer.edited and not dlg.wyr_panel.order_drawer.attr_void:
                     dlg.wyr_panel.order_drawer.edited = False
                 self.wyr_data = self.wyr_update()
+                # Obsługa poprzedniej edycji MOEK_1 (Wyświetlanie panelu historycznego):
                 self.moek_data = self.moek_update(self.wyr_data[62]) if self.wyr_data[62] else None
                 if self.moek_data:
                     self.dlg.moek_panel.values_update(self.moek_data)  # Aktualizacja atrybutów
                     self.dlg.moek_panel.show()
                 else:
                     self.dlg.moek_panel.hide()
-                # print(self.moek_data)
+                # Obsługa numeracji order_id:
                 if dlg.wyr_panel.pow_all:
                     self.order_data = [None, False]
                 else:
@@ -116,37 +117,26 @@ class ObjectManager:
                 else:
                     wyr_layer_update(False)
                 self.list_position_check("wyr")
-                self.dlg.wyr_panel.status_selector.set_case(self.wyr_data[1], self.wyr_data[2])  # Aktualizacja statusu wyrobiska
-                self.dlg.wyr_panel.hash.set_value(self.wyr_data[51])  # Aktualizacja teren_id
-                # Aktualizacja WN_PNE:
-                if self.wyr_data[3]:
-                    self.dlg.wyr_panel.wnbox.setVisible(True)
-                    self.dlg.wyr_panel.wn_label.setText(f'{self.wyr_data[3]}')
-                else:
-                    self.dlg.wyr_panel.wnbox.setVisible(False)
-                # Aktualizacja lokalizacji:
+                # Bezpośrednie przypisanie status_id do selektora:
+                self.dlg.wyr_panel.status_selector.case = self.wyr_data[66]
+                # Aktualizacja numeru roboczego (hash):
+                self.dlg.wyr_panel.hash.set_value(self.wyr_data[51])
+                # Aktualizacja dymka lokalizacyjnego (miejscowość, gmina, powiat, woj.):
                 self.dlg.wyr_panel.lok.set_tooltip(f'<html><head/><body><p style="text-indent:11px; margin:4px">MIEJSCOWOŚĆ: &nbsp;{self.wyr_data[52]}</p><p style="text-indent: 53px; margin:4px">GMINA: &nbsp;{self.wyr_data[53]}</p><p style="text-indent: 48px; margin:4px">POWIAT: &nbsp;{self.wyr_data[54]}</p><p style="text-indent: 0px; margin:4px">WOJEWÓDZTWO: &nbsp;{self.wyr_data[55]}</p></body></html>')
-                # Powierzchnia wyrobiska i kasowanie:
-                if self.dlg.wyr_panel.status_selector.case == 0:
-                    dlg.wyr_panel.areabox.setVisible(True)
+                # Kontrola widoczności pola powierzchni, edycji granic i kosza w sp_main:
+                status_id = self.wyr_data[66] # Aktualny status_id (1-6)
+                b_new = self.wyr_data[1]       # Czy wyrobisko jest nowe (b_new)
+                # Określamy stany widoczności za pomocą zmiennych logicznych:
+                show_edit = status_id in [1, 2, 3, 6]
+                show_del = b_new
+                # 1. Kontrola widoczności pola powierzchni (areabox) oraz przycisku edycji (editbox):
+                dlg.wyr_panel.areabox.setVisible(show_edit)
+                dlg.wyr_panel.editbox.setVisible(show_edit)
+                if show_edit:
                     area_txt = f"{self.wyr_data[4]} m\u00b2 "
                     dlg.wyr_panel.area_label.setText(area_txt)
-                    dlg.wyr_panel.delbox.setVisible(True)
-                else:
-                    dlg.wyr_panel.areabox.setVisible(False)
-                    dlg.wyr_panel.delbox.setVisible(False)
-                # Data aktualizacji:
-                dlg.wyr_panel.datebox.setVisible(True) if self.dlg.wyr_panel.status_selector.case == 2 else dlg.wyr_panel.datebox.setVisible(False)
-                dlg.wyr_panel.date_label.setText(str(self.wyr_data[41])) if self.wyr_data[41] else dlg.wyr_panel.date_label.setText("")
-                # Dostosowanie wymiaru dummybox:
-                if self.dlg.wyr_panel.status_selector.case == 0:
-                    dlg.wyr_panel.dummybox.setFixedWidth(67)
-                else:
-                    wn_width = 123 if self.wyr_data[3] else 0
-                    date_width = 135 if self.wyr_data[41] else 0
-                    dummy_width = 281 - wn_width - date_width
-                    dlg.wyr_panel.dummybox.setFixedWidth(dummy_width)
-                # Aktualizacja zaznaczenia wiersza w tv_wdf
+                # 2. Przycisk kasowania wyrobiska (delbox) – wyłącznie dla wszystkich wyrobisk nowych (b_new = True):
+                dlg.wyr_panel.delbox.setVisible(show_del)
                 self.dlg.wyr_panel.wdf_sel_update()
                 dlg.wyr_panel.focus_void = True
                 self.dlg.wyr_panel.values_update(self.wyr_data)  # Aktualizacja atrybutów
@@ -369,13 +359,13 @@ class ObjectManager:
 
     def wyr_update(self):
         """Zwraca dane wyrobiska.
-        0 - wyr_id, 1 - b_new, 2 - b_confirmed, 3 - wn_id, 4 - i_area_m2, 5 - t_wyr_od, 6 - t_wyr_do, 7 - t_notatki, 8 - i_dlug_min, 9 - i_dlug_max, 10 - i_szer_min, 11 - i_szer_max, 12 - n_wys_min, 13 - n_wys_max, 14 - n_nadkl_min, 15 - n_nadkl_max, 16 - n_miazsz_min, 17 - n_miazsz_max, 18 - t_wyrobisko, 19 - t_zawodn, 20 - t_eksploat, 21 - t_wydobycie, 22 - t_wyp_odpady, 23 - t_odpady_1, 24 - t_odpady_2, 25 - t_odpady_3, 26 - t_odpady_4, 27 - t_odpady_opak, 28 - t_odpady_inne, 29 - t_stan_rekul, 30 - t_rekultyw, 31 - t_dojazd, 32 - t_zagrozenia, 33 - t_zgloszenie, 34 - t_powod, 35 - t_stan_pne, 36 - t_kopalina, 37 - t_kopalina_2, 38 - t_wiek, 39 - t_wiek_2, 40 - time_fchk, 41 - date_ctrl, 42 - b_teren, 43 - midas_id, 44 - t_stan_midas, 45 - t_zloze_od, 46 - t_zloze_do, 47 - b_pne_zloze, 48 - b_pne_poza, 49 - i_ile_zalacz, 50 - t_autor, 51 - teren_id, 52 - t_mie_name, 53 - t_gmi_name, 54 - t_pow_name, 55 - t_woj_name, 56 - b_pne, 57 - t_zmiana_wyr, 58 - date_map, 59 - t_map_source, 60 - t_weryf_midas, 61 - d.t_og_id, 62 - moek_id, 63 - t_decyzje, 64 - t_dzialania, 65 - t_weryf_wyr
+        0 - wyr_id, 1 - b_new, 2 - b_confirmed, 3 - wn_id, 4 - i_area_m2, 5 - t_wyr_od, 6 - t_wyr_do, 7 - t_notatki, 8 - i_dlug_min, 9 - i_dlug_max, 10 - i_szer_min, 11 - i_szer_max, 12 - n_wys_min, 13 - n_wys_max, 14 - n_nadkl_min, 15 - n_nadkl_max, 16 - n_miazsz_min, 17 - n_miazsz_max, 18 - t_wyrobisko, 19 - t_zawodn, 20 - t_eksploat, 21 - t_wydobycie, 22 - t_wyp_odpady, 23 - t_odpady_1, 24 - t_odpady_2, 25 - t_odpady_3, 26 - t_odpady_4, 27 - t_odpady_opak, 28 - t_odpady_inne, 29 - t_stan_rekul, 30 - t_rekultyw, 31 - t_dojazd, 32 - t_zagrozenia, 33 - t_zgloszenie, 34 - t_powod, 35 - t_stan_pne, 36 - t_kopalina, 37 - t_kopalina_2, 38 - t_wiek, 39 - t_wiek_2, 40 - time_fchk, 41 - date_ctrl, 42 - b_teren, 43 - midas_id, 44 - t_stan_midas, 45 - t_zloze_od, 46 - t_zloze_do, 47 - b_pne_zloze, 48 - b_pne_poza, 49 - i_ile_zalacz, 50 - t_autor, 51 - teren_id, 52 - t_mie_name, 53 - t_gmi_name, 54 - t_pow_name, 55 - t_woj_name, 56 - b_pne, 57 - t_zmiana_wyr, 58 - date_map, 59 - t_map_source, 60 - t_weryf_midas, 61 - d.t_og_id, 62 - moek_id, 63 - t_decyzje, 64 - t_dzialania, 65 - t_weryf_wyr, 66 - status_id
         """
         db = PgConn()
         if dlg.wyr_panel.pow_all:
-            sql = "SELECT w.wyr_id, w.b_new, w.b_confirmed, w.wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_ctrl, d.b_teren, w.midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne, d.t_zmiana_wyr, d.date_map, d.t_map_source, d.t_weryf_midas, d.t_og_id, w.moek_id, d.t_decyzje, d.t_dzialania, d.t_weryf_wyr FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "';"
+            sql = "SELECT w.wyr_id, w.b_new, w.b_confirmed, w.wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_ctrl, d.b_teren, w.midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne, d.t_zmiana_wyr, d.date_map, d.t_map_source, d.t_weryf_midas, d.t_og_id, w.moek_id, d.t_decyzje, d.t_dzialania, d.t_weryf_wyr, w.status_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "';"
         else:
-            sql = "SELECT w.wyr_id, w.b_new, w.b_confirmed, w.wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_ctrl, d.b_teren, w.midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne, d.t_zmiana_wyr, d.date_map, d.t_map_source, d.t_weryf_midas, d.t_og_id, w.moek_id, d.t_decyzje, d.t_dzialania, d.t_weryf_wyr, p.order_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "' AND p.pow_grp = '" + str(dlg.powiat_i) + "';"
+            sql = "SELECT w.wyr_id, w.b_new, w.b_confirmed, w.wn_id, d.i_area_m2, d.t_wyr_od, d.t_wyr_do, w.t_notatki, d.i_dlug_min, d.i_dlug_max, d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.t_wyrobisko, d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2, d.t_odpady_3, d.t_odpady_4, d.t_odpady_opak, d.t_odpady_inne, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia, d.t_zgloszenie, d.t_powod, d.t_stan_pne, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2, d.time_fchk, d.date_ctrl, d.b_teren, w.midas_id, d.t_stan_midas, d.t_zloze_od, d.t_zloze_do, d.b_pne_zloze, d.b_pne_poza, d.i_ile_zalacz, d.t_autor, w.teren_id, p.t_mie_name, p.t_gmi_name, p.t_pow_name, p.t_woj_name, d.b_pne, d.t_zmiana_wyr, d.date_map, d.t_map_source, d.t_weryf_midas, d.t_og_id, w.moek_id, d.t_decyzje, d.t_dzialania, d.t_weryf_wyr, w.status_id, p.order_id FROM team_" + str(dlg.team_i) + ".wyrobiska AS w INNER JOIN team_" + str(dlg.team_i) + ".wyr_dane AS d ON w.wyr_id=d.wyr_id INNER JOIN team_" + str(dlg.team_i) + ".wyr_prg AS p ON w.wyr_id=p.wyr_id WHERE w.wyr_id = '" + str(self.wyr) + "' AND p.pow_grp = '" + str(dlg.powiat_i) + "';"
         if db:
             res = db.query_sel(sql, False)
             if not res:
@@ -3631,18 +3621,18 @@ def area_measure(geom):
     return area_rounded
 
 def wyr_point_add(point):
-    """Utworzenie centroidu nowego obiektu wyrobiska."""
+    """Utworzenie centroidu nowego obiektu wyrobiska (domyślny status_id = 1 i b_new = True)."""
     if isinstance(point, QgsGeometry):
         point = point.asPoint()
     db = PgConn()
-    sql = "INSERT INTO team_" + str(dlg.team_i) + ".wyrobiska(wyr_id, user_id, centroid) SELECT nextval, " + str(dlg.user_id) + ", ST_SetSRID(ST_MakePoint(" + str(point.x()) + ", " + str(point.y()) + "), 2180) FROM (SELECT nextval(pg_get_serial_sequence('team_" + str(dlg.team_i) + ".wyrobiska', 'wyr_id')) nextval) q RETURNING wyr_id"
+    sql = f"INSERT INTO team_{dlg.team_i}.wyrobiska(wyr_id, user_id, status_id, b_new, centroid) SELECT nextval, {dlg.user_id}, 1, true, ST_SetSRID(ST_MakePoint({point.x()}, {point.y()}), 2180) FROM (SELECT nextval(pg_get_serial_sequence('team_{dlg.team_i}.wyrobiska', 'wyr_id')) nextval) q RETURNING wyr_id"
     if db:
         res = db.query_upd_ret(sql)
         if not res:
             print(f"Nie udało się stworzyć centroidu wyrobiska.")
             return None
         else:
-            # Włączenie wyrobisk szarych, jeśli są wyłączone:
+            # Włączenie wyrobisk szarych, jeśli są wyłączone w panelu:
             val = dlg.cfg.get_val("wyr_szare")
             if val == 0:
                 dlg.cfg.set_val("wyr_szare", 1)

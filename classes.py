@@ -875,13 +875,19 @@ class WDfDelegate(QStyledItemDelegate):
         if index.column() == 0:
             s_data = index.data(ValueRole)
             if s_data == 0:
-                color = QColor(123, 123, 123)  # szary
-            # elif s_data == 1:
-            #     color = QColor(224, 0, 0)  # czerwony
+                color = QColor(123, 123, 123)  # [1] WYROBISKO POTENCJALNE (grey)
             elif s_data == 1:
-                color = QColor(180, 40, 180)  # fioletowy
+                color = QColor(180, 0, 180)    # [2] WYROBISKO ARCHIWALNE (purple)
             elif s_data == 2:
-                color = QColor(40, 140, 40)  # zielony
+                color = QColor(255, 127, 0)    # [3] KONTROLA TERENOWA (orange)
+            elif s_data == 3:
+                color = QColor(103, 163, 244)  # [4] WYROBISKO ZAWIESZONE (blue)
+            elif s_data == 4:
+                color = QColor(224, 0, 0)      # [5] WYROBISKO WYKLUCZONE (red)
+            elif s_data == 5:
+                color = QColor(40, 140, 40)    # [6] WYROBISKO ZATWIERDZONE (green)
+            else:
+                color = QColor(200, 200, 200)  # Kolor domyślny / awaryjny
             painter.save()
             painter.setRenderHint(QPainter.Antialiasing)
             pen = painter.pen()

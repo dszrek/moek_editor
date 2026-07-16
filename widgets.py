@@ -4594,7 +4594,7 @@ class CanvasLineEdit(QLineEdit):
             self.setValidator(QRegExpValidator(QRegExp("^[0]?[1-9]$|^[1][0-2]$")))
         elif self.validator == "years":
             # self.setValidator(QRegExpValidator(QRegExp("^1[0-9]$|^2[0-4]$|^201[0-9]$|^202[0-4]$"))) - zakres 2010-2024
-            self.setValidator(QRegExpValidator(QRegExp("^19[0-9]{2}$|^200[0-9]$|^201[0-9]$|^202[0-5]$|^[0-1]?[0-9]$|^2[0-5]$")))  # zakres 1900-2025
+            self.setValidator(QRegExpValidator(QRegExp("^19[0-9]{2}$|^200[0-9]$|^201[0-9]$|^202[0-6]$|^[0-1]?[0-9]$|^2[0-6]$")))  # zakres 1900-2026
         self.color = "255, 255, 255" if theme == "dark" else "0, 0, 0"
         self.back_color = "255, 255, 255" if theme == "dark" else "180, 180, 180"
         self.attr_void = True

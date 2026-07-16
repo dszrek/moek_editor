@@ -166,12 +166,29 @@ class LayerManager:
             QgsApplication.processEvents()
             raw_uri = l_dict["uri"]
             uri = eval("f'{}'".format(raw_uri))
-            if l_dict["source"] == "wms" or l_dict["source"] == "gdal":
+            # SPECJALNY WARUNEK DLA WARSTWY ISOK:
+            if l_dict["name"] == "ISOK":
+                # Próba wczytania z podstawowym adresem URI (np. layers=Cieniowanie):
                 lyr = QgsRasterLayer(uri, l_dict["name"], l_dict["source"])
+                if not lyr.isValid():
+                    # Jeśli nie działa, automatycznie podmieniamy nazwę na alternatywną w locie:
+                    alt_layer = "ISOK_Cien" if "layers=Cieniowanie" in uri else "Cieniowanie"
+                    alt_uri = uri.replace("layers=Cieniowanie", f"layers={alt_layer}") if "layers=Cieniowanie" in uri else uri.replace("layers=ISOK_Cien", f"layers={alt_layer}")
+                    print(f"Podstawowa warstwa ISOK nie odpowiada. Próba wczytania wersji alternatywnej: {alt_layer}...")
+                    lyr = QgsRasterLayer(alt_uri, l_dict["name"], l_dict["source"])
+                    if lyr.isValid():
+                        print(f"Pomyślnie wczytano alternatywną warstwę ISOK ({alt_layer})!")
+                    else:
+                        print("Obie znane wersje warstwy ISOK są obecnie niedostępne na serwerze GUGIK.")
                 lyr_required = False
             else:
-                lyr = QgsVectorLayer(uri, l_dict["name"], l_dict["source"])
-                lyr_required = True
+                # Dla pozostałych warstw zachowanie standardowe:
+                if l_dict["source"] == "wms" or l_dict["source"] == "gdal":
+                    lyr = QgsRasterLayer(uri, l_dict["name"], l_dict["source"])
+                    lyr_required = False
+                else:
+                    lyr = QgsVectorLayer(uri, l_dict["name"], l_dict["source"])
+                    lyr_required = True
             if not lyr.isValid() and not lyr_required:
                 m_text = f'Nie udało się poprawnie wczytać podkładu mapowego: {l_dict["name"]}. Naciśnięcie Tak spowoduje kontynuowanie uruchamiania wtyczki (podkład mapowy nie będzie wyświetlany), naciśnięcie Nie przerwie proces uruchamiania wtyczki. Jeśli problem będzie się powtarzał, zaleca się powiadomienie administratora systemu.'
                 reply = QMessageBox.question(dlg.app, "Moek_Editor", m_text, QMessageBox.Yes, QMessageBox.No)
@@ -246,9 +263,24 @@ class LayerManager:
                         missing.append(lyr_name)
                         continue
                 lyr = dlg.proj.mapLayersByName(lyr_name)[0]
-                # if not lyr.isValid():
-                #     dlg.proj.removeMapLayer(lyr)
-                #     missing.append(lyr_name)
+                # Samonaprawa dotyczy WYŁĄCZNIE uszkodzonej warstwy "ISOK":
+                if lyr_name == "ISOK" and not lyr.isValid():
+                    print(f"Warstwa {lyr_name} jest nieaktywna na serwerze. Rozpoczęcie bezpiecznej procedury samonaprawy...")
+                    # 1. ODŁĄCZENIE SYGNAŁU: Odłączamy tymczasowo sygnał ochrony warstw, aby wtyczka się nie zamknęła:
+                    try:
+                        dlg.proj.layersWillBeRemoved.disconnect(dlg.layers_removing)
+                    except Exception as e:
+                        print(f"layers_check/disconnect_warning: {e}")
+                    # 2. Bezpieczne usunięcie uszkodzonej warstwy ISOK z legendy:
+                    dlg.proj.removeMapLayer(lyr)
+                    # 3. PONOWNE PODŁĄCZENIE SYGNAŁU: Przywracamy ochronę warstw po zakończeniu usuwania:
+                    try:
+                        dlg.proj.layersWillBeRemoved.connect(dlg.layers_removing)
+                    except Exception as e:
+                        print(f"layers_check/connect_warning: {e}")
+                    # Oznaczamy ją jako brakującą, aby layers_create() mogła ją stworzyć na nowo z prawidłowym adresem:
+                    missing.append(lyr_name)
+                    continue
         if missing:
             print(f"layer/structure_check - lista brakujących warstw:")
             print(missing)

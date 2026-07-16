@@ -818,6 +818,7 @@ class WDfModel(DataFrameModel):
             h_header.resizeSection(col[0], col[1])
         v_header = self.tv.verticalHeader()
         v_header.setDefaultSectionSize(24)
+        self.tv.setColumnHidden(3, True)
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or not (0 <= index.row() < self.rowCount() \
@@ -828,7 +829,7 @@ class WDfModel(DataFrameModel):
         dt = self._dataframe[col].dtype
         val = self._dataframe.iloc[row][col]
         if role == Qt.DisplayRole:
-            if index.column() == 0 or index.column() == 2:
+            if index.column() == 0 or index.column() == 2 or index.column() == 3:
                 return QVariant()
             else:
                 return str(val)
@@ -874,29 +875,54 @@ class WDfDelegate(QStyledItemDelegate):
         selected = option.state & QStyle.State_Selected
         if index.column() == 0:
             s_data = index.data(ValueRole)
+            # Pobieramy wartość flagi 'new' (b_new) z ukrytej kolumny o indeksie 3:
+            model = index.model()
+            b_new_index = model.index(index.row(), 3)
+            b_new = model.data(b_new_index, ValueRole)
+            # Przypisanie kolorów RGB dla statusów:
             if s_data == 0:
-                color = QColor(123, 123, 123)  # [1] WYROBISKO POTENCJALNE (grey)
+                color = QColor(103, 103, 103)  # [1] WYROBISKO POTENCJALNE (grey)
             elif s_data == 1:
                 color = QColor(180, 0, 180)    # [2] WYROBISKO ARCHIWALNE (purple)
             elif s_data == 2:
                 color = QColor(255, 127, 0)    # [3] WYROBISKO KONTROLOWANE (orange)
             elif s_data == 3:
-                color = QColor(103, 163, 244)  # [4] WYROBISKO ZAWIESZONE (blue)
+                color = QColor(22, 120, 255)  # [4] WYROBISKO ZAWIESZONE (blue)
             elif s_data == 4:
                 color = QColor(224, 0, 0)      # [5] OBIEKT ODRZUCONY (red)
             elif s_data == 5:
-                color = QColor(40, 140, 40)    # [6] WYROBISKO ZATWIERDZONE (green)
+                color = QColor(0, 140, 0)    # [6] WYROBISKO ZATWIERDZONE (green)
             else:
                 color = QColor(200, 200, 200)  # Kolor domyślny / awaryjny
+            # RYSOWANIE KROPKI STATUSOWEJ:
             painter.save()
             painter.setRenderHint(QPainter.Antialiasing)
             pen = painter.pen()
             pen.setStyle(Qt.NoPen)
             painter.setPen(pen)
-            painter.setBrush(color)
             rect_1 = QRect(option.rect)
             rect_1.adjust(2, 2, -3, -2)
-            painter.drawRoundedRect(rect_1, 2, 2)
+            # Nakładamy pionowy gradient dla statusów 3 (indeks 2), 4 (indeks 3) oraz 6 (indeks 5):
+            if s_data in [2, 3, 5]:
+                # Tworzymy pionowy gradient (od góry do dołu rect_1):
+                gradient = QLinearGradient(rect_1.topLeft(), rect_1.bottomLeft())
+                # Ustalamy bazowy kolor góry gradientu:
+                if s_data == 2:
+                    top_color = QColor(255, 170, 0)      # Pomarańczowy (Status 3)
+                elif s_data == 3:
+                    top_color = QColor(22, 120, 255)    # Niebieski (Status 4)
+                elif s_data == 5:
+                    top_color = QColor(0, 140, 0)      # Zielony (Status 6)
+                gradient.setColorAt(0, top_color)
+                # Kolor dołu gradientu w zależności od b_new:
+                bottom_color = QColor(93, 93, 93) if b_new else QColor(180, 0, 180)
+                gradient.setColorAt(1, bottom_color)
+                painter.setBrush(gradient)
+                painter.drawRoundedRect(rect_1, 2, 2)
+            else:
+                # Statusy 1, 2, 5 (Szary, Fioletowy, Czerwony) rysujemy tradycyjnie jako jednolite kropki:
+                painter.setBrush(color)
+                painter.drawRoundedRect(rect_1, 2, 2)
             painter.restore()
         if selected:
             gradient = QLinearGradient(0, 0, 66, 0)

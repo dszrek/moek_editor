@@ -1,5 +1,5 @@
 <!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
-<qgis hasScaleBasedVisibilityFlag="0" simplifyDrawingHints="0" simplifyDrawingTol="1" version="3.28.11-Firenze" styleCategories="AllStyleCategories" symbologyReferenceScale="-1" maxScale="0" minScale="100000000" simplifyAlgorithm="0" readOnly="0" labelsEnabled="0" simplifyLocal="1" simplifyMaxScale="1">
+<qgis hasScaleBasedVisibilityFlag="0" simplifyDrawingHints="0" simplifyDrawingTol="1" version="3.28.11-Firenze" styleCategories="AllStyleCategories" symbologyReferenceScale="-1" maxScale="0" minScale="100000000" simplifyAlgorithm="0" readOnly="0" labelsEnabled="1" simplifyLocal="1" simplifyMaxScale="1">
   <flags>
     <Identifiable>1</Identifiable>
     <Removable>1</Removable>
@@ -41,7 +41,7 @@
             <Option value="MM" type="QString" name="dash_pattern_offset_unit"/>
             <Option value="0" type="QString" name="draw_inside_polygon"/>
             <Option value="bevel" type="QString" name="joinstyle"/>
-            <Option value="125,139,143,255" type="QString" name="line_color"/>
+            <Option value="152,125,183,255" type="QString" name="line_color"/>
             <Option value="solid" type="QString" name="line_style"/>
             <Option value="0.6" type="QString" name="line_width"/>
             <Option value="MM" type="QString" name="line_width_unit"/>
@@ -81,12 +81,12 @@
         <layer enabled="1" pass="0" locked="0" class="SimpleFill">
           <Option type="Map">
             <Option value="3x:0,0,0,0,0,0" type="QString" name="border_width_map_unit_scale"/>
-            <Option value="125,139,143,255" type="QString" name="color"/>
+            <Option value="152,125,183,255" type="QString" name="color"/>
             <Option value="bevel" type="QString" name="joinstyle"/>
             <Option value="0,0" type="QString" name="offset"/>
             <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_map_unit_scale"/>
             <Option value="MM" type="QString" name="offset_unit"/>
-            <Option value="89,99,102,255" type="QString" name="outline_color"/>
+            <Option value="109,89,131,255" type="QString" name="outline_color"/>
             <Option value="solid" type="QString" name="outline_style"/>
             <Option value="0.2" type="QString" name="outline_width"/>
             <Option value="MM" type="QString" name="outline_width_unit"/>
@@ -115,14 +115,14 @@
           <Option type="Map">
             <Option value="0" type="QString" name="angle"/>
             <Option value="square" type="QString" name="cap_style"/>
-            <Option value="125,139,143,255" type="QString" name="color"/>
+            <Option value="152,125,183,255" type="QString" name="color"/>
             <Option value="1" type="QString" name="horizontal_anchor_point"/>
             <Option value="bevel" type="QString" name="joinstyle"/>
             <Option value="diamond" type="QString" name="name"/>
             <Option value="0,0" type="QString" name="offset"/>
             <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_map_unit_scale"/>
             <Option value="MM" type="QString" name="offset_unit"/>
-            <Option value="89,99,102,255" type="QString" name="outline_color"/>
+            <Option value="109,89,131,255" type="QString" name="outline_color"/>
             <Option value="solid" type="QString" name="outline_style"/>
             <Option value="0.2" type="QString" name="outline_width"/>
             <Option value="3x:0,0,0,0,0,0" type="QString" name="outline_width_map_unit_scale"/>
@@ -144,7 +144,7 @@
       </symbol>
     </profileMarkerSymbol>
   </elevation>
-  <renderer-v2 symbollevels="0" type="pointCluster" forceraster="0" toleranceUnitScale="3x:0,0,0,0,0,0" referencescale="-1" tolerance="9" enableorderby="0" toleranceUnit="MM">
+  <renderer-v2 symbollevels="0" type="pointCluster" forceraster="0" toleranceUnitScale="3x:0,0,0,0,0,0" referencescale="-1" tolerance="2" enableorderby="0" toleranceUnit="MM">
     <renderer-v2 symbollevels="0" type="singleSymbol" forceraster="0" referencescale="-1" enableorderby="0">
       <symbols>
         <symbol type="marker" force_rhr="0" name="0" frame_rate="10" is_animated="0" alpha="1" clip_to_extent="1">
@@ -277,7 +277,7 @@
               <Option value="0" type="QString" name="angle"/>
               <Option value="0" type="QString" name="fixedAspectRatio"/>
               <Option value="1" type="QString" name="horizontal_anchor_point"/>
-              <Option value="base64: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" type="QString" name="imageFile"/>
+              <Option value="base64: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" type="QString" name="imageFile"/>
               <Option value="0,0" type="QString" name="offset"/>
               <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_map_unit_scale"/>
               <Option value="MM" type="QString" name="offset_unit"/>
@@ -295,36 +295,6 @@
                     <Option value="false" type="bool" name="active"/>
                     <Option value="1" type="int" name="type"/>
                     <Option value="" type="QString" name="val"/>
-                  </Option>
-                </Option>
-                <Option value="collection" type="QString" name="type"/>
-              </Option>
-            </data_defined_properties>
-          </layer>
-          <layer enabled="1" pass="0" locked="0" class="RasterMarker">
-            <Option type="Map">
-              <Option value="1" type="QString" name="alpha"/>
-              <Option value="0" type="QString" name="angle"/>
-              <Option value="0" type="QString" name="fixedAspectRatio"/>
-              <Option value="1" type="QString" name="horizontal_anchor_point"/>
-              <Option value="base64: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" type="QString" name="imageFile"/>
-              <Option value="0,0" type="QString" name="offset"/>
-              <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_map_unit_scale"/>
-              <Option value="MM" type="QString" name="offset_unit"/>
-              <Option value="diameter" type="QString" name="scale_method"/>
-              <Option value="50" type="QString" name="size"/>
-              <Option value="3x:0,0,0,0,0,0" type="QString" name="size_map_unit_scale"/>
-              <Option value="Pixel" type="QString" name="size_unit"/>
-              <Option value="1" type="QString" name="vertical_anchor_point"/>
-            </Option>
-            <data_defined_properties>
-              <Option type="Map">
-                <Option value="" type="QString" name="name"/>
-                <Option type="Map" name="properties">
-                  <Option type="Map" name="enabled">
-                    <Option value="true" type="bool" name="active"/>
-                    <Option value="if( &quot;midas_id&quot; IS NULL, 0, 1 )" type="QString" name="expression"/>
-                    <Option value="3" type="int" name="type"/>
                   </Option>
                 </Option>
                 <Option value="collection" type="QString" name="type"/>
@@ -366,6 +336,36 @@
               </Option>
             </data_defined_properties>
           </layer>
+          <layer enabled="1" pass="0" locked="0" class="RasterMarker">
+            <Option type="Map">
+              <Option value="1" type="QString" name="alpha"/>
+              <Option value="0" type="QString" name="angle"/>
+              <Option value="0" type="QString" name="fixedAspectRatio"/>
+              <Option value="1" type="QString" name="horizontal_anchor_point"/>
+              <Option value="base64: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" type="QString" name="imageFile"/>
+              <Option value="0,0" type="QString" name="offset"/>
+              <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_map_unit_scale"/>
+              <Option value="MM" type="QString" name="offset_unit"/>
+              <Option value="diameter" type="QString" name="scale_method"/>
+              <Option value="50" type="QString" name="size"/>
+              <Option value="3x:0,0,0,0,0,0" type="QString" name="size_map_unit_scale"/>
+              <Option value="Pixel" type="QString" name="size_unit"/>
+              <Option value="1" type="QString" name="vertical_anchor_point"/>
+            </Option>
+            <data_defined_properties>
+              <Option type="Map">
+                <Option value="" type="QString" name="name"/>
+                <Option type="Map" name="properties">
+                  <Option type="Map" name="enabled">
+                    <Option value="true" type="bool" name="active"/>
+                    <Option value="if(&quot;midas_id&quot; IS NOT NULL, 1, 0)" type="QString" name="expression"/>
+                    <Option value="3" type="int" name="type"/>
+                  </Option>
+                </Option>
+                <Option value="collection" type="QString" name="type"/>
+              </Option>
+            </data_defined_properties>
+          </layer>
         </symbol>
       </symbols>
       <rotation/>
@@ -385,7 +385,7 @@
           <Option value="0" type="QString" name="angle"/>
           <Option value="0" type="QString" name="fixedAspectRatio"/>
           <Option value="1" type="QString" name="horizontal_anchor_point"/>
-          <Option value="base64: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" type="QString" name="imageFile"/>
+          <Option value="base64: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" type="QString" name="imageFile"/>
           <Option value="0,0" type="QString" name="offset"/>
           <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_map_unit_scale"/>
           <Option value="MM" type="QString" name="offset_unit"/>
@@ -407,7 +407,7 @@
         <Option type="Map">
           <Option value="0" type="QString" name="angle"/>
           <Option value="A" type="QString" name="chr"/>
-          <Option value="204,204,204,255" type="QString" name="color"/>
+          <Option value="255,0,0,255" type="QString" name="color"/>
           <Option value="MS Shell Dlg 2" type="QString" name="font"/>
           <Option value="" type="QString" name="font_style"/>
           <Option value="1" type="QString" name="horizontal_anchor_point"/>
@@ -415,7 +415,7 @@
           <Option value="0,-2.39999999999999991" type="QString" name="offset"/>
           <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_map_unit_scale"/>
           <Option value="MM" type="QString" name="offset_unit"/>
-          <Option value="204,204,204,255" type="QString" name="outline_color"/>
+          <Option value="255,0,0,255" type="QString" name="outline_color"/>
           <Option value="0.2" type="QString" name="outline_width"/>
           <Option value="3x:0,0,0,0,0,0" type="QString" name="outline_width_map_unit_scale"/>
           <Option value="MM" type="QString" name="outline_width_unit"/>
@@ -526,9 +526,219 @@
       </layer>
     </symbol>
   </renderer-v2>
+  <labeling type="simple">
+    <settings calloutType="manhattan">
+      <text-style previewBkgrdColor="255,255,255,255" capitalization="0" fontLetterSpacing="0" multilineHeight="1" allowHtml="0" namedStyle="Normalny" useSubstitutions="0" fontWordSpacing="0" forcedItalic="0" fontStrikeout="0" fieldName="order_id" fontWeight="50" fontItalic="0" fontSizeUnit="Point" fontSizeMapUnitScale="3x:0,0,0,0,0,0" forcedBold="0" multilineHeightUnit="Percentage" textColor="40,92,40,255" textOrientation="horizontal" textOpacity="1" fontUnderline="0" fontFamily="MS Shell Dlg 2" fontSize="8" legendString="Aa" blendMode="0" isExpression="1" fontKerning="1">
+        <families/>
+        <text-buffer bufferJoinStyle="128" bufferNoFill="1" bufferColor="255,255,255,255" bufferOpacity="1" bufferSizeUnits="MM" bufferSize="1" bufferDraw="0" bufferSizeMapUnitScale="3x:0,0,0,0,0,0" bufferBlendMode="0"/>
+        <text-mask maskSizeUnits="MM" maskSizeMapUnitScale="3x:0,0,0,0,0,0" maskType="0" maskEnabled="0" maskedSymbolLayers="" maskJoinStyle="128" maskSize="0" maskOpacity="1"/>
+        <background shapeSizeMapUnitScale="3x:0,0,0,0,0,0" shapeSizeType="0" shapeSizeUnit="MM" shapeSizeY="0" shapeBlendMode="0" shapeRotationType="0" shapeOpacity="1" shapeSizeX="0" shapeFillColor="209,223,209,255" shapeType="0" shapeOffsetX="0" shapeBorderWidthMapUnitScale="3x:0,0,0,0,0,0" shapeSVGFile="" shapeOffsetY="0" shapeDraw="1" shapeRadiiY="0" shapeBorderColor="209,223,209,255" shapeJoinStyle="64" shapeRadiiMapUnitScale="3x:0,0,0,0,0,0" shapeRadiiX="0" shapeRotation="0" shapeOffsetUnit="MM" shapeBorderWidth="1" shapeBorderWidthUnit="MM" shapeOffsetMapUnitScale="3x:0,0,0,0,0,0" shapeRadiiUnit="MM">
+          <effect type="effectStack" enabled="0">
+            <effect type="dropShadow">
+              <Option type="Map">
+                <Option value="13" type="QString" name="blend_mode"/>
+                <Option value="0.5" type="QString" name="blur_level"/>
+                <Option value="MM" type="QString" name="blur_unit"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="blur_unit_scale"/>
+                <Option value="0,0,0,255" type="QString" name="color"/>
+                <Option value="2" type="QString" name="draw_mode"/>
+                <Option value="1" type="QString" name="enabled"/>
+                <Option value="135" type="QString" name="offset_angle"/>
+                <Option value="0" type="QString" name="offset_distance"/>
+                <Option value="MM" type="QString" name="offset_unit"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_unit_scale"/>
+                <Option value="0.5" type="QString" name="opacity"/>
+              </Option>
+            </effect>
+            <effect type="outerGlow">
+              <Option type="Map">
+                <Option value="0" type="QString" name="blend_mode"/>
+                <Option value="2.645" type="QString" name="blur_level"/>
+                <Option value="MM" type="QString" name="blur_unit"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="blur_unit_scale"/>
+                <Option value="0,0,255,255" type="QString" name="color1"/>
+                <Option value="0,255,0,255" type="QString" name="color2"/>
+                <Option value="0" type="QString" name="color_type"/>
+                <Option value="ccw" type="QString" name="direction"/>
+                <Option value="0" type="QString" name="discrete"/>
+                <Option value="2" type="QString" name="draw_mode"/>
+                <Option value="0" type="QString" name="enabled"/>
+                <Option value="0.5" type="QString" name="opacity"/>
+                <Option value="gradient" type="QString" name="rampType"/>
+                <Option value="255,255,255,255" type="QString" name="single_color"/>
+                <Option value="rgb" type="QString" name="spec"/>
+                <Option value="2" type="QString" name="spread"/>
+                <Option value="MM" type="QString" name="spread_unit"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="spread_unit_scale"/>
+              </Option>
+            </effect>
+            <effect type="drawSource">
+              <Option type="Map">
+                <Option value="0" type="QString" name="blend_mode"/>
+                <Option value="2" type="QString" name="draw_mode"/>
+                <Option value="1" type="QString" name="enabled"/>
+                <Option value="0.75" type="QString" name="opacity"/>
+              </Option>
+            </effect>
+            <effect type="innerShadow">
+              <Option type="Map">
+                <Option value="13" type="QString" name="blend_mode"/>
+                <Option value="2.645" type="QString" name="blur_level"/>
+                <Option value="MM" type="QString" name="blur_unit"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="blur_unit_scale"/>
+                <Option value="0,0,0,255" type="QString" name="color"/>
+                <Option value="2" type="QString" name="draw_mode"/>
+                <Option value="0" type="QString" name="enabled"/>
+                <Option value="135" type="QString" name="offset_angle"/>
+                <Option value="2" type="QString" name="offset_distance"/>
+                <Option value="MM" type="QString" name="offset_unit"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_unit_scale"/>
+                <Option value="1" type="QString" name="opacity"/>
+              </Option>
+            </effect>
+            <effect type="innerGlow">
+              <Option type="Map">
+                <Option value="0" type="QString" name="blend_mode"/>
+                <Option value="2.645" type="QString" name="blur_level"/>
+                <Option value="MM" type="QString" name="blur_unit"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="blur_unit_scale"/>
+                <Option value="0,0,255,255" type="QString" name="color1"/>
+                <Option value="0,255,0,255" type="QString" name="color2"/>
+                <Option value="0" type="QString" name="color_type"/>
+                <Option value="ccw" type="QString" name="direction"/>
+                <Option value="0" type="QString" name="discrete"/>
+                <Option value="2" type="QString" name="draw_mode"/>
+                <Option value="0" type="QString" name="enabled"/>
+                <Option value="0.5" type="QString" name="opacity"/>
+                <Option value="gradient" type="QString" name="rampType"/>
+                <Option value="255,255,255,255" type="QString" name="single_color"/>
+                <Option value="rgb" type="QString" name="spec"/>
+                <Option value="2" type="QString" name="spread"/>
+                <Option value="MM" type="QString" name="spread_unit"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="spread_unit_scale"/>
+              </Option>
+            </effect>
+          </effect>
+          <symbol type="marker" force_rhr="0" name="markerSymbol" frame_rate="10" is_animated="0" alpha="1" clip_to_extent="1">
+            <data_defined_properties>
+              <Option type="Map">
+                <Option value="" type="QString" name="name"/>
+                <Option name="properties"/>
+                <Option value="collection" type="QString" name="type"/>
+              </Option>
+            </data_defined_properties>
+            <layer enabled="1" pass="0" locked="0" class="SimpleMarker">
+              <Option type="Map">
+                <Option value="0" type="QString" name="angle"/>
+                <Option value="square" type="QString" name="cap_style"/>
+                <Option value="213,180,60,255" type="QString" name="color"/>
+                <Option value="1" type="QString" name="horizontal_anchor_point"/>
+                <Option value="bevel" type="QString" name="joinstyle"/>
+                <Option value="circle" type="QString" name="name"/>
+                <Option value="0,0" type="QString" name="offset"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_map_unit_scale"/>
+                <Option value="MM" type="QString" name="offset_unit"/>
+                <Option value="35,35,35,255" type="QString" name="outline_color"/>
+                <Option value="solid" type="QString" name="outline_style"/>
+                <Option value="0" type="QString" name="outline_width"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="outline_width_map_unit_scale"/>
+                <Option value="MM" type="QString" name="outline_width_unit"/>
+                <Option value="diameter" type="QString" name="scale_method"/>
+                <Option value="2" type="QString" name="size"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="size_map_unit_scale"/>
+                <Option value="MM" type="QString" name="size_unit"/>
+                <Option value="1" type="QString" name="vertical_anchor_point"/>
+              </Option>
+              <data_defined_properties>
+                <Option type="Map">
+                  <Option value="" type="QString" name="name"/>
+                  <Option name="properties"/>
+                  <Option value="collection" type="QString" name="type"/>
+                </Option>
+              </data_defined_properties>
+            </layer>
+          </symbol>
+          <symbol type="fill" force_rhr="0" name="fillSymbol" frame_rate="10" is_animated="0" alpha="1" clip_to_extent="1">
+            <data_defined_properties>
+              <Option type="Map">
+                <Option value="" type="QString" name="name"/>
+                <Option name="properties"/>
+                <Option value="collection" type="QString" name="type"/>
+              </Option>
+            </data_defined_properties>
+            <layer enabled="1" pass="0" locked="0" class="SimpleFill">
+              <Option type="Map">
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="border_width_map_unit_scale"/>
+                <Option value="209,223,209,255" type="QString" name="color"/>
+                <Option value="round" type="QString" name="joinstyle"/>
+                <Option value="0,0" type="QString" name="offset"/>
+                <Option value="3x:0,0,0,0,0,0" type="QString" name="offset_map_unit_scale"/>
+                <Option value="MM" type="QString" name="offset_unit"/>
+                <Option value="209,223,209,255" type="QString" name="outline_color"/>
+                <Option value="solid" type="QString" name="outline_style"/>
+                <Option value="1" type="QString" name="outline_width"/>
+                <Option value="MM" type="QString" name="outline_width_unit"/>
+                <Option value="solid" type="QString" name="style"/>
+              </Option>
+              <data_defined_properties>
+                <Option type="Map">
+                  <Option value="" type="QString" name="name"/>
+                  <Option name="properties"/>
+                  <Option value="collection" type="QString" name="type"/>
+                </Option>
+              </data_defined_properties>
+            </layer>
+          </symbol>
+        </background>
+        <shadow shadowRadius="1.5" shadowScale="100" shadowOffsetAngle="135" shadowRadiusUnit="MM" shadowOffsetDist="1" shadowOffsetUnit="MM" shadowOffsetGlobal="1" shadowRadiusAlphaOnly="0" shadowColor="0,0,0,255" shadowUnder="0" shadowRadiusMapUnitScale="3x:0,0,0,0,0,0" shadowDraw="0" shadowOpacity="0.69999999999999996" shadowOffsetMapUnitScale="3x:0,0,0,0,0,0" shadowBlendMode="6"/>
+        <dd_properties>
+          <Option type="Map">
+            <Option value="" type="QString" name="name"/>
+            <Option name="properties"/>
+            <Option value="collection" type="QString" name="type"/>
+          </Option>
+        </dd_properties>
+        <substitutions/>
+      </text-style>
+      <text-format placeDirectionSymbol="0" decimals="3" leftDirectionSymbol="&lt;" plussign="0" multilineAlign="3" wrapChar="" useMaxLineLengthForAutoWrap="1" reverseDirectionSymbol="0" addDirectionSymbol="0" autoWrapLength="0" formatNumbers="0" rightDirectionSymbol=">"/>
+      <placement overrunDistanceUnit="MM" layerType="PointGeometry" lineAnchorType="0" xOffset="3" lineAnchorPercent="0.5" maxCurvedCharAngleOut="-25" geometryGeneratorType="PointGeometry" placementFlags="10" priority="10" maxCurvedCharAngleIn="25" labelOffsetMapUnitScale="3x:0,0,0,0,0,0" rotationAngle="0" lineAnchorTextPoint="CenterOfText" yOffset="3" geometryGeneratorEnabled="0" allowDegraded="1" overrunDistance="0" quadOffset="4" repeatDistanceMapUnitScale="3x:0,0,0,0,0,0" geometryGenerator="" preserveRotation="1" offsetType="1" rotationUnit="AngleDegrees" distMapUnitScale="3x:0,0,0,0,0,0" overrunDistanceMapUnitScale="3x:0,0,0,0,0,0" fitInPolygonOnly="0" centroidWhole="0" repeatDistanceUnits="MM" offsetUnits="MM" overlapHandling="AllowOverlapIfRequired" lineAnchorClipping="0" centroidInside="0" predefinedPositionOrder="TR,TL,BR,BL,R,L,TSR,BSR" placement="6" repeatDistance="0" polygonPlacementFlags="2" distUnits="MM" dist="2"/>
+      <rendering scaleVisibility="0" limitNumLabels="0" fontMinPixelSize="3" minFeatureSize="0" scaleMin="0" drawLabels="1" obstacleType="0" zIndex="1" scaleMax="0" mergeLines="0" obstacle="1" fontMaxPixelSize="10000" labelPerPart="0" maxNumLabels="2000" obstacleFactor="2" fontLimitPixelSize="0" unplacedVisibility="0" upsidedownLabels="0"/>
+      <dd_properties>
+        <Option type="Map">
+          <Option value="" type="QString" name="name"/>
+          <Option name="properties"/>
+          <Option value="collection" type="QString" name="type"/>
+        </Option>
+      </dd_properties>
+      <callout type="manhattan">
+        <Option type="Map">
+          <Option value="pole_of_inaccessibility" type="QString" name="anchorPoint"/>
+          <Option value="0" type="int" name="blendMode"/>
+          <Option type="Map" name="ddProperties">
+            <Option value="" type="QString" name="name"/>
+            <Option name="properties"/>
+            <Option value="collection" type="QString" name="type"/>
+          </Option>
+          <Option value="false" type="bool" name="drawToAllParts"/>
+          <Option value="1" type="QString" name="enabled"/>
+          <Option value="point_on_exterior" type="QString" name="labelAnchorPoint"/>
+          <Option value="&lt;symbol type=&quot;line&quot; force_rhr=&quot;0&quot; name=&quot;symbol&quot; frame_rate=&quot;10&quot; is_animated=&quot;0&quot; alpha=&quot;0.75&quot; clip_to_extent=&quot;1&quot;>&lt;data_defined_properties>&lt;Option type=&quot;Map&quot;>&lt;Option value=&quot;&quot; type=&quot;QString&quot; name=&quot;name&quot;/>&lt;Option name=&quot;properties&quot;/>&lt;Option value=&quot;collection&quot; type=&quot;QString&quot; name=&quot;type&quot;/>&lt;/Option>&lt;/data_defined_properties>&lt;layer enabled=&quot;1&quot; pass=&quot;0&quot; locked=&quot;0&quot; class=&quot;SimpleLine&quot;>&lt;Option type=&quot;Map&quot;>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;align_dash_pattern&quot;/>&lt;Option value=&quot;square&quot; type=&quot;QString&quot; name=&quot;capstyle&quot;/>&lt;Option value=&quot;5;2&quot; type=&quot;QString&quot; name=&quot;customdash&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;customdash_map_unit_scale&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;customdash_unit&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;dash_pattern_offset&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;dash_pattern_offset_map_unit_scale&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;dash_pattern_offset_unit&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;draw_inside_polygon&quot;/>&lt;Option value=&quot;bevel&quot; type=&quot;QString&quot; name=&quot;joinstyle&quot;/>&lt;Option value=&quot;209,223,209,255&quot; type=&quot;QString&quot; name=&quot;line_color&quot;/>&lt;Option value=&quot;solid&quot; type=&quot;QString&quot; name=&quot;line_style&quot;/>&lt;Option value=&quot;0.4&quot; type=&quot;QString&quot; name=&quot;line_width&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;line_width_unit&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;offset&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;offset_map_unit_scale&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;offset_unit&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;ring_filter&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;trim_distance_end&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;trim_distance_end_map_unit_scale&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;trim_distance_end_unit&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;trim_distance_start&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;trim_distance_start_map_unit_scale&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;trim_distance_start_unit&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;tweak_dash_pattern_on_corners&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;use_custom_dash&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;width_map_unit_scale&quot;/>&lt;/Option>&lt;effect type=&quot;effectStack&quot; enabled=&quot;0&quot;>&lt;effect type=&quot;dropShadow&quot;>&lt;Option type=&quot;Map&quot;>&lt;Option value=&quot;13&quot; type=&quot;QString&quot; name=&quot;blend_mode&quot;/>&lt;Option value=&quot;0.5&quot; type=&quot;QString&quot; name=&quot;blur_level&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;blur_unit&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;blur_unit_scale&quot;/>&lt;Option value=&quot;0,0,0,255&quot; type=&quot;QString&quot; name=&quot;color&quot;/>&lt;Option value=&quot;2&quot; type=&quot;QString&quot; name=&quot;draw_mode&quot;/>&lt;Option value=&quot;1&quot; type=&quot;QString&quot; name=&quot;enabled&quot;/>&lt;Option value=&quot;135&quot; type=&quot;QString&quot; name=&quot;offset_angle&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;offset_distance&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;offset_unit&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;offset_unit_scale&quot;/>&lt;Option value=&quot;0.5&quot; type=&quot;QString&quot; name=&quot;opacity&quot;/>&lt;/Option>&lt;/effect>&lt;effect type=&quot;outerGlow&quot;>&lt;Option type=&quot;Map&quot;>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;blend_mode&quot;/>&lt;Option value=&quot;2.645&quot; type=&quot;QString&quot; name=&quot;blur_level&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;blur_unit&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;blur_unit_scale&quot;/>&lt;Option value=&quot;69,116,40,255&quot; type=&quot;QString&quot; name=&quot;color1&quot;/>&lt;Option value=&quot;188,220,60,255&quot; type=&quot;QString&quot; name=&quot;color2&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;color_type&quot;/>&lt;Option value=&quot;ccw&quot; type=&quot;QString&quot; name=&quot;direction&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;discrete&quot;/>&lt;Option value=&quot;2&quot; type=&quot;QString&quot; name=&quot;draw_mode&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;enabled&quot;/>&lt;Option value=&quot;0.5&quot; type=&quot;QString&quot; name=&quot;opacity&quot;/>&lt;Option value=&quot;gradient&quot; type=&quot;QString&quot; name=&quot;rampType&quot;/>&lt;Option value=&quot;255,255,255,255&quot; type=&quot;QString&quot; name=&quot;single_color&quot;/>&lt;Option value=&quot;rgb&quot; type=&quot;QString&quot; name=&quot;spec&quot;/>&lt;Option value=&quot;2&quot; type=&quot;QString&quot; name=&quot;spread&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;spread_unit&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;spread_unit_scale&quot;/>&lt;/Option>&lt;/effect>&lt;effect type=&quot;drawSource&quot;>&lt;Option type=&quot;Map&quot;>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;blend_mode&quot;/>&lt;Option value=&quot;2&quot; type=&quot;QString&quot; name=&quot;draw_mode&quot;/>&lt;Option value=&quot;1&quot; type=&quot;QString&quot; name=&quot;enabled&quot;/>&lt;Option value=&quot;1&quot; type=&quot;QString&quot; name=&quot;opacity&quot;/>&lt;/Option>&lt;/effect>&lt;effect type=&quot;innerShadow&quot;>&lt;Option type=&quot;Map&quot;>&lt;Option value=&quot;13&quot; type=&quot;QString&quot; name=&quot;blend_mode&quot;/>&lt;Option value=&quot;2.645&quot; type=&quot;QString&quot; name=&quot;blur_level&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;blur_unit&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;blur_unit_scale&quot;/>&lt;Option value=&quot;0,0,0,255&quot; type=&quot;QString&quot; name=&quot;color&quot;/>&lt;Option value=&quot;2&quot; type=&quot;QString&quot; name=&quot;draw_mode&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;enabled&quot;/>&lt;Option value=&quot;135&quot; type=&quot;QString&quot; name=&quot;offset_angle&quot;/>&lt;Option value=&quot;2&quot; type=&quot;QString&quot; name=&quot;offset_distance&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;offset_unit&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;offset_unit_scale&quot;/>&lt;Option value=&quot;1&quot; type=&quot;QString&quot; name=&quot;opacity&quot;/>&lt;/Option>&lt;/effect>&lt;effect type=&quot;innerGlow&quot;>&lt;Option type=&quot;Map&quot;>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;blend_mode&quot;/>&lt;Option value=&quot;2.645&quot; type=&quot;QString&quot; name=&quot;blur_level&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;blur_unit&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;blur_unit_scale&quot;/>&lt;Option value=&quot;69,116,40,255&quot; type=&quot;QString&quot; name=&quot;color1&quot;/>&lt;Option value=&quot;188,220,60,255&quot; type=&quot;QString&quot; name=&quot;color2&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;color_type&quot;/>&lt;Option value=&quot;ccw&quot; type=&quot;QString&quot; name=&quot;direction&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;discrete&quot;/>&lt;Option value=&quot;2&quot; type=&quot;QString&quot; name=&quot;draw_mode&quot;/>&lt;Option value=&quot;0&quot; type=&quot;QString&quot; name=&quot;enabled&quot;/>&lt;Option value=&quot;0.5&quot; type=&quot;QString&quot; name=&quot;opacity&quot;/>&lt;Option value=&quot;gradient&quot; type=&quot;QString&quot; name=&quot;rampType&quot;/>&lt;Option value=&quot;255,255,255,255&quot; type=&quot;QString&quot; name=&quot;single_color&quot;/>&lt;Option value=&quot;rgb&quot; type=&quot;QString&quot; name=&quot;spec&quot;/>&lt;Option value=&quot;2&quot; type=&quot;QString&quot; name=&quot;spread&quot;/>&lt;Option value=&quot;MM&quot; type=&quot;QString&quot; name=&quot;spread_unit&quot;/>&lt;Option value=&quot;3x:0,0,0,0,0,0&quot; type=&quot;QString&quot; name=&quot;spread_unit_scale&quot;/>&lt;/Option>&lt;/effect>&lt;/effect>&lt;data_defined_properties>&lt;Option type=&quot;Map&quot;>&lt;Option value=&quot;&quot; type=&quot;QString&quot; name=&quot;name&quot;/>&lt;Option name=&quot;properties&quot;/>&lt;Option value=&quot;collection&quot; type=&quot;QString&quot; name=&quot;type&quot;/>&lt;/Option>&lt;/data_defined_properties>&lt;/layer>&lt;/symbol>" type="QString" name="lineSymbol"/>
+          <Option value="0" type="double" name="minLength"/>
+          <Option value="3x:0,0,0,0,0,0" type="QString" name="minLengthMapUnitScale"/>
+          <Option value="MM" type="QString" name="minLengthUnit"/>
+          <Option value="4.5" type="double" name="offsetFromAnchor"/>
+          <Option value="3x:0,0,0,0,0,0" type="QString" name="offsetFromAnchorMapUnitScale"/>
+          <Option value="MM" type="QString" name="offsetFromAnchorUnit"/>
+          <Option value="0" type="double" name="offsetFromLabel"/>
+          <Option value="3x:0,0,0,0,0,0" type="QString" name="offsetFromLabelMapUnitScale"/>
+          <Option value="MM" type="QString" name="offsetFromLabelUnit"/>
+        </Option>
+      </callout>
+    </settings>
+  </labeling>
   <customproperties>
     <Option type="Map">
-      <Option value="&quot;wyr_id&quot;" type="QString" name="dualview/previewExpressions"/>
+      <Option value="wyr_id" type="QString" name="dualview/previewExpressions"/>
       <Option value="0" type="QString" name="embeddedWidgets/count"/>
       <Option name="variableNames"/>
       <Option name="variableValues"/>

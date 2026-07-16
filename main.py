@@ -16,7 +16,7 @@ from .viewnet import vn_set_gvars, stage_refresh
 # Stałe globalne:
 SQL_1 = " WHERE user_id = "
 PLUGIN_VER = "0.6.2"
-USER = ""
+USER = "kbro"
 
 # Zmienne globalne:
 dlg = None
@@ -392,11 +392,11 @@ def get_geom_from_id(id, ids):
             return item[1]
 
 def wyr_status_determine(temp_df):
-    """Mapuje status_id (1-6) na indeksy (0-5) na potrzeby rysowania kropek w TableView."""
-    # Szary (1->0), Fioletowy (2->1), Pomarańczowy (3->2), Niebieski (4->3), Czerwony (5->4), Zielony (6->5)
+    """Mapuje status_id (1-6) na indeksy (0-5) i zachowuje kolumnę 'new' na potrzeby stylizacji tabeli."""
     temp_df['status'] = temp_df['status_id'] - 1
-    temp_df.drop(['status_id', 'new'], axis=1, inplace=True)
-    temp_df = temp_df[['status', 'wyr_id', 'midas_id']]
+    temp_df.drop(['status_id'], axis=1, inplace=True)
+    # Zachowujemy kolumnę 'new' na ostatniej (3.) pozycji indeksu:
+    temp_df = temp_df[['status', 'wyr_id', 'midas_id', 'new']]
     return temp_df
 
 def wyr_powiaty_check():

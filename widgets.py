@@ -2491,22 +2491,20 @@ class PowSelectorItem(QPushButton):
 
 class WyrStatusIndicator(QLabel):
     """Wyświetla status aktywnego wyrobiska."""
-    def __init__(self, *args, text="NOWE WYROBISKO", color="153, 153, 153"):
+    def __init__(self, *args, text="WYROBISKO POTENCJALNE", color="153, 153, 153"):
         super().__init__(*args)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setAlignment(Qt.AlignCenter)
-        self.set_case(text, color)
+        self.set_case(text, f"rgba({color}, 0.8)")
 
     def set_case(self, text, color):
         """Ustala tekst i kolor kontrolki."""
-        self.setStyleSheet("""
-                    QLabel {
+        self.setStyleSheet(f"""
                         border: none;
-                        background: rgba(""" + color + """, 0.8);
+                        background: {color};
                         color: black;
                         font-size: 8pt;
                         font-weight: bold;
-                    }
                     """)
         self.setText(text)
 
@@ -2647,32 +2645,62 @@ class WyrStatusSelector(QFrame):
         self.cmb_void = False
 
     def __setattr__(self, attr, val):
-        """Przechwycenie zmiany stanu (status_id)."""
+        """Przechwycenie zmiany stanu (status_id) – generowanie horyzontalnego gradientu dla Statusu 3."""
         super().__setattr__(attr, val)
         if attr == "case" and val is not None:
             # val = status_id (1-6)
-            b_new = dlg.obj.wyr_data[1]  # Pobranie pochodzenia wyrobiska (b_new)
+            b_new = dlg.obj.wyr_data[1]  # Czy wyrobisko jest nowe (b_new)
             # 1. Zarządzanie widocznością i pozycjonowaniem przycisków:
             self.update_buttons(val, b_new)
-            # 2. Aktualizacja opisu statusu (WyrStatusIndicator):
+            # 2. Obliczenie dynamicznego tła dla wskaźnika (WyrStatusIndicator):
             status_info = self.statuses_info[val]
-            dlg.wyr_panel.status_indicator.set_case(status_info["text"], status_info["color"])
-            # 3. Przełączanie stron stackedbox'a (sb) w formularzu bocznym:
-            # Mapowanie:
-            # Szary(1), Fioletowy(2) -> Strona 0
-            # Pomarańczowy(3), Zielony(6) -> Strona 1
-            # Niebieski(4), Czerwony(5) -> Strona 2
+            # Statusy 3 (Pomarańczowy), 4 (Niebieski) oraz 6 (Zielony) otrzymują gradient:
+            if val in [3, 4, 6]:
+                # Ustalamy kolor prawej strony gradientu w zależności od b_new:
+                right_color = "rgba(153, 153, 153, 204)" if b_new else "rgba(170, 0, 170, 204)"
+                # Ustalamy bazowy kolor lewej strefy (zgodny z wybranym statusem):
+                if val == 3:
+                    left_color = "rgba(255, 170, 0, 204)"     # Pomarańczowy (Status 3)
+                elif val == 4:
+                    left_color = "rgba(103, 163, 244, 204)"   # Niebieski (Status 4)
+                elif val == 6:
+                    left_color = "rgba(40, 170, 40, 204)"     # Zielony (Status 6)
+                # Budujemy natywny dla Qt gradient horyzontalny:
+                background_css = f"qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0.75 {left_color}, stop:0.98 {right_color})"
+            else:
+                # Statusy 1, 2, 5 zachowują jednolite tło:
+                background_css = f"rgba({status_info['color']}, 204)"
+            # Aktualizacja opisu i tła statusu:
+            dlg.wyr_panel.status_indicator.set_case(status_info["text"], background_css)
+            # 3. Przełączanie stron stackedbox'a (sb):
             page_map = {1: 0, 2: 0, 3: 1, 4: 2, 5: 2, 6: 1}
             target_page = page_map.get(val, 0)
             dlg.wyr_panel.sb.setCurrentIndex(target_page)
-            # Pasek zakładek (tab_box) pokazujemy tylko na Stronie 1 (pełny formularz):
+            # 4. Zarządzanie elementami interfejsu w zależności od stanu:
             dlg.wyr_panel.tab_box.setVisible(True) if target_page == 1 else dlg.wyr_panel.tab_box.setVisible(False)
-            dlg.wyr_panel.order_box.setVisible(True) if (val in [3, 6] and not dlg.wyr_panel.pow_all) else dlg.wyr_panel.order_box.setVisible(False)
-            # Kolorystyka pola numeracji (order_box):
-            if val == 3:
-                dlg.wyr_panel.order_box.set_theme("purple")
+            # ZMIANA REGUŁY: IdSpinBox (order_box) jest widoczny tylko dla:
+            # - Statusu 2 (Archiwalne)
+            # - Statusu 3 (Kontrolowane) JEŚLI b_new = False (archiwalne)
+            # - Statusu 6 (Zatwierdzone)
+            show_order = False
+            if val == 2:
+                show_order = True
+            elif val == 3 and not b_new:
+                show_order = True
             elif val == 6:
-                dlg.wyr_panel.order_box.set_theme("green")
+                show_order = True
+            # Wyłączamy widoczność, jeśli włączony jest tryb pow_all (widok wszystkich powiatów):
+            if dlg.wyr_panel.pow_all:
+                show_order = False
+            dlg.wyr_panel.order_box.setVisible(show_order)
+            # ZMIANA: Dynamiczne ustawienie motywu kolorystycznego dla order_box zgodnego z kolorem statusu:
+            if show_order:
+                if val == 2:
+                    dlg.wyr_panel.order_box.set_theme("purple")
+                elif val == 3:
+                    dlg.wyr_panel.order_box.set_theme("orange")
+                elif val == 6:
+                    dlg.wyr_panel.order_box.set_theme("green")
 
     def update_buttons(self, status_id, b_new):
         """Dynamiczne wyświetlanie przycisków i dopasowanie szerokości widgetu."""
@@ -4517,7 +4545,9 @@ class IdSpinBox(QFrame):
         if theme == "green":
             self.setStyleSheet(" QFrame#main {background-color: rgba(40, 170, 40, 204); border: none} ")
         elif theme == "purple":
-            self.setStyleSheet(" QFrame#main {background-color: rgba(180, 40, 180, 204); border: none} ")
+            self.setStyleSheet(" QFrame#main {background-color: rgba(170, 0, 170, 204); border: none} ") # Nowy fiolet RGB
+        elif theme == "orange":
+            self.setStyleSheet(" QFrame#main {background-color: rgba(255, 170, 0, 204); border: none} ") # Nowy pomarańcz RGB
         else:
             self.setStyleSheet(" QFrame#main {background-color: transparent; border: none} ")
 

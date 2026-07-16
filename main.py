@@ -1269,6 +1269,13 @@ def db_attr_change(tbl, attr, val, sql_bns, user=True, quotes=False):
     if db:
         res = db.query_upd(sql)
         if res:
+            # AUTOMATYCZNE WYCOFANIE ZATWIERDZENIA (Auto-revert):
+            # Jeśli zmiana zakończyła się sukcesem i nie jesteśmy w trakcie wczytywania danych (not focus_void),
+            # a wyrobisko miało status zielony (6), cofam go automatycznie do pomarańczowego (3):
+            if dlg and hasattr(dlg, "wyr_panel") and dlg.wyr_panel:
+                if not dlg.wyr_panel.focus_void:
+                    if dlg.wyr_panel.status_selector.case == 6:
+                        dlg.wyr_panel.status_selector.btn_clicked(3)
             return True
         else:
             return False

@@ -229,10 +229,10 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
                     {"page": 0, "row": 0, "col": 0, "r_span": 2, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
                     {"page": 0, "row": 0, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_grey_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska potencjalne (szare)"},
                     {"page": 0, "row": 1, "col": 1, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_purple_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska archiwalne (fioletowe)"},
-                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_orange_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska wyznaczone do kontroli terenowej (pomarańczowe)"},
+                    {"page": 0, "row": 0, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_orange_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska kontrolowane (pomarańczowe)"},
                     {"page": 0, "row": 1, "col": 2, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_blue_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska zawieszone (niebieskie)"},
                     {"page": 0, "row": 0, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_green_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska zatwierdzone (zielone)"},
-                    {"page": 0, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_red_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj wyrobiska wykluczone (czerwone)"}
+                    {"page": 0, "row": 1, "col": 3, "r_span": 1, "c_span": 1, "item": "button", "name": "wyr_red_vis", "size": 50, "checkable": True, "tooltip": u"pokaż/ukryj obiekty odrzucone (czerwone)"}
                     ]
         p_komunikacja_widgets = [
                     {"page": 0, "row": 0, "col": 0, "r_span": 1, "c_span": 1, "item": "button", "name": "user", "size": 50, "checkable": True, "tooltip": u"wyświetl obiekty stworzone przez wykonawcę lub należące do całego zespołu"},
@@ -712,10 +712,10 @@ class MoekEditorDockWidget(QDockWidget, FORM_CLASS):  #type: ignore
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_wyr_add_poly"].clicked.connect(lambda: self.mt.init("wyr_add_poly"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_parking"].clicked.connect(lambda: self.mt.init("parking_add"))
         self.side_dock.toolboxes["tb_add_object"].widgets["btn_marsz"].clicked.connect(lambda: self.mt.init("marsz_add"))
-        self.wyr_panel.widgets["txt2_dlug_3"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("dlug_min"))
-        self.wyr_panel.widgets["txt2_dlug_3"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("dlug_max"))
-        self.wyr_panel.widgets["txt2_szer_3"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("szer_min"))
-        self.wyr_panel.widgets["txt2_szer_3"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("szer_max"))
+        self.wyr_panel.widgets["txt2_dlug_1"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("dlug_min"))
+        self.wyr_panel.widgets["txt2_dlug_1"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("dlug_max"))
+        self.wyr_panel.widgets["txt2_szer_1"].valbox_1.r_widget.clicked.connect(lambda: self.mt.init("szer_min"))
+        self.wyr_panel.widgets["txt2_szer_1"].valbox_2.r_widget.clicked.connect(lambda: self.mt.init("szer_max"))
 
     def button_cfg(self, btn, icon_name, size=50, tooltip=""):
         """Konfiguracja przycisków."""

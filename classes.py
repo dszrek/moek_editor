@@ -879,11 +879,11 @@ class WDfDelegate(QStyledItemDelegate):
             elif s_data == 1:
                 color = QColor(180, 0, 180)    # [2] WYROBISKO ARCHIWALNE (purple)
             elif s_data == 2:
-                color = QColor(255, 127, 0)    # [3] KONTROLA TERENOWA (orange)
+                color = QColor(255, 127, 0)    # [3] WYROBISKO KONTROLOWANE (orange)
             elif s_data == 3:
                 color = QColor(103, 163, 244)  # [4] WYROBISKO ZAWIESZONE (blue)
             elif s_data == 4:
-                color = QColor(224, 0, 0)      # [5] WYROBISKO WYKLUCZONE (red)
+                color = QColor(224, 0, 0)      # [5] OBIEKT ODRZUCONY (red)
             elif s_data == 5:
                 color = QColor(40, 140, 40)    # [6] WYROBISKO ZATWIERDZONE (green)
             else:

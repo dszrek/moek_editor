@@ -16,7 +16,7 @@ from .viewnet import vn_set_gvars, stage_refresh
 # Stałe globalne:
 SQL_1 = " WHERE user_id = "
 PLUGIN_VER = "0.6.2"
-USER = "kbro"
+USER = ""
 
 # Zmienne globalne:
 dlg = None
@@ -308,26 +308,28 @@ def wyr_layer_update(check=True):
     if check:
         wyr_powiaty_check()
         wyr_dane_check()
+
     dlg.obj.wyr_ids = get_wyr_ids()
     if dlg.wyr_panel.pow_all:
         dlg.obj.order_ids = []
     else:
         dlg.wyr_panel.status_indicator.order_check()
         dlg.obj.order_ids = get_order_ids()
+
     wdf_update()
     with CfgPars() as cfg:
         params = cfg.uri()
     if dlg.obj.wyr_ids:
-        # Bazowe zapytania SELECT wybierające niezbędne pola statusowe:
-        table_all = f'(SELECT row_number() OVER (ORDER BY d.wyr_id) AS row_num, d.wyr_id, w.status_id, w.b_new, w.b_ctrl, w.teren_id, w.wn_id, w.midas_id, w.user_id, d.t_wyr_od AS wyr_od, d.t_wyr_do AS wyr_do, d.t_zloze_od AS zloze_od, d.t_zloze_do AS zloze_do, w.t_notatki AS notatki, d.i_area_m2 AS pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d USING(wyr_id) WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'
-        table = f'''(SELECT row_number() OVER (ORDER BY p.order_id) AS row_num, p.order_id, d.wyr_id, w.status_id, w.b_new, w.b_ctrl, w.teren_id as teren_id, w.wn_id as wn_id, w.midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_prg p ON w.wyr_id = p.wyr_id INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND p.pow_grp = '{dlg.powiat_i}' '''
+        # Bazowe podzapytania SELECT (ZMIANA: wykasowano kolumnę w.b_ctrl z listy select):
+        table_all = f'(SELECT row_number() OVER (ORDER BY d.wyr_id) AS row_num, d.wyr_id, w.status_id, w.b_new, w.teren_id, w.wn_id, w.midas_id, w.user_id, d.t_wyr_od AS wyr_od, d.t_wyr_do AS wyr_do, d.t_zloze_od AS zloze_od, d.t_zloze_do AS zloze_do, w.t_notatki AS notatki, d.i_area_m2 AS pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_dane d USING(wyr_id) WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]})'
+        table = f'''(SELECT row_number() OVER (ORDER BY p.order_id) AS row_num, p.order_id, d.wyr_id, w.status_id, w.b_new, w.teren_id as teren_id, w.wn_id as wn_id, w.midas_id as midas_id, w.user_id, w.t_notatki as notatki, d.i_area_m2 as pow_m2, w.centroid AS point FROM team_{dlg.team_i}.wyrobiska w INNER JOIN team_{dlg.team_i}.wyr_prg p ON w.wyr_id = p.wyr_id INNER JOIN team_{dlg.team_i}.wyr_dane d ON w.wyr_id = d.wyr_id WHERE w.wyr_id IN ({str(dlg.obj.wyr_ids)[1:-1]}) AND p.pow_grp = '{dlg.powiat_i}' '''
         table_status = table_all if dlg.wyr_panel.pow_all else table
-        # Podział zapytań na 6 fizycznych warstw punktowych w QGIS:
+        # Konstruowanie URI dla 6 warstw statusowych (szare, fioletowe, pomarańczowe, niebieskie, czerwone, zielone):
         uri_a1 = f'{params} key="row_num" table="{table_all} AND w.status_id = 1)" (point) sql=' # Szare
         uri_a2 = f'{params} key="row_num" table="{table_status} AND w.status_id = 2)" (point) sql=' # Fioletowe
-        uri_a_pomaranczowe = f'{params} key="row_num" table="{table_status} AND w.status_id = 3)" (point) sql=' # Pomarańczowe (Kontrola)
-        uri_a_niebieskie = f'{params} key="row_num" table="{table_status} AND w.status_id = 4)" (point) sql=' # Niebieskie (Zawieszone)
-        uri_a_czerwone = f'{params} key="row_num" table="{table_status} AND w.status_id = 5)" (point) sql=' # Czerwone (Wykluczone)
+        uri_a_pomaranczowe = f'{params} key="row_num" table="{table_status} AND w.status_id = 3)" (point) sql=' # Pomarańczowe
+        uri_a_niebieskie = f'{params} key="row_num" table="{table_status} AND w.status_id = 4)" (point) sql=' # Niebieskie
+        uri_a_czerwone = f'{params} key="row_num" table="{table_status} AND w.status_id = 5)" (point) sql=' # Czerwone
         uri_a3 = f'{params} key="row_num" table="{table_status} AND w.status_id = 6)" (point) sql=' # Zielone
         uri_a4 = params + 'table="team_' + str(dlg.team_i) + '"."wyrobiska" (centroid) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
         uri_b = params + 'table="team_' + str(dlg.team_i) + '"."wyr_geom" (geom) sql=wyr_id IN (' + str(dlg.obj.wyr_ids)[1:-1] + ')'
@@ -359,7 +361,6 @@ def wyr_layer_update(check=True):
         except IndexError:
             # Bezpiecznik na wypadek, gdyby warstwy robocze nie były jeszcze zdefiniowane w legendzie QGIS
             print(f"Brak warstwy w projekcie QGIS: {l_tuple[0]}")
-
     dlg.wyr_visibility()
     QgsApplication.restoreOverrideCursor()
 

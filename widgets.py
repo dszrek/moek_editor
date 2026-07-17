@@ -836,7 +836,7 @@ class WyrCanvasPanel(QFrame):
             {'type': 'combo', 'name': 'decyzje', 'value': _dict[63], 'pages': [0, 1]},
             {'type': 'combo', 'name': 'map_source', 'value': _dict[59], 'pages': [0, 1]},
             {'type': 'text_box', 'name': 'dzialania', 'value': _dict[64], 'pages': [0, 1]},
-            {'type': 'combo', 'name': 'stan_analiza', 'value': _dict[67], 'pages': [0, 1, 2]}
+            {'type': 'combo', 'name': 'stan_analiza', 'value': _dict[66], 'pages': [0, 1, 2]}
         ]
         for param in params:
             if not self.cur_page in param["pages"]:

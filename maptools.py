@@ -3645,7 +3645,10 @@ def wyr_add_poly(geom, wyr_id=None):
     feature = QgsFeature()
     feature.setFields(fields)
     feature.setGeometry(geom)
+    # 1. Określamy, czy wyrobisko jest zupełnie nowe, czy to obiekt archiwalny:
+    is_new_wyr = False
     if not wyr_id:
+        is_new_wyr = True
         wyr_id = wyr_point_add(geom.centroid())
         if not wyr_id:
             return

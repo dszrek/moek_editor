@@ -15,10 +15,11 @@ from threading import Thread
 from PIL import Image, ImageQt, ImageEnhance
 from win32com import client
 from docxtpl import DocxTemplate
-from qgis.core import QgsApplication, QgsVectorLayer, QgsGeometry, QgsFeature, QgsField, QgsVectorFileWriter, QgsWkbTypes, QgsPointXY, QgsRectangle, QgsMapSettings, QgsMapRendererCustomPainterJob, edit
+from qgis.core import QgsSettings, QgsVectorLayer, QgsGeometry, QgsFeature, QgsField, QgsVectorFileWriter, QgsWkbTypes, QgsPointXY, QgsRectangle, QgsMapSettings, QgsMapRendererCustomPainterJob, edit
 from qgis.PyQt.QtWidgets import QFrame, QPushButton, QToolButton, QRadioButton, QButtonGroup, QProgressBar, QHBoxLayout, QVBoxLayout, QGridLayout, QSizePolicy, QSpacerItem, QGraphicsDropShadowEffect, QMessageBox
 from qgis.PyQt.QtCore import Qt, QVariant, QSize, QRectF, QPointF
 from qgis.PyQt.QtGui import QIcon, QColor, QImage, QPainter, QPen, QFont, QPainterPath, QPolygonF
+from qgis.utils import iface
 
 from .main import db_attr_change, file_dialog
 from .widgets import CanvasPanelTitleBar, CanvasStackedBox, MoekCheckBox, MoekVBox, CanvasHSubPanel, ParamBox, MoekButton, PanelLabel, ParamTextBox, CanvasCheckBox, MoekDummy
@@ -84,6 +85,8 @@ class ExportCanvasPanel(QFrame):
         self.sb.addWidget(self.page_0)
         self.page_1 = MoekVBox(self)
         self.sb.addWidget(self.page_1)
+        self.page_2 = MoekVBox(self)
+        self.sb.addWidget(self.page_2)
 
         self.fchk_box = CanvasHSubPanel(self, height=445, margins=[5, 5, 5, 5], alpha=0.71, disable_color="40, 40, 40", disable_void=False)
         self.page_0.lay.addWidget(self.fchk_box)
@@ -179,7 +182,36 @@ class ExportCanvasPanel(QFrame):
         self.photo_options_box.lay.addWidget(self.photo_options)
         separator_6 = CanvasHSubPanel(self, height=1, alpha=0.0)
         self.content_box.lay.addWidget(separator_6)
-
+        self.qf_box = MoekVBoxGreyed(self)
+        self.qf_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.page_2.lay.addWidget(self.qf_box)
+        self.qf_chkbox = CanvasCheckBoxPanel(title="Eksportuj bazę wyrobisk do programu QField (PNE.gpkg)", validator="dlg.export_panel.qf_validator()")
+        self.qf_box.lay.addWidget(self.qf_chkbox)
+        self.qf_path_box = CanvasHSubPanel(self, height=44, margins=[5, 0, 5, 10], spacing=5, alpha=0.71, disable_color="40, 40, 40", disable_void=False)
+        self.qf_box.lay.addWidget(self.qf_path_box)
+        self.qf_pb = ParamBox(self, width=445, title_down="SZABLON PUSTEJ BAZY PNE.GPKG")
+        self.qf_path_box.lay.addWidget(self.qf_pb)
+        self.qf_btn = MoekButton(self, name="export_path", size=34, checkable=False, tooltip="wskaż plik pustego szablonu PNE.gpkg na dysku")
+        self.qf_btn.clicked.connect(self.set_qfield_template_path)
+        self.qf_path_box.lay.addWidget(self.qf_btn)
+        self.qf_spatial_box = CanvasHSubPanel(self, height=33, margins=[5, 0, 5, 0], spacing=5, alpha=0.71, disable_color="40, 40, 40", disable_void=False)
+        self.qf_box.lay.addWidget(self.qf_spatial_box)
+        self.qf_spatial_options = CanvasRadioPanel(self, title="Zakres przestrzenny:", options=[
+            {"id": 0, "name": "pow", "text": "Wybrany powiat", "checked": True},
+            {"id": 1, "name": "team", "text": "Cały zespół"}
+        ])
+        self.qf_spatial_box.lay.addWidget(self.qf_spatial_options)
+        self.qf_status_box = CanvasHSubPanel(self, height=33, margins=[5, 0, 5, 0], spacing=5, alpha=0.71, disable_color="40, 40, 40", disable_void=False)
+        self.qf_box.lay.addWidget(self.qf_status_box)
+        self.qf_status_options = CanvasRadioPanel(self, title="Eksportuj wyrobiska:", options=[
+            {"id": 0, "name": "ctrl", "text": "Tylko kontrolowane (Pomarańczowe)", "checked": True},
+            {"id": 1, "name": "all", "text": "Wszystkie"}
+        ])
+        self.qf_status_box.lay.addWidget(self.qf_status_options)
+        self.qf_dummy = MoekDummy(self, width=1, height=1, spacer="vertical")
+        self.qf_box.lay.addWidget(self.qf_dummy)
+        separator_6 = CanvasHSubPanel(self, height=1, alpha=0.0)
+        self.content_box.lay.addWidget(separator_6)
         self.export_box = CanvasHSubPanel(self, height=44, margins=[5, 5, 5, 5], spacing=5, alpha=0.91, disable_color="40, 40, 40", disable_void=False)
         self.box.lay.addWidget(self.export_box)
         self.pp_bar = ExportProgressBar(self)
@@ -187,9 +219,7 @@ class ExportCanvasPanel(QFrame):
         self.export_data_btn = MoekButton(self, name="export", size=34, checkable=True, enabled=False, tooltip="rozpocznij eksport danych dla powiatu")
         self.export_data_btn.clicked.connect(self.data_export)
         self.export_box.lay.addWidget(self.export_data_btn)
-
         self.tab_box.cur_idx = 0
-
         self.pow_bbox = None
         self.pow_all = None
         self.init_void = True
@@ -263,6 +293,13 @@ class ExportCanvasPanel(QFrame):
                 self.export_data_btn.setEnabled(True) if self.fchk_selector.chk_cnt > 0 else self.export_data_btn.setEnabled(False)
         elif self.tab_box.cur_idx == 1:
             self.export_data_btn.setEnabled(False) if self.red_warning else self.export_data_btn.setEnabled(True)
+        elif self.tab_box.cur_idx == 2:
+            # Przycisk staje się aktywny, gdy ścieżka eksportu jest wybrana,
+            # szablon PNE.gpkg jest poprawny (brak ostrzeżenia o błędzie) i checkbox jest zaznaczony:
+            if not self.path_void and self.qf_chkbox.chkbox.isChecked() and self.qf_chkbox.warning.case == 0:
+                self.export_data_btn.setEnabled(True)
+            else:
+                self.export_data_btn.setEnabled(False)
 
     def init_chkboxs(self):
         """Włączenie wszystkich elementów eksportu dla powiatu (przy uruchamianiu export_panel)."""
@@ -270,6 +307,8 @@ class ExportCanvasPanel(QFrame):
         if self.pp_bar.active:  # Schowanie progressbar'u, jeśli go widać
             self.pp_bar.active = False
         self.path_check(self.path_from_db("t_export_path"), True)
+        # ZABEZPIECZENIE: Wymuszamy aktualizację i synchronizację widoku powiatów/zespołu:
+        self.pow_update()
         self.export_btn_enabler()
         if self.tab_box.cur_idx == 1:
             self.path_check(self.path_from_db("t_photo_path"), False)
@@ -279,6 +318,16 @@ class ExportCanvasPanel(QFrame):
             self.card_chkbox.checkbox_update()
             self.photo_chkbox.checkbox_update()
             self.check_red_warning()
+        # Obsługa zakładki QField:
+        elif self.tab_box.cur_idx == 2:
+            saved_qf_path = QgsSettings().value("/moek_editor/qfield_template_path", None)
+            if saved_qf_path and os.path.isfile(saved_qf_path):
+                self.qfield_template_path = saved_qf_path
+                self.qf_pb.value_change("value", saved_qf_path)
+            else:
+                self.qfield_template_path = None
+                self.qf_pb.value_change("value", "")
+            self.qf_chkbox.checkbox_update()
         self.pow_case_void = False
 
     def stacked_change(self):
@@ -286,6 +335,8 @@ class ExportCanvasPanel(QFrame):
         if self.tab_box.cur_idx == 0:
             self.export_btn_enabler()
         elif self.tab_box.cur_idx == 1:
+            self.init_chkboxs()
+        elif self.tab_box.cur_idx == 2:
             self.init_chkboxs()
 
     def resize_panel(self):
@@ -298,6 +349,33 @@ class ExportCanvasPanel(QFrame):
         if self.exporting:
             self.export_ending()
         dlg.export_panel.hide()
+
+    def set_qfield_template_path(self):
+        """Wybór pliku pustego szablonu PNE.gpkg na dysku i zapisanie ścieżki w ustawieniach lokalnych QGIS."""
+        path = file_dialog(fmt="gpkg", for_open=True)
+        if not path:
+            return
+        self.qfield_template_path = path
+        self.qf_pb.value_change("value", path)
+        # Zapisanie ścieżki lokalnie dla użytkownika w rejestrze QGIS:
+        QgsSettings().setValue("/moek_editor/qfield_template_path", path)
+        self.qf_validator()
+
+    def qf_validator(self):
+        """Ocenia poprawność konfiguracji eksportu do QField."""
+        if not hasattr(self, "qfield_template_path") or not self.qfield_template_path:
+            self.qf_chkbox.warning.set_tooltip("wskaż plik szablonu PNE.gpkg")
+            self.qf_chkbox.warning.case = 2
+            self.export_btn_enabler()
+            return
+        if not os.path.isfile(self.qfield_template_path):
+            self.qf_chkbox.warning.set_tooltip("wybrany plik szablonu nie istnieje")
+            self.qf_chkbox.warning.case = 2
+            self.export_btn_enabler()
+            return
+        self.qf_chkbox.warning.case = 0
+        self.qf_chkbox.warning.set_tooltip(None)
+        self.export_btn_enabler()
 
     def path_from_db(self, column):
         """Zwraca ścieżkę do danego elementu z db."""
@@ -604,13 +682,26 @@ class ExportCanvasPanel(QFrame):
         self.pow_all = None
 
     def pow_update(self):
-        """Aktualizuje wygląd panelu w zależności od ustalonego trybu powiatu."""
+        """Aktualizuje wygląd panelu w zależności od ustalonego trybu powiatu (Zabezpieczenie przed pętlą zakładek)."""
         if dlg.wyr_panel.pow_all:
-            self.tab_box.cur_idx = 0
+            # 1. TRYB: WSZYSTKIE POWIATY (CAŁY ZESPÓŁ)
+            # Cofamy do zakładki 0 TYLKO wtedy, gdy użytkownik stał na ukrywanej zakładce indeksu 1 (Opracowanie końcowe):
+            if self.tab_box.cur_idx == 1:
+                self.tab_box.cur_idx = 0
             self.tab_box.widgets["btn_1"].setVisible(False)
+            self.pow_header_label.setText("Eksport danych dla całego zespołu:")
+            # Ukrywamy cały pasek wyboru zakresu przestrzennego i wymuszamy opcję całego zespołu:
+            self.qf_spatial_box.set_visible(False)
+            self.qf_spatial_box.setVisible(False)
+            self.qf_spatial_options.radios["team"].setChecked(True)
         else:
+            # 2. TRYB: POJEDYNCZY POWIAT
             self.tab_box.widgets["btn_1"].setVisible(True)
             self.pow_header_label.setText(f"Eksport danych – powiat {dlg.powiat_t} [{dlg.powiat_i}]:")
+            # Pokazujemy pasek wyboru zakresu i domyślnie zaznaczamy wybrany powiat:
+            self.qf_spatial_box.set_visible(True)
+            self.qf_spatial_box.setVisible(True)
+            self.qf_spatial_options.radios["pow"].setChecked(True)
             self.mdb_chkbox.chkbox.setText(f"Baza danych ({dlg.powiat_t}_wyrobiska zarejestrowane.kml)")
             self.mdb_options.chkbox.setText(f"{dlg.powiat_t}_punkty odrzucone.kml")
             self.zal1_5.setText(f"20{dlg.team_t[-2:]} r.")
@@ -719,9 +810,28 @@ class ExportCanvasPanel(QFrame):
         self.pow_all = geom if geom.isGeosValid() else None
 
     def data_export(self):
-        """Puszczenie odpowiedniej funkcji w zależności od aktualnie aktywnej zakładki."""
+        """Puszczenie odpowiedniej funkcji w zależności od aktualnej zakładki (Zabezpieczenie przed nadpisywaniem KML/GPKG)."""
         self._print("[data_export]")
         if self.export_data_btn.isChecked():
+            # ZABEZPIECZENIE: Sprawdzanie nadpisywania pliku QField (gpkg) w wątku głównym przed startem wątku:
+            if self.tab_box.cur_idx == 2:
+                if dlg.wyr_panel.pow_all:
+                    dest_gpkg_folder = f"{os.path.normpath(self.export_path)}{os.path.sep}{dlg.team_t}"
+                else:
+                    if self.qf_spatial_options.radios["pow"].isChecked():
+                        dest_gpkg_folder = f"{os.path.normpath(self.export_path)}{os.path.sep}{dlg.powiat_t}"
+                    else:
+                        dest_gpkg_folder = f"{os.path.normpath(self.export_path)}{os.path.sep}{dlg.team_t}"
+                dest_gpkg_path = f"{dest_gpkg_folder}{os.path.sep}PNE.gpkg"
+                # Jeśli plik PNE.gpkg już istnieje w tym folderze, pytamy o zgodę:
+                if os.path.isfile(dest_gpkg_path):
+                    m_text = f"Plik PNE.gpkg już istnieje w folderze docelowym: {os.path.basename(dest_gpkg_folder)}.\nCzy na pewno chcesz go nadpisać? (Dotychczasowa zawartość pliku zostanie zastąpiona nowymi wyrobiskami)."
+                    reply = QMessageBox.question(iface.mainWindow(), "MOEK_Editor - Nadpisywanie pliku", m_text, QMessageBox.Yes, QMessageBox.No)
+                    if reply == QMessageBox.No:
+                        # Anulujemy procedurę eksportu, wyciskamy przycisk i wychodzimy:
+                        self.export_data_btn.setChecked(False)
+                        return
+            # Jeśli wyrazono zgodę (lub plik nie istnieje), odpalamy eksport w tle:
             self.export_data_btn.set_tooltip("przerwij eksport danych")
             self.exporting = True
             self.create_export_queue()
@@ -730,8 +840,11 @@ class ExportCanvasPanel(QFrame):
                 t.start()
             elif self.tab_box.cur_idx == 1:
                 self.powdata_export()
+            elif self.tab_box.cur_idx == 2:
+                t = Thread(target=self.qfield_export)
+                t.start()
         else:
-            # self._databtn_tooltip("rozpocznij eksport danych")
+            self._databtn_tooltip("rozpocznij eksport danych")
             self.exporting = False
 
     def fieldcheck_export(self):
@@ -755,7 +868,6 @@ class ExportCanvasPanel(QFrame):
             {'lyr_name' : 'midas_wybilansowane', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_wybilansowane', 'tbl_sql' : '"external"."midas_wybilansowane"', 'key' : 'id1', 'n_field' : 'id', 'd_field' : 'nazwa'},
             {'lyr_name' : 'midas_obszary', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_obszary', 'tbl_sql' : '"external"."midas_obszary"', 'key' : 'id', 'n_field' : 'id_zloz', 'd_field' : 'nazwa'},
             {'lyr_name' : 'midas_tereny', 'spatial_filter': 'pow_all', 'tbl_name' : 'external.midas_tereny', 'tbl_sql' : '"external"."midas_tereny"', 'key' : 'id1', 'n_field' : 'id_zloz', 'd_field' : 'nazwa'},
-            {'lyr_name' : 'wn_pne', 'spatial_filter': 'id_all', 'tbl_name' : f'team_{dlg.team_i}.wn_pne', 'tbl_sql' : f'"external"."wn_pne"', 'key' : 'id_arkusz', 'n_field' : 'id_arkusz', 'd_field' : 'uwagi'},
             {'lyr_name' : 'parking', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."parking" (geom) sql=', 'n_field' : 'id', 'd_field' : 'description', 'fields' : [0, 3]},
             {'lyr_name' : 'marsz', 'spatial_filter': None, 'uri' : '{PARAMS} table="team_{dlg.team_i}"."marsz" (geom) sql=', 'n_field' : 'id', 'd_field' : 'i_status', 'fields' : [0, 2, 3]}
         ]
@@ -825,15 +937,21 @@ class ExportCanvasPanel(QFrame):
         if self.exporting:
             self.export_ending(self.raport_path)
 
-    def export_ending(self, path=None):
-        """Zakończenie eksportu danych dla powiatu."""
+    @run_in_main_thread
+    def export_ending(self, path=None, success_msg=None):
+        """Zakończenie eksportu danych dla powiatu (Wykonywane w 100% w wątku głównym QGIS)."""
         if self.exporting:
             self.exporting = False
-        self._ppbar_enabled(False)
-        self._ppbar_progress(0)
-        self._ppbar_text("")
-        self._databtn_checked(False)
-        self._databtn_tooltip("rozpocznij eksport danych")
+        # Bezpośrednie, bezpieczne resetowanie kontrolek UI:
+        self.pp_bar.bar.setVisible(False)
+        self.pp_bar.bar.setValue(0)
+        self.pp_bar.bar.setFormat("")
+        self.export_data_btn.setChecked(False)
+        self.export_data_btn.set_tooltip("rozpocznij eksport danych")
+        # Bezpieczne wyświetlenie komunikatu o sukcesie w wątku głównym:
+        if success_msg:
+            QMessageBox.information(None, "MOEK_Editor - Eksport QField", success_msg)
+        # Bezpieczne otwarcie Eksploratora Windows w wątku głównym:
         if path:
             self.open_explorer(path)
 
@@ -856,7 +974,6 @@ class ExportCanvasPanel(QFrame):
                 ('midas_wybilansowane', self.fchk_selector.chkboxes["chkbox_midas_wybilansowane"]),
                 ('midas_obszary', self.fchk_selector.chkboxes["chkbox_midas_obszary"]),
                 ('midas_tereny', self.fchk_selector.chkboxes["chkbox_midas_tereny"]),
-                ('midas_wn_pne', self.fchk_selector.chkboxes["chkbox_wn_pne"]),
                 ('parking', self.fchk_selector.chkboxes["chkbox_parking"]),
                 ('marsz', self.fchk_selector.chkboxes["chkbox_marsz"])
                 ]
@@ -867,6 +984,10 @@ class ExportCanvasPanel(QFrame):
                 ('card', self.card_chkbox),
                 ('photo', self.photo_chkbox)
                 ]
+        elif self.tab_box.cur_idx == 2:
+            exp_list = [
+                ('qfield', self.qf_chkbox.chkbox)
+                ]
         for exp in exp_list:
             _bool = exp[1].checked if isinstance(exp[1], CanvasCheckBoxPanel) else exp[1].isChecked()
             if _bool:
@@ -874,6 +995,230 @@ class ExportCanvasPanel(QFrame):
                     self.exp_queue.extend(exp[0])
                 else:
                     self.exp_queue.append(exp[0])
+
+    def qfield_export(self):
+        """Eksport wyrobisk do bazy GeoPackage programu QField na podstawie dynamicznych filtrów."""
+        pythoncom.CoInitialize()
+        if not self.exporting:
+            return
+        try: # Przechwytywanie wszelkich nieprzewidzianych błędów wątku w tle
+            self._ppbar_enabled(True)
+            self._ppbar_progress(10)
+            self._ppbar_text("Inicjalizacja bazy danych QField (GeoPackage)")
+             # 1. Kopiowanie pustego szablonu do folderu eksportu:
+            if dlg.wyr_panel.pow_all:
+                # Tryb całego zespołu: zapisujemy w folderze o nazwie zespołu jako PNE.gpkg
+                dest_gpkg_folder = f"{os.path.normpath(self.export_path)}{os.path.sep}{dlg.team_t}"
+                os.makedirs(dest_gpkg_folder, exist_ok=True)
+                dest_gpkg_path = f"{dest_gpkg_folder}{os.path.sep}PNE.gpkg"
+            else:
+                # Tryb pojedynczego powiatu: sprawdzamy co zaznaczył użytkownik na pasku opcji:
+                if self.qf_spatial_options.radios["pow"].isChecked():
+                    # Dotyczy wybranego powiatu: zapisujemy w folderze o nazwie powiatu jako PNE.gpkg
+                    dest_gpkg_folder = f"{os.path.normpath(self.export_path)}{os.path.sep}{dlg.powiat_t}"
+                    os.makedirs(dest_gpkg_folder, exist_ok=True)
+                    dest_gpkg_path = f"{dest_gpkg_folder}{os.path.sep}PNE.gpkg"
+                else:
+                    # Dotyczy całego zespołu: zapisujemy w folderze o nazwie zespołu jako PNE.gpkg
+                    dest_gpkg_folder = f"{os.path.normpath(self.export_path)}{os.path.sep}{dlg.team_t}"
+                    os.makedirs(dest_gpkg_folder, exist_ok=True)
+                    dest_gpkg_path = f"{dest_gpkg_folder}{os.path.sep}PNE.gpkg"
+            try:
+                shutil.copy2(self.qfield_template_path, dest_gpkg_path)
+            except Exception as err:
+                self._print(f"Błąd kopiowania szablonu: {err}")
+                self.export_ending()
+                return
+            self._ppbar_progress(30)
+            self._ppbar_text("Ładowanie warstw GeoPackage...")
+            # 2. Otwarcie warstw w skopiowanym pliku gpkg za pomocą dostawcy OGR:
+            pne_gpkg_layer = QgsVectorLayer(f"{dest_gpkg_path}|layerName=PNE", "PNE", "ogr")
+            obrys_gpkg_layer = QgsVectorLayer(f"{dest_gpkg_path}|layerName=OBRYS_WYROBISKA", "OBRYS", "ogr")
+            if not pne_gpkg_layer.isValid() or not obrys_gpkg_layer.isValid():
+                raise AttributeError("Nie udało się prawidłowo załadować warstw z pliku szablonu PNE.gpkg.")
+            # 3. DYNAMICZNE BUDOWANIE FILTRÓW WHERE DLA PNE (PUNKTY):
+            where_clauses = []
+            # A. Filtrowanie przestrzenne (Wybrany powiat vs zespół):
+            if self.qf_spatial_options.radios["pow"].isChecked():
+                where_clauses.append(f"p.pow_grp = '{dlg.powiat_i}'")
+            # B. Filtrowanie statusowe (Tylko status 3 vs Wszystkie wyrobiska):
+            if self.qf_status_options.radios["ctrl"].isChecked():
+                where_clauses.append("w.status_id = 3")
+            where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+            sql = f"""
+                SELECT
+                    w.wyr_id, w.moek_id, w.wn_id, d.date_ctrl, p.t_mie_name, d.b_teren, d.b_pne,
+                    CASE WHEN w.midas_id is null THEN false ELSE true END AS czy_zloze, w.midas_id,
+                    d.t_stan_midas, d.b_pne_zloze, d.b_pne_poza, d.t_stan_pne, d.t_zloze_od, d.t_zloze_do,
+                    d.t_wyr_od, d.t_wyr_do, d.t_kopalina, d.t_kopalina_2, d.t_wiek, d.t_wiek_2,
+                    d.n_nadkl_min, d.n_nadkl_max, d.n_miazsz_min, d.n_miazsz_max, d.i_dlug_min, d.i_dlug_max,
+                    d.i_szer_min, d.i_szer_max, d.n_wys_min, d.n_wys_max, d.i_area_m2, d.t_wyrobisko,
+                    d.t_zawodn, d.t_eksploat, d.t_wydobycie, d.t_wyp_odpady, d.t_odpady_1, d.t_odpady_2,
+                    d.t_odpady_3, d.t_odpady_4, d.t_stan_rekul, d.t_rekultyw, d.t_dojazd, d.t_zagrozenia,
+                    d.t_zgloszenie, d.t_powod, w.t_notatki, d.t_autor, d.t_decyzje, d.t_weryf_wyr,
+                    d.t_dzialania, d.time_fchk, w.b_new, ST_AsText(w.centroid) AS wkt_centroid
+                FROM team_{dlg.team_i}.wyrobiska AS w
+                INNER JOIN team_{dlg.team_i}.wyr_dane AS d ON w.wyr_id=d.wyr_id
+                INNER JOIN team_{dlg.team_i}.wyr_prg AS p ON w.wyr_id=p.wyr_id
+                {where_sql}
+                ORDER BY w.wyr_id;
+            """
+            # Pobieramy punkty (osobna krótka sesja połączenia):
+            rows = PgConn().query_sel(sql, True)
+            if not rows:
+                self._print("Brak wyrobisk spełniających wybrane kryteria eksportu.")
+                self.export_ending()
+                return
+            self._ppbar_progress(50)
+            self._ppbar_text("Zapisywanie punktów wyrobisk (PNE)...")
+            # 4. ZAPIS PUNKTÓW (PNE):
+            pne_features = []
+            pne_provider = pne_gpkg_layer.dataProvider()
+            for idx, row in enumerate(rows, 1):
+                if not self.exporting:
+                    self.export_ending()
+                    return
+                feat = QgsFeature(pne_gpkg_layer.fields())
+                # Zastosowanie zasad mapowania i dynamicznego STAN_TEREN:
+                b_new = row[53]
+                stan_teren_val = "Bpne" if not b_new else None
+                attribs = [
+                    idx,                        # 1. fid (Klucz główny)
+                    None,                       # 3. ID (Puste)
+                    row[1],                     # 4. ID_PUNKT (moek_id, nowe będą NULL)
+                    row[2],                     # 5. ID_ARKUSZ (wn_id)
+                    row[3],                     # 6. DATA (date_ctrl)
+                    row[4],                     # 7. MIEJSCE (t_mie_name)
+                    row[5],                     # 8. CZY_TEREN (b_teren)
+                    row[6],                     # 9. CZY_PNE (b_pne)
+                    row[7],                     # 10. CZY_ZLOZE
+                    row[8],                     # 11. ID_MIDAS
+                    row[9],                     # 12. STAN_MIDAS
+                    row[10],                    # 13. PNE_ZLOZE
+                    row[11],                    # 14. PNE_POZA
+                    row[12],                    # 15. STAN_PNE
+                    row[13],                    # 16. ZLOZE_OD
+                    row[14],                    # 17. ZLOZE_DO
+                    row[15],                    # 18. PNE_OD
+                    row[16],                    # 19. PNE_DO
+                    row[17],                    # 20. KOPALINA
+                    row[18],                    # 21. KOPALINA_2
+                    row[19],                    # 22. WIEK
+                    row[20],                    # 23. WIEK_2
+                    row[21],                    # 24. NADKL_MIN
+                    row[22],                    # 25. NADKL_MAX
+                    row[23],                    # 26. MIAZSZ_MIN
+                    row[24],                    # 27. MIAZSZ_MAX
+                    row[25],                    # 28. DLUG_MIN
+                    row[26],                    # 29. DLUG_MAX
+                    row[27],                    # 30. SZER_MIN
+                    row[28],                    # 31. SZER_MAX
+                    row[29],                    # 32. WYS_MIN
+                    row[30],                    # 33. WYS_MAX
+                    row[31],                    # 34. POW_M2
+                    row[32],                    # 35. WYROBISKO
+                    row[33],                    # 36. ZAWODN
+                    row[34],                    # 37. EXPLOAT
+                    row[35],                    # 38. WYDOBYCIE
+                    row[36],                    # 39. WYP_ODPADY
+                    row[37],                    # 40. ODPADY_1
+                    row[38],                    # 41. ODPADY_2
+                    row[39],                    # 42. ODPADY_3
+                    row[40],                    # 43. ODPADY_4
+                    row[41],                    # 44. STAN_REKUL
+                    row[42],                    # 45. REKULTYW
+                    row[43],                    # 46. DOJAZD
+                    row[44],                    # 47. ZAGROZENIA
+                    row[45],                    # 48. ZGLOSZENIE
+                    row[46],                    # 49. POWOD
+                    None,                       # 50. ZMIANA: UWAGI jako puste (None)
+                    row[48],                    # 51. AUTOR
+                    row[49],                    # 52. DECYZJE
+                    row[50],                    # 53. WERYFIK
+                    row[51],                    # 54. DZIALANIA
+                    None,                       # 55. Geometry_gdo
+                    None,                       # 56. FOTO
+                    None,                       # 57. SZKIC
+                    row[0],                     # 58. NR_TEREN
+                    stan_teren_val,             # 59. STAN_TEREN
+                    None,                       # 60. STAN_POWOD
+                    row[52],                    # 61. GODZINA (time_fchk)
+                    row[47],                    # 62. ZMIANA: NOTATKI pobierają wartość row[47] (w.t_notatki)
+                    row[0]                      # 63. WYR_ID (wyr_id)
+                ]
+                feat.setAttributes(attribs)
+                wkt_centroid = row[54]
+                qgs_geom = QgsGeometry.fromWkt(wkt_centroid)
+                qgs_geom.convertToMultiType()  # QField wymaga MULTIPOINT
+                feat.setGeometry(qgs_geom)
+                pne_features.append(feat)
+            # Seryjny zapis punktów:
+            with edit(pne_gpkg_layer):
+                pne_provider.addFeatures(pne_features)
+            self._ppbar_progress(80)
+            self._ppbar_text("Zapisywanie poligonów (OBRYS_WYROBISKA)...")
+            # 5. DYNAMICZNE BUDOWANIE FILTRÓW WHERE DLA OBRYS_WYROBISKA (POLIGONY):
+            where_clauses_geom = []
+            if self.qf_spatial_options.radios["pow"].isChecked():
+                where_clauses_geom.append(f"p.pow_grp = '{dlg.powiat_i}'")
+            if self.qf_status_options.radios["ctrl"].isChecked():
+                where_clauses_geom.append("w.status_id = 3")
+            where_sql_geom = f"WHERE {' AND '.join(where_clauses_geom)}" if where_clauses_geom else ""
+            sql_geom = f"""
+                SELECT
+                    g.wyr_id AS wyr_id,                       -- indeks 0
+                    w.moek_id AS id_punkt,                    -- indeks 1
+                    d.date_ctrl,                              -- indeks 2
+                    ROUND(ST_Area(g.geom))::int4 AS pow_m2,   -- indeks 3
+                    w.wyr_id AS nr_teren,                     -- indeks 4
+                    w.t_notatki AS t_notatki,                 -- indeks 5
+                    ST_AsText(g.geom) AS wkt_geom             -- indeks 6
+                FROM team_{dlg.team_i}.wyr_geom g
+                INNER JOIN team_{dlg.team_i}.wyrobiska w USING(wyr_id)
+                INNER JOIN team_{dlg.team_i}.wyr_dane d USING(wyr_id)
+                INNER JOIN team_{dlg.team_i}.wyr_prg p USING(wyr_id)
+                {where_sql_geom};
+            """
+            # Pobieramy poligony:
+            geom_rows = PgConn().query_sel(sql_geom, True)
+            if geom_rows:
+                obrys_features = []
+                obrys_provider = obrys_gpkg_layer.dataProvider()
+                for g_idx, g_row in enumerate(geom_rows, 1):
+                    if not self.exporting:
+                        self.export_ending()
+                        return
+                    feat = QgsFeature(obrys_gpkg_layer.fields())
+                    g_attribs = [
+                        g_idx,                  # 1. fid (Klucz główny)
+                        g_row[1],               # 3. ID_PUNKT (moek_id - dla nowych będzie NULL)
+                        g_row[2],               # 4. DATA
+                        g_row[3],               # 5. POW_M2 (Rzeczywista powierzchnia poligonu z PostGIS!)
+                        g_row[4],               # 6. NR_TEREN (wyr_id z wyrobisk)
+                        g_row[5]                # 7. NOTATKA (t_notatki z bazy wyrobisk)
+                    ]
+                    feat.setAttributes(g_attribs)
+                    wkt_geom = g_row[6] # Geometria WKT jest teraz prawidłowo na 6. pozycji indeksu
+                    qgs_poly_geom = QgsGeometry.fromWkt(wkt_geom)
+                    feat.setGeometry(qgs_poly_geom)
+                    obrys_features.append(feat)
+                # Seryjny zapis poligonów:
+                with edit(obrys_gpkg_layer):
+                    obrys_provider.addFeatures(obrys_features)
+            self._ppbar_progress(100)
+            self._ppbar_text("Zakończono generowanie bazy QField!")
+            pne_gpkg_layer = None
+            obrys_gpkg_layer = None
+            # Wywołujemy bezpieczne zakończenie w wątku głównym z oknem sukcesu:
+            success_text = f"Eksport bazy danych QField (PNE.gpkg) dla obszaru '{dlg.powiat_t}' zakończył się pomyślnie!" if not dlg.wyr_panel.pow_all else "Eksport bazy danych QField (PNE.gpkg) dla całego zespołu zakończył się pomyślnie!"
+            self.export_ending(dest_gpkg_folder, success_text)
+        except Exception as error:
+            import traceback
+            self._print(f"CRITICAL ERROR in qfield_export thread: {error}")
+            self._print(traceback.format_exc())
+            # Okienko z błędem dla użytkownika:
+            self.show_error_message(f"Wystąpił błąd krytyczny podczas generowania bazy QField.\nBłąd: {error}")
+            self.export_ending()
 
     def photo_export(self):
         """Eksport zdjęć wyrobisk potwierdzonych z danego powiatu, połączony z nadaniem im odpowiednich nazw."""
@@ -1689,6 +2034,11 @@ class ExportCanvasPanel(QFrame):
             else:
                 return None
 
+    @run_in_main_thread
+    def show_error_message(self, text):
+        """Bezpieczne wyświetlenie komunikatu o błędzie z poziomu wątku w tle."""
+        QMessageBox.critical(None, "MOEK_Editor - Eksport QField", text)
+
 
 class ExportTabBox(QFrame):
     """Widget wyświetlający przyciski do przełączania subpage'y w export_panel."""
@@ -1704,7 +2054,8 @@ class ExportTabBox(QFrame):
         self.widgets = {}
         self.btns = [
             {"index": 0, "title": "   Kontrola terenowa   ", "active": True},
-            {"index": 1, "title": "   Opracowanie końcowe   ", "active": True}
+            {"index": 1, "title": "   Opracowanie końcowe   ", "active": False},
+            {"index": 2, "title": "   Eksport QField   ", "active": True}
             ]
         for btn in self.btns:
             _btn = ExportTabButton(self, index=btn["index"], title=btn["title"], active=btn["active"])
@@ -1845,9 +2196,8 @@ class FchkExportSelector(QFrame):
             {'row' : 5, 'name' : 'midas_wybilansowane', 'txt' : 'Złoża wybilansowane (midas_wybilansowane)', 'lyr' : ['midas_wybilansowane']},
             {'row' : 6, 'name' : 'midas_obszary', 'txt' : 'Obszary górnicze (midas_obszary)', 'lyr' : ['midas_obszary']},
             {'row' : 7, 'name' : 'midas_tereny', 'txt' : 'Tereny górnicze (midas_tereny)', 'lyr' : ['midas_tereny']},
-            {'row' : 8, 'name' : 'wn_pne', 'txt' : 'PNE z WN Kopaliny (wn_pne)', 'lyr' : ['wn_pne']},
-            {'row' : 9, 'name' : 'parking', 'txt' : 'Miejsca parkingowe (parking)', 'lyr' : ['parking']},
-            {'row' : 10, 'name' : 'marsz', 'txt' : 'Marszruty (marsz)', 'lyr' : ['marsz']}
+            {'row' : 8, 'name' : 'parking', 'txt' : 'Miejsca parkingowe (parking)', 'lyr' : ['parking']},
+            {'row' : 9, 'name' : 'marsz', 'txt' : 'Marszruty (marsz)', 'lyr' : ['marsz']}
             ]
         for itm in itms:
             _itm = CanvasCheckBox(self, name=itm["txt"], checked=True)
@@ -1856,7 +2206,7 @@ class FchkExportSelector(QFrame):
             itm_name = f'chkbox_{itm["name"]}'
             self.chkboxes[itm_name] = _itm
         self.init_void = True
-        self.chk_cnt = 10
+        self.chk_cnt = 9
         self.init_void = False
 
     def __setattr__(self, attr, val):
@@ -2476,3 +2826,77 @@ class ExportProgressBar(QFrame):
     def set_text(self, val):
         """Ustawia wartość progress."""
         self.text = val
+
+
+class CanvasRadioPanel(QFrame):
+    """Uniwersalny, ostylowany panel grupujący przyciski Radio."""
+    def __init__(self, *args, title="", options=[]):
+        super().__init__(*args)
+        self.setObjectName("main")
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.label = PanelLabel(self, text=title, color="170, 170, 170", size=9)
+        self.hlay = QHBoxLayout()
+        self.hlay.setContentsMargins(0, 0, 0, 5)
+        self.hlay.setSpacing(0)
+        spacer_1 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.hlay.addItem(spacer_1)
+        self.hlay.addWidget(self.label)
+        spacer_2 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.hlay.addItem(spacer_2)
+        self.group = QButtonGroup()
+        self.group.setExclusive(True)
+        self.radios = {}
+        # Dynamiczne generowanie przycisków na podstawie przekazanej listy opcji:
+        for idx, opt in enumerate(options):
+            _radio = QRadioButton(text=opt["text"], parent=self)
+            self.hlay.addWidget(_radio)
+            self.group.addButton(_radio, opt["id"])
+            self.radios[opt["name"]] = _radio
+            if "checked" in opt and opt["checked"]:
+                _radio.setChecked(True)
+        spacer_3 = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.hlay.addItem(spacer_3)
+        self.setLayout(self.hlay)
+        # Jednolity, wspólny dla wtyczki arkusz stylów QRadioButton:
+        self.setStyleSheet("""
+            QFrame#main {background-color: transparent; border: none}
+            QRadioButton {
+                color: rgb(170, 170, 170);
+                font-size: 8pt;
+                spacing: 4px;
+            }
+            QRadioButton:disabled {
+                color: rgba(170, 170, 170, 0.4);
+            }
+            QRadioButton::indicator {
+                width: 25px;
+                height: 25px;
+            }
+            QRadioButton::indicator:unchecked {
+                image: url('""" + ICON_PATH.replace("\\", "/") + """cp_radio_0.png');
+            }
+            QRadioButton::indicator:unchecked:hover {
+                image: url('""" + ICON_PATH.replace("\\", "/") + """cp_radio_0_act.png');
+            }
+            QRadioButton::indicator:checked {
+                image: url('""" + ICON_PATH.replace("\\", "/") + """cp_radio_1.png');
+            }
+            QRadioButton::indicator:checked:hover {
+                image: url('""" + ICON_PATH.replace("\\", "/") + """cp_radio_1_act.png');
+            }
+            QRadioButton::indicator:disabled {
+                image: url('""" + ICON_PATH.replace("\\", "/") + """cp_radio_dis.png');
+            }
+        """)
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementów panelu."""
+        self.setEnabled(_bool)
+        widgets = (self.hlay.itemAt(i).widget() for i in range(self.hlay.count()))
+        for widget in widgets:
+            if not widget:
+                continue
+            if isinstance(widget, QRadioButton):
+                widget.setEnabled(_bool)
+            else:
+                widget.set_enabled(_bool)

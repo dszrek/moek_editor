@@ -472,7 +472,7 @@ class WyrCanvasPanel(QFrame):
         super().__init__(*args)
         self.setObjectName("main")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(516, 742)
+        self.setFixedSize(516, 770)
         self.setCursor(Qt.ArrowCursor)
         self.setMouseTracking(True)
         shadow_1 = QGraphicsDropShadowEffect(blurRadius=16, color=QColor(0, 0, 0, 220), xOffset=0, yOffset=0)
@@ -481,7 +481,7 @@ class WyrCanvasPanel(QFrame):
         self.trigger_void = True
         self.sl_stan_analiza_cache = None
         # Wysokości poszczególnych stron:
-        self.p_heights = [635, 604, 635]
+        self.p_heights = [665, 635, 665]
         self.mt_enabled = False
         self.bar = CanvasPanelTitleBar(self, title="Wyrobiska", width=self.width())
         self.list_box = MoekVBox(self, spacing=0)
@@ -590,7 +590,7 @@ class WyrCanvasPanel(QFrame):
         self.ssb.setFixedWidth(408)
         self.pages["page_1"].glay.glay.addWidget(self.ssb, 1, 0, 1, 1)
         for s in range(6):
-            _subpage = CanvasGridBox(self, height=600, margins=[0, 6, 0, 0], spacing=0)
+            _subpage = CanvasGridBox(self, height=630, margins=[0, 6, 0, 0], spacing=0)
             subpage_id = f'subpage_{s}'
             self.subpages[subpage_id] = _subpage
             self.ssb.addWidget(_subpage)
@@ -866,6 +866,7 @@ class WyrCanvasPanel(QFrame):
                 exec(f'self.widgets["os_1"].set_values({param["values"]})')
         if self.trigger_void:
             self.trigger_void = False
+        self.stan_rekul_populate()  # Po wczytaniu danych wyrobiska, odpalamy dynamiczne sprawdzanie stanu rekultywacji
         self.trigger_stan_analiza()  # Wywołanie funkcji sterującej blokowaniem przycisków (Niebieski/Pomarańczowy) na podstawie słownika stan_analiza
 
     def param_parser(self, val, quote=False):
@@ -881,12 +882,12 @@ class WyrCanvasPanel(QFrame):
         if not dlg.obj.wyr or not dlg.obj.wyr_data:
             return
         b_new = dlg.obj.wyr_data[1]  # Czy wyrobisko jest nowe (b_new)
-        # 1. Pobranie aktualnie wybranej wartości ze słownika stan_analiza dla bieżącej strony:
+        # 1. Pobranie aktualnie wybranej wartości ze słownika stan_analiza:
         cmb_name = f"cmb_stan_analiza_{self.cur_page}"
         if cmb_name not in self.widgets:
             return
         cmb = self.widgets[cmb_name].valbox_1
-        val = cmb.itemData(cmb.currentIndex()) # Wartość tekstowa (np. 'wys_8', 'duze', 'brak')
+        val = cmb.itemData(cmb.currentIndex())
         # 2. Referencje do przycisków maszyny stanów:
         btn_orange = self.status_selector.itms.get("btn_wyr_orange_status")
         btn_blue = self.status_selector.itms.get("btn_wyr_blue_status")
@@ -904,48 +905,94 @@ class WyrCanvasPanel(QFrame):
                 btn_orange.setEnabled(True)
                 btn_blue.setEnabled(False)
             # Opcje odblokowujące wyłącznie przycisk Niebieski (Zawieszone):
-            elif val in ['male', 'zm_ter', 'ter_zamk']:
+            elif val in ['male', 'ter_zamk', 'brak']:
                 btn_blue.setEnabled(True)
                 btn_orange.setEnabled(False)
-            # Opcja odblokowująca oba przyciski (decyzja ręczna wykonawcy):
-            elif val == 'dodat':
-                btn_orange.setEnabled(True)
-                btn_blue.setEnabled(True)
-        else:      # SCENARIUSZ B: Wyrobiska Historyczne (Fioletowe - Status 2)
-            # Opcje odblokowujące wyłącznie przycisk Pomarańczowy (Kontrola):
-            if val in ['wys_8', 'wys_4-8', 'wys_4', 'zloze', 'duze', 'dodat']:
-                btn_orange.setEnabled(True)
-                btn_blue.setEnabled(False)
-            # Opcje odblokowujące wyłącznie przycisk Niebieski (Zawieszone):
-            elif val in ['stare', 'male', 'konc', 'inw', 'ter_zamk']:
-                btn_blue.setEnabled(True)
-                btn_orange.setEnabled(False)
-            # Opcja odblokowująca oba przyciski (decyzja ręczna wykonawcy):
-            elif val == 'dodat':
-                btn_orange.setEnabled(True)
-                btn_blue.setEnabled(True)
-            # Specjalna reguła oparta o historyczny stan_pne z poprzedniej edycji (indeks 29 w moek_data):
-            elif val == 'brak':
-                t_stan_pne_hist = dlg.obj.moek_data[29] if dlg.obj.moek_data else None
-                if t_stan_pne_hist != 'brak':
-                    # Pierwsza likwidacja -> kierujemy na Pomarańczowy (Kontrolowane)
+        else:      # SCENARIUSZ B: Wyrobiska Archiwalne (Fioletowe - Status 2)
+            # Pobieramy historyczną wartość stan_pne z 1. edycji (moek_data pod indeksem 29):
+            t_stan_pne_hist = dlg.obj.moek_data[29] if dlg.obj.moek_data else None
+            # A. Sprawdzamy opcję 'brak':
+            if val == 'brak':
+                if t_stan_pne_hist != 'brak wyrobiska':
                     btn_orange.setEnabled(True)
                     btn_blue.setEnabled(False)
                 else:
-                    # Utrzymująca się likwidacja -> bezpiecznie zawieszamy (Niebieski)
                     btn_blue.setEnabled(True)
                     btn_orange.setEnabled(False)
+            # B. Sprawdzamy opcję 'konc':
+            elif val == 'konc':
+                # Jeśli w poprzedniej edycji była koncesja LUB wyrobisko było zlikwidowane -> zawieszamy (Niebieski):
+                if t_stan_pne_hist in ['nie dotyczy (koncesja)', 'brak wyrobiska']:
+                    btn_blue.setEnabled(True)
+                    btn_orange.setEnabled(False)
+                else:
+                    # W pozostałych przypadkach (pierwsza koncesja) -> kierujemy na Pomarańczowy:
+                    btn_orange.setEnabled(True)
+                    btn_blue.setEnabled(False)
+            # C. Sprawdzamy opcję 'inw':
+            elif val == 'inw':
+                if t_stan_pne_hist != 'brak wyrobiska':
+                    btn_orange.setEnabled(True)
+                    btn_blue.setEnabled(False)
+                else:
+                    btn_blue.setEnabled(True)
+                    btn_orange.setEnabled(False)
+            # D. Pozostałe opcje:
+            else:
+                # Opcje odblokowujące wyłącznie przycisk Pomarańczowy (Kontrola):
+                if val in ['wys_4', 'wys_pon_4', 'zloze', 'zagroz', 'dodat']:
+                    btn_orange.setEnabled(True)
+                    btn_blue.setEnabled(False)
+                # Opcje odblokowujące wyłącznie przycisk Niebieski (Zawieszone):
+                elif val in ['stare', 'male', 'ter_zamk']:
+                    btn_blue.setEnabled(True)
+                    btn_orange.setEnabled(False)
+            # Jeśli jesteśmy już na Stronie 1 i wykonawca zmieni stan analizy na 'brak', 'konc' lub 'inw':
+        if self.cur_page == 1:
+            pne_map = {
+                'brak': 'brak', # brak wyrobiska (zbieżne)
+                'konc': 'nd',   # 'konc' (analiza) -> 'nd' (stan_pne)
+                'inw': 'nd_i'   # 'inw' (analiza) -> 'nd_i' (stan_pne)
+            }
+            target_pne = pne_map.get(val)
+            if self.cur_page == 1:
+                pne_map = {
+                    'brak': 'brak', # brak wyrobiska (zbieżne)
+                    'konc': 'nd',   # 'konc' -> 'nd' (stan_pne)
+                    'inw': 'nd_i'   # 'inw' -> 'nd_i' (stan_pne)
+                }
+                target_pne = pne_map.get(val)
+                cmb_stan = self.widgets["cmb_stan_1"].valbox_1
+                current_stan = cmb_stan.itemData(cmb_stan.currentIndex())
+                if target_pne:
+                    # Jeśli ogólny stan wyrobiska nie jest jeszcze ustawiony na poprawną opcję:
+                    if current_stan != target_pne:
+                        # Automatycznie przełączamy ComboBox 'Stan wyrobiska' w UI z sygnałem (signal=True):
+                        cmb_stan.set_value(target_pne, signal=True)
+                    # ZABEZPIECZENIE: Blokujemy ComboBox 'Stan wyrobiska' (cmb_stan_1), aby uniemożliwić ręczną zmianę:
+                    self.widgets["cmb_stan_1"].set_enabled(False)
+                else:
+                    # Jeśli wybrano standardową opcję (np. wys_4, stare, male) -> odblokowujemy:
+                    if "cmb_stan_1" in self.widgets:
+                        self.widgets["cmb_stan_1"].set_enabled(True)
+                    # AUTOMATYCZNY UNBLOCK:
+                    # Jeśli poprzedni stan wyrobiska był zablokowany pod likwidację/koncesję (brak, nd, nd_i),
+                    # a teraz wybraliśmy opcję standardową (roboczą) -> automatycznie resetujemy stan wyrobiska do Null:
+                    if current_stan in ['brak', 'nd', 'nd_i']:
+                        # Reset do pustego z sygnałem (signal=True) automatycznie wyzwoli trigger_wyrobisko()
+                        # i w ułamku sekundy odblokuje wszystkie kopaliny, nieprawidłowości i wymiary na Karcie!
+                        cmb_stan.set_value(None, signal=True)
 
     def trigger_wyrobisko(self):
         """Wykonane po zmianie wartości combobox'u 'stan_1'."""
         val = self.widgets[f"cmb_stan_1"].valbox_1.cur_val
-        bool_1 = False if val[1:-1] == "brak" else True
-        bool_2 = False if val[1:-1] == "Z" or val[1:-1] == "brak" or val[1:-1] == "nd" or val == "Null" else True
+        bool_1 = False if val[1:-1] in ["brak", "nd", "nd_i"] else True
+        bool_2 = False if val[1:-1] in ["Z", "brak", "nd", "nd_i"] or val == "Null" else True
         # Wyświetlenie powierzchni wyrobiska:
         area_txt = f"{dlg.obj.wyr_data[4]} m\u00b2 "
         dlg.wyr_panel.area_icon.setEnabled(True)
-        dlg.wyr_panel.area_label.setText(area_txt)  # Aktualizacja powierzchni wyrobiska
-        # Blokada combobox'ów w zależności, czy ustalono 't_stan_pne':
+        dlg.wyr_panel.area_label.setText(area_txt)
+        # Blokada combobox'ów w zależności od wybranego stanu:
         self.widgets[f"cmb_rodz_wyr_{self.cur_page}"].set_enabled(bool_1)
         self.widgets[f"cmb_hydro_{self.cur_page}"].set_enabled(bool_1)
         self.widgets[f"cmb_droga_{self.cur_page}"].set_enabled(bool_1)
@@ -963,16 +1010,15 @@ class WyrCanvasPanel(QFrame):
                 self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value("0", signal=True)
             if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val != "brak":
                 self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value("brak", signal=True)
-        if val[1:-1] == "nd":  # Nie dotyczy (koncesja)
+        if val[1:-1] == "nd" or val[1:-1] == "nd_i":  # Nie dotyczy (koncesja lub inwestycja)
             if self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.cur_val != None:
                 self.widgets[f"cmb_eksploatacja_{self.cur_page}"].valbox_1.set_value(None, signal=True)
             if self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.cur_val != None:
                 self.widgets[f"cmb_wydobycie_{self.cur_page}"].valbox_1.set_value(None, signal=True)
-        if val[1:-1] == "E" or val[1:-1] == "Z" or val[1:-1] == "nd" or val == "Null":
-            # Odblokowanie wymiarów wyrobiska, jeśli zablokowane:
+        if val[1:-1] == "E" or val[1:-1] == "Z" or val == "Null":
             p1_list = ["dlug", "szer"]
             p2_list = ["wys", "nadkl", "miaz"]
-            b_teren = self.widgets["gd_1"].fchk_val  # Czy przeprowadzono kontrolę terenową?
+            b_teren = self.widgets["gd_1"].fchk_val
             for p1 in p1_list:
                 if not self.widgets[f"txt2_{p1}_{self.cur_page}"].is_enabled:
                     self.widgets[f"txt2_{p1}_{self.cur_page}"].set_enabled(True)
@@ -986,8 +1032,22 @@ class WyrCanvasPanel(QFrame):
                     self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setEnabled(True)
             if not self.widgets[f"cmb_pne_zloze_{self.cur_page}"].isEnabled():
                 self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setEnabled(True)
-        elif val[1:-1] == "brak":  # Brak wyrobiska
-            # Kasowanie i blokowanie wymiarów wyrobiska:
+        # REGUŁY DLA STANU BRAK WYROBISKA, KONCESJA i INWESTYCJA:
+        elif val[1:-1] in ["brak", "nd", "nd_i"]:
+            # 1) Czyszczenie i zablokowanie atrybutów kopalin (ZMIANA: użycie natywnego setEnabled):
+            self.widgets["kw_1"].k1_val = None
+            self.widgets["kw_1"].k2_val = None
+            self.widgets["kw_1"].w1_val = None
+            self.widgets["kw_1"].w2_val = None
+            self.widgets["kw_1"].setEnabled(False) # Użycie setEnabled zamiast set_enabled
+            # 2) Ustawienie Rodzaju nieprawidłowości (weryf_wyr_1) na 'nd' (nie dotyczy) i zablokowanie:
+            self.widgets["cmb_weryf_wyr_1"].valbox_1.set_value("nd", signal=True)
+            self.widgets["cmb_weryf_wyr_1"].set_enabled(False)
+            # 3) Ustawienie 'czy_teren' (b_teren) na wartość False:
+            self.widgets["gd_1"].fchk_val = False
+            self.widgets["gd_1"].fchk.setChecked(False) # Odznaczenie checkboxa terenowego w UI
+            db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="b_teren", val=False, sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+            # Czyszczenie i blokowanie pozostałych parametrów wymiarowych:
             txt_list = ["dlug", "szer", "wys", "nadkl", "miaz"]
             for t in txt_list:
                 if self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_1.cur_val:
@@ -995,22 +1055,24 @@ class WyrCanvasPanel(QFrame):
                 if self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_2.cur_val:
                     self.widgets[f"txt2_{t}_{self.cur_page}"].valbox_2.value_change(None)
                 self.widgets[f"txt2_{t}_{self.cur_page}"].set_enabled(False)
-            # Kasowanie i blokowanie parametrów wyrobiska:
+            # Czyszczenie parametrów eksploatacyjnych:
             cmb_list = ["rodz_wyr", "hydro", "eksploatacja", "wydobycie", "droga"]
             for c in cmb_list:
                 if self.widgets[f"cmb_{c}_{self.cur_page}"].valbox_1.cur_val != "Null":
                     self.widgets[f"cmb_{c}_{self.cur_page}"].valbox_1.set_value(None, signal=True)
-            # Kasowanie odpadów:
             odp_val = self.widgets["cmb_wyp_odpady_1"].valbox_1.cur_val
             if odp_val != 'Null' and odp_val[1:-1] != '0':
                 self.widgets["cmb_wyp_odpady_1"].valbox_1.set_value(None, signal=True)
-            # Wyłączenie powierzchni wyrobiska:
             dlg.wyr_panel.area_icon.setEnabled(False)
             dlg.wyr_panel.area_label.setText("")
-            # Automatyczne ustawienie 'pne_zloze' i 'pne_poza' na NIE:
             self.set_pne_to_false()
-        # if val[1:-1] == "nd":
-        #     self.set_pne_to_false()
+        # Odblokowanie przy przywróceniu czynnego stanu wyrobiska (E lub Z):
+        if val[1:-1] not in ["brak", "nd", "nd_i"]:
+            self.widgets["kw_1"].setEnabled(True)
+            self.widgets["cmb_weryf_wyr_1"].set_enabled(True)
+            print(val[1:-1])
+        # Oodświeżenie słownika rekultywacji:
+        self.stan_rekul_populate()
 
     def trigger_midas(self):
         """Wykonywane po zmianie wartości textbox'u 'midas_id'."""
@@ -1019,13 +1081,28 @@ class WyrCanvasPanel(QFrame):
         if self.cur_page == 1: # Strona pełnego formularza to 1
             # Kontrola podświetlenia tytułu zakładki:
             dlg.wyr_panel.tab_box.widgets["btn_1"].active = self.has_midas
-            # Ustawienie widoczności cmb_pne_poza_m:
+            # Ustawienie widoczności:
             self.widgets[f"cmb_pne_poza_m_{self.cur_page}"].setVisible(self.has_midas)
+            self.widgets[f"cmb_pne_poza_{self.cur_page}"].setVisible(True)
+        else:
+            self.widgets[f"cmb_pne_poza_{self.cur_page}"].setVisible(self.has_midas)
         # Ustawienie widoczności widgetów wspólnych dla wszystkich faz:
         self.widgets[f"cmb_stan_midas_{self.cur_page}"].setVisible(self.has_midas)
         self.widgets[f"txt2_okres_zloze_{self.cur_page}"].setVisible(self.has_midas)
         self.widgets[f"cmb_pne_zloze_{self.cur_page}"].setVisible(self.has_midas)
-        self.widgets[f"cmb_pne_poza_{self.cur_page}"].setVisible(self.has_midas)
+        # self.widgets[f"cmb_pne_poza_{self.cur_page}"].setVisible(self.has_midas)
+        b_new = dlg.obj.wyr_data[1] if dlg.obj.wyr_data else True
+        # ZABEZPIECZENIE: Jeśli midas_id został wyczyszczony, a stan_analiza był 'zloze' lub 'konc' -> resetujemy do Null:
+        if not self.has_midas:
+            cmb_name = f"cmb_stan_analiza_{self.cur_page}"
+            if cmb_name in self.widgets:
+                cmb = self.widgets[cmb_name].valbox_1
+                current_val = cmb.itemData(cmb.currentIndex())
+                if current_val in ['zloze', 'konc']:
+                    # Resetujemy ComboBox i wywołujemy sygnał zapisu (signal=True):
+                    cmb.set_value(None, signal=True)
+        # Odświeżamy słownik stan_analiza w locie (doda lub usunie 'zloze' i 'konc' z listy):
+        self.stan_analiza_populate(b_new)
 
     def trigger_midas_aktual(self):
         """Wykonywane po zmianie wartości textbox'u 'midas_id' w trybie aktualizacji wyrobiska."""
@@ -1038,6 +1115,17 @@ class WyrCanvasPanel(QFrame):
         self.widgets[f"cmb_pne_poza_{self.cur_page}"].setVisible(self.has_midas)
         self.widgets[f"cmb_weryf_midas_{self.cur_page}"].setVisible(self.has_midas)
         self.widgets[f"tb_og_id_{self.cur_page}"].setVisible(self.has_midas)
+        b_new = dlg.obj.wyr_data[1] if dlg.obj.wyr_data else True
+        # ZABEZPIECZENIE: Jeśli midas_id został wyczyszczony, a stan_analiza był 'zloze' lub 'konc' -> resetujemy do Null:
+        if not self.has_midas:
+            cmb_name = f"cmb_stan_analiza_{self.cur_page}"
+            if cmb_name in self.widgets:
+                cmb = self.widgets[cmb_name].valbox_1
+                current_val = cmb.itemData(cmb.currentIndex())
+                if current_val in ['zloze', 'konc']:
+                    cmb.set_value(None, signal=True)
+        # Odświeżamy słownik stan_analiza w locie:
+        self.stan_analiza_populate(b_new)
 
     def set_pne_to_false(self):
         """Automatyczne ustawienie PNE_ZLOZE i PNE_POZA na wartość NIE."""
@@ -1195,7 +1283,7 @@ class WyrCanvasPanel(QFrame):
         wyr_layer_update(False)
 
     def stan_analiza_populate(self, b_new):
-        """Dynamiczne ładowanie opcji słownika sl_stan_analiza w zależności od status_id i b_new."""
+        """Dynamiczne ładowanie opcji słownika sl_stan_analiza w oparciu o status_id, b_new i n_wys_max_hist."""
         db = PgConn()
         # Pobranie aktualnego status_id wyrobiska:
         status_id = self.status_selector.case if self.status_selector.case is not None else 1
@@ -1207,51 +1295,50 @@ class WyrCanvasPanel(QFrame):
                 res = db.query_sel(sql, True)
                 if res:
                     self.sl_stan_analiza_cache = res  # Zapis w pamięci RAM
-        # 2. Definiujemy białe listy opcji oraz obecność pustej wartości w zależności od status_id:
-        null_val = True  # Domyślnie dopuszczamy pustą wartość w ComboBoxie
-        if status_id == 4:     # [4] WYROBISKO ZAWIESZONE (Niebieskie)
-            allowed_vals = ['stare', 'male', 'konc', 'inw', 'ter_zamk']
-            null_val = False   # Blokada wyboru pustej wartości
-        elif status_id == 5:   # [5] OBIEKT ODRZUCONY (Czerwone)
-            allowed_vals = ['inne', 'konc', 'inw', 'brak', 'ter_zamk']
-            null_val = False   # Blokada wyboru pustej wartości
-        elif status_id == 1:   # [1] WYROBISKO POTENCJALNE (Szare)
-            allowed_vals = ['zloze', 'duze', 'male', 'zm_ter', 'dodat', 'ter_zamk']
-        elif status_id == 2: # [2] WYROBISKO ARCHIWALNE (Fioletowe)
-            allowed_vals = ['wys_8', 'wys_4-8', 'wys_4', 'duze', 'zloze', 'male', 'stare', 'dodat', 'brak', 'konc', 'inw', 'ter_zamk']
-            # Sprawdzamy obecność poprawnej wartości numerycznej w historycznej wysokości n_wys_max:
+        # 2. Definiujemy BAZOWE białe listy opcji oraz obecność pustej wartości w zależności od status_id:
+        null_val = True  # Domyślnie dopuszczamy pustą wartość
+        if status_id == 4:  # [4] WYROBISKO ZAWIESZONE (Niebieskie)
+            allowed_vals = ['stare', 'male', 'brak', 'konc', 'inw', 'ter_zamk']
+            null_val = False  # Blokada wyboru pustej wartości
+        elif status_id == 5:  # [5] OBIEKT ODRZUCONY (Czerwone)
+            allowed_vals = ['konc', 'inw', 'brak', 'ter_zamk']
+            null_val = False  # Blokada wyboru pustej wartości
+        elif status_id == 1:  # [1] WYROBISKO POTENCJALNE (Szare)
+            allowed_vals = ['zloze', 'duze', 'male', 'stare', 'dodat', 'brak', 'ter_zamk']
+        elif status_id == 2:  # [2] WYROBISKO ARCHIWALNE (Fioletowe)
+            allowed_vals = ['wys_4', 'wys_pon_4', 'duze', 'zloze', 'male', 'stare', 'zagroz', 'dodat', 'brak', 'konc', 'inw', 'ter_zamk']
+        else:  # Status 3 i 6 (Kontrolowane / Zatwierdzone)
+            if b_new:
+                allowed_vals = ['zloze', 'duze', 'male', 'dodat', 'brak', 'ter_zamk']
+            else:
+                allowed_vals = ['wys_4', 'wys_pon_4', 'zloze', 'zagroz', 'dodat', 'brak', 'konc', 'inw']
+        # 3. GLOBALNA WALIDACJA WYSOKOŚCIOWA (Dla wszystkich statusów historycznych b_new = False):
+        if not b_new:
             has_height = False
             if dlg.obj.moek_data and dlg.obj.moek_data[9] is not None:
                 try:
                     n_wys_max_hist = float(dlg.obj.moek_data[9])
-                    has_height = True
+                    if n_wys_max_hist > 0.0: has_height = True
                 except ValueError:
                     pass
             if has_height:
-                # SCENARIUSZ H1: Wysokość jest znana -> usuwamy opcję powierzchniową 'duze' (wymuszamy wysokość):
+                # A. Wysokość jest znana -> usuwamy opcję powierzchniową 'duze' (wymuszamy wysokość):
                 if 'duze' in allowed_vals: allowed_vals.remove('duze')
-                # Blokujemy odpowiednie przedziały wysokościowe zgodnie z Twoją bezpieczną regułą:
+                # Blokujemy odpowiedni przedział wysokościowy na podstawie danych historycznych:
                 if n_wys_max_hist <= 4.0:
-                    if 'wys_4-8' in allowed_vals: allowed_vals.remove('wys_4-8')
-                    if 'wys_8' in allowed_vals: allowed_vals.remove('wys_8')
-                elif n_wys_max_hist > 4.0 and n_wys_max_hist < 8.0:
-                    if 'wys_8' in allowed_vals: allowed_vals.remove('wys_8')
                     if 'wys_4' in allowed_vals: allowed_vals.remove('wys_4')
-                elif n_wys_max_hist >= 8.0:
-                    if 'wys_4-8' in allowed_vals: allowed_vals.remove('wys_4-8')
-                    if 'wys_4' in allowed_vals: allowed_vals.remove('wys_4')
+                else:
+                    if 'wys_pon_4' in allowed_vals: allowed_vals.remove('wys_pon_4')
             else:
-                # SCENARIUSZ H2: Brak wysokości w bazie -> usuwamy opcje wysokościowe, pozostawiamy opcję 'duze':
-                if 'wys_8' in allowed_vals: allowed_vals.remove('wys_8')
-                if 'wys_4-8' in allowed_vals: allowed_vals.remove('wys_4-8')
+                # B. Brak wysokości w bazie -> usuwamy obie opcje wysokościowe, pozostawiamy opcję 'duze':
                 if 'wys_4' in allowed_vals: allowed_vals.remove('wys_4')
-        else:
-            # Status 3 i 6 (Kontrolowane / Zatwierdzone):
-            if b_new:
-                allowed_vals = ['zloze', 'duze', 'male', 'zm_ter', 'dodat', 'konc', 'inw', 'ter_zamk', 'inne']
-            else:
-                allowed_vals = ['wys_8', 'wys_4-8', 'wys_4', 'zloze', 'male', 'stare', 'dodat', 'brak', 'konc', 'inw', 'ter_zamk']
-        # 3. Pobranie ComboBoxa dla aktualnej strony:
+                if 'wys_pon_4' in allowed_vals: allowed_vals.remove('wys_pon_4')
+        # 4. GLOBALNE ZABEZPIECZENIE ZŁOŻOWE (Dla wszystkich statusów nowych i historycznych):
+        has_midas = True if (dlg.obj.wyr_data and dlg.obj.wyr_data[43]) else False
+        if not has_midas:
+            if 'zloze' in allowed_vals: allowed_vals.remove('zloze')
+            if 'konc' in allowed_vals: allowed_vals.remove('konc')
+        # 5. Pobranie ComboBoxa dla aktualnej strony:
         cmb_name = f"cmb_stan_analiza_{self.cur_page}"
         if cmb_name not in self.widgets:
             return
@@ -1262,7 +1349,7 @@ class WyrCanvasPanel(QFrame):
         cmb.clear()
         if null_val:
             cmb.addItem("", None)
-        # 4. Filtrowanie w pamięci RAM komputera:
+        # 6. Filtrowanie w pamięci RAM komputera:
         for t_val, t_desc in self.sl_stan_analiza_cache:
             if t_val in allowed_vals:
                 cmb.addItem(f"  {t_desc}  ", t_val)
@@ -1272,6 +1359,55 @@ class WyrCanvasPanel(QFrame):
             if idx >= 0:
                 cmb.setCurrentIndex(idx)
                 cmb.cur_val = f"'{current_val}'"
+        cmb.currentIndexChanged.connect(cmb.index_changed)
+
+    def stan_rekul_populate(self):
+        """Dynamiczne filtrowanie słownika sl_stan_rekul i automatyczne ustawianie domyślnego 'tak' dla zlikwidowanych wyrobisk."""
+        db = PgConn()
+        # Pobieramy aktualną wartość stanu wyrobiska (cmb_stan_1 na Stronie 1):
+        stan_val = self.widgets["cmb_stan_1"].valbox_1.cur_val if "cmb_stan_1" in self.widgets else None
+        # Jeśli stan wyrobiska to 'brak' (brak wyrobiska) -> ograniczamy słownik do 'tak' i 'w_t' (w trakcie):
+        is_liquidated = True if (stan_val and stan_val[1:-1] == 'brak') else False
+        # Jeśli stan wyrobiska to 'nd' albo 'nd_i' -> ograniczamy słownik do 'nd' (nie dotyczy):
+        is_not_applicable = True if (stan_val and stan_val[1:-1] in ['nd', 'nd_i']) else False
+        exclude_sql = " WHERE t_val IN ('tak', 'w_t')" if is_liquidated else " WHERE t_val = 'nd'" if is_not_applicable else ""
+        sql = f"SELECT t_val, t_desc FROM public.sl_stan_rekul{exclude_sql};"
+        cmb = self.widgets["cmb_stan_rekul_1"].valbox_1
+        current_val = cmb.itemData(cmb.currentIndex())
+        # print(f"Current value of 'stan_rekul': {current_val}")
+        cmb.signal_off()
+        cmb.clear()
+        if not is_not_applicable:
+            cmb.addItem("", None)
+        if db:
+            res = db.query_sel(sql, True)
+            if res:
+                for r in res:
+                    cmb.addItem(f"  {r[1]}  ", r[0])
+        # APLIKACJA DOMYŚLNEJ WARTOŚCI:
+        # Jeśli wyrobisko jest zlikwidowane, a obecna wartość jest pusta lub niezgodna z nową listą -> wymuszamy 'tak':
+        if is_liquidated:
+            if current_val not in ['tak', 'w_t']:
+                # Automatycznie ustawiamy 'tak' w bazie danych i na ekranie:
+                cmb.set_value('tak', signal=True)
+            else:
+                # Przywracamy wybraną wcześniej wartość (jeśli była poprawna):
+                idx = cmb.findData(current_val, flags=Qt.MatchExactly)
+                if idx >= 0:
+                    cmb.setCurrentIndex(idx)
+                    cmb.cur_val = f"'{current_val}'"
+        elif is_not_applicable:
+            if current_val != 'nd':
+                print("Setting 'stan_rekul' to 'nd' due to 'nd' or 'nd_i' status")
+                # Automatycznie ustawiamy 'nd' w bazie danych i na ekranie:
+                cmb.set_value('nd', signal=True)
+        else:
+            # Dla czynnych wyrobisk przywracamy wybraną wartość bez ograniczeń:
+            if current_val:
+                idx = cmb.findData(current_val, flags=Qt.MatchExactly)
+                if idx >= 0:
+                    cmb.setCurrentIndex(idx)
+                    cmb.cur_val = f"'{current_val}'"
         cmb.currentIndexChanged.connect(cmb.index_changed)
 
 
@@ -2569,9 +2705,9 @@ class WyrStatusIndicator(QLabel):
         return odf_pow
 
     def order_pd_load(self):
-        """Zwraca dataframe z danymi wyrobisk potwierdzonych dla ustalenia order_id."""
+        """Zwraca dataframe z danymi wyrobisk zatwierdzonych (status_id = 6) dla ustalenia order_id."""
         db = PgConn()
-        sql = f"SELECT w.wyr_id, ST_X(w.centroid) as X_92, ST_Y(w.centroid) as Y_92, p.pow_grp, p.order_id, p.order_lock FROM team_{dlg.team_i}.wyr_prg AS p INNER JOIN team_{dlg.team_i}.wyrobiska AS w USING(wyr_id) WHERE w.b_confirmed IS TRUE;"
+        sql = f"SELECT w.wyr_id, ST_X(w.centroid) as X_92, ST_Y(w.centroid) as Y_92, p.pow_grp, p.order_id, p.order_lock FROM team_{dlg.team_i}.wyr_prg AS p INNER JOIN team_{dlg.team_i}.wyrobiska AS w USING(wyr_id) WHERE w.status_id = 6;"
         if db:
             df = db.query_pd(sql, ['wyr_id' ,'X_92', 'Y_92', 'pow_grp', 'order_id', 'order_lock'])
             if isinstance(df, pd.DataFrame):
@@ -2593,10 +2729,10 @@ class WyrStatusIndicator(QLabel):
         if db:
             res = db.query_upd(sql)
 
-    def order_clear_not_green(self):
-        """Wyczyszczenie order_id i order_lock dla wyrobisk innych niż potwierdzone."""
+    def order_clear_not_green():
+        """Wyczyszczenie order_id i order_lock dla wyrobisk innych niż zatwierdzone (status_id != 6)."""
         db = PgConn()
-        sql = f"UPDATE team_{dlg.team_i}.wyr_prg AS a SET order_id = Null, order_lock = false FROM team_{dlg.team_i}.wyrobiska AS b WHERE a.wyr_id = b.wyr_id and b.b_confirmed = false"
+        sql = f"UPDATE team_{dlg.team_i}.wyr_prg AS a SET order_id = Null, order_lock = false FROM team_{dlg.team_i}.wyrobiska AS b WHERE a.wyr_id = b.wyr_id and b.status_id != 6"
         if db:
             res = db.query_upd(sql)
 
@@ -2693,7 +2829,6 @@ class WyrStatusSelector(QFrame):
             if dlg.wyr_panel.pow_all:
                 show_order = False
             dlg.wyr_panel.order_box.setVisible(show_order)
-            # ZMIANA: Dynamiczne ustawienie motywu kolorystycznego dla order_box zgodnego z kolorem statusu:
             if show_order:
                 if val == 2:
                     dlg.wyr_panel.order_box.set_theme("purple")
@@ -2716,7 +2851,7 @@ class WyrStatusSelector(QFrame):
             if status_id == 1:   # Szary (Potencjalne)
                 visible_btns = ["btn_wyr_blue_status", "btn_wyr_orange_status"]
             elif status_id == 4: # Niebieski (Zawieszone)
-                visible_btns = ["btn_wyr_grey_back", "btn_wyr_orange_status"]
+                visible_btns = ["btn_wyr_grey_back"]
             elif status_id == 3: # Pomarańczowy (Kontrola)
                 visible_btns = ["btn_wyr_grey_back", "btn_wyr_red_status", "btn_wyr_green_status"]
             elif status_id == 5: # Czerwony (Odrzucone)
@@ -2727,14 +2862,12 @@ class WyrStatusSelector(QFrame):
             if status_id == 2:   # Fioletowy (Archiwalne)
                 visible_btns = ["btn_wyr_blue_status", "btn_wyr_orange_status"]
             elif status_id == 4: # Niebieski (Zawieszone)
-                visible_btns = ["btn_wyr_purple_back", "btn_wyr_orange_status"]
+                visible_btns = ["btn_wyr_purple_back"]
             elif status_id == 3: # Pomarańczowy (Kontrola)
-                # ZMIANA: Usunięto "btn_wyr_red_status" - brak możliwości wykluczenia!
                 visible_btns = ["btn_wyr_purple_back", "btn_wyr_green_status"]
             elif status_id == 5: # Czerwony (Odrzucone) - bezpiecznik wyjścia ze stanu awaryjnego
                 visible_btns = ["btn_wyr_orange_back"]
             elif status_id == 6: # Zielony (Zatwierdzone)
-                # ZMIANA: Usunięto "btn_wyr_red_status" - zablokowana ścieżka do czerwonego!
                 visible_btns = ["btn_wyr_orange_back"]
         # 2. Włączenie i pozycjonowanie przycisków na maszynie stanów:
         actual_width = 0
@@ -2762,12 +2895,19 @@ class WyrStatusSelector(QFrame):
             cmb_name = f"cmb_stan_analiza_{self.case}"
             if cmb_name in dlg.wyr_panel.widgets:
                 val = dlg.wyr_panel.widgets[cmb_name].valbox_1.itemData(dlg.wyr_panel.widgets[cmb_name].valbox_1.currentIndex())
-                if val == 'brak':
-                    # Automatyczna likwidacja wyrobiska:
-                    db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_stan_pne", val="'brak'", sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
-        elif id == 5: # Wejście do statusu Obiekt odrzucony (5)
-            # ZMIANA: Automatycznie i bezgłośnie zapisujemy wartość 'inne' w t_stan_analiza:
-            db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_stan_analiza", val="'inne'", sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+                 # Mapujemy kody ze słownika analizy kameralnej na kody ze słownika stanu wyrobiska:
+                pne_map = {
+                    'brak': 'brak', # Brak wyrobiska (zbieżne)
+                    'konc': 'nd',   # 'konc' (analiza) mapuje się na 'nd' (stan_pne)
+                    'inw': 'nd_i'   # 'inw' (analiza) mapuje się na 'nd_i' (stan_pne)
+                }
+                pne_val = pne_map.get(val)
+                if pne_val:
+                    # Zapisujemy w bazie poprawny i przetłumaczony kod słownikowy:
+                    db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_stan_pne", val=f"'{pne_val}'", sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
+        # elif id == 5: # Wejście do statusu Obiekt odrzucony (5)
+            # Automatycznie i bezgłośnie zapisujemy wartość 'inne' w t_stan_analiza:
+            # db_attr_change(tbl=f'team_{dlg.team_i}.wyr_dane', attr="t_stan_analiza", val="'inne'", sql_bns=f' WHERE wyr_id = {dlg.obj.wyr}', user=False)
         db = PgConn()
         # Zapisujemy nowy status_id w bazie danych:
         sql = f"UPDATE team_{dlg.team_i}.wyrobiska SET status_id = {id} WHERE wyr_id = {dlg.obj.wyr}"
@@ -6235,6 +6375,10 @@ class MoekDummy(QFrame):
         self.setStyleSheet("""
                     QFrame#main{background-color: """ + str(b_color) + """; border: none}
                     """)
+
+    def set_enabled(self, _bool):
+        """Włączenie/wyłączenie elementu."""
+        self.setEnabled(_bool)
 
 
 class MoekPointer(QWidget):
